@@ -342,3 +342,17 @@ Two decisions from the delivery plan are still open: whether to ship a
 conventional Windows `.exe` installer alongside MSIX, and who holds the signing
 certificates and how that relates to the release multisig. Those are different
 key sets protecting different things and both need custody rules.
+
+### A workstream that is larger than it looks
+
+Every desktop platform gets a **graphical interface**, and the install experience
+is part of the product rather than a packaging detail. It is the first thing a
+user sees and the point at which most of them are lost — an unsigned binary
+warning, an MSIX sideload prompt, or an AppImage with no obvious way to run it
+each cost more users than any feature gains.
+
+This deserves dedicated design time rather than being treated as the last step
+before release, and it interacts with decisions made much earlier: the MSIX
+Publisher CN is permanent, and the choice of Linux artifact determines whether
+users can receive peer-to-peer updates at all. Plan it before the pipeline
+hardens around a shape we then have to live with.

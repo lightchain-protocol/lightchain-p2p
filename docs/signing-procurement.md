@@ -15,11 +15,19 @@ given because a wrong secret name fails at the end of a long CI run.
 Needed even though mobile is deferred: macOS notarization uses the same account
 ([ADR 0001](decisions/0001-defer-mobile.md) defers iOS, not Apple enrolment).
 
-| Item                                     | Notes                                                                                                                                    |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Apple Developer Program membership       | Organization enrolment requires a **D-U-N-S number**. This is the slow step and can take weeks if the company is not already registered. |
-| **Developer ID Application** certificate | For distribution outside the App Store. Not "Apple Development", not "Apple Distribution". Exported as `.p12` with a password.           |
-| Notarization credentials                 | Two supported methods, pick one below.                                                                                                   |
+**Enrol:** <https://developer.apple.com/programs/enroll/> — 99 USD per year.
+**Check for an existing D-U-N-S first:** <https://developer.apple.com/enroll/duns-lookup/>
+
+| Item                                     | Notes                                                                                                                                                                                                                                                                    |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| D-U-N-S number                           | Free, and the company may already have one. Allow **up to 5 business days** for D&B to issue it, then **up to 2 more** for Apple to receive it. Enrolment cannot begin until then. Must be registered to the legal entity — DBAs, trade names and branches are rejected. |
+| Apple Developer Program membership       | Enrol as an **Organization**, not an Individual. An individual account lists a personal legal name as the seller and supports no team members.                                                                                                                           |
+| Signing authority                        | Whoever enrols must be able to bind the company legally. If they are not the owner or founder, Apple requires a reference to confirm it and may ask for notarized business documents.                                                                                    |
+| **Developer ID Application** certificate | For distribution outside the App Store. Not "Apple Development", not "Apple Distribution". Exported as `.p12` with a password.                                                                                                                                           |
+| Notarization credentials                 | Two supported methods, pick one below.                                                                                                                                                                                                                                   |
+
+The legal entity name here becomes the seller name shown to users, and it should
+be the same name used for the Windows Publisher CN in section 2.
 
 **Choose the App Store Connect API key over an Apple ID.** The Apple ID method
 ties releases to one person's account and app-specific password, which breaks
@@ -45,10 +53,60 @@ at release.
 
 ## 2. Windows — blocks the chat client and the supervisor binary
 
-| Item                                                   | Notes                                                                                                                                                                                                                                    |
-| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Publicly-trusted code signing certificate              | Since June 2023 the CA/Browser Forum requires private keys on **hardware tokens or an HSM**, so a certificate cannot simply be downloaded. Shipping a physical token takes weeks; a cloud HSM offering is faster if the CA supports one. |
-| Certificate as base64 `.pfx` **or** a SHA-1 thumbprint | CI accepts either. A hardware token generally means the thumbprint route on a self-hosted runner, which is a meaningful constraint on using GitHub-hosted Windows runners.                                                               |
+Since June 2023 the CA/Browser Forum requires code signing private keys to live
+on a FIPS-certified hardware token or HSM, so a certificate can no longer be
+downloaded as a file. There are two ways to satisfy that.
+
+### Recommended: Azure Artifact Signing (formerly Trusted Signing)
+
+- Service docs: <https://learn.microsoft.com/en-us/azure/trusted-signing/>
+- Options comparison: <https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options>
+
+|                |                                                                   |
+| -------------- | ----------------------------------------------------------------- |
+| Cost           | ~$9.99/month, roughly $120/year                                   |
+| Lead time      | A few business days for identity validation                       |
+| Hardware token | **None.** Keys sit in Microsoft-operated FIPS 140-3 Level 3 HSMs  |
+| CI             | First-class, via the `azure/trusted-signing-action` GitHub Action |
+| Availability   | Organizations in the USA, Canada, EU and UK                       |
+
+Microsoft's own recommendation for non-Store distribution. It removes the
+constraint that would otherwise force Windows signing onto a self-hosted runner:
+a USB token requires a human to enter a PIN per signing operation, which cannot
+work on GitHub-hosted runners.
+
+Certificates are short-lived — reissued daily, valid about three days — which is
+fine because signatures are timestamped. Private keys **cannot be exported**, by
+design.
+
+### Alternative: an OV certificate from a CA
+
+Worth it only if the geographic restriction above rules out the managed service.
+Roughly $300–500/year, and the hardware token workflow comes with it.
+[DigiCert](https://www.digicert.com/signing/code-signing-certificates),
+[Sectigo](https://www.sectigo.com/ssl-certificates-tls/code-signing),
+[SSL.com](https://www.ssl.com/certificates/code-signing/),
+[GlobalSign](https://www.globalsign.com/en/code-signing-certificate).
+
+### Do not buy EV
+
+Extended Validation used to bypass SmartScreen entirely on first download, which
+was the only reason to pay the premium. **That behaviour was removed in 2024.**
+EV-signed files now build reputation exactly like OV-signed ones, so $400+/year
+for EV buys nothing we need.
+
+Expect SmartScreen warnings on early downloads whichever option is chosen.
+Reputation accrues with download volume over weeks; no certificate purchases
+past it.
+
+### One integration question to resolve
+
+`holepunchto/actions/make-pear-app` accepts a base64 `.pfx` or a SHA-1
+thumbprint. Azure Artifact Signing provides neither — it signs through its own
+action or a signtool dlib. The Electron template exposes `WINDOWS_SIGN_HOOK`,
+which points at an arbitrary script, so the path exists but is **custom work we
+would write**. Budget for it, or take the OV route where the upstream action
+works unmodified.
 
 ### The Publisher CN is permanent
 
