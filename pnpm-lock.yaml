@@ -58,6 +58,46 @@ importers:
         specifier: 1.29.4
         version: 1.29.4(bare-buffer@3.7.0)(bare-url@2.5.2)
 
+  packages/drive:
+    dependencies:
+      '@lcai-p2p/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      b4a:
+        specifier: ^1.8.1
+        version: 1.8.1
+      corestore:
+        specifier: ^7.12.0
+        version: 7.12.0(bare-buffer@3.7.0)(bare-url@2.5.2)
+      hyperdrive:
+        specifier: ^13.3.3
+        version: 13.3.3(bare-buffer@3.7.0)(bare-url@2.5.2)
+      localdrive:
+        specifier: ^2.2.1
+        version: 2.2.1(bare-buffer@3.7.0)(bare-url@2.5.2)
+    devDependencies:
+      '@lcai-p2p/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@lcai-p2p/testkit':
+        specifier: workspace:*
+        version: link:../testkit
+      '@lcai-p2p/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@lcai-p2p/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      eslint:
+        specifier: ^10.8.1
+        version: 10.8.1
+      hyperswarm:
+        specifier: ^4.17.0
+        version: 4.17.0(bare-buffer@3.7.0)(bare-url@2.5.2)
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.2.0)(vite@8.2.1(@types/node@26.2.0))
+
   packages/eslint-config:
     dependencies:
       '@eslint/js':
@@ -72,6 +112,24 @@ importers:
       typescript-eslint:
         specifier: ^8.67.0
         version: 8.67.0(eslint@10.8.1)(typescript@5.9.3)
+
+  packages/protocol:
+    devDependencies:
+      '@lcai-p2p/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@lcai-p2p/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@lcai-p2p/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      eslint:
+        specifier: ^10.8.1
+        version: 10.8.1
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.2.0)(vite@8.2.1(@types/node@26.2.0))
 
   packages/safety:
     devDependencies:

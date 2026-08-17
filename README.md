@@ -33,13 +33,13 @@ chain.
 The proposal defines five advancements. Three of them are built here, one is
 partly here, and one is a design exercise.
 
-| #   | Advancement                     | Lives here | What it means                                                                                                                                                                                    |
-| --- | ------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | Open model delivery             | Partly     | Every model becomes a Hyperdrive addressed by a 32-byte key, self-certifying and seeded by every worker holding it. Removes the approved-model list. The on-chain half is in the contracts repo. |
-| 2   | Worker distribution and updates | Yes        | One guided installer per OS that installs, registers, supervises and updates a worker. Collapses a nine-phase manual onboarding.                                                                 |
-| 3   | Artifact availability           | Yes        | Model archives, adapter manifests, validation reports and benchmarks on Hypercore with blind-peer replication, retrievable after the publisher goes offline.                                     |
-| 4   | The universal peer-to-peer hub  | Yes        | One chat application across desktop and terminal, sharing a single Bare core. The user's identity, history, model access, rooms and payments in one place.                                       |
-| 5   | Direct peer routing             | No         | Clients reaching workers directly over HyperDHT. Economically sensitive because worker selection determines who earns, so it needs verifiable randomness. Prototype only.                        |
+| #   | Advancement                     | Lives here | What it means                                                                                                                                                                                                                                                                                                                                      |
+| --- | ------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Open model delivery             | Partly     | Every model becomes a Hyperdrive seeded by every worker holding it, removing the approved-model list. Note the proposal says a 32-byte key is self-certifying; in practice a reference is a key **and** a version, because a key alone names a mutable history — see [packages/drive](packages/drive). The on-chain half is in the contracts repo. |
+| 2   | Worker distribution and updates | Yes        | One guided installer per OS that installs, registers, supervises and updates a worker. Collapses a nine-phase manual onboarding.                                                                                                                                                                                                                   |
+| 3   | Artifact availability           | Yes        | Model archives, adapter manifests, validation reports and benchmarks on Hypercore with blind-peer replication, retrievable after the publisher goes offline.                                                                                                                                                                                       |
+| 4   | The universal peer-to-peer hub  | Yes        | One chat application across desktop and terminal, sharing a single Bare core. The user's identity, history, model access, rooms and payments in one place.                                                                                                                                                                                         |
+| 5   | Direct peer routing             | No         | Clients reaching workers directly over HyperDHT. Economically sensitive because worker selection determines who earns, so it needs verifiable randomness. Prototype only.                                                                                                                                                                          |
 
 Two things are explicitly **out of scope**, and it saves time to know why.
 
@@ -59,16 +59,18 @@ repository removes the install-and-update problem, not the inference dependency.
 Be skeptical of anything not listed as verified. The foundation is real and
 proven in CI; the applications are scaffolds.
 
-| Component                                            | State           | Notes                                                                                                                        |
-| ---------------------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Workspace, CI, build matrix                          | **Verified**    | Green on Linux; six-target matrix builds and runs its own binaries                                                           |
-| `packages/safety`                                    | **Real**        | Refusal-list decision logic, 10 tests                                                                                        |
-| `packages/testkit`                                   | **Real**        | Two-machine harness, 6 tests including a negative control                                                                    |
-| `apps/supervisor`                                    | **Scaffold**    | Builds and runs on all six targets, but is still the upstream template — it prints a version and starts a placeholder worker |
-| `packages/drive`, `da`, `blind`, `protocol`, `chain` | **Not started** | Referenced in CODEOWNERS so ownership is settled before the code exists                                                      |
-| `apps/chat`, `apps/seeder`                           | **Not started** |                                                                                                                              |
-| Code signing                                         | **Not started** | Longest external lead time; blocks release on four platforms                                                                 |
-| iOS, Android                                         | **Deferred**    | By decision — see [ADR 0001](docs/decisions/0001-defer-mobile.md)                                                            |
+| Component                       | State           | Notes                                                                                                                        |
+| ------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Workspace, CI, build matrix     | **Verified**    | Green on Linux; six-target matrix builds and runs its own binaries                                                           |
+| `packages/safety`               | **Real**        | Refusal-list decision logic, 10 tests                                                                                        |
+| `packages/testkit`              | **Real**        | Two-machine harness, 6 tests including a negative control                                                                    |
+| `packages/protocol`             | **Real**        | Model reference and manifest schema, 17 tests                                                                                |
+| `packages/drive`                | **Real**        | Publish, resolve and range-read a model drive, 9 tests including publisher-offline                                           |
+| `apps/supervisor`               | **Scaffold**    | Builds and runs on all six targets, but is still the upstream template — it prints a version and starts a placeholder worker |
+| `packages/da`, `blind`, `chain` | **Not started** | Referenced in CODEOWNERS so ownership is settled before the code exists                                                      |
+| `apps/chat`, `apps/seeder`      | **Not started** |                                                                                                                              |
+| Code signing                    | **Not started** | Longest external lead time; blocks release on four platforms                                                                 |
+| iOS, Android                    | **Deferred**    | By decision — see [ADR 0001](docs/decisions/0001-defer-mobile.md)                                                            |
 
 Two placeholders in `apps/supervisor` will bite you if you assume otherwise: it
 still depends on `hello-pear-worker`, and its `upgrade` link in `package.json` is
@@ -328,12 +330,13 @@ In rough order of leverage:
    lead time. Windows EV certificates ship on hardware tokens and can take weeks;
    the Apple Developer account gates macOS notarization. It blocks release, not
    development, so it should be running in the background from day one.
-2. **`packages/drive`** — model delivery over Hyperdrive. The first genuinely
-   replicating package, and what `testkit` was built to hold to account.
-3. **Full publish round trip** on a throwaway link: `pear touch`, stage, seed,
+2. **Full publish round trip** on a throwaway link: `pear touch`, stage, seed,
    install, publish an update, observe it apply. Unsigned-to-signed is where most
-   surprises live.
-4. **Replace the supervisor scaffold** with real install-and-supervise logic.
+   surprises live, and the supervisor still carries the template's `upgrade` link.
+3. **`packages/blind`** — blind-peer registration, so a model stays available
+   when neither the publisher nor any worker holding it is online.
+4. **Replace the supervisor scaffold** with real install-and-supervise logic,
+   composing `packages/drive` to fetch what it installs.
 
 Two decisions from the delivery plan are still open: whether to ship a
 conventional Windows `.exe` installer alongside MSIX, and who holds the signing
