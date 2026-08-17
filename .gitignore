@@ -19,3 +19,6 @@ fixtures/*.gguf
 
 .DS_Store
 Thumbs.db
+
+# Generated from @lcai-p2p/ui by the app's build script.
+apps/chat/renderer/tokens.css

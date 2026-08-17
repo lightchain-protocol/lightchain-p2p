@@ -1,0 +1,181 @@
+/**
+ * Every value here comes from a token. No literal colours, no literal spacing:
+ * a hex code in this file is a value that will drift from the design system and
+ * from the other platforms.
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--lc-font, system-ui, sans-serif);
+  font-size: var(--lc-text-md);
+  line-height: 1.5;
+  color: var(--lc-fg);
+  background: var(--lc-bg);
+  /* The renderer is a view. Selecting chrome text is a desktop-app smell. */
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Title bar ------------------------------------------------------------ */
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-md);
+  height: 38px;
+  padding: 0 var(--lc-space-lg);
+  border-bottom: 1px solid var(--lc-rule);
+  background: var(--lc-bg-elevated);
+  /* Lets the window be dragged by its titlebar, which users expect. */
+  -webkit-app-region: drag;
+  flex: 0 0 auto;
+}
+
+/* macOS puts the traffic lights at the left, so our content starts clear of
+   them. Anything else and the wordmark sits underneath the close button. */
+:root[data-platform='darwin'] .titlebar {
+  padding-left: 78px;
+}
+
+.wordmark {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background: linear-gradient(90deg, var(--lc-brand-violet), var(--lc-brand-magenta));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.titlebar-status {
+  margin-left: auto;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+/* --- Layout --------------------------------------------------------------- */
+
+.shell {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  width: 184px;
+  padding: var(--lc-space-md);
+  border-right: 1px solid var(--lc-rule);
+  background: var(--lc-bg-elevated);
+  flex: 0 0 auto;
+}
+
+.nav-item {
+  appearance: none;
+  border: 0;
+  border-radius: var(--lc-radius-md);
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  font: inherit;
+  font-size: var(--lc-text-sm);
+  text-align: left;
+  color: var(--lc-fg-muted);
+  background: transparent;
+  cursor: default;
+}
+
+.nav-item:hover {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+}
+
+.nav-item.is-active {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+  box-shadow: inset 2px 0 0 var(--lc-brand);
+}
+
+/* Keyboard focus must stay visible. Removing outlines makes an app unusable
+   without a mouse, and it is the most common accessibility regression. */
+.nav-item:focus-visible,
+.button:focus-visible {
+  outline: 2px solid var(--lc-brand);
+  outline-offset: 2px;
+}
+
+.content {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  display: grid;
+  place-items: center;
+  padding: var(--lc-space-xxl);
+}
+
+/* --- Placeholder ---------------------------------------------------------- */
+
+.placeholder {
+  max-width: 44ch;
+  text-align: center;
+}
+
+.placeholder-title {
+  margin: 0 0 var(--lc-space-md);
+  font-size: var(--lc-text-xxl);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.placeholder-body {
+  margin: 0;
+  color: var(--lc-fg-muted);
+}
+
+.version {
+  margin-top: var(--lc-space-xl);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+/* --- Controls ------------------------------------------------------------- */
+
+.button {
+  appearance: none;
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  padding: var(--lc-space-sm) var(--lc-space-lg);
+  font: inherit;
+  font-size: var(--lc-text-sm);
+  font-weight: 500;
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+  cursor: default;
+}
+
+.button-primary {
+  border-color: transparent;
+  color: #ffffff;
+  background: linear-gradient(90deg, var(--lc-brand-violet), var(--lc-brand-magenta));
+}
+
+.button-primary:hover {
+  filter: brightness(1.08);
+}
+
+/* Respect the setting rather than animating regardless. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

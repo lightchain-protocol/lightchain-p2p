@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self'; script-src 'self'"
+    />
+    <title>Lightchain</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <!-- Drawn by us on Windows and Linux; on macOS the traffic lights sit here
+         and the content is inset to clear them. -->
+    <header class="titlebar" id="titlebar">
+      <span class="wordmark">Lightchain</span>
+      <span class="titlebar-status" id="status">starting</span>
+    </header>
+
+    <main class="shell">
+      <nav class="sidebar" aria-label="Primary">
+        <button class="nav-item is-active" type="button">Chat</button>
+        <button class="nav-item" type="button">Models</button>
+        <button class="nav-item" type="button">Worker</button>
+        <button class="nav-item" type="button">Wallet</button>
+      </nav>
+
+      <section class="content">
+        <div class="placeholder">
+          <h1 class="placeholder-title">The universal hub</h1>
+          <p class="placeholder-body">
+            One place to hold your identity, reach any published model, keep your own history and
+            pay for all of it from one balance.
+          </p>
+          <p class="version" id="version"></p>
+          <button class="button button-primary" id="update-btn" hidden>Apply update</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

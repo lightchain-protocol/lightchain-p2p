@@ -7,3 +7,6 @@ packages:
 onlyBuiltDependencies:
   - sodium-native
   - rocksdb-native
+  # Electron's postinstall downloads the runtime binary. Without it the chat app
+  # installs "successfully" and then cannot start.
+  - electron
