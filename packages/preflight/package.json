@@ -1,5 +1,5 @@
 {
-  "name": "@lcai-p2p/protocol",
+  "name": "@lcai-p2p/preflight",
   "version": "0.1.0",
   "private": true,
   "license": "MIT",

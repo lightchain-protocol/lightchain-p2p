@@ -59,20 +59,21 @@ repository removes the install-and-update problem, not the inference dependency.
 Be skeptical of anything not listed as verified. The foundation is real and
 proven in CI; the applications are scaffolds.
 
-| Component                   | State           | Notes                                                                                                                        |
-| --------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Workspace, CI, build matrix | **Verified**    | Green on Linux; six-target matrix builds and runs its own binaries                                                           |
-| `packages/safety`           | **Real**        | Refusal-list decision logic, 10 tests                                                                                        |
-| `packages/testkit`          | **Real**        | Two-machine harness, 6 tests including a negative control                                                                    |
-| `packages/protocol`         | **Real**        | Model reference and manifest schema, 17 tests                                                                                |
-| `packages/drive`            | **Real**        | Publish, resolve and range-read a model drive, 9 tests including publisher-offline                                           |
-| `apps/supervisor`           | **Scaffold**    | Builds and runs on all six targets, but is still the upstream template — it prints a version and starts a placeholder worker |
-| `packages/blind`            | **Real**        | Blind-peer registration, 4 tests against a real server with every holder offline                                             |
-| `packages/da`, `chain`      | **Not started** | Referenced in CODEOWNERS so ownership is settled before the code exists                                                      |
-| Blind peer infrastructure   | **Not started** | There is no public fleet; we must operate our own servers or nothing stays available                                         |
-| `apps/chat`, `apps/seeder`  | **Not started** |                                                                                                                              |
-| Code signing                | **Not started** | Longest external lead time; blocks release on four platforms                                                                 |
-| iOS, Android                | **Deferred**    | By decision — see [ADR 0001](docs/decisions/0001-defer-mobile.md)                                                            |
+| Component                   | State           | Notes                                                                                              |
+| --------------------------- | --------------- | -------------------------------------------------------------------------------------------------- |
+| Workspace, CI, build matrix | **Verified**    | Green on Linux; six-target matrix builds and runs its own binaries                                 |
+| `packages/safety`           | **Real**        | Refusal-list decision logic, 10 tests                                                              |
+| `packages/testkit`          | **Real**        | Two-machine harness, 6 tests including a negative control                                          |
+| `packages/protocol`         | **Real**        | Model reference and manifest schema, 17 tests                                                      |
+| `packages/drive`            | **Real**        | Publish, resolve and range-read a model drive, 9 tests including publisher-offline                 |
+| `packages/blind`            | **Real**        | Blind-peer registration, 4 tests against a real server with every holder offline                   |
+| `packages/preflight`        | **Real**        | Host readiness checks with actionable remedies, 19 tests                                           |
+| `apps/supervisor`           | **Partly real** | `doctor` works on all six targets; install, register and supervise are still the upstream template |
+| `packages/da`, `chain`      | **Not started** | Referenced in CODEOWNERS so ownership is settled before the code exists                            |
+| Blind peer infrastructure   | **Not started** | There is no public fleet; we must operate our own servers or nothing stays available               |
+| `apps/chat`, `apps/seeder`  | **Not started** |                                                                                                    |
+| Code signing                | **Not started** | Longest external lead time; blocks release on four platforms                                       |
+| iOS, Android                | **Deferred**    | By decision — see [ADR 0001](docs/decisions/0001-defer-mobile.md)                                  |
 
 Two placeholders in `apps/supervisor` will bite you if you assume otherwise: it
 still depends on `hello-pear-worker`, and its `upgrade` link in `package.json` is

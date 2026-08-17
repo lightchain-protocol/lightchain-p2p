@@ -1,4 +1,4 @@
-import { command, flag, summary } from 'paparam'
+import { command, flag, summary, arg } from 'paparam'
 import { persistent } from 'bare-storage'
 import process from 'bare-process'
 import os from 'bare-os'
@@ -13,9 +13,11 @@ const isDev = path.basename(Bare.argv[0]) === (isWindows ? 'bare.exe' : 'bare')
 const cmd = command(
   appName,
   summary(pkg.description),
+  arg('[subcommand]', 'doctor: check whether this host can run a worker'),
   flag('--version|-v', 'Print the current version'),
   flag('--storage <dir>', 'custom storage directory'),
-  flag('--no-updates', 'disable OTA updates for this run')
+  flag('--no-updates', 'disable OTA updates for this run'),
+  flag('--ollama-port <port>', 'port Ollama listens on (default 11434)')
 )
 
 cmd.parse(Bare.argv.slice(isDev ? 2 : 1))
@@ -23,6 +25,12 @@ if (cmd.flags.help) Bare.exit()
 if (cmd.flags.version) {
   console.log(`${appName} v${pkg.version}`)
   Bare.exit()
+}
+
+if (cmd.args.subcommand === 'doctor') {
+  const { doctor } = await import('./lib/doctor.mjs')
+  const ready = await doctor({ ollamaPort: Number(cmd.flags.ollamaPort) || undefined })
+  Bare.exit(ready ? 0 : 1)
 }
 
 const updates = cmd.flags.updates

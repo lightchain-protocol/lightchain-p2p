@@ -28,10 +28,12 @@
     "make": "node ../../scripts/make.mjs supervisor"
   },
   "dependencies": {
+    "@lcai-p2p/preflight": "workspace:*",
     "bare-os": "^3.9.0",
     "bare-path": "^3.0.0",
     "bare-process": "^4.5.0",
     "bare-storage": "^1.1.0",
+    "bare-subprocess": "^6.1.0",
     "framed-stream": "^1.0.1",
     "hello-pear-worker": "^1.0.0",
     "paparam": "^1.10.1",

@@ -16,7 +16,7 @@
     "test": "turbo run test",
     "make": "node scripts/make.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check . && node scripts/check-bom.mjs"
   },
   "devDependencies": {
     "prettier": "^3.9.6",
