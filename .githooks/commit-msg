@@ -1,0 +1,18 @@
+#!/bin/sh
+# Strip editor-injected attribution trailers from commit messages.
+#
+# Cursor appends "Co-authored-by: Cursor <cursoragent@cursor.com>" by passing
+# --trailer to git commit. That happens before this hook runs, and the IDE's
+# Attribution toggle does not reach every code path, so stripping here is the
+# only reliable point of control.
+#
+# Without this, commits land attributed to a bot account rather than the person
+# or org that authored them, which matters for a repo whose history is meant to
+# be a record of who decided what.
+
+grep -v \
+  -e 'cursoragent@cursor\.com' \
+  -e '^Made-with: Cursor' \
+  "$1" > "$1.stripped" || true
+
+mv "$1.stripped" "$1"
