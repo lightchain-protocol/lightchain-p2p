@@ -1,0 +1,135 @@
+# Roadmap
+
+What exists, what does not, and who each remaining item is waiting on. Updated
+17 August 2026.
+
+The short version: **the data plane works and nothing operates it.** Seven
+packages are real and tested, the applications are partly built, and the items
+with the longest lead times are procurement and infrastructure rather than code.
+
+---
+
+## Built and verified
+
+|                      | Tests | Notes                                                                                         |
+| -------------------- | ----- | --------------------------------------------------------------------------------------------- |
+| `packages/protocol`  | 17    | Model reference and manifest format. A reference is a key **and** a version.                  |
+| `packages/drive`     | 9     | Publish a model, resolve it, range-read weights. Survives the publisher going offline.        |
+| `packages/blind`     | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server. |
+| `packages/preflight` | 19    | Host readiness with actionable remedies.                                                      |
+| `packages/worker`    | 23    | Network profiles, config validation, Docker orchestration, container state.                   |
+| `packages/safety`    | 10    | Refusal-list decision logic.                                                                  |
+| `packages/testkit`   | 6     | Two-machine harness with a negative control.                                                  |
+
+**88 tests.** CI green on every push. The six-platform build matrix compiles a
+standalone supervisor binary for Windows, macOS and Linux on x64 and arm64, and
+every runner executes the binary it produced.
+
+`apps/supervisor` has working `doctor`, `status`, `pull`, `stop` and `logs`,
+running from the compiled native binary.
+
+The publish round trip is validated: `pear touch`, stage, seed, retrieve, update.
+Staging is incremental — one changed file moved the drive from version 134 to 135
+and transferred that file alone.
+
+---
+
+## Not built yet — engineering
+
+### Supervisor, to finish Advancement 2
+
+Remaining commands: `import-key`, `keygen`, `register`, `start`.
+
+These are blocked on a decision rather than effort: **where the keystore password
+and private key live**. The commands are already built and secret-redacted in
+`packages/worker`; what is undecided is whether the supervisor ever holds a
+private key, prompts for it, or only ever shells it into the container. Worth
+choosing deliberately given how much of the design assumes secrets never reach a
+log.
+
+### `apps/chat`, Advancement 4
+
+Nothing exists. Electron shell over a shared Bare worker on desktop.
+
+The **graphical interface and install experience for every platform** is the
+largest single piece of work remaining, and it is more than packaging. It is the
+first thing a user sees and where most of them are lost: an unsigned binary
+warning, an MSIX sideload prompt, an AppImage with no obvious way to run it. It
+also interacts with decisions that harden early — the MSIX Publisher CN is
+permanent, and the Linux artifact choice determines whether users can receive
+peer-to-peer updates at all.
+
+### Smaller pieces
+
+- **Notarization for `bare-build` binaries.** `bare-build` signs and cannot
+  notarize, so macOS Gatekeeper will block the supervisor. Needs an
+  `xcrun notarytool submit` plus stapling step we write.
+- **A Windows sign hook** if we take Azure Artifact Signing, which the upstream
+  Pear action does not support.
+- **`apps/seeder`**, **`packages/da`**, **`packages/chain`** — not started.
+
+---
+
+## Not built yet — not engineering
+
+Nothing in this repository shortens these, which is why they should be running in
+parallel rather than after the code.
+
+### Procurement
+
+| Item                    | Lead time        | Notes                                                                                                                 |
+| ----------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Apple Developer Program | **Longest path** | D-U-N-S issuance takes up to 5 business days, plus 2 more before Apple can see it. Enrolment cannot start until then. |
+| Azure Artifact Signing  | Days             | ~$10/month, no hardware token. See [signing-procurement.md](docs/signing-procurement.md).                             |
+
+The legal entity name chosen here becomes the Apple seller name **and** the
+Windows Publisher CN, and the CN is permanent once a signed release ships.
+
+### Infrastructure to operate
+
+**Blind peers.** There is no public fleet, and a third-party peer will cache for
+us but will not serve on our behalf — announcing requires trusted status on a
+server we run. Until we operate blind peers, availability does not exist
+regardless of what the tests show.
+
+**Seeders.** Applications are client-only by default. A release nobody seeds is a
+release nobody can install, and nothing seeds today.
+
+### Verification
+
+**A second machine.** Nothing crossed the network in the publish round trip: the
+Pear sidecar is a per-machine singleton, so both retrievals read local storage.
+One other host and a single `pear dump` closes it. Cheap, and cannot be faked
+locally.
+
+---
+
+## Open decisions
+
+1. **Where secrets live** for the supervisor's registration commands. Blocks
+   finishing Advancement 2.
+2. **The production `pear://` link and its multisig quorum.** The current
+   `upgrade` link is a development one whose secret key sits on one machine.
+3. **Custody**: signing certificates and the release multisig are different key
+   sets protecting different things, and both need rules for who holds them and
+   what happens when that person leaves.
+4. **Windows installer**: MSIX only, or a conventional `.exe` alongside it.
+5. **Linux artifact**: AppImage only, or Snap and Flatpak knowing they cannot
+   receive peer-to-peer updates.
+6. **CODEOWNERS still contains placeholders** (`@track-a`, `@track-b`). Branch
+   protection cannot be enabled until they are real handles.
+
+Mobile is decided: deferred, see [ADR 0001](docs/decisions/0001-defer-mobile.md).
+
+---
+
+## Suggested order
+
+1. **Start Apple and Azure procurement now.** It is the only work with external
+   lead time and it blocks release rather than development.
+2. **Stand up one blind peer and one seeder.** Turns availability from a passing
+   test into a property of the system.
+3. **Finish the supervisor** once the secrets question is answered.
+4. **Verify from a second machine.**
+5. **Start `apps/chat`**, treating the interface and installer as a design
+   problem rather than a build step.
