@@ -99,6 +99,17 @@ Expect SmartScreen warnings on early downloads whichever option is chosen.
 Reputation accrues with download volume over weeks; no certificate purchases
 past it.
 
+### The pipeline is already proven
+
+`signtool` is installed and the signing path has been exercised end to end with a
+self-signed certificate: both binaries sign, carry an RFC 3161 timestamp, and
+still run afterwards. The open question — whether a `bare-build` standalone
+binary survives having a signature appended to its PE — is answered, yes.
+
+`scripts/sign-windows.mjs` takes `WINDOWS_CERT_SHA1`, so a real certificate is a
+change of value rather than a change of pipeline. See
+[ADR 0003](decisions/0003-windows-signing.md).
+
 ### One integration question to resolve
 
 `holepunchto/actions/make-pear-app` accepts a base64 `.pfx` or a SHA-1

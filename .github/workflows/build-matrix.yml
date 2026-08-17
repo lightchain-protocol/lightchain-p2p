@@ -57,9 +57,23 @@ jobs:
       - name: Build standalone binary
         run: node scripts/make.mjs ${{ matrix.app.name }} ${{ matrix.target.host }}
 
+      # Signs only when a certificate thumbprint is configured, so the workflow
+      # is identical before and after one exists. Verified locally against a
+      # self-signed certificate: the embedded bundle survives Authenticode and
+      # the binary still runs. See docs/decisions/0003-windows-signing.md.
+      #
+      # Azure Artifact Signing needs a different step — it issues short-lived
+      # certificates and signs through a dlib rather than a thumbprint.
+      - name: Sign (Windows)
+        if: runner.os == 'Windows' && env.WINDOWS_CERT_SHA1 != ''
+        env:
+          WINDOWS_CERT_SHA1: ${{ secrets.WINDOWS_CERT_SHA1 }}
+        run: node scripts/sign-windows.mjs apps/${{ matrix.app.name }}/out/${{ matrix.target.host }}/${{ matrix.app.binary }}.exe
+
       # Every runner is native to the target it builds, so all of them can
       # execute what they produce. An artifact that compiles but has never been
-      # run is not evidence of anything.
+      # run is not evidence of anything. Deliberately after signing, because
+      # signing rewrites the file.
       - name: Smoke test the binary
         shell: bash
         run: |
