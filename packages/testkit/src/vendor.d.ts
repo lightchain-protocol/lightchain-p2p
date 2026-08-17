@@ -35,7 +35,13 @@ declare module 'corestore' {
 declare module 'hyperswarm' {
   export default class Hyperswarm {
     constructor(opts?: { bootstrap?: unknown; keyPair?: unknown })
-    readonly dht: unknown
+    /**
+     * The DHT node. Note `dht.defaultKeyPair` is NOT the same as `swarm.keyPair`:
+     * outbound `dht.connect` calls without an explicit keyPair present the
+     * former, so that is the identity a remote sees as `remotePublicKey`.
+     */
+    readonly dht: { defaultKeyPair: { publicKey: Buffer; secretKey: Buffer } }
+    readonly keyPair: { publicKey: Buffer; secretKey: Buffer }
     on(event: 'connection', fn: (socket: unknown, info: unknown) => void): this
     join(topic: Buffer, opts?: { server?: boolean; client?: boolean }): { flushed(): Promise<void> }
     leave(topic: Buffer): Promise<void>

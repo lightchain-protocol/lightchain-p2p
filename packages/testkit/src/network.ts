@@ -41,6 +41,13 @@ export interface TestNetwork {
   createPeer(name?: string): Promise<Peer>
   /** Waits until every online peer has seen every other. */
   connect(): Promise<void>
+  /**
+   * Bootstrap addresses of the local DHT.
+   *
+   * Exposed so infrastructure that is not a plain peer — a blind peer server,
+   * for instance — can join the same isolated network instead of the public one.
+   */
+  readonly bootstrap: unknown
   destroy(): Promise<void>
 }
 
@@ -99,7 +106,7 @@ export async function createTestNetwork(dhtSize = 4): Promise<TestNetwork> {
     )
   }
 
-  return { createPeer, connect, destroy }
+  return { createPeer, connect, destroy, bootstrap: testnet.bootstrap }
 }
 
 /**
