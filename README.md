@@ -67,6 +67,7 @@ proven in CI; the applications are scaffolds.
 | `packages/protocol`         | **Real**        | Model reference and manifest schema, 17 tests                                        |
 | `packages/drive`            | **Real**        | Publish, resolve and range-read a model drive, 9 tests including publisher-offline   |
 | `packages/blind`            | **Real**        | Blind-peer registration, 4 tests against a real server with every holder offline     |
+| `packages/room`             | **Real**        | Multi-writer chat rooms on Autobase, 7 tests including creator-offline               |
 | `packages/preflight`        | **Real**        | Host readiness checks with actionable remedies, 19 tests                             |
 | `packages/worker`           | **Real**        | Network profiles, config validation, Docker orchestration, 23 tests                  |
 | `apps/supervisor`           | **Real**        | Full worker lifecycle; contract address resolution still supplied by hand            |
