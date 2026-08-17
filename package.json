@@ -9,6 +9,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "prepare": "node scripts/setup-hooks.mjs",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",

@@ -18,6 +18,22 @@ fix: reseed drives after fetch instead of joining client-only
 
 Rebase on `main`, squash on merge. One feature per commit in `main`'s history.
 
+### Commit authorship
+
+`pnpm install` points `core.hooksPath` at `.githooks`, which strips the
+`Co-authored-by: Cursor` trailer some editors inject. Without it, commits land
+attributed to a bot account instead of the person who wrote them.
+
+Check your identity resolves to the right GitHub account before your first
+commit, because attribution is by email and a mismatch is invisible locally:
+
+```bash
+git config user.email          # must be verified on your GitHub account
+git log -1 --format='%an <%ae>'
+```
+
+If `.git/config` is ever reset, `pnpm install` restores the hook path.
+
 ## The rules that matter
 
 Three conventions here are not style preferences. Breaking them causes damage
