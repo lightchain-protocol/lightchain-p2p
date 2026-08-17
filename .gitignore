@@ -2,6 +2,7 @@ node_modules/
 dist/
 out/
 .turbo/
+.tmp/
 coverage/
 
 # Local Corestore/Hyperdrive state. Never commit; a Corestore directory holds

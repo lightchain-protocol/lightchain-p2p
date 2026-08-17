@@ -3,7 +3,7 @@
 What exists, what does not, and who each remaining item is waiting on. Updated
 17 August 2026.
 
-The short version: **the data plane works and nothing operates it.** Ten
+The short version: **the data plane works and nothing operates it.** Eleven
 packages are real and tested, the applications are partly built, and the items
 with the longest lead times are procurement and infrastructure rather than code.
 
@@ -18,13 +18,14 @@ with the longest lead times are procurement and infrastructure rather than code.
 | `packages/ui`        | 28    | Design tokens and platform conventions, held to WCAG contrast in tests.                       |
 | `packages/room`      | 20    | Multi-writer rooms on Autobase, and the host that keeps several of them.                      |
 | `packages/preflight` | 19    | Host readiness with actionable remedies.                                                      |
+| `packages/inference-crypto` | 15 | ECDH P-256 and AES-256-GCM as the deployed workers speak it, under Bare.                 |
 | `packages/safety`    | 10    | Refusal-list decision logic.                                                                  |
 | `packages/drive`     | 9     | Publish a model, resolve it, range-read weights. Survives the publisher going offline.        |
 | `packages/seed`      | 6     | Holds and serves drives after the publisher leaves.                                           |
 | `packages/testkit`   | 6     | Two-machine harness with a negative control.                                                  |
 | `packages/blind`     | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server. |
 
-**163 tests.** CI green on every push. The six-platform build matrix compiles a
+**178 tests.** CI green on every push. The six-platform build matrix compiles a
 standalone supervisor binary for Windows, macOS and Linux on x64 and arm64, and
 every runner executes the binary it produced.
 
@@ -66,6 +67,18 @@ a restart. Verified between two application instances on the public DHT.
 network, no responses, no inference. This is the part most readers assume
 "Lightchain chat" means, and none of it is built. Neither are payments or the
 wallet-as-identity the proposal specifies.
+
+The one thing that has been settled is whether it *can* be built on Bare, which
+was not obvious: the workers speak ECDH P-256 and libsodium has no P-256, while
+`bare-crypto` offers no ECDH at all. [`packages/inference-crypto`](packages/inference-crypto)
+resolves that and is verified against the browser client and across both
+runtimes. It has **not** been checked against Go, for want of a toolchain here.
+
+What remains for inference is the part above the cipher: session creation, job
+submission through `JobRegistry`, the relay and gateway clients, and settlement.
+Routing is decided for now — the hub will use the same foundation-operated
+relay and dispatcher the web client uses, since direct client-to-worker routing
+is Advancement 5 and gated on verifiable randomness.
 
 Invites are also a known deviation: the proposal calls for `blind-pairing`
 invites that never expose the room key, and today a user copies and pastes the

@@ -1,0 +1,56 @@
+{
+  "name": "@lcai-p2p/inference-crypto",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "//imports": "Bare honours this map and resolves the builtins to its own; Node only consults imports for #-prefixed specifiers, so it ignores the unprefixed keys and uses its own. One source file, both runtimes.",
+  "imports": {
+    "crypto": {
+      "bare": "bare-crypto",
+      "default": "crypto"
+    },
+    "fs": {
+      "bare": "bare-fs",
+      "default": "fs"
+    },
+    "#globals": {
+      "types": "./runtime/globals.d.ts",
+      "bare": "./runtime/bare.js",
+      "default": "./runtime/node.js"
+    }
+  },
+  "files": [
+    "dist",
+    "runtime"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "check:bare": "node scripts/cross-runtime.mjs --emit .tmp/node.json && bare scripts/cross-runtime.mjs --verify .tmp/node.json && bare scripts/cross-runtime.mjs --emit .tmp/bare.json && node scripts/cross-runtime.mjs --verify .tmp/bare.json"
+  },
+  "devDependencies": {
+    "@lcai-p2p/eslint-config": "workspace:*",
+    "@lcai-p2p/typescript-config": "workspace:*",
+    "@lcai-p2p/vitest-config": "workspace:*",
+    "bare-runtime": "1.29.4",
+    "eslint": "^10.8.1",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@noble/curves": "^2.0.1",
+    "bare-crypto": "^1.15.3",
+    "bare-encoding": "^1.0.3",
+    "bare-fs": "^4.8.0"
+  }
+}
