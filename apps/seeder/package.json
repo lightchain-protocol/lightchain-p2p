@@ -1,0 +1,40 @@
+{
+  "name": "@lcai-p2p/seeder",
+  "productName": "lcai-seeder",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Holds Lightchain release and model drives so they stay installable",
+  "bin": "bin.mjs",
+  "//pear": "pear stage does not read .gitignore; without this the staged drive carries build output.",
+  "pear": {
+    "stage": {
+      "ignore": [
+        "/out",
+        "/node_modules/.bin",
+        "/node_modules/bare-build",
+        "/node_modules/bare-runtime"
+      ],
+      "purge": true
+    }
+  },
+  "scripts": {
+    "start": "bare bin.mjs",
+    "make": "node ../../scripts/make.mjs seeder"
+  },
+  "dependencies": {
+    "@lcai-p2p/blind": "workspace:*",
+    "@lcai-p2p/seed": "workspace:*",
+    "bare-os": "^3.9.0",
+    "bare-path": "^3.0.0",
+    "bare-process": "^4.5.0",
+    "bare-storage": "^1.1.0",
+    "corestore": "^7.12.0",
+    "hyperswarm": "^4.17.0",
+    "paparam": "^1.10.1"
+  },
+  "devDependencies": {
+    "bare-build": "^1.0.2",
+    "bare-runtime": "1.29.4"
+  }
+}

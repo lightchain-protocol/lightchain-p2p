@@ -5,7 +5,7 @@ name: build-matrix
 # not viable — each target builds on its own OS.
 #
 # Unsigned at this stage. Signing secrets are added once certificates exist;
-# see docs cross-platform-delivery-plan.md section 5.
+# see docs/signing-procurement.md.
 
 on:
   workflow_dispatch:
@@ -13,13 +13,19 @@ on:
     tags: ['v*']
 
 jobs:
-  supervisor:
-    name: supervisor ${{ matrix.host }}
-    runs-on: ${{ matrix.runner }}
+  build:
+    name: ${{ matrix.app.name }} ${{ matrix.target.host }}
+    runs-on: ${{ matrix.target.runner }}
     strategy:
       fail-fast: false
+      # Two independent dimensions, so this is a genuine cross product: every
+      # app on every target. `include` would extend combinations rather than
+      # multiply them, which silently produces jobs with no runner.
       matrix:
-        include:
+        app:
+          - { name: supervisor, binary: lcai-supervisor }
+          - { name: seeder, binary: lcai-seeder }
+        target:
           - { runner: ubuntu-latest, host: linux-x64 }
           - { runner: ubuntu-24.04-arm, host: linux-arm64 }
           - { runner: macos-latest, host: darwin-arm64 }
@@ -40,28 +46,32 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # Workspace packages must be compiled before an app can import them.
+      - name: Build packages
+        run: pnpm build
+
       # Must run from the repository root. bare-build resolves modules against
       # its base directory, and in a monorepo the dependencies are in the root
-      # node_modules. Building from apps/supervisor yields a binary that
+      # node_modules. Building from the app directory yields a binary that
       # compiles and then crashes on startup. scripts/make.mjs enforces this.
       - name: Build standalone binary
-        run: node scripts/make.mjs supervisor ${{ matrix.host }}
+        run: node scripts/make.mjs ${{ matrix.app.name }} ${{ matrix.target.host }}
 
-      # Every runner is native to the target it builds, so all six can execute
-      # what they produce. An artifact that compiles but has never been run is
-      # not evidence of anything.
+      # Every runner is native to the target it builds, so all of them can
+      # execute what they produce. An artifact that compiles but has never been
+      # run is not evidence of anything.
       - name: Smoke test the binary
         shell: bash
         run: |
-          bin="apps/supervisor/out/${{ matrix.host }}/lcai-supervisor"
+          bin="apps/${{ matrix.app.name }}/out/${{ matrix.target.host }}/${{ matrix.app.binary }}"
           if [ "${{ runner.os }}" = "Windows" ]; then bin="$bin.exe"; fi
           chmod +x "$bin" 2>/dev/null || true
           "$bin" --version
 
       - uses: actions/upload-artifact@v4
         with:
-          name: supervisor-${{ matrix.host }}
-          path: apps/supervisor/out/${{ matrix.host }}
+          name: ${{ matrix.app.name }}-${{ matrix.target.host }}
+          path: apps/${{ matrix.app.name }}/out/${{ matrix.target.host }}
           if-no-files-found: error
 
   assemble:
@@ -69,7 +79,7 @@ jobs:
     # expects. Staging and seeding are deliberately manual until the release
     # multisig policy is agreed.
     name: assemble deployment
-    needs: supervisor
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

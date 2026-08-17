@@ -72,7 +72,9 @@ proven in CI; the applications are scaffolds.
 | `apps/supervisor`           | **Partly real** | `doctor`, `status`, `pull`, `stop`, `logs` work; key import, registration and `start` not wired |
 | `packages/da`, `chain`      | **Not started** | Referenced in CODEOWNERS so ownership is settled before the code exists                         |
 | Blind peer infrastructure   | **Not started** | There is no public fleet; we must operate our own servers or nothing stays available            |
-| `apps/chat`, `apps/seeder`  | **Not started** |                                                                                                 |
+| `packages/seed`             | **Real**        | Holds and serves drives, 6 tests                                                                |
+| `apps/seeder`               | **Real**        | Always-on seeding; verified holding a real Pear-staged release                                  |
+| `apps/chat`                 | **Not started** |                                                                                                 |
 | Code signing                | **Not started** | Longest external lead time; blocks release on four platforms                                    |
 | iOS, Android                | **Deferred**    | By decision — see [ADR 0001](docs/decisions/0001-defer-mobile.md)                               |
 

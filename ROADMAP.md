@@ -92,8 +92,10 @@ us but will not serve on our behalf — announcing requires trusted status on a
 server we run. Until we operate blind peers, availability does not exist
 regardless of what the tests show.
 
-**Seeders.** Applications are client-only by default. A release nobody seeds is a
-release nobody can install, and nothing seeds today.
+**Seeders.** `apps/seeder` now exists and is verified holding a real Pear-staged
+release, so this is no longer an engineering item — it needs a host to run on.
+Applications are client-only by default, so until it runs somewhere continuously,
+a release still reaches nobody once the staging machine goes offline.
 
 ### Verification
 

@@ -18,6 +18,43 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  apps/seeder:
+    dependencies:
+      '@lcai-p2p/blind':
+        specifier: workspace:*
+        version: link:../../packages/blind
+      '@lcai-p2p/seed':
+        specifier: workspace:*
+        version: link:../../packages/seed
+      bare-os:
+        specifier: ^3.9.0
+        version: 3.9.3
+      bare-path:
+        specifier: ^3.0.0
+        version: 3.1.1
+      bare-process:
+        specifier: ^4.5.0
+        version: 4.5.1(bare-buffer@3.7.0)
+      bare-storage:
+        specifier: ^1.1.0
+        version: 1.1.0(bare-buffer@3.7.0)(bare-url@2.5.2)
+      corestore:
+        specifier: ^7.12.0
+        version: 7.12.0(bare-buffer@3.7.0)(bare-url@2.5.2)
+      hyperswarm:
+        specifier: ^4.17.0
+        version: 4.17.0(bare-buffer@3.7.0)(bare-url@2.5.2)
+      paparam:
+        specifier: ^1.10.1
+        version: 1.12.0
+    devDependencies:
+      bare-build:
+        specifier: ^1.0.2
+        version: 1.0.4(bare-buffer@3.7.0)(bare-bundle@1.10.0(bare-buffer@3.7.0)(bare-url@2.5.2))(bare-events@2.9.1)
+      bare-runtime:
+        specifier: 1.29.4
+        version: 1.29.4(bare-buffer@3.7.0)(bare-url@2.5.2)
+
   apps/supervisor:
     dependencies:
       '@lcai-p2p/preflight':
@@ -218,6 +255,43 @@ importers:
       eslint:
         specifier: ^10.8.1
         version: 10.8.1
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.2.0)(vite@8.2.1(@types/node@26.2.0))
+
+  packages/seed:
+    dependencies:
+      b4a:
+        specifier: ^1.8.1
+        version: 1.8.1
+      corestore:
+        specifier: ^7.12.0
+        version: 7.12.0(bare-buffer@3.7.0)(bare-url@2.5.2)
+      hypercore-id-encoding:
+        specifier: ^1.3.0
+        version: 1.3.0
+      hyperdrive:
+        specifier: ^13.3.3
+        version: 13.3.3(bare-buffer@3.7.0)(bare-url@2.5.2)
+    devDependencies:
+      '@lcai-p2p/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@lcai-p2p/testkit':
+        specifier: workspace:*
+        version: link:../testkit
+      '@lcai-p2p/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@lcai-p2p/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      eslint:
+        specifier: ^10.8.1
+        version: 10.8.1
+      hyperswarm:
+        specifier: ^4.17.0
+        version: 4.17.0(bare-buffer@3.7.0)(bare-url@2.5.2)
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@26.2.0)(vite@8.2.1(@types/node@26.2.0))
