@@ -3,14 +3,20 @@ import os from 'bare-os'
 import path from 'bare-path'
 // Bare has no global `process`; it is a module.
 import process from 'bare-process'
+import fs from 'bare-fs'
 import {
+  containerKeystorePath,
+  generateEncryptionKey,
+  importKey as importKeyCommand,
   inspectWorker,
   isHealthy,
   logsWorker,
   parseContainerState,
   pullImage,
+  register as registerCommand,
   resolveConfig,
   runWorker,
+  selectKeystore,
   stopWorker
 } from '@lcai-p2p/worker'
 
@@ -91,12 +97,26 @@ export function pull(config) {
   return true
 }
 
-export function start(config, keystoreFile) {
+/** Locates the keystore on the host and returns the path the container will see. */
+export function findKeystore(config, address) {
+  const dir = path.join(config.keysDir, 'eth-keystore')
+  let names = []
+  try {
+    names = fs.readdirSync(dir)
+  } catch {
+    // selectKeystore gives the better message for an empty or missing directory.
+  }
+  return containerKeystorePath(selectKeystore(names, address).file)
+}
+
+export function start(config, address) {
+  const keystore = findKeystore(config, address)
+
   // Removed first because --restart always means a stale container comes back
   // on its own and quietly shadows the one we are about to create.
   execute(stopWorker(config), { quiet: true })
 
-  const res = execute(runWorker(config, keystoreFile))
+  const res = execute(runWorker(config, keystore))
   if (!res.ok) {
     console.error(res.stderr.trim())
     return false
@@ -104,6 +124,61 @@ export function start(config, keystoreFile) {
 
   console.log('Worker started.')
   return true
+}
+
+/**
+ * Imports a private key into a keystore inside the data directory.
+ *
+ * The key is read from stdin and nowhere else. Not from a flag, because
+ * arguments are visible in process listings; not from the environment, because
+ * that is inherited by every child process and readable from /proc. It is passed
+ * to the container once and never written anywhere by us.
+ */
+export function importKey(config, privateKey) {
+  if (!/^(0x)?[0-9a-fA-F]{64}$/.test(privateKey)) {
+    console.error('That does not look like a 32-byte private key.')
+    return false
+  }
+
+  const res = execute(importKeyCommand(config, privateKey))
+  if (!res.ok) {
+    console.error(res.stderr.trim())
+    return false
+  }
+
+  console.log(res.stdout.trim())
+  console.log('\nKey imported. The private key was not stored by the supervisor.')
+  return true
+}
+
+export function keygen(config) {
+  const res = execute(generateEncryptionKey(config))
+  if (!res.ok) {
+    console.error(res.stderr.trim())
+    return false
+  }
+  console.log(res.stdout.trim() || 'Encryption key generated.')
+  return true
+}
+
+export function register(config, address) {
+  const keystore = findKeystore(config, address)
+
+  const res = execute(registerCommand(config, keystore))
+  if (!res.ok) {
+    console.error(res.stderr.trim())
+    return false
+  }
+
+  console.log(res.stdout.trim() || 'Registered.')
+  return true
+}
+
+/** Reads a secret from stdin, so it never appears in argv or the environment. */
+export async function readSecretFromStdin() {
+  const chunks = []
+  for await (const chunk of process.stdin) chunks.push(chunk)
+  return Buffer.concat(chunks).toString('utf8').trim()
 }
 
 export function logs(config, tail) {

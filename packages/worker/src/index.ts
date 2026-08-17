@@ -32,3 +32,10 @@ export {
   type ContainerHealth,
   type ContainerState
 } from './container.js'
+
+export {
+  KeystoreError,
+  containerKeystorePath,
+  selectKeystore,
+  type KeystoreSelection
+} from './keystore.js'

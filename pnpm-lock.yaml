@@ -63,6 +63,9 @@ importers:
       '@lcai-p2p/worker':
         specifier: workspace:*
         version: link:../../packages/worker
+      bare-fs:
+        specifier: ^4.8.0
+        version: 4.8.0(bare-buffer@3.7.0)
       bare-os:
         specifier: ^3.9.0
         version: 3.9.3

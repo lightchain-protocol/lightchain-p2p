@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   NETWORKS,
   WorkerConfigError,
+  containerKeystorePath,
   defaultOllamaUrl,
+  selectKeystore,
   generateEncryptionKey,
   importKey,
   isHealthy,
@@ -151,6 +153,46 @@ describe('secret handling', () => {
 
   it('still passes the real secrets in argv, since only display is redacted', () => {
     expect(runWorker(config, '/data/ks').argv.join(' ')).toContain(PASSWORD)
+  })
+})
+
+describe('keystore selection', () => {
+  const A = 'UTC--2026-01-01T10-00-00.000Z--1111111111111111111111111111111111111111'
+  const B = 'UTC--2026-02-02T11-00-00.000Z--2222222222222222222222222222222222222222'
+
+  it('picks the only keystore and reads its address', () => {
+    expect(selectKeystore([A])).toEqual({ file: A, address: '1'.repeat(40) })
+  })
+
+  it('ignores files that are not keystores', () => {
+    expect(selectKeystore(['.gitkeep', 'notes.txt', A, 'session-keys.enc']).file).toBe(A)
+  })
+
+  it('refuses to guess between two keystores', () => {
+    // Choosing arbitrarily would run the worker under an address the operator
+    // did not intend, and it would register and earn to the wrong account
+    // without anything looking wrong.
+    expect(() => selectKeystore([A, B])).toThrow(/ambiguous/)
+  })
+
+  it('selects by address when one is given', () => {
+    expect(selectKeystore([A, B], `0x${'2'.repeat(40)}`).file).toBe(B)
+    expect(selectKeystore([A, B], '2'.repeat(40)).file).toBe(B)
+  })
+
+  it('lists what it found when the address does not match', () => {
+    const err = () => selectKeystore([A], `0x${'9'.repeat(40)}`)
+    expect(err).toThrow(/no keystore for address/)
+    expect(err).toThrow(new RegExp('1'.repeat(40)))
+  })
+
+  it('says what to do when there is no keystore', () => {
+    expect(() => selectKeystore([])).toThrow(/Import a key first/)
+    expect(() => selectKeystore(['random.txt'])).toThrow(/Import a key first/)
+  })
+
+  it('maps to the container path', () => {
+    expect(containerKeystorePath(A)).toBe(`/data/eth-keystore/${A}`)
   })
 })
 

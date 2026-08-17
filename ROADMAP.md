@@ -38,14 +38,17 @@ and transferred that file alone.
 
 ### Supervisor, to finish Advancement 2
 
-Remaining commands: `import-key`, `keygen`, `register`, `start`.
+The lifecycle is complete: `doctor`, `pull`, `import-key`, `keygen`, `register`,
+`start`, `status`, `stop`, `logs`.
 
-These are blocked on a decision rather than effort: **where the keystore password
-and private key live**. The commands are already built and secret-redacted in
-`packages/worker`; what is undecided is whether the supervisor ever holds a
-private key, prompts for it, or only ever shells it into the container. Worth
-choosing deliberately given how much of the design assumes secrets never reach a
-log.
+Two things remain. **Contract address resolution** — `AI_CONFIG_ADDRESS` and
+`JOB_REGISTRY_ADDRESS` are supplied by hand where the toolkit reads them from the
+registry with `aiConfig()` and `jobRegistry()`. And **better keystore password
+storage**: the private key is stdin-only and never stored, but the password is
+still an environment variable matching the toolkit's convention. The worker must
+survive unattended restarts so it has to be retrievable without a human, and Bare
+has no OS keychain binding today. A protected file or platform keychain would be
+better.
 
 ### `apps/chat`, Advancement 4
 

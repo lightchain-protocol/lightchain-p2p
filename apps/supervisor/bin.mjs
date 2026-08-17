@@ -13,7 +13,11 @@ const isDev = path.basename(Bare.argv[0]) === (isWindows ? 'bare.exe' : 'bare')
 const cmd = command(
   appName,
   summary(pkg.description),
-  arg('[subcommand]', 'doctor | status | pull | stop | logs'),
+  arg(
+    '[subcommand]',
+    'doctor | status | pull | import-key | keygen | register | start | stop | logs'
+  ),
+  flag('--address <hex>', 'which keystore to use, when more than one exists'),
   flag('--version|-v', 'Print the current version'),
   flag('--storage <dir>', 'custom storage directory'),
   flag('--no-updates', 'disable OTA updates for this run'),
@@ -36,12 +40,18 @@ if (subcommand === 'doctor') {
   Bare.exit(ready ? 0 : 1)
 }
 
-if (
-  subcommand === 'status' ||
-  subcommand === 'pull' ||
-  subcommand === 'stop' ||
-  subcommand === 'logs'
-) {
+const WORKER_COMMANDS = [
+  'status',
+  'pull',
+  'stop',
+  'logs',
+  'import-key',
+  'keygen',
+  'register',
+  'start'
+]
+
+if (WORKER_COMMANDS.includes(subcommand)) {
   const worker = await import('./lib/worker.mjs')
 
   let config
@@ -54,16 +64,51 @@ if (
     Bare.exit(1)
   }
 
-  const ok =
-    subcommand === 'status'
-      ? worker.status(config)
-      : subcommand === 'pull'
-        ? worker.pull(config)
-        : subcommand === 'stop'
-          ? worker.stop(config)
-          : worker.logs(config, Number(cmd.flags.tail) || 200)
+  const address = cmd.flags.address
 
-  Bare.exit(ok ? 0 : 1)
+  try {
+    let ok
+    switch (subcommand) {
+      case 'status':
+        ok = worker.status(config)
+        break
+      case 'pull':
+        ok = worker.pull(config)
+        break
+      case 'stop':
+        ok = worker.stop(config)
+        break
+      case 'logs':
+        ok = worker.logs(config, Number(cmd.flags.tail) || 200)
+        break
+      case 'import-key': {
+        // stdin only. A flag would put the key in process listings and an
+        // environment variable would hand it to every child process.
+        const key = await worker.readSecretFromStdin()
+        if (!key) {
+          console.error('\nNothing on stdin. Pipe the key in, so it never reaches argv:\n')
+          console.error('  cat key.txt | lcai-supervisor import-key\n')
+          Bare.exit(1)
+        }
+        ok = worker.importKey(config, key)
+        break
+      }
+      case 'keygen':
+        ok = worker.keygen(config)
+        break
+      case 'register':
+        ok = worker.register(config, address)
+        break
+      case 'start':
+        ok = worker.start(config, address)
+        break
+    }
+    Bare.exit(ok ? 0 : 1)
+  } catch (err) {
+    // Keystore selection and config errors carry messages written for operators.
+    console.error(`\n${err.message}\n`)
+    Bare.exit(1)
+  }
 }
 
 const updates = cmd.flags.updates
