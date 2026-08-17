@@ -13,11 +13,12 @@ const isDev = path.basename(Bare.argv[0]) === (isWindows ? 'bare.exe' : 'bare')
 const cmd = command(
   appName,
   summary(pkg.description),
-  arg('[subcommand]', 'doctor: check whether this host can run a worker'),
+  arg('[subcommand]', 'doctor | status | pull | stop | logs'),
   flag('--version|-v', 'Print the current version'),
   flag('--storage <dir>', 'custom storage directory'),
   flag('--no-updates', 'disable OTA updates for this run'),
-  flag('--ollama-port <port>', 'port Ollama listens on (default 11434)')
+  flag('--ollama-port <port>', 'port Ollama listens on (default 11434)'),
+  flag('--tail <lines>', 'lines of worker log to show (default 200)')
 )
 
 cmd.parse(Bare.argv.slice(isDev ? 2 : 1))
@@ -27,10 +28,42 @@ if (cmd.flags.version) {
   Bare.exit()
 }
 
-if (cmd.args.subcommand === 'doctor') {
+const subcommand = cmd.args.subcommand
+
+if (subcommand === 'doctor') {
   const { doctor } = await import('./lib/doctor.mjs')
   const ready = await doctor({ ollamaPort: Number(cmd.flags.ollamaPort) || undefined })
   Bare.exit(ready ? 0 : 1)
+}
+
+if (
+  subcommand === 'status' ||
+  subcommand === 'pull' ||
+  subcommand === 'stop' ||
+  subcommand === 'logs'
+) {
+  const worker = await import('./lib/worker.mjs')
+
+  let config
+  try {
+    config = worker.loadConfig()
+  } catch (err) {
+    // Configuration problems are the operator's to fix and deserve the message
+    // rather than a stack trace.
+    console.error(`\nConfiguration: ${err.message}\n`)
+    Bare.exit(1)
+  }
+
+  const ok =
+    subcommand === 'status'
+      ? worker.status(config)
+      : subcommand === 'pull'
+        ? worker.pull(config)
+        : subcommand === 'stop'
+          ? worker.stop(config)
+          : worker.logs(config, Number(cmd.flags.tail) || 200)
+
+  Bare.exit(ok ? 0 : 1)
 }
 
 const updates = cmd.flags.updates
