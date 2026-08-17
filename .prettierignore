@@ -8,3 +8,8 @@ coverage/
 # Generated encodings. Regenerate from the schema definition rather than
 # reformatting by hand.
 **/spec/**
+
+# Imported proposal documents. They are rendered to PDF by a separate pipeline
+# that keys off HTML comments positioned above mermaid fences, so reflowing them
+# breaks the build rather than tidying it.
+docs/proposals/
