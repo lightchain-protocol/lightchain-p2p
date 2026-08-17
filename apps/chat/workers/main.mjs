@@ -93,9 +93,7 @@ const registry = {
     try {
       const parsed = JSON.parse(fs.readFileSync(registryFile, 'utf8'))
       if (!Array.isArray(parsed)) return []
-      return parsed.filter(
-        (e) => e && typeof e.key === 'string' && typeof e.namespace === 'string'
-      )
+      return parsed.filter((e) => e && typeof e.key === 'string' && typeof e.namespace === 'string')
     } catch {
       // Absent on first run. A damaged file should not stop the app starting:
       // it costs the room list, and the rooms are still on disk.

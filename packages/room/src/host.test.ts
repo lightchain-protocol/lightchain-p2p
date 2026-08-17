@@ -248,8 +248,11 @@ describe('restarting', () => {
 
     // Kept rather than dropped: a failure that turns out to be transient should
     // not quietly remove a conversation from the user's list.
-    expect(registry.read().map((r) => r.key).sort()).toEqual(
-      ['not-a-room-key', good.key].sort()
-    )
+    expect(
+      registry
+        .read()
+        .map((r) => r.key)
+        .sort()
+    ).toEqual(['not-a-room-key', good.key].sort())
   })
 })

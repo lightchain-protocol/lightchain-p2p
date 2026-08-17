@@ -262,7 +262,7 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: bottom;
-  font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
   font-size: var(--lc-text-xs);
   color: var(--lc-fg-dim);
   /* Keys exist to be copied. */
@@ -319,7 +319,7 @@ body {
 }
 
 .message-author {
-  font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
 }
 
 .message-text {
@@ -433,7 +433,7 @@ body {
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
   padding: var(--lc-space-sm) var(--lc-space-md);
-  font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
   font-size: var(--lc-text-sm);
   color: var(--lc-fg);
   background: var(--lc-bg);

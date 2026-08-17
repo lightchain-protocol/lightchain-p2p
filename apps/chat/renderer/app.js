@@ -156,8 +156,7 @@ function renderRoom() {
     ? 'Write a message'
     : 'You do not have write access to this room yet'
 
-  const atBottom =
-    el.messages.scrollHeight - el.messages.scrollTop - el.messages.clientHeight < 40
+  const atBottom = el.messages.scrollHeight - el.messages.scrollTop - el.messages.clientHeight < 40
 
   el.messages.replaceChildren()
 

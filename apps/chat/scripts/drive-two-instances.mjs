@@ -143,7 +143,10 @@ await a.eval(`
   document.getElementById('invite-input').value = ${JSON.stringify(writerKey)}
   document.getElementById('invite-form').requestSubmit()
 `)
-await b.until(`document.getElementById('room-role').textContent === 'writer'`, 'B to gain write access')
+await b.until(
+  `document.getElementById('room-role').textContent === 'writer'`,
+  'B to gain write access'
+)
 step(4, 'A granted write access and B received it')
 
 async function say(from, to, text) {

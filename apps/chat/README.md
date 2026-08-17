@@ -65,10 +65,10 @@ The IPC pipe carries **bytes, not objects**, and supplies no framing of its own.
 `FramedStream` provides the message boundaries; each frame is UTF-8. Two
 protocols share the pipe:
 
-| Traffic | Format | Owner |
-| --- | --- | --- |
-| `updating`, `updated`, `pear:applyUpdate`, `pear:updateApplied` | plain strings | pear-runtime and `electron/main.js` |
-| Everything else | one JSON object per frame | this app |
+| Traffic                                                         | Format                    | Owner                               |
+| --------------------------------------------------------------- | ------------------------- | ----------------------------------- |
+| `updating`, `updated`, `pear:applyUpdate`, `pear:updateApplied` | plain strings             | pear-runtime and `electron/main.js` |
+| Everything else                                                 | one JSON object per frame | this app                            |
 
 They are told apart by a leading `{`. The full request and response shapes are
 documented at the top of [`workers/main.mjs`](workers/main.mjs).
