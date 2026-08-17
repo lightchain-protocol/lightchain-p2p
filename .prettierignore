@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+node_modules/
+dist/
+out/
+.turbo/
+coverage/
+
+# Generated encodings. Regenerate from the schema definition rather than
+# reformatting by hand.
+**/spec/**

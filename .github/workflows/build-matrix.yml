@@ -1,0 +1,82 @@
+name: build-matrix
+
+# Native runners per platform. Signing invokes platform tooling (codesign on
+# Apple, MSIX packaging on Windows), so cross-compiling a release artifact is
+# not viable — each target builds on its own OS.
+#
+# Unsigned at this stage. Signing secrets are added once certificates exist;
+# see docs cross-platform-delivery-plan.md section 5.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  supervisor:
+    name: supervisor ${{ matrix.host }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-latest, host: linux-x64 }
+          - { runner: ubuntu-24.04-arm, host: linux-arm64 }
+          - { runner: macos-latest, host: darwin-arm64 }
+          - { runner: macos-15-intel, host: darwin-x64 }
+          - { runner: windows-latest, host: win32-x64 }
+          - { runner: windows-11-arm, host: win32-arm64 }
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Must run from the repository root. bare-build resolves modules against
+      # its base directory, and in a monorepo the dependencies are in the root
+      # node_modules. Building from apps/supervisor yields a binary that
+      # compiles and then crashes on startup. scripts/make.mjs enforces this.
+      - name: Build standalone binary
+        run: node scripts/make.mjs supervisor ${{ matrix.host }}
+
+      # Every runner is native to the target it builds, so all six can execute
+      # what they produce. An artifact that compiles but has never been run is
+      # not evidence of anything.
+      - name: Smoke test the binary
+        shell: bash
+        run: |
+          bin="apps/supervisor/out/${{ matrix.host }}/lcai-supervisor"
+          if [ "${{ runner.os }}" = "Windows" ]; then bin="$bin.exe"; fi
+          chmod +x "$bin" 2>/dev/null || true
+          "$bin" --version
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: supervisor-${{ matrix.host }}
+          path: apps/supervisor/out/${{ matrix.host }}
+          if-no-files-found: error
+
+  assemble:
+    # Collects every platform artifact into the by-arch layout that pear stage
+    # expects. Staging and seeding are deliberately manual until the release
+    # multisig policy is agreed.
+    name: assemble deployment
+    needs: supervisor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: List artifacts
+        run: find ./artifacts -type f | sort

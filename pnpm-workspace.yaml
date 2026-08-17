@@ -1,0 +1,9 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Native modules in this stack compile on install. Allow them explicitly rather
+# than globally, so a new native dependency is a deliberate decision.
+onlyBuiltDependencies:
+  - sodium-native
+  - rocksdb-native

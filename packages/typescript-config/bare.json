@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./base.json",
+  "compilerOptions": {
+    // Bare is not Node. Omitting @types/node here is deliberate: it stops code
+    // destined for a Bare worker from importing fs, http or child_process by
+    // accident, which would compile fine and fail at runtime.
+    "types": []
+  }
+}

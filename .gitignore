@@ -1,0 +1,21 @@
+node_modules/
+dist/
+out/
+.turbo/
+coverage/
+
+# Local Corestore/Hyperdrive state. Never commit; a Corestore directory holds
+# an exclusive lock and is machine-specific.
+.storage/
+*-storage/
+
+# Secrets and machine config
+.env
+.env.*
+!.env.example
+
+# Test fixtures are large binaries kept out of git; see ops/fixtures/MANIFEST.md
+fixtures/*.gguf
+
+.DS_Store
+Thumbs.db

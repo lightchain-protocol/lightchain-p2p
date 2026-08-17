@@ -1,0 +1,31 @@
+# Ownership follows the two engineering tracks. Track A owns the data plane,
+# Track B owns the applications. Shared packages need both reviewers because a
+# mistake in a schema is permanent — append-only logs cannot be migrated.
+#
+# Replace the placeholders with real GitHub handles before enabling branch
+# protection.
+
+# Default
+*                       @lightchain-protocol/p2p
+
+# Track A — data plane
+/packages/drive/        @track-a
+/packages/da/           @track-a
+/packages/blind/        @track-a
+/apps/seeder/           @track-a
+/ops/                   @track-a
+
+# Track B — applications
+/apps/supervisor/       @track-b
+/apps/chat/             @track-b
+
+# Shared — both reviewers required
+/packages/protocol/     @track-a @track-b
+/packages/chain/        @track-a @track-b
+/packages/testkit/      @track-a @track-b
+/packages/safety/       @track-a @track-b
+
+# Foundation
+/.github/               @track-a @track-b
+/packages/typescript-config/  @track-a @track-b
+/packages/eslint-config/      @track-a @track-b
