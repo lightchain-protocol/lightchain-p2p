@@ -49,6 +49,18 @@ export interface RoomOptions {
   readonly store: Corestore
   /** Omit to create a room; supply a room key to join one. */
   readonly key?: string
+  /**
+   * Corestore namespace holding this room's writer core. Rooms sharing a store
+   * must each be given their own.
+   *
+   * Two rooms on one namespace share a local writer core, which does not fail
+   * loudly — it deadlocks. And because the namespace determines which writer
+   * core a room reopens onto, it must be **stable across restarts**: derive it
+   * from the room key or another durable identifier, never randomly per open,
+   * or the peer gets a new identity each launch and silently loses the write
+   * access it was granted.
+   */
+  readonly namespace?: string
 }
 
 export class Room {
@@ -67,7 +79,7 @@ export class Room {
       bootstrap = b4a.from(opts.key, 'hex')
     }
 
-    const base = new Autobase<View>(opts.store.namespace('room'), bootstrap, {
+    const base = new Autobase<View>(opts.store.namespace(opts.namespace ?? 'room'), bootstrap, {
       open(store) {
         // The view needs its own encoding. It defaults to binary, and appending
         // an object to a binary core throws from inside apply, which surfaces
@@ -179,6 +191,25 @@ export class Room {
 
   async update(): Promise<void> {
     await this.#base.update()
+  }
+
+  /**
+   * Runs `listener` whenever the view advances, from a local write or a peer.
+   * Returns a function that unsubscribes.
+   *
+   * A caller that polls `messages()` instead shows remote messages a poll
+   * interval late, which in a chat reads as the other person being slow.
+   *
+   * This is deliberately not an `EventEmitter`. The emitter is a different
+   * module under Bare than under Node, and a subscription that hands back its
+   * own removal is harder to leak than a pair of `on`/`off` calls that have to
+   * agree on a function reference.
+   */
+  onUpdate(listener: () => void): () => void {
+    this.#base.on('update', listener)
+    return () => {
+      this.#base.off('update', listener)
+    }
   }
 
   /**

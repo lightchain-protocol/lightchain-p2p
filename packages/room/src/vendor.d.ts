@@ -64,6 +64,9 @@ declare module 'autobase' {
     append(value: unknown): Promise<number>
     /** Corestore replication plus the wakeup protocol. Prefer over store.replicate. */
     replicate(stream: unknown): unknown
+    /** Emitted after the view has advanced, locally or from a peer. */
+    on(event: 'update', fn: () => void): this
+    off(event: 'update', fn: () => void): this
   }
 }
 
@@ -85,12 +88,21 @@ declare module 'hypercore-crypto' {
 }
 
 declare module 'hyperswarm' {
+  /** A session over a joined topic. */
+  export interface PeerDiscovery {
+    /** Resolves once a server-mode topic has been announced to the DHT. */
+    flushed(): Promise<void>
+    refresh(opts?: { client?: boolean; server?: boolean; limit?: number }): Promise<void>
+  }
+
   export default class Hyperswarm {
     constructor(opts?: { bootstrap?: unknown })
     readonly dht: { defaultKeyPair: { publicKey: Buffer; secretKey: Buffer } }
     readonly keyPair: { publicKey: Buffer; secretKey: Buffer }
+    readonly connections: Iterable<unknown>
     on(event: 'connection', fn: (socket: unknown, info: unknown) => void): this
-    join(topic: Uint8Array, opts?: { server?: boolean; client?: boolean }): unknown
+    join(topic: Uint8Array, opts?: { server?: boolean; client?: boolean }): PeerDiscovery
+    leave(topic: Uint8Array): unknown
     flush(): Promise<void>
     destroy(): Promise<void>
   }

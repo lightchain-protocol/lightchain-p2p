@@ -20,7 +20,8 @@ body {
   line-height: 1.5;
   color: var(--lc-fg);
   background: var(--lc-bg);
-  /* The renderer is a view. Selecting chrome text is a desktop-app smell. */
+  /* The renderer is a view. Selecting chrome text is a desktop-app smell —
+     message bodies and keys opt back in, because those get copied. */
   user-select: none;
   display: flex;
   flex-direction: column;
@@ -45,6 +46,15 @@ body {
    them. Anything else and the wordmark sits underneath the close button. */
 :root[data-platform='darwin'] .titlebar {
   padding-left: 78px;
+}
+
+/* Windows and Linux draw their controls over the right of the bar. */
+:root:not([data-platform='darwin']) .titlebar {
+  padding-right: 148px;
+}
+
+.titlebar button {
+  -webkit-app-region: no-drag;
 }
 
 .wordmark {
@@ -74,14 +84,57 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--lc-space-xs);
-  width: 184px;
+  width: 232px;
   padding: var(--lc-space-md);
   border-right: 1px solid var(--lc-rule);
   background: var(--lc-bg-elevated);
   flex: 0 0 auto;
 }
 
+.sidebar-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 var(--lc-space-sm) var(--lc-space-sm);
+}
+
+.sidebar-title {
+  margin: 0;
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lc-fg-dim);
+}
+
+.room-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.sidebar-empty {
+  margin: var(--lc-space-sm);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+}
+
+.sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  margin-top: auto;
+  padding-top: var(--lc-space-md);
+}
+
 .nav-item {
+  display: block;
+  width: 100%;
   appearance: none;
   border: 0;
   border-radius: var(--lc-radius-md);
@@ -105,45 +158,233 @@ body {
   box-shadow: inset 2px 0 0 var(--lc-brand);
 }
 
+.nav-item-name {
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-item-sub {
+  display: block;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
 /* Keyboard focus must stay visible. Removing outlines makes an app unusable
    without a mouse, and it is the most common accessibility regression. */
 .nav-item:focus-visible,
-.button:focus-visible {
+.button:focus-visible,
+.input:focus-visible,
+.composer-input:focus-visible {
   outline: 2px solid var(--lc-brand);
   outline-offset: 2px;
 }
 
 .content {
+  display: flex;
   flex: 1 1 auto;
   min-width: 0;
-  overflow-y: auto;
-  display: grid;
-  place-items: center;
-  padding: var(--lc-space-xxl);
+  min-height: 0;
 }
 
-/* --- Placeholder ---------------------------------------------------------- */
+/* --- Empty state ---------------------------------------------------------- */
 
-.placeholder {
+.empty {
+  margin: auto;
   max-width: 44ch;
+  padding: var(--lc-space-xxl);
   text-align: center;
 }
 
-.placeholder-title {
+.empty-title {
   margin: 0 0 var(--lc-space-md);
   font-size: var(--lc-text-xxl);
   font-weight: 600;
   line-height: 1.25;
 }
 
-.placeholder-body {
+.empty-body {
   margin: 0;
   color: var(--lc-fg-muted);
 }
 
-.version {
+.empty-hint {
   margin-top: var(--lc-space-xl);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+}
+
+.version {
   font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+/* --- Room ----------------------------------------------------------------- */
+
+.room {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.room-head {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-md);
+  padding: var(--lc-space-md) var(--lc-space-lg);
+  border-bottom: 1px solid var(--lc-rule);
+  flex: 0 0 auto;
+}
+
+.room-head-main {
+  min-width: 0;
+}
+
+.room-title {
+  margin: 0;
+  font-size: var(--lc-text-lg);
+  font-weight: 600;
+}
+
+.room-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.key {
+  display: inline-block;
+  max-width: 32ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+  /* Keys exist to be copied. */
+  user-select: text;
+}
+
+.badge {
+  border-radius: var(--lc-radius-pill);
+  padding: 2px var(--lc-space-sm);
+  font-size: var(--lc-text-xs);
+  font-weight: 500;
+  color: var(--lc-brand-ink);
+  background: var(--lc-bg-elevated-2);
+}
+
+.badge[data-role='reader'] {
+  color: var(--lc-warning);
+}
+
+/* --- Messages ------------------------------------------------------------- */
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  margin: 0;
+  padding: var(--lc-space-lg);
+  list-style: none;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.message {
+  max-width: 68ch;
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  border-radius: var(--lc-radius-lg);
+  background: var(--lc-bg-elevated);
+  align-self: flex-start;
+}
+
+.message.is-own {
+  align-self: flex-end;
+  background: var(--lc-bg-elevated-2);
+  box-shadow: inset 0 0 0 1px var(--lc-rule);
+}
+
+.message-meta {
+  display: flex;
+  gap: var(--lc-space-sm);
+  margin-bottom: 2px;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+.message-author {
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
+}
+
+.message-text {
+  margin: 0;
+  /* Preserves the line breaks someone typed without collapsing runs of them. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.messages-empty {
+  margin: auto;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+}
+
+/* --- Composer ------------------------------------------------------------- */
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-md);
+  padding: var(--lc-space-md) var(--lc-space-lg);
+  border-top: 1px solid var(--lc-rule);
+  background: var(--lc-bg-elevated);
+  flex: 0 0 auto;
+}
+
+.notice-body {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+.notice-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.composer {
+  display: flex;
+  gap: var(--lc-space-sm);
+  align-items: flex-end;
+  padding: var(--lc-space-md) var(--lc-space-lg);
+  border-top: 1px solid var(--lc-rule);
+  flex: 0 0 auto;
+}
+
+.composer-input {
+  flex: 1 1 auto;
+  resize: none;
+  max-height: 30vh;
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  font: inherit;
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated);
+  user-select: text;
+}
+
+.composer-input:disabled {
   color: var(--lc-fg-dim);
 }
 
@@ -160,6 +401,17 @@ body {
   color: var(--lc-fg);
   background: var(--lc-bg-elevated-2);
   cursor: default;
+  white-space: nowrap;
+}
+
+.button-sm {
+  padding: var(--lc-space-xs) var(--lc-space-md);
+  font-size: var(--lc-text-xs);
+}
+
+.button-block {
+  display: block;
+  width: 100%;
 }
 
 .button-primary {
@@ -170,6 +422,88 @@ body {
 
 .button-primary:hover {
   filter: brightness(1.08);
+}
+
+.button:disabled {
+  opacity: 0.5;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg);
+  background: var(--lc-bg);
+  user-select: text;
+}
+
+/* --- Dialogs -------------------------------------------------------------- */
+
+.dialog {
+  width: min(52ch, 90vw);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-lg);
+  padding: 0;
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated);
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  padding: var(--lc-space-xl);
+}
+
+.dialog-title {
+  margin: 0;
+  font-size: var(--lc-text-xl);
+  font-weight: 600;
+}
+
+.dialog-body {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+.dialog-error {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-danger);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--lc-space-sm);
+}
+
+/* --- Toast ---------------------------------------------------------------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--lc-space-xl);
+  transform: translateX(-50%);
+  margin: 0;
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-pill);
+  padding: var(--lc-space-sm) var(--lc-space-lg);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+}
+
+.toast[data-tone='error'] {
+  color: var(--lc-danger);
 }
 
 /* Respect the setting rather than animating regardless. */

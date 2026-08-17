@@ -53,6 +53,35 @@ core, so the distinction only shows up on a joiner, which is exactly who has to
 send the right one. Sending the room key instead produces a join that appears to
 succeed and never grants write access.
 
+## Several rooms in one store
+
+A client is in more than one room at once, and they share a Corestore. Each room
+needs its own namespace:
+
+```ts
+const room = await Room.open({ store, key, namespace: key })
+```
+
+Omitting it is fine for a single room and wrong for two: they land on the same
+local writer core, and that does not fail loudly — **it deadlocks**. There is a
+test that hangs for 30 seconds without the namespace and passes in under two
+with it.
+
+The namespace also decides which writer core a room reopens onto, so it has to
+be **stable across restarts**. Derive it from the room key. Generating one per
+open gives the peer a new identity each launch and silently drops the write
+access someone granted it.
+
+## Watching for changes
+
+```ts
+const unsubscribe = room.onUpdate(() => render())
+```
+
+Fires when the view advances, from a local write or a peer. Polling `messages()`
+instead shows remote messages a poll interval late, which reads as the other
+person being slow rather than as a bug.
+
 ## Replication
 
 ```ts

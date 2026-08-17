@@ -11,8 +11,8 @@ afterEach(async () => {
   net = undefined
 })
 
-async function openRoom(peer: Peer, key?: string): Promise<Room> {
-  const room = await Room.open({ store: peer.store, key })
+async function openRoom(peer: Peer, key?: string, namespace?: string): Promise<Room> {
+  const room = await Room.open({ store: peer.store, key, namespace })
   rooms.push(room)
   peer.swarm.on('connection', (socket) => room.replicate(socket))
   peer.swarm.join(room.discoveryKey, { server: true, client: true })
@@ -102,6 +102,80 @@ describe('two writers', () => {
     expect(bobRoom.writerKey).not.toBe(bobRoom.key)
 
     await expect(aliceRoom.addWriter('zz')).rejects.toThrow(/32 bytes/)
+  })
+})
+
+describe('several rooms in one store', () => {
+  it('keeps them separate', async () => {
+    // A client is in more than one room at a time, and they share a store. Two
+    // rooms landing on the same local writer core would put each one's writes
+    // into the other's history.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+
+    const first = await openRoom(alice, undefined, 'first')
+    const second = await openRoom(alice, undefined, 'second')
+
+    expect(first.key).not.toBe(second.key)
+
+    await first.send('into the first')
+    await second.send('into the second')
+
+    expect(await textsOf(first)).toEqual(['into the first'])
+    expect(await textsOf(second)).toEqual(['into the second'])
+  })
+
+  it('reopens a room onto the same writer core, so write access survives a restart', async () => {
+    // The namespace has to be derived from something stable. If it were random
+    // per open, a peer would get a fresh writer core every launch and silently
+    // lose the write access someone granted it.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+
+    const room = await Room.open({ store: alice.store, namespace: 'stable' })
+    const { key, writerKey } = room
+    await room.send('before restart')
+    await room.close()
+
+    const reopened = await Room.open({ store: alice.store, key, namespace: 'stable' })
+    rooms.push(reopened)
+
+    expect(reopened.writerKey).toBe(writerKey)
+    expect(reopened.writable).toBe(true)
+    expect(await textsOf(reopened)).toEqual(['before restart'])
+  })
+})
+
+describe('change notification', () => {
+  it('tells a subscriber when a peer writes, and stops when unsubscribed', async () => {
+    // A UI that polls messages() shows remote messages a poll interval late,
+    // which reads as the other person being slow rather than as a bug.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const bob = await net.createPeer('bob')
+
+    const aliceRoom = await openRoom(alice)
+    const bobRoom = await openRoom(bob, aliceRoom.key)
+    await alice.swarm.flush()
+    await bob.swarm.flush()
+
+    let fired = 0
+    const unsubscribe = bobRoom.onUpdate(() => {
+      fired++
+    })
+
+    await aliceRoom.send('hello bob')
+    await waitFor(() => fired > 0, 'bob to be notified of a remote write')
+    expect(await textsOf(bobRoom)).toEqual(['hello bob'])
+
+    unsubscribe()
+    const afterUnsubscribe = fired
+
+    await aliceRoom.send('and again')
+    await waitFor(async () => (await bobRoom.messages()).length === 2, 'bob to receive the second')
+
+    // Bob still converges; he is simply no longer being told about it.
+    expect(fired).toBe(afterUnsubscribe)
   })
 })
 

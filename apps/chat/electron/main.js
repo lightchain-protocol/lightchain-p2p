@@ -5,7 +5,7 @@ const PearRuntime = require('pear-runtime')
 const FramedStream = require('framed-stream')
 
 const { isMac, isLinux, isWindows } = require('which-runtime')
-const { command, flag } = require('paparam')
+const { command, flag, sloppy } = require('paparam')
 const pkg = require('../package.json')
 const { name, productName, version, upgrade } = pkg
 
@@ -13,7 +13,9 @@ const { name, productName, version, upgrade } = pkg
 // than derived from the package name: a scoped name like @lcai-p2p/chat is not
 // a legal scheme, and this is also the string users will see and type.
 const protocol = 'lightchain'
-const mainWorkerSpecifier = '/workers/main.js'
+// ESM, because the worker imports workspace packages that are ESM and this app
+// is declared commonjs. Bare resolves the extension, matching apps/seeder.
+const mainWorkerSpecifier = '/workers/main.mjs'
 
 const workers = new Map()
 
@@ -21,6 +23,11 @@ const appName = productName ?? name
 
 const cmd = command(
   appName,
+  // Chromium owns flags this app does not declare — --disable-gpu, the sandbox
+  // switches, --remote-debugging-port. Bailing on an unknown flag means the app
+  // refuses to start over an argument that was never addressed to it, and the
+  // user sees a stack trace for passing a documented Electron option.
+  sloppy({ flags: true }),
   flag('--storage <dir>', 'pass custom storage to pear-runtime'),
   flag('--no-updates', 'start without OTA updates'),
   flag('--no-sandbox', 'start without Chromium sandbox').hide()
@@ -83,10 +90,15 @@ function getWorker(specifier) {
   ])
   const pipe = new FramedStream(worker)
 
+  // Also echoed to this process. The worker is where the peer-to-peer work
+  // happens and so where the interesting failures are, and forwarding its
+  // output only to the renderer makes those invisible unless devtools is open.
   function sendWorkerStdout(data) {
+    process.stdout.write(data)
     sendToAll('pear:worker:stdout:' + specifier, data)
   }
   function sendWorkerStderr(data) {
+    process.stderr.write(data)
     sendToAll('pear:worker:stderr:' + specifier, data)
   }
   function sendWorkerIPC(data) {

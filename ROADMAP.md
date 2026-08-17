@@ -3,7 +3,7 @@
 What exists, what does not, and who each remaining item is waiting on. Updated
 17 August 2026.
 
-The short version: **the data plane works and nothing operates it.** Seven
+The short version: **the data plane works and nothing operates it.** Ten
 packages are real and tested, the applications are partly built, and the items
 with the longest lead times are procurement and infrastructure rather than code.
 
@@ -13,20 +13,26 @@ with the longest lead times are procurement and infrastructure rather than code.
 
 |                      | Tests | Notes                                                                                         |
 | -------------------- | ----- | --------------------------------------------------------------------------------------------- |
-| `packages/protocol`  | 17    | Model reference and manifest format. A reference is a key **and** a version.                  |
-| `packages/drive`     | 9     | Publish a model, resolve it, range-read weights. Survives the publisher going offline.        |
-| `packages/blind`     | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server. |
+| `packages/protocol`  | 31    | Model references, manifests and room entries. A reference is a key **and** a version.         |
+| `packages/worker`    | 30    | Network profiles, config validation, Docker orchestration, container state.                   |
+| `packages/ui`        | 28    | Design tokens and platform conventions, held to WCAG contrast in tests.                       |
+| `packages/room`      | 20    | Multi-writer rooms on Autobase, and the host that keeps several of them.                      |
 | `packages/preflight` | 19    | Host readiness with actionable remedies.                                                      |
-| `packages/worker`    | 23    | Network profiles, config validation, Docker orchestration, container state.                   |
 | `packages/safety`    | 10    | Refusal-list decision logic.                                                                  |
+| `packages/drive`     | 9     | Publish a model, resolve it, range-read weights. Survives the publisher going offline.        |
+| `packages/seed`      | 6     | Holds and serves drives after the publisher leaves.                                           |
 | `packages/testkit`   | 6     | Two-machine harness with a negative control.                                                  |
+| `packages/blind`     | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server. |
 
-**88 tests.** CI green on every push. The six-platform build matrix compiles a
+**163 tests.** CI green on every push. The six-platform build matrix compiles a
 standalone supervisor binary for Windows, macOS and Linux on x64 and arm64, and
 every runner executes the binary it produced.
 
-`apps/supervisor` has working `doctor`, `status`, `pull`, `stop` and `logs`,
-running from the compiled native binary.
+`apps/supervisor` has the full worker lifecycle — `doctor`, `pull`, `import-key`,
+`keygen`, `register`, `start`, `status`, `stop`, `logs` — running from the
+compiled native binary.
+
+`apps/seeder` holds a real Pear-staged release and serves it.
 
 The publish round trip is validated: `pear touch`, stage, seed, retrieve, update.
 Staging is incremental — one changed file moved the drive from version 134 to 135
@@ -52,15 +58,26 @@ better.
 
 ### `apps/chat`, Advancement 4
 
-Nothing exists. Electron shell over a shared Bare worker on desktop.
+**The conversation half works.** Create or join a room, grant write access, send
+and receive messages live, and keep both the history and the write access across
+a restart. Verified between two application instances on the public DHT.
 
-The **graphical interface and install experience for every platform** is the
-largest single piece of work remaining, and it is more than packaging. It is the
-first thing a user sees and where most of them are lost: an unsigned binary
-warning, an MSIX sideload prompt, an AppImage with no obvious way to run it. It
-also interacts with decisions that harden early — the MSIX Publisher CN is
-permanent, and the Linux artifact choice determines whether users can receive
-peer-to-peer updates at all.
+**The AI half does not exist.** No model picker, no prompt dispatch to the worker
+network, no responses, no inference. This is the part most readers assume
+"Lightchain chat" means, and none of it is built. Neither are payments or the
+wallet-as-identity the proposal specifies.
+
+Invites are also a known deviation: the proposal calls for `blind-pairing`
+invites that never expose the room key, and today a user copies and pastes the
+key itself. Anyone who ever sees it can read the room permanently.
+
+The **graphical interface and install experience for every platform** remains the
+largest single piece of work, and it is more than packaging. It is the first
+thing a user sees and where most of them are lost: an unsigned binary warning, an
+MSIX sideload prompt, an AppImage with no obvious way to run it. It also
+interacts with decisions that harden early — the MSIX Publisher CN is permanent,
+and the Linux artifact choice determines whether users can receive peer-to-peer
+updates at all.
 
 ### Smaller pieces
 
@@ -69,7 +86,7 @@ peer-to-peer updates at all.
   `xcrun notarytool submit` plus stapling step we write.
 - **A Windows sign hook** if we take Azure Artifact Signing, which the upstream
   Pear action does not support.
-- **`apps/seeder`**, **`packages/da`**, **`packages/chain`** — not started.
+- **`packages/da`** and **`packages/chain`** — not started.
 
 ---
 
@@ -95,10 +112,14 @@ us but will not serve on our behalf — announcing requires trusted status on a
 server we run. Until we operate blind peers, availability does not exist
 regardless of what the tests show.
 
-**Seeders.** `apps/seeder` now exists and is verified holding a real Pear-staged
+**Seeders.** `apps/seeder` exists and is verified holding a real Pear-staged
 release, so this is no longer an engineering item — it needs a host to run on.
 Applications are client-only by default, so until it runs somewhere continuously,
 a release still reaches nobody once the staging machine goes offline.
+
+The same gap now applies to rooms. A room survives its creator leaving only if
+some other participant is online, so a conversation between two people who are
+never online together does not replicate. Blind peers are what close that.
 
 ### Verification
 
@@ -111,8 +132,10 @@ locally.
 
 ## Open decisions
 
-1. **Where secrets live** for the supervisor's registration commands. Blocks
-   finishing Advancement 2.
+1. **Where secrets live** for the supervisor's registration commands. No longer
+   blocking — the lifecycle is finished on the toolkit's `WORKER_PASSWORD`
+   convention — but an environment variable is an interim position, not the end
+   state.
 2. **The production `pear://` link and its multisig quorum.** The current
    `upgrade` link is a development one whose secret key sits on one machine.
 3. **Custody**: signing certificates and the release multisig are different key
@@ -133,8 +156,11 @@ Mobile is decided: deferred, see [ADR 0001](docs/decisions/0001-defer-mobile.md)
 1. **Start Apple and Azure procurement now.** It is the only work with external
    lead time and it blocks release rather than development.
 2. **Stand up one blind peer and one seeder.** Turns availability from a passing
-   test into a property of the system.
-3. **Finish the supervisor** once the secrets question is answered.
-4. **Verify from a second machine.**
-5. **Start `apps/chat`**, treating the interface and installer as a design
-   problem rather than a build step.
+   test into a property of the system, and is what lets a room outlive every
+   participant being offline.
+3. **Verify from a second machine.**
+4. **Replace key-paste invites with `blind-pairing`**, before anyone uses the
+   chat client for something they would mind being read.
+5. **Build the inference path in `apps/chat`**: model picker, dispatch to the
+   worker network, responses, and settlement. This is the bulk of Advancement 4
+   and none of it exists.
