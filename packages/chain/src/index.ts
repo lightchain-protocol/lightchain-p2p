@@ -33,7 +33,17 @@ export {
   toQuantity
 } from './hex.js'
 
-export { Rpc, RpcError, type CallRequest, type RpcOptions } from './rpc.js'
+export {
+  Rpc,
+  RpcError,
+  type CallRequest,
+  type FeeEstimate,
+  type Receipt,
+  type RpcOptions,
+  type WaitOptions
+} from './rpc.js'
+
+export { sendTransaction, upfrontCost, type SendRequest, type SentTransaction } from './send.js'
 
 export {
   WORKER_REGISTRY_ADDRESS,

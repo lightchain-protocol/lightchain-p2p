@@ -35,6 +35,39 @@ export interface CallRequest {
   readonly from?: string
 }
 
+export interface FeeEstimate {
+  /** Burned, and set by the protocol rather than chosen. */
+  readonly baseFeePerGas: bigint
+  /** Kept by the proposer. */
+  readonly maxPriorityFeePerGas: bigint
+  /** A ceiling, not a price. The difference is refunded. */
+  readonly maxFeePerGas: bigint
+}
+
+export interface Receipt {
+  readonly transactionHash: string
+  readonly blockNumber: bigint
+  readonly gasUsed: bigint
+  readonly effectiveGasPrice: bigint
+  /** False when the transaction reverted. It was still mined, and still paid. */
+  readonly status: boolean
+  readonly contractAddress: string | null
+}
+
+export interface WaitOptions {
+  readonly timeout?: number
+  readonly interval?: number
+}
+
+interface RawReceipt {
+  readonly transactionHash: string
+  readonly blockNumber: string
+  readonly gasUsed: string
+  readonly effectiveGasPrice?: string
+  readonly status: string
+  readonly contractAddress?: string | null
+}
+
 export class Rpc {
   readonly #url: string
   readonly #timeout: number
@@ -123,5 +156,85 @@ export class Rpc {
 
   async sendRawTransaction(signed: string): Promise<string> {
     return this.send<string>('eth_sendRawTransaction', [signed])
+  }
+
+  /**
+   * What to pay, under EIP-1559.
+   *
+   * The base fee is burned and set by the protocol; the priority fee is what a
+   * proposer keeps. `maxFeePerGas` is a ceiling rather than a price — anything
+   * above `baseFee + priority` is refunded — so the headroom below is not a cost
+   * so much as insurance against the base fee rising before inclusion.
+   */
+  async fees(): Promise<FeeEstimate> {
+    const block = await this.send<{ baseFeePerGas?: string }>('eth_getBlockByNumber', [
+      'latest',
+      false
+    ])
+    const baseFeePerGas = block?.baseFeePerGas ? fromQuantity(block.baseFeePerGas) : 0n
+
+    let maxPriorityFeePerGas: bigint
+    try {
+      maxPriorityFeePerGas = fromQuantity(await this.send<string>('eth_maxPriorityFeePerGas'))
+    } catch {
+      // Not every node implements it. `eth_gasPrice` already includes the base
+      // fee, so the tip is what is left after taking that away.
+      const gasPrice = fromQuantity(await this.send<string>('eth_gasPrice'))
+      maxPriorityFeePerGas = gasPrice > baseFeePerGas ? gasPrice - baseFeePerGas : 0n
+    }
+
+    // A quiet chain reports zero, because no block has had to compete. One wei
+    // costs nothing and avoids depending on proposers accepting no tip at all.
+    if (maxPriorityFeePerGas === 0n) maxPriorityFeePerGas = 1n
+
+    return {
+      baseFeePerGas,
+      maxPriorityFeePerGas,
+      // Doubling covers roughly six consecutive full blocks, the usual headroom.
+      maxFeePerGas: baseFeePerGas * 2n + maxPriorityFeePerGas
+    }
+  }
+
+  /** Null until mined. A transaction the node has never seen is also null. */
+  async transactionReceipt(hash: string): Promise<Receipt | null> {
+    const raw = await this.send<RawReceipt | null>('eth_getTransactionReceipt', [hash])
+    if (!raw) return null
+
+    return {
+      transactionHash: raw.transactionHash,
+      blockNumber: fromQuantity(raw.blockNumber),
+      gasUsed: fromQuantity(raw.gasUsed),
+      effectiveGasPrice: raw.effectiveGasPrice ? fromQuantity(raw.effectiveGasPrice) : 0n,
+      // "Mined" and "did what you asked" are different. A reverted transaction
+      // still gets a receipt, and still costs the gas it burned.
+      status: fromQuantity(raw.status) === 1n,
+      contractAddress: raw.contractAddress ?? null
+    }
+  }
+
+  /**
+   * Waits for inclusion.
+   *
+   * Timing out does not mean the transaction failed — it may still be pending,
+   * and it may still be mined afterwards. The distinction matters because
+   * resending on a timeout is how people spend twice.
+   */
+  async waitForReceipt(
+    hash: string,
+    { timeout = 120_000, interval = 1_500 }: WaitOptions = {}
+  ): Promise<Receipt> {
+    const deadline = Date.now() + timeout
+
+    for (;;) {
+      const receipt = await this.transactionReceipt(hash)
+      if (receipt) return receipt
+
+      if (Date.now() >= deadline) {
+        throw new RpcError(
+          `${hash} was not mined within ${Math.round(timeout / 1000)}s. It may still be pending; do not resend it without checking the nonce.`
+        )
+      }
+      await new Promise((resolve) => setTimeout(resolve, interval))
+    }
   }
 }

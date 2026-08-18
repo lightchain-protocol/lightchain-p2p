@@ -25,7 +25,39 @@ const rpc = new Rpc({ url: 'https://rpc.testnet.lightchain.ai' })
 const { aiConfig, jobRegistry } = await resolveAddresses(rpc)
 const fee = await jobFee(rpc, aiConfig, 'llama3-8b')
 const balance = await prepaidBalance(rpc, jobRegistry, address)
+
+const sent = await sendTransaction(rpc, account, { to, value })
+const receipt = await sent.wait()
 ```
+
+## Sending, and what the tests cannot tell you
+
+`sendTransaction` fetches the chain id, the pending nonce and the fee market in
+one round trip, estimates gas with a 25% margin, signs and broadcasts. The
+margin is nearly free — gas is charged on what is used, not on the limit — with
+one caveat worth knowing: the node checks `gas × maxFeePerGas + value` against
+the balance up front, so an oversized limit can have a nearly empty account
+rejected for money it would never have spent.
+
+Being checked against viem proves the bytes are right and proves nothing about
+whether a node accepts them. So one was sent:
+[`0x215ac39f…`](https://testnet.lightscan.app/tx/0x215ac39fd9b50d9b2e9f2d0df20abe032afd012a25fdfecf3d1644c7d60ee285),
+mined in block 1,708,711. Reading it back, the chain **recovered our address
+from the signature**, stored every field as signed, charged 21,000 gas at 8 wei
+against a 15 wei ceiling, and the balance reconciled to the wei.
+
+Reproduce it with `node scripts/dev-key.mjs` to get an address, a claim from
+[lightfaucet.ai](https://lightfaucet.ai), then `node scripts/broadcast.mjs`. The
+key lands in `.tmp`, which is gitignored.
+
+Two distinctions the code is careful about, because both cost money:
+
+- **A reverted transaction is not a failed send.** It was mined, it burned gas,
+  and the nonce is spent. `wait()` returns it with `status: false` rather than
+  throwing, because treating it as a network error invites a resend.
+- **A timeout is not a failure either.** The transaction may still be pending
+  and may still be mined. The error says so, and says not to resend without
+  checking the nonce.
 
 Addresses come from the registry rather than configuration. The roadmap listed
 resolving them as outstanding work; it is one `eth_call`.

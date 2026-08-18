@@ -18,7 +18,7 @@ with the longest lead times are procurement and infrastructure rather than code.
 | `packages/ui`               | 28    | Design tokens and platform conventions, held to WCAG contrast in tests.                       |
 | `packages/room`             | 20    | Multi-writer rooms on Autobase, and the host that keeps several of them.                      |
 | `packages/preflight`        | 19    | Host readiness with actionable remedies.                                                      |
-| `packages/chain`            | 65    | Reads Lightchain and signs for it, every byte checked against viem.                           |
+| `packages/chain`            | 79    | Reads Lightchain and signs for it, every byte checked against viem.                           |
 | `packages/wallet`           | 48    | BIP-39 phrase, BIP-32 accounts, matched to viem. Keystore V3 export checked against Foundry.  |
 | `packages/inference-crypto` | 15    | ECDH P-256 and AES-256-GCM as the deployed workers speak it, under Bare.                      |
 | `packages/safety`           | 10    | Refusal-list decision logic.                                                                  |
@@ -27,7 +27,7 @@ with the longest lead times are procurement and infrastructure rather than code.
 | `packages/testkit`          | 6     | Two-machine harness with a negative control.                                                  |
 | `packages/blind`            | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server. |
 
-**314 tests.** CI green on every push. The six-platform build matrix compiles a
+**328 tests.** CI green on every push. The six-platform build matrix compiles a
 standalone supervisor binary for Windows, macOS and Linux on x64 and arm64, and
 every runner executes the binary it produced.
 
@@ -95,7 +95,18 @@ Chain access is **built**, in [`packages/chain`](packages/chain), following
 [ADR 0004](docs/decisions/0004-chain-access-from-bare.md): viem cannot run under
 Bare, so this is a small client on the noble v2 line with every encoded byte
 checked against viem in tests. It reads the live testnet and signs identically
-under both runtimes. What it has never done is broadcast.
+under both runtimes.
+
+It has now **broadcast**, which was the last unproven claim underneath anything
+paid. Transaction
+[`0x215ac39f…`](https://testnet.lightscan.app/tx/0x215ac39fd9b50d9b2e9f2d0df20abe032afd012a25fdfecf3d1644c7d60ee285)
+was accepted and mined in block 1,708,711: the chain recovered our address from
+the signature, stored every field as signed, charged 21,000 gas at 8 wei, and
+the balance reconciled to the wei. Reproduce with
+`node packages/chain/scripts/broadcast.mjs` against a funded key.
+
+What is still untested is a **state-changing contract call** — reads resolve
+`AIConfig` and `JobRegistry` from the registry, but nothing has written to one.
 
 Invites use `blind-pairing` as the proposal specifies: one string that carries
 no room key, and the joiner arrives able to write. Rooms are encrypted, so a
@@ -199,8 +210,10 @@ Mobile is decided: deferred, see [ADR 0001](docs/decisions/0001-defer-mobile.md)
    test into a property of the system, and is what lets a room outlive every
    participant being offline.
 3. **Verify from a second machine.**
-4. **Send one transaction on testnet.** Cheap, and it converts "signs
-   correctly" into "is accepted", which is the claim everything paid rests on.
+4. **Write to a contract.** Broadcast is proven, and reads resolve the
+   contracts; what has never happened is changing state on one.
+   `depositAndAuthorize` is the first that matters, and it is the foot of the
+   payment path.
 5. **Build the inference path in `apps/chat`**: model picker, dispatch to the
    worker network, responses, and settlement. This is the bulk of Advancement 4,
    and with `packages/chain` in place the wallet is the next piece of it.
