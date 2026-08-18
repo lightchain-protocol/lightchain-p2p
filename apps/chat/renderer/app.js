@@ -21,6 +21,8 @@ const HEX_KEY = /^[0-9a-f]{64}$/
 document.documentElement.dataset.platform = bridge.platform()
 
 const el = {
+  sections: [...document.querySelectorAll('.sections .nav-item')],
+  chatContext: document.getElementById('chat-context'),
   status: document.getElementById('status'),
   version: document.getElementById('version'),
   updateBtn: document.getElementById('update-btn'),
@@ -58,6 +60,29 @@ el.version.textContent = `v${bridge.pkg().version}`
 const rooms = new Map()
 let activeKey = null
 
+// --- Sections --------------------------------------------------------------
+
+function showSection(name) {
+  for (const button of el.sections) {
+    const selected = button.dataset.section === name
+    button.classList.toggle('is-active', selected)
+    // aria-current rather than aria-selected: these are navigation, not tabs,
+    // and a screen reader should announce them as such.
+    if (selected) button.setAttribute('aria-current', 'page')
+    else button.removeAttribute('aria-current')
+
+    document.getElementById(`panel-${button.dataset.section}`).hidden = !selected
+  }
+
+  // The room list belongs to Chat. Leaving it under Models would suggest the
+  // rooms are something Models operates on.
+  el.chatContext.hidden = name !== 'chat'
+}
+
+for (const button of el.sections) {
+  button.addEventListener('click', () => showSection(button.dataset.section))
+}
+
 // --- Talking to the worker -------------------------------------------------
 
 const pending = new Map()
@@ -71,12 +96,16 @@ function request(t, fields = {}) {
   })
 }
 
+function adopt(states) {
+  for (const room of states) rooms.set(room.key, room)
+  setStatus('connected')
+  renderRooms()
+  renderRoom()
+}
+
 function onChatMessage(msg) {
   if (msg.t === 'ready') {
-    for (const room of msg.rooms) rooms.set(room.key, room)
-    setStatus('connected')
-    renderRooms()
-    renderRoom()
+    adopt(msg.rooms)
     return
   }
 
@@ -375,7 +404,6 @@ function showUpdateReady() {
 
 // --- Worker lifecycle ------------------------------------------------------
 
-bridge.startWorker(WORKER)
 setStatus('connecting')
 
 const offStdout = bridge.onWorkerStdout(WORKER, (data) => {
@@ -419,3 +447,16 @@ const offExit = bridge.onWorkerExit(WORKER, (code) => {
   offIpc()
   offExit()
 })
+
+// Listeners are attached above before anything is sent, so a reply cannot
+// arrive unheard.
+//
+// The worker outlives this window: reloading the renderer, or opening a second
+// one, leaves it running and already in every room. So the current state is
+// asked for rather than waited for. The `ready` push still arrives on a cold
+// start and is handled the same way, which is harmless when both happen.
+bridge
+  .startWorker(WORKER)
+  .then(() => request('room.list'))
+  .then(adopt)
+  .catch((err) => setStatus(`worker unreachable: ${err.message}`))

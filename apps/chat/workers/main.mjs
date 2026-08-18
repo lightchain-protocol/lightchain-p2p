@@ -33,6 +33,7 @@ import { RoomHost } from '@lcai-p2p/room'
  *
  * Renderer to worker, each carrying an `id` the reply echoes:
  *
+ *     { id, t: 'room.list' }
  *     { id, t: 'room.create' }
  *     { id, t: 'room.join',    key }
  *     { id, t: 'room.send',    room, text }
@@ -123,6 +124,12 @@ for (const { key, reason } of rooms.failed) {
 
 async function handle(req) {
   switch (req.t) {
+    // The window can be reloaded while the worker keeps running, and `ready` is
+    // only pushed once at boot. Without a way to ask, a reloaded renderer shows
+    // an empty room list over a worker that is still in every room.
+    case 'room.list':
+      return rooms.states()
+
     case 'room.create':
       return rooms.create()
 

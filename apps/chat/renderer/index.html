@@ -20,73 +20,177 @@
     </header>
 
     <main class="shell">
-      <nav class="sidebar" aria-label="Rooms">
-        <div class="sidebar-head">
+      <nav class="sidebar" aria-label="Primary">
+        <!-- The four areas the hub is specified to cover. Three are unbuilt and
+             say so rather than being hidden, because an app that shows only
+             what works reads as though nothing else was ever intended. -->
+        <ul class="sections">
+          <li>
+            <button
+              class="nav-item is-active"
+              type="button"
+              data-section="chat"
+              aria-current="page"
+            >
+              Chat
+            </button>
+          </li>
+          <li><button class="nav-item" type="button" data-section="models">Models</button></li>
+          <li><button class="nav-item" type="button" data-section="worker">Worker</button></li>
+          <li><button class="nav-item" type="button" data-section="wallet">Wallet</button></li>
+        </ul>
+
+        <div class="sidebar-context" id="chat-context">
           <h2 class="sidebar-title">Rooms</h2>
-          <span class="version" id="version"></span>
+          <ul class="room-list" id="room-list"></ul>
+          <p class="sidebar-empty" id="sidebar-empty">No rooms yet.</p>
+          <div class="sidebar-actions">
+            <button class="button button-block" type="button" id="create-btn">New room</button>
+            <button class="button button-block" type="button" id="join-btn">Join with a key</button>
+          </div>
         </div>
 
-        <ul class="room-list" id="room-list"></ul>
-
-        <p class="sidebar-empty" id="sidebar-empty">No rooms yet.</p>
-
-        <div class="sidebar-actions">
-          <button class="button button-block" type="button" id="create-btn">New room</button>
-          <button class="button button-block" type="button" id="join-btn">Join with a key</button>
-        </div>
+        <p class="version" id="version"></p>
       </nav>
 
-      <section class="content" id="content">
-        <div class="empty" id="empty">
-          <h1 class="empty-title">The universal hub</h1>
-          <p class="empty-body">
-            One place to hold your identity, reach any published model, keep your own history and
-            pay for all of it from one balance.
-          </p>
-          <p class="empty-hint">Create a room, or join one with a key someone sent you.</p>
-        </div>
-
-        <div class="room" id="room" hidden>
-          <header class="room-head">
-            <div class="room-head-main">
-              <h1 class="room-title">Room</h1>
-              <code class="key" id="room-key" title="Room key"></code>
-            </div>
-            <div class="room-head-actions">
-              <span class="badge" id="room-role"></span>
-              <button class="button button-sm" type="button" id="copy-key-btn">Copy key</button>
-              <button class="button button-sm" type="button" id="invite-btn">Add writer</button>
-              <button class="button button-sm" type="button" id="leave-btn">Leave</button>
-            </div>
-          </header>
-
-          <!-- Announced to screen readers as messages arrive, since they appear
-               without the user having done anything. -->
-          <ol class="messages" id="messages" aria-live="polite"></ol>
-
-          <div class="notice" id="readonly-notice" hidden>
-            <p class="notice-body">
-              You can read this room but not write to it yet. Send an existing writer your writer
-              key and ask them to add you.
+      <section class="content">
+        <!-- Chat ------------------------------------------------------------>
+        <div class="panel" id="panel-chat">
+          <div class="empty" id="empty">
+            <h1 class="empty-title">The universal hub</h1>
+            <p class="empty-body">
+              One place to hold your identity, reach any published model, keep your own history and
+              pay for all of it from one balance.
             </p>
-            <div class="notice-actions">
-              <code class="key" id="writer-key"></code>
-              <button class="button button-sm" type="button" id="copy-writer-btn">
-                Copy my writer key
-              </button>
-            </div>
+            <p class="empty-hint">Create a room, or join one with a key someone sent you.</p>
           </div>
 
-          <form class="composer" id="composer">
-            <textarea
-              class="composer-input"
-              id="composer-input"
-              rows="1"
-              placeholder="Write a message"
-              aria-label="Message"
-            ></textarea>
-            <button class="button button-primary" type="submit" id="send-btn">Send</button>
-          </form>
+          <div class="room" id="room" hidden>
+            <header class="room-head">
+              <div class="room-head-main">
+                <h1 class="room-title">Room</h1>
+                <code class="key" id="room-key" title="Room key"></code>
+              </div>
+              <div class="room-head-actions">
+                <span class="badge" id="room-role"></span>
+                <button class="button button-sm" type="button" id="copy-key-btn">Copy key</button>
+                <button class="button button-sm" type="button" id="invite-btn">Add writer</button>
+                <button class="button button-sm" type="button" id="leave-btn">Leave</button>
+              </div>
+            </header>
+
+            <!-- Announced to screen readers as messages arrive, since they
+                 appear without the user having done anything. -->
+            <ol class="messages" id="messages" aria-live="polite"></ol>
+
+            <div class="notice" id="readonly-notice" hidden>
+              <p class="notice-body">
+                You can read this room but not write to it yet. Send an existing writer your writer
+                key and ask them to add you.
+              </p>
+              <div class="notice-actions">
+                <code class="key" id="writer-key"></code>
+                <button class="button button-sm" type="button" id="copy-writer-btn">
+                  Copy my writer key
+                </button>
+              </div>
+            </div>
+
+            <form class="composer" id="composer">
+              <textarea
+                class="composer-input"
+                id="composer-input"
+                rows="1"
+                placeholder="Write a message"
+                aria-label="Message"
+              ></textarea>
+              <button class="button button-primary" type="submit" id="send-btn">Send</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Models ---------------------------------------------------------->
+        <div class="panel" id="panel-models" hidden>
+          <div class="unbuilt">
+            <p class="unbuilt-status">Not built</p>
+            <h1 class="unbuilt-title">Any published model</h1>
+            <p class="unbuilt-body">
+              An open field over every model published to the network, rather than an approved list.
+              Picking one here would bind it to a session and dispatch prompts to whichever worker
+              serves it.
+            </p>
+
+            <dl class="ledger">
+              <dt>Already built</dt>
+              <dd>
+                <code>packages/drive</code> publishes a model, resolves it by key and range-reads
+                the weights — and keeps serving after the publisher goes offline.
+              </dd>
+
+              <dt>Still missing</dt>
+              <dd>
+                Discovery. Knowing <em>which</em> models exist is the on-chain half of Advancement 1
+                and lives in the contracts repository, not here. Then the picker itself, and
+                dispatch.
+              </dd>
+            </dl>
+          </div>
+        </div>
+
+        <!-- Worker ---------------------------------------------------------->
+        <div class="panel" id="panel-worker" hidden>
+          <div class="unbuilt">
+            <p class="unbuilt-status" data-tone="near">Built, but not here</p>
+            <h1 class="unbuilt-title">Run a worker from the hub</h1>
+            <p class="unbuilt-body">
+              A user who also runs a worker should not need a second tool. The supervisor already
+              does the whole job — this panel would drive it instead of a terminal.
+            </p>
+
+            <dl class="ledger">
+              <dt>Already built</dt>
+              <dd>
+                <code>apps/supervisor</code>, a single native binary with the full lifecycle:
+                <code>doctor</code>, <code>pull</code>, <code>import-key</code>,
+                <code>keygen</code>, <code>register</code>, <code>start</code>, <code>status</code>,
+                <code>stop</code>, <code>logs</code>. It replaces a nine-phase manual onboarding.
+              </dd>
+
+              <dt>Still missing</dt>
+              <dd>
+                This panel. It is the cheapest of the three unbuilt sections, because the work
+                underneath is finished and tested rather than hypothetical.
+              </dd>
+            </dl>
+          </div>
+        </div>
+
+        <!-- Wallet ---------------------------------------------------------->
+        <div class="panel" id="panel-wallet" hidden>
+          <div class="unbuilt">
+            <p class="unbuilt-status">Not started</p>
+            <h1 class="unbuilt-title">One balance for everything</h1>
+            <p class="unbuilt-body">
+              The wallet is the root identity: the key that pays is the key that signs messages and
+              joins rooms, so there is no separate account system.
+            </p>
+
+            <dl class="ledger">
+              <dt>Already built</dt>
+              <dd>
+                The encryption a paid job needs — <code>packages/inference-crypto</code> speaks the
+                deployed workers' ECDH P-256 and AES-256-GCM, verified under Bare. Nothing above
+                that layer.
+              </dd>
+
+              <dt>Still missing</dt>
+              <dd>
+                Wallet identity, <code>depositAndAuthorize</code>, session creation, and the prepaid
+                balance. Once deposited, a user signs nothing per message — a delegate calls
+                <code>submitJobOnBehalf</code> against their session for the exact fee.
+              </dd>
+            </dl>
+          </div>
         </div>
       </section>
     </main>

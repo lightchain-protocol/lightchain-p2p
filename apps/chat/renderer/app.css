@@ -8,6 +8,13 @@
   box-sizing: border-box;
 }
 
+/* Any class that sets `display` outranks the user-agent rule behind the
+   `hidden` attribute, so an element toggled with `hidden` stays on screen and
+   nothing warns you. It bit both `.notice` and `.room`. */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   height: 100%;
@@ -91,15 +98,30 @@ body {
   flex: 0 0 auto;
 }
 
-.sidebar-head {
+.sections {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 0 var(--lc-space-sm) var(--lc-space-sm);
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 var(--lc-space-md);
+  padding: 0;
+  list-style: none;
+  flex: 0 0 auto;
+}
+
+/* The contextual half of the sidebar. Only Chat has one; the others are a
+   single panel with nothing to list. */
+.sidebar-context {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+  border-top: 1px solid var(--lc-rule);
+  padding-top: var(--lc-space-md);
 }
 
 .sidebar-title {
-  margin: 0;
+  margin: 0 0 var(--lc-space-sm);
+  padding: 0 var(--lc-space-sm);
   font-size: var(--lc-text-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -186,6 +208,77 @@ body {
   min-height: 0;
 }
 
+.panel {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* --- Sections that do not exist yet --------------------------------------- */
+
+.unbuilt {
+  margin: auto;
+  max-width: 62ch;
+  padding: var(--lc-space-xxl);
+  overflow-y: auto;
+}
+
+.unbuilt-status {
+  margin: 0 0 var(--lc-space-md);
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lc-warning);
+}
+
+/* The supervisor case is different in kind from the others: the work exists
+   and only the interface is absent. */
+.unbuilt-status[data-tone='near'] {
+  color: var(--lc-success);
+}
+
+.unbuilt-title {
+  margin: 0 0 var(--lc-space-md);
+  font-size: var(--lc-text-xxl);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.unbuilt-body {
+  margin: 0 0 var(--lc-space-xl);
+  color: var(--lc-fg-muted);
+}
+
+.ledger {
+  display: grid;
+  grid-template-columns: minmax(0, 9rem) 1fr;
+  gap: var(--lc-space-md) var(--lc-space-lg);
+  margin: 0;
+  padding-top: var(--lc-space-lg);
+  border-top: 1px solid var(--lc-rule);
+}
+
+.ledger dt {
+  font-size: var(--lc-text-sm);
+  font-weight: 600;
+  color: var(--lc-fg-dim);
+}
+
+.ledger dd {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+  user-select: text;
+}
+
+.ledger code {
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.92em;
+  color: var(--lc-fg);
+}
+
 /* --- Empty state ---------------------------------------------------------- */
 
 .empty {
@@ -214,8 +307,11 @@ body {
 }
 
 .version {
+  margin: var(--lc-space-md) 0 0;
+  padding: 0 var(--lc-space-sm);
   font-size: var(--lc-text-xs);
   color: var(--lc-fg-dim);
+  flex: 0 0 auto;
 }
 
 /* --- Room ----------------------------------------------------------------- */
