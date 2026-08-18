@@ -79,8 +79,15 @@ assigned. The preimage is not ours to choose — it is what `JobRegistry`'s
 keccak256(abi.encode(block.chainid, address(this), jobId, sessionId, ciphertext))
 ```
 
-then EIP-191 over that 32-byte digest. Verifying the same thing the contract
-does means a frame that fails here is a frame we hold the evidence to dispute.
+then EIP-191 over that 32-byte digest — the same computation the contract does.
+
+**A frame that fails this is not disputable**, which is worth being clear about
+because the opposite is the intuitive guess. `disputeResponseMismatch` verifies
+the signature itself and reverts with `InvalidWorkerSignature` if it does not
+recover to the assigned worker, so a forged frame gives no remedy: the worker
+did nothing. All a failed check can do is stop a lie reaching the screen.
+
+What _is_ disputable is narrower and worse, and is checked separately below.
 
 Three details that are easy to get wrong, each of which rejects every honest
 answer:
@@ -95,6 +102,30 @@ A verifier can be self-consistently wrong, so the test that matters uses a frame
 captured off the live mainnet relay and checks it recovers the worker the
 dispatcher actually assigned. Signing and verifying with the same mistaken
 preimage would pass everything else.
+
+## Did the worker commit to what it sent?
+
+A signature proves the worker produced these bytes. It does not prove they are
+the bytes it **told the registry** it produced, and a worker that hands one
+ciphertext to a consumer while recording the hash of another has equivocated.
+That is the single discrepancy the chain will punish: `disputeResponseMismatch`
+slashes the worker and returns the fee.
+
+So after each answer, `commitment(jobId)` reads the job back and compares
+`keccak256(ciphertext)` with `responseCiphertextHash`. Afterwards rather than
+before showing the reply — the registry takes a few seconds to reach
+`completed`, and holding every answer back to check something that has never
+gone wrong would make the whole thing feel slow.
+
+Three outcomes, and `pending` is a real one: a job that has not completed has
+nothing recorded, and comparing against an empty hash would report every honest
+worker as having equivocated for the first few seconds.
+
+The job struct is eighteen static fields, read by offset rather than through a
+general tuple decoder — a shape that never varies, and a decoder that could be
+subtly wrong about it. Checked against a live mainnet job, where reading at the
+wrong offset would have shown up immediately as the recorded worker not being
+the assigned one.
 
 ## Quoting a model into a room
 
@@ -174,9 +205,10 @@ Verified end to end against both live networks under both runtimes:
 
 ## What this does not do
 
-**A failed signature is refused, not disputed.** The evidence is exactly what
-`disputeResponseMismatch` wants, and nothing here files it — the answer is
-discarded and the fee is gone.
+**A failed signature costs the fee.** It is refused rather than shown, which is
+the right outcome, but there is no remedy: the contract will not accept a
+dispute against a worker whose signature does not verify, because that worker
+did nothing. The money is gone and the loss sits with whoever asked.
 
 There is no retry, no reconnection if the relay drops mid-answer, and no way to
 resume a session after the process restarts. A job that times out was still

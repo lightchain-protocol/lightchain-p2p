@@ -1,6 +1,8 @@
 import { connect } from '#socket'
 import {
   createSession,
+  disputeResponseMismatch,
+  job,
   keccak256,
   resolveAddresses,
   sendTransaction,
@@ -12,7 +14,7 @@ import {
 import { decrypt, encrypt, encryptSessionKey, generateSessionKey } from '@lcai-p2p/inference-crypto'
 import { Api, ApiError, type Draw, type Model } from './api.js'
 import { decodeKey, encodeSealed } from './keys.js'
-import { verifyFrame } from './verify.js'
+import { checkCommitment, verifyFrame, type Commitment } from './verify.js'
 
 /**
  * One conversation with one model.
@@ -424,6 +426,67 @@ export class Conversation {
 
     onProgress({ phase: 'done', jobId })
     return { jobId, text }
+  }
+
+  /**
+   * Whether the worker recorded on chain the answer it actually sent.
+   *
+   * Checked after the fact rather than before showing the answer, because the
+   * registry needs a moment to reach `completed` and blocking the reply on a
+   * chain read would make every answer feel slow to protect against something
+   * that has never happened.
+   */
+  async commitment(jobId: string, attempts = 20, interval = 3000): Promise<Commitment> {
+    if (!this.#chain) return { status: 'pending', state: 'unknown' }
+
+    const evidence = this.evidence()
+    if (!evidence) return { status: 'pending', state: 'unquotable' }
+
+    const ciphertext = new Uint8Array(Buffer.from(evidence.ciphertext, 'base64'))
+    const { jobRegistry } = await resolveAddresses(this.#chain.rpc)
+
+    // The relay delivers the answer before the registry has recorded it, so a
+    // single read almost always finds the job still acknowledged — and
+    // reporting that as the result means the check silently never happens.
+    let last: Commitment = { status: 'pending', state: 'unread' }
+
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      const record = await job(this.#chain.rpc, jobRegistry, BigInt(jobId))
+      last = checkCommitment(record.responseCiphertextHash, record.state, ciphertext)
+      if (last.status !== 'pending') return last
+      await new Promise((resolve) => setTimeout(resolve, interval))
+    }
+
+    return last
+  }
+
+  /**
+   * Files the dispute, when there are grounds for one.
+   *
+   * Only reachable where the answer was validly signed and the recorded hash
+   * differs — the contract checks the signature itself and refuses a dispute
+   * against a worker that did nothing. The fee comes back and the worker is
+   * slashed, so this is not a gesture.
+   */
+  async dispute(jobId: string): Promise<string> {
+    if (!this.#chain) throw new ConversationError('disputing needs a chain client')
+
+    const evidence = this.evidence()
+    if (!evidence) throw new ConversationError('there is no single signed answer to dispute')
+
+    const { jobRegistry } = await resolveAddresses(this.#chain.rpc)
+    const sent = await sendTransaction(this.#chain.rpc, this.#chain.account, {
+      to: jobRegistry,
+      data: disputeResponseMismatch(
+        BigInt(jobId),
+        new Uint8Array(Buffer.from(evidence.ciphertext, 'base64')),
+        toBytes(evidence.signature)
+      )
+    })
+
+    const receipt = await sent.wait()
+    if (!receipt.status) throw new ConversationError(`the dispute reverted (${sent.hash})`)
+    return sent.hash
   }
 
   /**

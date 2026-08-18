@@ -149,6 +149,11 @@ function onChatMessage(msg) {
     return
   }
 
+  if (msg.t === 'ai.commitment') {
+    onCommitment(msg)
+    return
+  }
+
   const waiting = pending.get(msg.id)
   if (!waiting) return
   pending.delete(msg.id)
@@ -937,6 +942,51 @@ function onAiProgress(progress) {
   } else if (progress.phase === 'done') {
     ai.session.textContent = `job ${progress.jobId} answered`
   }
+}
+
+/**
+ * What the chain says about the answer just given.
+ *
+ * Arrives seconds after the text, so it annotates the last turn rather than
+ * gating it. `differs` is the one that matters and the one nobody expects to
+ * see: the worker signed one answer and told the registry about another.
+ */
+function onCommitment(commitment) {
+  const last = ai.messages.querySelector('.message:last-child')
+  if (!last || last.querySelector('.message-proof, .message-warning')) return
+
+  if (commitment.status === 'matches') {
+    const badge = document.createElement('span')
+    badge.className = 'message-proof'
+    badge.textContent = 'confirmed on chain'
+    badge.title = `The registry records exactly this answer for job ${commitment.jobId}.`
+    last.querySelector('.message-meta')?.append(badge)
+    return
+  }
+
+  if (commitment.status !== 'differs') return
+
+  const badge = document.createElement('span')
+  badge.className = 'message-warning'
+  badge.textContent = 'does not match the chain'
+  badge.title = `The worker recorded ${commitment.recorded} but sent something hashing to ${commitment.received}.`
+
+  const dispute = document.createElement('button')
+  dispute.className = 'button button-sm'
+  dispute.type = 'button'
+  dispute.textContent = 'Dispute'
+  dispute.addEventListener('click', async () => {
+    dispute.disabled = true
+    try {
+      const { hash } = await request('ai.dispute', { jobId: commitment.jobId })
+      toast(`Disputed: ${hash.slice(0, 12)}…`)
+    } catch (err) {
+      toast(err.message, 'error')
+      dispute.disabled = false
+    }
+  })
+
+  last.querySelector('.message-meta')?.append(badge, dispute)
 }
 
 document.getElementById('ai-refresh').addEventListener('click', () => void refreshModels())

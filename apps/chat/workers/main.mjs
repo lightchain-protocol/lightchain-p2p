@@ -788,7 +788,25 @@ async function handle(req) {
       )
 
       await log.said(conversationId, model, 'model', answer.text, answer.jobId)
+
+      // Asked afterwards, not before replying. The registry takes a few seconds
+      // to reach `completed`, and holding the answer back to check something
+      // that has never yet gone wrong would make every reply feel slow.
+      void conversation
+        .commitment(answer.jobId)
+        .then((commitment) => send({ t: 'ai.commitment', jobId: answer.jobId, ...commitment }))
+        .catch(() => {
+          // A chain that cannot be read leaves the answer unconfirmed, which is
+          // the truthful state rather than an error worth interrupting for.
+        })
+
       return { jobId: answer.jobId, text: answer.text }
+    }
+
+    /** Only possible where the worker signed one answer and recorded another. */
+    case 'ai.dispute': {
+      if (!conversation) throw new Error('no conversation is open')
+      return { hash: await conversation.dispute(String(req.jobId ?? '')) }
     }
 
     case 'ai.cancel':

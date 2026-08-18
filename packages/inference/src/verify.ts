@@ -1,4 +1,10 @@
-import { encodeParameters, hashDigestForSigning, keccak256, recoverAddress } from '@lcai-p2p/chain'
+import {
+  encodeParameters,
+  hashDigestForSigning,
+  keccak256,
+  recoverAddress,
+  toHex
+} from '@lcai-p2p/chain'
 
 /**
  * Checking that the worker really said this.
@@ -61,6 +67,37 @@ export function responseDigest(frame: Omit<FrameToVerify, 'signature'>): Uint8Ar
  */
 export function recoverFrameSigner(frame: FrameToVerify): string {
   return recoverAddress(hashDigestForSigning(responseDigest(frame)), frame.signature)
+}
+
+/**
+ * Whether the worker committed on chain to the answer it sent.
+ *
+ * A separate question from whether it signed, and the more interesting one. A
+ * signature only proves the worker produced these bytes; this asks whether
+ * those are the bytes it *told the registry* it produced. A worker that hands
+ * one ciphertext to a consumer and records the hash of another has equivocated,
+ * and that is the one thing `disputeResponseMismatch` will slash it for.
+ *
+ * A job that has not reached `completed` has nothing recorded yet, so this says
+ * `pending` rather than pretending to an answer.
+ */
+export type Commitment =
+  | { readonly status: 'matches' }
+  | { readonly status: 'pending'; readonly state: string }
+  /** Grounds for a dispute: the worker signed this and recorded something else. */
+  | { readonly status: 'differs'; readonly recorded: string; readonly received: string }
+
+export function checkCommitment(
+  recordedHash: string,
+  state: string,
+  ciphertext: Uint8Array
+): Commitment {
+  if (state !== 'completed') return { status: 'pending', state }
+
+  const received = toHex(keccak256(ciphertext))
+  return received.toLowerCase() === recordedHash.toLowerCase()
+    ? { status: 'matches' }
+    : { status: 'differs', recorded: recordedHash, received }
 }
 
 /** Throws unless `expected` signed the frame. */

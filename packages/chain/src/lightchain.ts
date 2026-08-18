@@ -1,5 +1,5 @@
 import { decodeAddress, decodeBool, decodeUint256, encodeCall, keccak256, selector } from './abi.js'
-import { toHex } from './hex.js'
+import { toBytes, toChecksumAddress, toHex } from './hex.js'
 import type { Rpc } from './rpc.js'
 
 /**
@@ -266,6 +266,90 @@ export function createSession(request: SessionRequest): string {
  */
 export function submitJob(sessionId: bigint, blobHash: string): string {
   return encodeCall('submitJob(uint256,bytes32)', ['uint256', 'bytes32'], [sessionId, blobHash])
+}
+
+/** Where a job has got to. The order is the contract's; the numbers are the wire. */
+export const JOB_STATE = [
+  'submitted',
+  'acknowledged',
+  'completed',
+  'timedOut',
+  'disputed',
+  'resolved',
+  'released'
+] as const
+
+export type JobState = (typeof JOB_STATE)[number]
+
+export interface Job {
+  readonly sessionId: bigint
+  readonly worker: string
+  readonly state: JobState
+  readonly escrowedFee: bigint
+  /**
+   * What the worker told the chain its answer was.
+   *
+   * The point of comparison for a dispute: a worker that hands you one
+   * ciphertext and records the hash of another has equivocated, and the chain
+   * will slash it for that.
+   */
+  readonly responseCiphertextHash: string
+  readonly disputeFiler: string
+}
+
+/**
+ * A job as the registry has it.
+ *
+ * The struct is eighteen fields and every one of them is static, so the return
+ * is eighteen consecutive words and can be read without a general tuple
+ * decoder. Adding one to decode a shape that never varies would be more code
+ * with more ways to be subtly wrong.
+ */
+export async function job(rpc: Rpc, jobRegistry: string, jobId: bigint): Promise<Job> {
+  const raw = await rpc.call({
+    to: jobRegistry,
+    data: encodeCall('getJob(uint256)', ['uint256'], [jobId])
+  })
+
+  const bytes = toBytes(raw)
+  const word = (index: number) => bytes.slice(index * 32, index * 32 + 32)
+  if (bytes.length < 18 * 32) {
+    throw new Error(`getJob returned ${bytes.length} bytes, expected at least ${18 * 32}`)
+  }
+
+  const stateIndex = Number(decodeUint256(toHex(word(2))))
+
+  return {
+    sessionId: decodeUint256(toHex(word(0))),
+    worker: toChecksumAddress(toHex(word(1).slice(12)), keccak256),
+    state: JOB_STATE[stateIndex] ?? 'submitted',
+    escrowedFee: decodeUint256(toHex(word(3))),
+    responseCiphertextHash: toHex(word(15)),
+    disputeFiler: toChecksumAddress(toHex(word(10).slice(12)), keccak256)
+  }
+}
+
+/**
+ * Call data for disputing an answer the worker did not commit to.
+ *
+ * **Not for a signature that fails to verify.** The contract checks the
+ * signature itself and reverts with `InvalidWorkerSignature` if it does not
+ * recover to the assigned worker — so a forged frame is not disputable, because
+ * the worker did nothing. What this is for is narrower and worse: a *validly
+ * signed* ciphertext whose hash differs from the one the worker recorded on
+ * chain. That is a worker telling you one thing and the chain another, and it
+ * costs the worker a slashing and returns the fee.
+ */
+export function disputeResponseMismatch(
+  jobId: bigint,
+  ciphertext: Uint8Array,
+  signature: Uint8Array
+): string {
+  return encodeCall(
+    'disputeResponseMismatch(uint256,bytes,bytes)',
+    ['uint256', 'bytes', 'bytes'],
+    [jobId, ciphertext, signature]
+  )
 }
 
 /** The same, paid from `user`'s prepaid balance by an authorised delegate. Not payable. */

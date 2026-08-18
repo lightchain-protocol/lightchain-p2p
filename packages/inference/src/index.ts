@@ -24,9 +24,11 @@ export {
 
 export {
   SignatureError,
+  checkCommitment,
   recoverFrameSigner,
   responseDigest,
   verifyFrame,
+  type Commitment,
   type FrameToVerify
 } from './verify.js'
 

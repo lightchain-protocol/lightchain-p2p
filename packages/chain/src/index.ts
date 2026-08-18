@@ -51,11 +51,14 @@ export { sendTransaction, upfrontCost, type SendRequest, type SentTransaction } 
 export {
   WORKER_REGISTRY_ADDRESS,
   createSession,
+  JOB_STATE,
   delegateAllowance,
+  disputeResponseMismatch,
   deposit,
   depositAndAuthorize,
   isDelegateAuthorized,
   isPaused,
+  job,
   jobFee,
   lightchainErrors,
   modelId,
@@ -67,6 +70,8 @@ export {
   submitJobOnBehalf,
   withdrawBalance,
   type Addresses,
+  type Job,
+  type JobState,
   type SessionRequest
 } from './lightchain.js'
 
