@@ -1,0 +1,92 @@
+# @lcai-p2p/chain
+
+Reading Lightchain and signing for it, from a Bare worker.
+
+The wallet needs this and so does everything paid: `depositAndAuthorize` and
+`createSession` are user actions, so unlike the worker's staking they cannot be
+handed to a Go binary in a container. See
+[ADR 0004](../../docs/decisions/0004-chain-access-from-bare.md) for why this
+exists rather than viem.
+
+## Deliberately small
+
+Not a general Ethereum library. It encodes `address`, `uint256`, `bytes32`,
+`bool` and `bytes`, decodes `address` and `uint256`, and signs EIP-1559
+transactions. Anything else throws.
+
+That is the point. A general encoder has to guess at what it does not
+understand; this one refuses, because **a wrong encoding is not a crash** — it
+is call data that a contract decodes into different arguments, or a transaction
+that moves a different amount. Nothing downstream notices.
+
+```ts
+const rpc = new Rpc({ url: 'https://rpc.testnet.lightchain.ai' })
+
+const { aiConfig, jobRegistry } = await resolveAddresses(rpc)
+const fee = await jobFee(rpc, aiConfig, 'llama3-8b')
+const balance = await prepaidBalance(rpc, jobRegistry, address)
+```
+
+Addresses come from the registry rather than configuration. The roadmap listed
+resolving them as outstanding work; it is one `eth_call`.
+
+## viem is the oracle
+
+Encoding and signing are the kind of code that looks obviously right and is
+quietly wrong. So almost nothing here is tested against its author's
+expectations — it is compared byte-for-byte with viem, which cannot run in the
+worker but runs perfectly well in a test.
+
+| Checked against viem |                                                                    |
+| -------------------- | ------------------------------------------------------------------ |
+| `keccak256`          | Text, empty input, non-ASCII                                       |
+| Selectors            | Every function this client calls                                   |
+| Parameter encoding   | Including dynamic `bytes` at offsets, which is where it goes wrong |
+| Call data            | The real `createSession` and `depositAndAuthorize`                 |
+| RLP                  | Empty, single byte, the 55/56-byte boundary, nested lists          |
+| Addresses            | Derivation and EIP-55 checksumming                                 |
+| Transactions         | Seven shapes, each also recovered back to the signer               |
+| Messages             | EIP-191, each recovered back to the signer                         |
+
+Signing is deterministic, so `check:bare` signs the same transaction under Bare
+and under Node and compares the bytes. It also reads the live testnet from both.
+
+```
+node: signed tx  0x02f87082200807843b9aca00847735940082c350… (232 chars)
+bare: signed tx  0x02f87082200807843b9aca00847735940082c350… (232 chars)
+bare: every field identical across runtimes
+```
+
+## Keys
+
+`fromPrivateKey` reads the key once into a closure. It is not a property of the
+returned `Account`, so nothing that inspects, serialises or logs one can reach
+it, and there is a test asserting that. Nothing in this package writes to the
+console.
+
+Signatures are canonical low-s, which Ethereum requires — noble does this, and
+the differential tests would fail immediately if it stopped.
+
+`signTransaction` refuses a chain id that is not a positive integer. A missing
+or wrong one is what makes a signed transaction replayable on another chain,
+and it is the single most consequential field to get wrong.
+
+## secp256k1 here, P-256 there
+
+This signs with secp256k1. [`@lcai-p2p/inference-crypto`](../inference-crypto)
+encrypts prompts with ECDH P-256, because that is what the deployed workers
+speak. Two curves for two purposes; confusing them produces keys that look
+right and work nowhere.
+
+## What is not verified
+
+**No transaction has ever been broadcast.** Every signature is checked against
+viem and recovered back to its signer, and `eth_sendRawTransaction` is
+implemented and untested against a real node. Signing correctly and being
+_accepted_ are different claims, and only the first is supported by evidence
+here. A funded testnet account and one cheap transaction closes it.
+
+Writes are also not wrapped in anything convenient — there is no
+`deposit(amount)` that fills in nonce, gas and fees. That is deliberate for now:
+the call data builders are the tested part, and assembling a transaction around
+them is where defaults quietly become policy.

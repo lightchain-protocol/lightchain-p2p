@@ -18,6 +18,7 @@ with the longest lead times are procurement and infrastructure rather than code.
 | `packages/ui`               | 28    | Design tokens and platform conventions, held to WCAG contrast in tests.                       |
 | `packages/room`             | 20    | Multi-writer rooms on Autobase, and the host that keeps several of them.                      |
 | `packages/preflight`        | 19    | Host readiness with actionable remedies.                                                      |
+| `packages/chain`            | 65    | Reads Lightchain and signs for it, every byte checked against viem.                           |
 | `packages/inference-crypto` | 15    | ECDH P-256 and AES-256-GCM as the deployed workers speak it, under Bare.                      |
 | `packages/safety`           | 10    | Refusal-list decision logic.                                                                  |
 | `packages/drive`            | 9     | Publish a model, resolve it, range-read weights. Survives the publisher going offline.        |
@@ -25,7 +26,7 @@ with the longest lead times are procurement and infrastructure rather than code.
 | `packages/testkit`          | 6     | Two-machine harness with a negative control.                                                  |
 | `packages/blind`            | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server. |
 
-**178 tests.** CI green on every push. The six-platform build matrix compiles a
+**266 tests.** CI green on every push. The six-platform build matrix compiles a
 standalone supervisor binary for Windows, macOS and Linux on x64 and arm64, and
 every runner executes the binary it produced.
 
@@ -49,11 +50,10 @@ The lifecycle is complete: `doctor`, `pull`, `import-key`, `keygen`, `register`,
 `start`, `status`, `stop`, `logs`.
 
 Two things remain. **Contract address resolution** — `AI_CONFIG_ADDRESS` and
-`JOB_REGISTRY_ADDRESS` are supplied by hand where the toolkit reads them from the
-registry with `aiConfig()` and `jobRegistry()`. This is now known to be a single
-`eth_call` that works under Bare, see
-[ADR 0004](docs/decisions/0004-chain-access-from-bare.md). And **better keystore
-password storage**: the private key is stdin-only and never stored, but the password is
+`JOB_REGISTRY_ADDRESS` are supplied by hand. This is no longer research:
+[`packages/chain`](packages/chain) resolves both from the registry in one call,
+verified against the live testnet, and wiring it into the supervisor is a small
+change. And **better keystore password storage**: the private key is stdin-only and never stored, but the password is
 still an environment variable matching the toolkit's convention. The worker must
 survive unattended restarts so it has to be retrievable without a human, and Bare
 has no OS keychain binding today. A protected file or platform keychain would be
@@ -82,13 +82,11 @@ Routing is decided for now — the hub will use the same foundation-operated
 relay and dispatcher the web client uses, since direct client-to-worker routing
 is Advancement 5 and gated on verifiable randomness.
 
-Chain access is spiked, see [ADR 0004](docs/decisions/0004-chain-access-from-bare.md).
-**viem does not run under Bare** — it pins a noble version that imports
-`node:crypto` — but keccak256, recoverable secp256k1 signing and JSON-RPC
-`eth_call` all work on the v2 line, verified against the live testnet. The
-recommendation is a minimal client rather than a bundler or moving chain access
-into the Electron main process, which would break the one-core-five-platforms
-architecture.
+Chain access is **built**, in [`packages/chain`](packages/chain), following
+[ADR 0004](docs/decisions/0004-chain-access-from-bare.md): viem cannot run under
+Bare, so this is a small client on the noble v2 line with every encoded byte
+checked against viem in tests. It reads the live testnet and signs identically
+under both runtimes. What it has never done is broadcast.
 
 Invites use `blind-pairing` as the proposal specifies: one string that carries
 no room key, and the joiner arrives able to write. Rooms are encrypted, so a
@@ -114,7 +112,12 @@ updates at all.
   `xcrun notarytool submit` plus stapling step we write.
 - **A Windows sign hook** if we take Azure Artifact Signing, which the upstream
   Pear action does not support.
-- **`packages/da`** and **`packages/chain`** — not started.
+- **`packages/da`** — not started.
+- **A broadcast transaction.** `packages/chain` signs correctly — every
+  signature checked byte-for-byte against viem and recovered back to its
+  signer — but nothing has ever been sent to a node. Well-formed and accepted
+  are separate claims. A funded testnet account and one cheap transaction
+  settles it.
 
 ---
 
@@ -187,10 +190,8 @@ Mobile is decided: deferred, see [ADR 0001](docs/decisions/0001-defer-mobile.md)
    test into a property of the system, and is what lets a room outlive every
    participant being offline.
 3. **Verify from a second machine.**
-4. **Build the minimal chain client**, per
-   [ADR 0004](docs/decisions/0004-chain-access-from-bare.md). It unblocks three
-   things at once: the wallet, model discovery, and the supervisor's contract
-   address resolution.
+4. **Send one transaction on testnet.** Cheap, and it converts "signs
+   correctly" into "is accepted", which is the claim everything paid rests on.
 5. **Build the inference path in `apps/chat`**: model picker, dispatch to the
-   worker network, responses, and settlement. This is the bulk of Advancement 4
-   and none of it exists.
+   worker network, responses, and settlement. This is the bulk of Advancement 4,
+   and with `packages/chain` in place the wallet is the next piece of it.

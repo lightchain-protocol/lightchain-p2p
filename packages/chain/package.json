@@ -1,0 +1,60 @@
+{
+  "name": "@lcai-p2p/chain",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "//imports": "Bare honours this map; Node only consults imports for #-prefixed specifiers. One source, both runtimes.",
+  "imports": {
+    "#fetch": {
+      "types": "./runtime/fetch.d.ts",
+      "bare": "./runtime/bare.js",
+      "default": "./runtime/node.js"
+    },
+    "#globals": {
+      "types": "./runtime/globals.d.ts",
+      "bare": "./runtime/globals-bare.js",
+      "default": "./runtime/globals-node.js"
+    },
+    "fs": {
+      "bare": "bare-fs",
+      "default": "fs"
+    }
+  },
+  "files": [
+    "dist",
+    "runtime"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "check:bare": "node scripts/check-bare.mjs --emit .tmp/node.json && bare scripts/check-bare.mjs --verify .tmp/node.json"
+  },
+  "devDependencies": {
+    "@lcai-p2p/eslint-config": "workspace:*",
+    "@lcai-p2p/typescript-config": "workspace:*",
+    "@lcai-p2p/vitest-config": "workspace:*",
+    "bare-runtime": "1.29.4",
+    "eslint": "^10.8.1",
+    "viem": "^2.55.18",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@noble/curves": "^2.3.0",
+    "@noble/hashes": "^2.3.0",
+    "bare-crypto": "^1.15.3",
+    "bare-encoding": "^1.0.3",
+    "bare-fetch": "^3.2.0",
+    "bare-fs": "^4.8.0"
+  }
+}
