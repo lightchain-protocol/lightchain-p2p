@@ -14,12 +14,15 @@ import { RoomHost } from '@lcai-p2p/room'
 import { probeAll, runAsync } from '@lcai-p2p/host'
 import { runChecks, summarize } from '@lcai-p2p/preflight'
 import {
+  NETWORKS,
   inspectWorker,
   isHealthy,
   logsWorker,
   parseContainerState,
   resolveConfig
 } from '@lcai-p2p/worker'
+import { Rpc, prepaidBalance, resolveAddresses } from '@lcai-p2p/chain'
+import { Wallet } from '@lcai-p2p/wallet'
 
 /**
  * The data plane.
@@ -54,6 +57,14 @@ import {
  *     { id, t: 'worker.doctor' }
  *     { id, t: 'worker.status' }
  *     { id, t: 'worker.logs' }
+ *     { id, t: 'wallet.status' }
+ *     { id, t: 'wallet.create',  password }
+ *     { id, t: 'wallet.unlock',  password }
+ *     { id, t: 'wallet.lock' }
+ *     { id, t: 'wallet.balances' }
+ *
+ * A password crosses this seam and a private key never does. The renderer is
+ * told an address and a lock state, which is everything it can act on.
  *
  * Worker to renderer:
  *
@@ -146,6 +157,40 @@ const registry = {
   }
 }
 
+/**
+ * The wallet's keystore, next to the chat storage.
+ *
+ * Encrypted, so unlike `rooms.json` this one is not a plaintext secret — but it
+ * is still the only copy of a key that may hold funds, and it is written `0600`
+ * where that means anything.
+ */
+const walletFile = path.join(chatDir, 'wallet.json')
+
+const wallet = new Wallet({
+  read() {
+    try {
+      return JSON.parse(fs.readFileSync(walletFile, 'utf8'))
+    } catch {
+      return null
+    }
+  },
+  write(keystore) {
+    fs.mkdirSync(chatDir, { recursive: true })
+    fs.writeFileSync(walletFile, JSON.stringify(keystore, null, 2), { mode: 0o600 })
+  },
+  clear() {
+    try {
+      fs.unlinkSync(walletFile)
+    } catch {
+      // Already gone is the outcome we wanted.
+    }
+  }
+})
+
+/** Which chain the wallet reads. Same names and profiles as the worker uses. */
+const network = process.env.NETWORK === 'testnet' ? 'testnet' : 'mainnet'
+const rpc = new Rpc({ url: NETWORKS[network].rpcUrl })
+
 const rooms = await RoomHost.open({
   store: chatStore,
   swarm,
@@ -221,6 +266,49 @@ async function handle(req) {
         runnable: Boolean(config.aiConfigAddress && config.jobRegistryAddress),
         healthy: isHealthy(state),
         state
+      }
+    }
+
+    // --- Wallet -----------------------------------------------------------
+    //
+    // `wallet.status` is the only one that returns without doing work. The
+    // rest run scrypt at roughly half a second, which is the cost that makes a
+    // stolen keystore expensive to attack rather than a delay to apologise for.
+
+    case 'wallet.status':
+      return { ...wallet.status(), network }
+
+    case 'wallet.create':
+      return { ...wallet.create(String(req.password ?? '')), network }
+
+    case 'wallet.unlock':
+      return { ...wallet.unlock(String(req.password ?? '')), network }
+
+    case 'wallet.lock':
+      return { ...wallet.lock(), network }
+
+    case 'wallet.balances': {
+      const { address } = wallet.status()
+      if (!address) return { address: null }
+
+      // Balances are public, so they are readable while locked. Only signing
+      // needs the key.
+      const [native, addresses] = await Promise.all([
+        rpc.balanceOf(address),
+        resolveAddresses(rpc).catch(() => null)
+      ])
+
+      const prepaid = addresses
+        ? await prepaidBalance(rpc, addresses.jobRegistry, address).catch(() => null)
+        : null
+
+      // Serialised as strings: wei does not survive JSON as a number.
+      return {
+        address,
+        network,
+        chainId: NETWORKS[network].chainId,
+        native: native.toString(),
+        prepaid: prepaid === null ? null : prepaid.toString()
       }
     }
 

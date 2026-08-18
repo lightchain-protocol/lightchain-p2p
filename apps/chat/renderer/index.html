@@ -171,29 +171,108 @@
 
         <!-- Wallet ---------------------------------------------------------->
         <div class="panel" id="panel-wallet" hidden>
-          <div class="unbuilt">
-            <p class="unbuilt-status">Not started</p>
-            <h1 class="unbuilt-title">One balance for everything</h1>
-            <p class="unbuilt-body">
-              The wallet is the root identity: the key that pays is the key that signs messages and
-              joins rooms, so there is no separate account system.
-            </p>
+          <div class="wallet" id="wallet-pane">
+            <!-- No wallet yet -->
+            <section class="wallet-stage" id="wallet-none" hidden>
+              <h1 class="wallet-title">Your key, on this machine</h1>
+              <p class="wallet-body">
+                One key signs your messages, joins rooms and pays for inference. It is generated
+                here and never leaves — encrypted with a password only you know.
+              </p>
 
-            <dl class="ledger">
-              <dt>Already built</dt>
-              <dd>
-                The encryption a paid job needs — <code>packages/inference-crypto</code> speaks the
-                deployed workers' ECDH P-256 and AES-256-GCM, verified under Bare. Nothing above
-                that layer.
-              </dd>
+              <form class="wallet-form" id="wallet-create-form">
+                <label class="field">
+                  <span class="field-label">Password</span>
+                  <input
+                    class="input"
+                    id="wallet-password"
+                    type="password"
+                    autocomplete="new-password"
+                    placeholder="At least 8 characters"
+                  />
+                </label>
+                <label class="field">
+                  <span class="field-label">Confirm password</span>
+                  <input
+                    class="input"
+                    id="wallet-confirm"
+                    type="password"
+                    autocomplete="new-password"
+                    placeholder="Type it again"
+                  />
+                </label>
 
-              <dt>Still missing</dt>
-              <dd>
-                Wallet identity, <code>depositAndAuthorize</code>, session creation, and the prepaid
-                balance. Once deposited, a user signs nothing per message — a delegate calls
-                <code>submitJobOnBehalf</code> against their session for the exact fee.
-              </dd>
-            </dl>
+                <p class="wallet-warning">
+                  There is no way to recover this password. Lose it and the key is gone, along with
+                  anything it holds.
+                </p>
+
+                <p class="dialog-error" id="wallet-create-error" hidden></p>
+
+                <button class="button button-primary" type="submit" id="wallet-create-btn">
+                  Create wallet
+                </button>
+              </form>
+            </section>
+
+            <!-- Exists, locked -->
+            <section class="wallet-stage" id="wallet-locked" hidden>
+              <h1 class="wallet-title">Locked</h1>
+              <p class="wallet-body">
+                <code class="key" id="wallet-locked-address"></code>
+              </p>
+
+              <form class="wallet-form" id="wallet-unlock-form">
+                <label class="field">
+                  <span class="field-label">Password</span>
+                  <input
+                    class="input"
+                    id="wallet-unlock-password"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder="Password"
+                  />
+                </label>
+                <p class="dialog-error" id="wallet-unlock-error" hidden></p>
+                <button class="button button-primary" type="submit" id="wallet-unlock-btn">
+                  Unlock
+                </button>
+              </form>
+            </section>
+
+            <!-- Unlocked -->
+            <section class="wallet-stage" id="wallet-open" hidden>
+              <header class="wallet-head">
+                <div>
+                  <h1 class="wallet-title">Wallet</h1>
+                  <code class="key" id="wallet-address"></code>
+                </div>
+                <div class="wallet-head-actions">
+                  <span class="badge" id="wallet-network"></span>
+                  <button class="button button-sm" type="button" id="wallet-copy">Copy</button>
+                  <button class="button button-sm" type="button" id="wallet-lock">Lock</button>
+                </div>
+              </header>
+
+              <div class="balances">
+                <div class="balance">
+                  <span class="balance-value" id="wallet-native">—</span>
+                  <span class="balance-label">LCAI on chain</span>
+                </div>
+                <div class="balance">
+                  <span class="balance-value" id="wallet-prepaid">—</span>
+                  <span class="balance-label">Prepaid for inference</span>
+                </div>
+              </div>
+
+              <p class="wallet-note" id="wallet-balance-note"></p>
+
+              <p class="wallet-footnote">
+                Deposits and sessions are not built yet. The key here signs, and
+                <code>packages/chain</code> can already reach the contracts — what is missing is the
+                flow between them.
+              </p>
+            </section>
           </div>
         </div>
       </section>

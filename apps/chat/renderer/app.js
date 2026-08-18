@@ -44,6 +44,26 @@ const el = {
   workerSummary: document.getElementById('worker-summary'),
   workerContainer: document.getElementById('worker-container'),
   workerLogs: document.getElementById('worker-logs'),
+  walletNone: document.getElementById('wallet-none'),
+  walletLocked: document.getElementById('wallet-locked'),
+  walletOpen: document.getElementById('wallet-open'),
+  walletCreateForm: document.getElementById('wallet-create-form'),
+  walletPassword: document.getElementById('wallet-password'),
+  walletConfirm: document.getElementById('wallet-confirm'),
+  walletCreateError: document.getElementById('wallet-create-error'),
+  walletCreateBtn: document.getElementById('wallet-create-btn'),
+  walletUnlockForm: document.getElementById('wallet-unlock-form'),
+  walletUnlockPassword: document.getElementById('wallet-unlock-password'),
+  walletUnlockError: document.getElementById('wallet-unlock-error'),
+  walletUnlockBtn: document.getElementById('wallet-unlock-btn'),
+  walletLockedAddress: document.getElementById('wallet-locked-address'),
+  walletAddress: document.getElementById('wallet-address'),
+  walletNetwork: document.getElementById('wallet-network'),
+  walletCopy: document.getElementById('wallet-copy'),
+  walletLockBtn: document.getElementById('wallet-lock'),
+  walletNative: document.getElementById('wallet-native'),
+  walletPrepaid: document.getElementById('wallet-prepaid'),
+  walletBalanceNote: document.getElementById('wallet-balance-note'),
   joinDialog: document.getElementById('join-dialog'),
   joinForm: document.getElementById('join-form'),
   joinInput: document.getElementById('join-input'),
@@ -83,9 +103,10 @@ function showSection(name) {
 for (const button of el.sections) {
   button.addEventListener('click', () => {
     showSection(button.dataset.section)
-    // Probing the host costs a few subprocesses, so it happens when the panel
-    // is opened rather than on every launch.
+    // Probing the host costs a few subprocesses and reading balances costs a
+    // round trip, so both happen when the panel is opened rather than at launch.
     if (button.dataset.section === 'worker') void refreshWorker()
+    if (button.dataset.section === 'wallet') void refreshWallet()
   })
 }
 
@@ -507,6 +528,131 @@ async function refreshWorker() {
 }
 
 el.workerRefresh.addEventListener('click', () => void refreshWorker())
+
+// --- Wallet ----------------------------------------------------------------
+
+/**
+ * Wei as LCAI, without a rounding library.
+ *
+ * Kept exact: `Number(wei) / 1e18` loses precision above about nine LCAI, and a
+ * balance that is subtly wrong is worse than one that is ugly.
+ */
+function formatLcai(wei) {
+  const value = BigInt(wei)
+  const whole = value / 10n ** 18n
+  const fraction = (value % 10n ** 18n).toString().padStart(18, '0').replace(/0+$/, '')
+  return fraction === '' ? whole.toString() : `${whole}.${fraction.slice(0, 6)}`
+}
+
+function showWallet(status) {
+  el.walletNone.hidden = status.exists
+  el.walletLocked.hidden = !status.exists || status.unlocked
+  el.walletOpen.hidden = !status.unlocked
+
+  if (status.address) {
+    el.walletLockedAddress.textContent = status.address
+    el.walletAddress.textContent = status.address
+  }
+  el.walletNetwork.textContent = status.network ?? ''
+}
+
+async function refreshWallet() {
+  try {
+    const status = await request('wallet.status')
+    showWallet(status)
+    if (status.unlocked) void refreshBalances()
+  } catch (err) {
+    toast(err.message, 'error')
+  }
+}
+
+async function refreshBalances() {
+  el.walletNative.textContent = '…'
+  el.walletPrepaid.textContent = '…'
+  el.walletBalanceNote.textContent = ''
+
+  try {
+    const balances = await request('wallet.balances')
+    el.walletNative.textContent = formatLcai(balances.native)
+    el.walletPrepaid.textContent =
+      balances.prepaid === null ? 'unknown' : formatLcai(balances.prepaid)
+
+    if (balances.prepaid === null) {
+      // Distinguish "nothing deposited" from "could not ask", which look the
+      // same as a zero and mean very different things.
+      el.walletBalanceNote.textContent =
+        'The prepaid balance could not be read. The contracts may not be reachable on this network.'
+    }
+  } catch (err) {
+    el.walletNative.textContent = '—'
+    el.walletPrepaid.textContent = '—'
+    el.walletBalanceNote.textContent = `Could not reach the chain: ${err.message}`
+  }
+}
+
+el.walletCreateForm.addEventListener('submit', async (evt) => {
+  evt.preventDefault()
+  el.walletCreateError.hidden = true
+
+  const password = el.walletPassword.value
+  if (password !== el.walletConfirm.value) {
+    el.walletCreateError.textContent = 'Those two passwords are not the same.'
+    el.walletCreateError.hidden = false
+    return
+  }
+  if (password.length < 8) {
+    el.walletCreateError.textContent = 'Use at least 8 characters.'
+    el.walletCreateError.hidden = false
+    return
+  }
+
+  // Deriving the key takes about half a second, on purpose. Saying so beats a
+  // button that looks broken.
+  el.walletCreateBtn.disabled = true
+  el.walletCreateBtn.textContent = 'Encrypting…'
+
+  try {
+    showWallet(await request('wallet.create', { password }))
+    void refreshBalances()
+    toast('Wallet created')
+  } catch (err) {
+    el.walletCreateError.textContent = err.message
+    el.walletCreateError.hidden = false
+  } finally {
+    // Cleared either way: it is a password sitting in a DOM node.
+    el.walletPassword.value = ''
+    el.walletConfirm.value = ''
+    el.walletCreateBtn.disabled = false
+    el.walletCreateBtn.textContent = 'Create wallet'
+  }
+})
+
+el.walletUnlockForm.addEventListener('submit', async (evt) => {
+  evt.preventDefault()
+  el.walletUnlockError.hidden = true
+  el.walletUnlockBtn.disabled = true
+  el.walletUnlockBtn.textContent = 'Unlocking…'
+
+  const password = el.walletUnlockPassword.value
+
+  try {
+    showWallet(await request('wallet.unlock', { password }))
+    void refreshBalances()
+  } catch (err) {
+    el.walletUnlockError.textContent = err.message
+    el.walletUnlockError.hidden = false
+  } finally {
+    el.walletUnlockPassword.value = ''
+    el.walletUnlockBtn.disabled = false
+    el.walletUnlockBtn.textContent = 'Unlock'
+  }
+})
+
+el.walletLockBtn.addEventListener('click', async () => {
+  showWallet(await request('wallet.lock'))
+})
+
+el.walletCopy.addEventListener('click', () => copy(el.walletAddress.textContent, 'Address'))
 
 // --- Updates ---------------------------------------------------------------
 

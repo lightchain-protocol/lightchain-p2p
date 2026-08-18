@@ -279,6 +279,140 @@ body {
   color: var(--lc-fg);
 }
 
+/* --- Wallet --------------------------------------------------------------- */
+
+.wallet {
+  width: 100%;
+  max-width: 60ch;
+  margin: auto;
+  padding: var(--lc-space-xxl);
+  overflow-y: auto;
+}
+
+.wallet-title {
+  margin: 0;
+  font-size: var(--lc-text-xxl);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.wallet-body {
+  margin: var(--lc-space-md) 0 var(--lc-space-xl);
+  color: var(--lc-fg-muted);
+}
+
+.wallet-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lc-space-lg);
+  margin-bottom: var(--lc-space-xl);
+}
+
+.wallet-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+/* An address is 42 characters and every one of them matters. Truncating a room
+   key is fine, because it is copied by button; an address is read and compared
+   by eye against whatever someone is about to send money to. */
+.wallet .key {
+  max-width: none;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+.wallet-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-lg);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+}
+
+.field-label {
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+}
+
+/* Passwords are typed, not pasted from a key. Monospace makes them look like
+   data; this is the one input that should read as prose. */
+.wallet-form .input {
+  font-family: inherit;
+  font-size: var(--lc-text-md);
+  padding: var(--lc-space-md);
+}
+
+.wallet-form .button-primary {
+  align-self: flex-start;
+}
+
+.wallet-warning {
+  margin: 0;
+  padding: var(--lc-space-md);
+  border-radius: var(--lc-radius-md);
+  border: 1px solid var(--lc-rule);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-warning);
+}
+
+.balances {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--lc-space-lg);
+  padding: var(--lc-space-lg) 0;
+  border-top: 1px solid var(--lc-rule);
+  border-bottom: 1px solid var(--lc-rule);
+}
+
+.balance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  min-width: 0;
+}
+
+.balance-value {
+  font-size: var(--lc-text-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.balance-label {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+.wallet-note {
+  margin: var(--lc-space-md) 0 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+.wallet-footnote {
+  margin: var(--lc-space-xl) 0 0;
+  padding-top: var(--lc-space-lg);
+  border-top: 1px solid var(--lc-rule);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+}
+
+.wallet-footnote code {
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.92em;
+}
+
 /* --- Worker --------------------------------------------------------------- */
 
 .worker {

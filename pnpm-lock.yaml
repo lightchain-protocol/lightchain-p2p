@@ -20,6 +20,9 @@ importers:
 
   apps/chat:
     dependencies:
+      '@lcai-p2p/chain':
+        specifier: workspace:*
+        version: link:../../packages/chain
       '@lcai-p2p/host':
         specifier: workspace:*
         version: link:../../packages/host
@@ -32,6 +35,9 @@ importers:
       '@lcai-p2p/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@lcai-p2p/wallet':
+        specifier: workspace:*
+        version: link:../../packages/wallet
       '@lcai-p2p/worker':
         specifier: workspace:*
         version: link:../../packages/worker
@@ -588,6 +594,46 @@ importers:
 
   packages/vitest-config:
     dependencies:
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.2.0)(vite@8.2.1(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))
+
+  packages/wallet:
+    dependencies:
+      '@lcai-p2p/chain':
+        specifier: workspace:*
+        version: link:../chain
+      '@noble/curves':
+        specifier: ^2.3.0
+        version: 2.3.0
+      '@noble/hashes':
+        specifier: ^2.3.0
+        version: 2.3.0
+      bare-crypto:
+        specifier: ^1.15.3
+        version: 1.15.3(bare-buffer@3.7.0)(bare-events@2.9.1)
+      bare-encoding:
+        specifier: ^1.0.3
+        version: 1.0.3(bare-buffer@3.7.0)
+    devDependencies:
+      '@lcai-p2p/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@lcai-p2p/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@lcai-p2p/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      bare-runtime:
+        specifier: 1.29.4
+        version: 1.29.4(bare-buffer@3.7.0)(bare-url@2.5.2)
+      eslint:
+        specifier: ^10.8.1
+        version: 10.8.1(jiti@2.7.0)
+      viem:
+        specifier: ^2.55.18
+        version: 2.55.18(typescript@5.9.3)
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@26.2.0)(vite@8.2.1(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))
