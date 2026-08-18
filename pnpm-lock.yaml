@@ -8,9 +8,24 @@ importers:
 
   .:
     devDependencies:
+      blind-peer:
+        specifier: ^3.13.3
+        version: 3.13.3(bare-buffer@3.7.0)(bare-url@2.5.2)
+      corestore:
+        specifier: ^7.12.0
+        version: 7.12.0(bare-buffer@3.7.0)(bare-url@2.5.2)
+      hypercore-id-encoding:
+        specifier: ^1.3.0
+        version: 1.3.0
+      hyperswarm:
+        specifier: ^4.17.0
+        version: 4.17.0(bare-buffer@3.7.0)(bare-url@2.5.2)
       prettier:
         specifier: ^3.9.6
         version: 3.9.6
+      rocksdb-native:
+        specifier: ^3.17.4
+        version: 3.17.4(bare-url@2.5.2)
       turbo:
         specifier: ^2.10.10
         version: 2.10.10
@@ -74,6 +89,9 @@ importers:
       graceful-goodbye:
         specifier: ^1.3.3
         version: 1.3.3(bare-buffer@3.7.0)
+      hypercore-crypto:
+        specifier: ^3.6.2
+        version: 3.7.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
       hyperswarm:
         specifier: ^4.17.0
         version: 4.17.0(bare-buffer@3.7.0)(bare-url@2.5.2)

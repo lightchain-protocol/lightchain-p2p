@@ -19,7 +19,12 @@
     "format:check": "prettier --check . && node scripts/check-bom.mjs"
   },
   "devDependencies": {
+    "blind-peer": "^3.13.3",
+    "corestore": "^7.12.0",
+    "hypercore-id-encoding": "^1.3.0",
+    "hyperswarm": "^4.17.0",
     "prettier": "^3.9.6",
+    "rocksdb-native": "^3.17.4",
     "turbo": "^2.10.10",
     "typescript": "^5.9.3"
   }

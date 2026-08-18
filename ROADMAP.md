@@ -215,11 +215,21 @@ reads the room back from a machine that was never given the keys. Registration
 follows the Autobase rather than a snapshot of its cores, so a room stays
 covered as writers join.
 
+Proven through the running application, not only in a test: a blind peer started
+with `scripts/blind-peer.mjs`, a room created and lodged, every instance of the
+app shut down, and the message read back on a fresh install that had never seen
+it.
+
+Doing that found a bug that would have made all of this useless. **Hyperswarm
+does not pass its `keyPair` down to the DHT**, so the app arrived on the network
+as a different peer on every launch — and blind peering matches on the DHT key,
+so a trusted machine stopped being trusted the moment it restarted, silently.
+The app now builds its own DHT and keeps the key, which Settings → Advanced
+shows.
+
 What remains is a machine. There is no public fleet, and a third-party peer will
-cache for us but not serve on our behalf — announcing requires trusted status on
-a server we run. [`docs/availability.md`](docs/availability.md) has the systemd
-units and the trap that makes an untrusted peer look healthy while serving
-nobody.
+cache for us but not serve on our behalf. [`docs/availability.md`](docs/availability.md)
+has the systemd units.
 
 **Seeders.** `apps/seeder` exists and is verified holding a real Pear-staged
 release, so this is no longer an engineering item — it needs a host to run on.

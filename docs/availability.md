@@ -42,6 +42,19 @@ Settings → Advanced → blind peer keys, comma separated.
 different keys, and `blind-peering` connects through `dht.connect()` without
 supplying a key pair, so the DHT default is what arrives at the server.
 
+Worse than different: **Hyperswarm does not pass its `keyPair` down to the
+DHT.** Construct it with one and `swarm.keyPair` is what you asked for while
+`swarm.dht.defaultKeyPair` is a fresh random pair, regenerated every launch. So
+an application can look correctly configured, be trusted by name, and arrive as
+a stranger every time it starts. The app therefore builds its own DHT:
+
+```js
+const swarm = new Hyperswarm({ dht: new DHT({ keyPair }), keyPair })
+```
+
+Its key is shown under Settings → Advanced and now survives restarts. If it
+changes between runs, nothing else here will work.
+
 Get it wrong and nothing errors. The server downgrades `announce` to false and
 priority `High` to `Normal`, quietly storing the content and never advertising
 it — a peer that looks healthy and serves nobody. Everything works until the
@@ -127,12 +140,19 @@ peer, concludes it worked, and nobody learns otherwise until the day it matters.
 a local DHT: create a room, say something, register it, then shut down the
 creator entirely and read the room from a machine that has never seen it.
 
-Against real infrastructure, the same shape:
+Against real infrastructure, the same shape, and it has been done:
 
-1. Create a room in the app, send a message.
-2. Quit the app on **every** machine that has it.
-3. Wait a few minutes.
-4. Join the room from a fresh install, with the key and encryption key.
+1. `node scripts/blind-peer.mjs --trust <key from Settings → Advanced>`
+2. Put the peer's key into Settings → Advanced, then restart the app — rooms are
+   lodged as they open, so existing ones need a restart.
+3. Create a room, send a message, wait about twenty seconds for the blocks to
+   move.
+4. Quit the app on **every** machine that has it.
+5. From a fresh install, Join → _Join with keys_, with both keys.
+
+An invite cannot be used here. Invites are held in memory by a live host, which
+is precisely what has been removed — so joining by key is not an alternative
+route but the only one, and it is why the app has that control at all.
 
 ## What this does not promise
 

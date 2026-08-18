@@ -279,6 +279,23 @@ body {
   color: var(--lc-fg);
 }
 
+.dialog-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-sm);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+.dialog-details summary {
+  cursor: default;
+  user-select: none;
+}
+
+.dialog-details[open] summary {
+  margin-bottom: var(--lc-space-xs);
+}
+
 .message-proof {
   padding: 0 6px;
   border-radius: var(--lc-radius-sm, 4px);

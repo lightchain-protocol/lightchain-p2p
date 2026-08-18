@@ -311,6 +311,16 @@
             </form>
             <p class="settings-note" id="blind-status"></p>
 
+            <p class="settings-note">
+              Give this key to whoever runs the blind peer. It must be on their trusted list, or
+              they will hold your rooms and never advertise them — which looks like it is working
+              until the last person closes the app.
+            </p>
+            <div class="wallet-head-actions">
+              <code class="key" id="dht-key"></code>
+              <button class="button button-sm" type="button" id="dht-copy">Copy</button>
+            </div>
+
             <h3 class="settings-heading">Storage</h3>
             <p class="settings-note">
               Where rooms, the wallet vault and these settings live on this machine. Anyone who can
@@ -646,6 +656,31 @@
           placeholder="Invite"
           aria-label="Invite"
         />
+        <p class="dialog-note">
+          An invite only works while whoever sent it is running. If they are not, and the room is
+          held by a blind peer, join with its two keys instead.
+        </p>
+        <details class="dialog-details">
+          <summary>Join with keys</summary>
+          <input
+            class="input"
+            id="join-key"
+            type="text"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="Room key"
+            aria-label="Room key"
+          />
+          <input
+            class="input"
+            id="join-encryption-key"
+            type="text"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="Encryption key"
+            aria-label="Encryption key"
+          />
+        </details>
         <p class="dialog-error" id="join-error" hidden></p>
         <div class="dialog-actions">
           <button class="button" type="button" data-close="join-dialog">Cancel</button>

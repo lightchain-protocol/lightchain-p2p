@@ -1,5 +1,6 @@
 import PearRuntime from 'pear-runtime'
 import Hyperswarm from 'hyperswarm'
+import DHT from 'hyperdht'
 import Corestore from 'corestore'
 import FramedStream from 'framed-stream'
 import goodbye from 'graceful-goodbye'
@@ -8,6 +9,8 @@ import fs from 'bare-fs'
 import os from 'bare-os'
 import process from 'bare-process'
 import b4a from 'b4a'
+import crypto from 'hypercore-crypto'
+import ID from 'hypercore-id-encoding'
 import { persistent } from 'bare-storage'
 import { isBareKit } from 'which-runtime'
 import { RoomHost } from '@lcai-p2p/room'
@@ -118,7 +121,59 @@ const config = {
 }
 
 const pipe = new FramedStream(Bare.IPC)
-const swarm = new Hyperswarm()
+
+/**
+ * This machine's network identity, kept across restarts.
+ *
+ * Hyperswarm generates a key pair when it is not given one, so every launch was
+ * arriving on the DHT as a different peer. That is invisible until something
+ * depends on being recognised — and blind peering does: the server matches the
+ * registrant against a trusted list, and a peer it does not recognise has
+ * `announce` downgraded **without an error**. The room is stored and never
+ * advertised, so it works while a participant is online and vanishes the moment
+ * none is, which is the one case blind peering exists for.
+ *
+ * Written `0600` where that means anything. It is not a wallet key — it
+ * identifies the machine to peers and signs nothing of value — but anyone
+ * holding it can present as this peer.
+ */
+function networkKeyPair(dir) {
+  const file = path.join(dir, 'swarm-key')
+
+  try {
+    const stored = fs.readFileSync(file)
+    if (stored.length === 64) return crypto.keyPair(stored.subarray(32))
+  } catch {
+    // First run, or a file we cannot read. Either way, make one.
+  }
+
+  const seed = crypto.randomBytes(32)
+  const pair = crypto.keyPair(seed)
+
+  try {
+    fs.mkdirSync(dir, { recursive: true })
+    // The seed alongside the public key, so a corrupt file is recognisably the
+    // wrong length rather than silently producing a different identity.
+    fs.writeFileSync(file, b4a.concat([pair.publicKey, seed]), { mode: 0o600 })
+  } catch (err) {
+    console.error(
+      'could not keep the network identity; peers will not recognise this machine between restarts:',
+      err.message
+    )
+  }
+
+  return pair
+}
+
+const networkKey = networkKeyPair(path.join(config.dir, 'chat'))
+
+// The DHT is constructed here rather than left to Hyperswarm, which does not
+// pass its `keyPair` down: given one, `swarm.keyPair` is what you asked for and
+// `swarm.dht.defaultKeyPair` is a fresh random pair. Blind peering matches on
+// the second, so trusting a machine had no effect that survived a restart —
+// and failed silently, which is the only reason it went unnoticed. Verified
+// against the installed versions rather than the documented behaviour.
+const swarm = new Hyperswarm({ dht: new DHT({ keyPair: networkKey }), keyPair: networkKey })
 
 // The updater's storage is kept apart from chat storage. They have unrelated
 // lifetimes: clearing a corrupt chat history should not discard the release
@@ -650,6 +705,12 @@ async function handle(req) {
           chainId: NETWORKS[net].chainId
         },
         blindPeerCount: availability?.peerCount ?? 0,
+        // The key a blind peer operator has to trust before it will announce
+        // anything for us. Deliberately the DHT default key and not the swarm
+        // key: they are different, and `blind-peering` connects with the former,
+        // so trusting the latter silently produces a peer that stores rooms and
+        // advertises none of them.
+        dhtKey: ID.encode(swarm.dht.defaultKeyPair.publicKey),
         storage: chatDir
       }
     }
@@ -1034,9 +1095,24 @@ async function handle(req) {
     case 'room.create':
       return rooms.create()
 
+    /**
+     * Opens a room from its two keys, without anybody being online to invite.
+     *
+     * The invite flow needs the creator running, which is precisely the case a
+     * blind peer removes — so a room lodged with one can only actually be
+     * reached this way. Both keys are required: the room key alone reads
+     * nothing.
+     */
     case 'room.join':
-      if (typeof req.key !== 'string') throw new Error('join needs a room key')
-      return rooms.join(req.key)
+      if (typeof req.key !== 'string' || typeof req.encryptionKey !== 'string') {
+        throw new Error('joining takes both the room key and its encryption key')
+      }
+      return rooms.join(req.key, req.encryptionKey)
+
+    /** Both halves, for a backup or for handing a room over where an invite will not do. */
+    case 'room.credentials':
+      if (typeof req.key !== 'string') throw new Error('which room?')
+      return rooms.credentials(req.key)
 
     case 'room.send':
       if (typeof req.text !== 'string' || req.text.trim() === '') {

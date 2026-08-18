@@ -371,8 +371,22 @@ el.joinForm.addEventListener('submit', async (evt) => {
   evt.preventDefault()
 
   const invite = el.joinInput.value.trim()
-  if (invite === '') {
-    el.joinError.textContent = 'Paste the invite you were sent.'
+  const key = document.getElementById('join-key').value.trim()
+  const encryptionKey = document.getElementById('join-encryption-key').value.trim()
+
+  // Two ways in, and they are not interchangeable. An invite is spent by a
+  // live host; the keys work against whatever is holding the room, which is
+  // the only route when nobody who has it is running.
+  const byKeys = invite === '' && key !== ''
+
+  if (invite === '' && !byKeys) {
+    el.joinError.textContent = 'Paste an invite, or open “Join with keys” and give both keys.'
+    el.joinError.hidden = false
+    return
+  }
+
+  if (byKeys && encryptionKey === '') {
+    el.joinError.textContent = 'Both keys are needed. A room key on its own reads nothing.'
     el.joinError.hidden = false
     return
   }
@@ -382,7 +396,9 @@ el.joinForm.addEventListener('submit', async (evt) => {
   el.joinSubmit.textContent = 'Joining…'
 
   try {
-    const room = await request('room.pair', { invite })
+    const room = byKeys
+      ? await request('room.join', { key, encryptionKey })
+      : await request('room.pair', { invite })
     rooms.set(room.key, room)
     el.joinDialog.close()
     select(room.key)
@@ -574,7 +590,14 @@ function renderContainer(status) {
 
 let refreshing = false
 
-async function refreshWorker() {
+/**
+ * @param {{ logs?: boolean }} options
+ *   `logs: false` leaves the panel showing whatever is already there. Used after
+ *   a pull or a start, where replacing the output somebody just watched with
+ *   the container log — or, when there is no container yet, with docker's
+ *   complaint about that — throws away the thing they were reading.
+ */
+async function refreshWorker({ logs = true } = {}) {
   if (refreshing) return
   refreshing = true
   el.workerRefresh.disabled = true
@@ -583,17 +606,20 @@ async function refreshWorker() {
   try {
     // In parallel, because the host probes are the slow part and the container
     // query should not queue behind them.
-    const [checks, status, logs] = await Promise.all([
+    const [checks, status, containerLogs] = await Promise.all([
       request('worker.doctor'),
       request('worker.status'),
-      request('worker.logs')
+      logs ? request('worker.logs') : Promise.resolve(null)
     ])
 
     renderChecks(checks)
     renderContainer(status)
-    el.workerLogs.textContent = logs.configured
-      ? logs.text || 'No output. The container may never have started.'
-      : 'Not configured.'
+
+    if (containerLogs) {
+      el.workerLogs.textContent = containerLogs.configured
+        ? containerLogs.text || 'No output. The container may never have started.'
+        : 'Not configured.'
+    }
   } catch (err) {
     el.workerSummary.textContent = `Could not read the host: ${err.message}`
   } finally {
@@ -632,7 +658,8 @@ for (const [id, action, label] of [
     try {
       await request(action)
       toast(`${label.replace(/ing\b/, 'ed')}`)
-      void refreshWorker()
+      // Status only. The log is still showing what docker just said.
+      void refreshWorker({ logs: false })
     } catch (err) {
       // Left in the log rather than only in a toast: docker's reason is usually
       // several lines and worth reading.
@@ -1114,11 +1141,17 @@ async function openSettings() {
       ? `${state.blindPeerCount} blind peer${state.blindPeerCount === 1 ? '' : 's'} in use. Rooms opened from now on are lodged with them.`
       : 'No blind peers. Rooms live only while someone who has them is online.'
 
+  document.getElementById('dht-key').textContent = state.dhtKey ?? ''
+
   facts(document.getElementById('storage-facts'), [
     ['Directory', state.storage],
     ['Version', bridge.pkg().version]
   ])
 }
+
+document.getElementById('dht-copy').addEventListener('click', () => {
+  void copy(document.getElementById('dht-key').textContent, 'Key')
+})
 
 document.getElementById('blind-form').addEventListener('submit', async (evt) => {
   evt.preventDefault()
