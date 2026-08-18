@@ -154,9 +154,12 @@ describe('invites', () => {
     await expect(host.pair('not-an-invite!!')).rejects.toThrow(/does not look like an invite/)
   })
 
-  it('gives up when nobody answers, instead of waiting forever', async () => {
-    // An invite whose host has gone offline should fail with something a person
-    // can act on, not leave a spinner running.
+  it('says so when it has reached nobody at all', async () => {
+    // These are different failures and used to read identically. Telling
+    // someone whose machine has connected to nothing that the *sender* is
+    // offline sends them to debug the wrong computer; it cost most of an
+    // afternoon once. The message reports the connection count rather than
+    // diagnosing it, because zero genuinely can mean either.
     net = await createTestNetwork()
     const alice = await net.createPeer('alice')
     const bob = await net.createPeer('bob')
@@ -169,6 +172,30 @@ describe('invites', () => {
     await alice.goOffline()
 
     const bobHost = await hostFor(bob, { pairTimeout: 1000 })
+    expect(bobHost.connections).toBe(0)
+    await expect(bobHost.pair(invite)).rejects.toThrow(/not connected to any peer at all/)
+  })
+
+  it('blames the invite when it has reached somebody', async () => {
+    // Connected to a peer, but the invite goes unanswered — spent already, or
+    // the sender is gone. Here the other side genuinely is the problem.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const bob = await net.createPeer('bob')
+
+    const aliceHost = await hostFor(alice)
+    const created = await aliceHost.create()
+    const invite = await aliceHost.invite(created.key)
+
+    // Bob joins the room normally, which gets him a connection to Alice, and
+    // only then tries an invite that will not be answered.
+    const bobHost = await hostFor(bob, { pairTimeout: 1000 })
+    await bobHost.join(created.key, aliceHost.credentials(created.key).encryptionKey)
+    await alice.swarm.flush()
+    await bob.swarm.flush()
+    await waitFor(() => bobHost.connections > 0, 'bob to connect to alice')
+
+    await aliceHost.close()
     await expect(bobHost.pair(invite)).rejects.toThrow(/nobody answered/)
   })
 })

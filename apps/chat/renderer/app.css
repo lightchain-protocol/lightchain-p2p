@@ -2353,10 +2353,29 @@ body {
   flex: 0 0 auto;
 }
 
+.notice-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-sm);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .notice-body {
   margin: 0;
   font-size: var(--lc-text-sm);
   color: var(--lc-fg-muted);
+}
+
+.grant-form {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+}
+
+.grant-form .input {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .notice-actions {

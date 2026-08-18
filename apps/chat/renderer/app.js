@@ -46,6 +46,7 @@ const el = {
   leaveBtn: document.getElementById('leave-btn'),
   messages: document.getElementById('messages'),
   readonlyNotice: document.getElementById('readonly-notice'),
+  myWriterKey: document.getElementById('my-writer-key'),
   composer: document.getElementById('composer'),
   composerInput: document.getElementById('composer-input'),
   sendBtn: document.getElementById('send-btn'),
@@ -949,6 +950,10 @@ function renderRoom() {
   el.roomRole.textContent = room.writable ? 'writer' : 'read only'
   el.roomRole.dataset.role = room.writable ? 'writer' : 'reader'
   el.readonlyNotice.hidden = room.writable
+  // Shown to a read-only member so they have something to send. It is not a
+  // secret: it identifies this peer's core, and only an existing writer can act
+  // on it.
+  el.myWriterKey.textContent = room.writerKey
   // Accepting an invite grants write access, so only a writer can offer one.
   el.inviteBtn.hidden = !room.writable
   el.renameBtn.hidden = !room.writable
@@ -1440,6 +1445,38 @@ el.inviteBtn.addEventListener('click', async () => {
     el.inviteValue.textContent = ''
     el.inviteError.textContent = err.message
     el.inviteError.hidden = false
+  }
+})
+
+document
+  .getElementById('copy-writer-key')
+  .addEventListener('click', () => copy(el.myWriterKey.textContent, 'Writer key'))
+
+/**
+ * Grants write access to a key someone sent.
+ *
+ * The counterpart to the notice a read-only member sees. Between them, a failed
+ * invite stops being permanent: the joiner has something to send, and a writer
+ * has somewhere to paste it.
+ */
+document.getElementById('grant-form').addEventListener('submit', async (evt) => {
+  evt.preventDefault()
+
+  const input = document.getElementById('grant-key')
+  const error = document.getElementById('grant-error')
+  const button = document.getElementById('grant-btn')
+  error.hidden = true
+  button.disabled = true
+
+  try {
+    adopt([await request('room.addWriter', { room: activeKey, writerKey: input.value })])
+    input.value = ''
+    toast('They can write in this room now')
+  } catch (err) {
+    error.textContent = err.message
+    error.hidden = false
+  } finally {
+    button.disabled = false
   }
 })
 
@@ -2520,9 +2557,20 @@ async function openSettings(page = settingsPage) {
 
   document.getElementById('dht-key').textContent = state.dhtKey ?? ''
 
+  // Reported, not interpreted. Zero peers is normal when nobody else is online
+  // and is also what a blocked machine looks like, so this says the number and
+  // leaves the conclusion alone — but having the number at all is the
+  // difference between checking and guessing.
+  const net = await request('net.status').catch(() => null)
   facts(document.getElementById('storage-facts'), [
     ['Directory', state.storage],
-    ['Version', bridge.pkg().version]
+    ['Version', bridge.pkg().version],
+    [
+      'Peers',
+      net === null
+        ? 'unknown'
+        : `${net.connections} connected, across ${net.rooms} room${net.rooms === 1 ? '' : 's'}`
+    ]
   ])
 }
 

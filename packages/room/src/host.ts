@@ -451,8 +451,16 @@ export class RoomHost {
     await session.close().catch(() => undefined)
 
     if (!result) {
+      // The connection count is reported rather than diagnosed. Zero can mean
+      // the sender is offline or that something local is blocking this machine,
+      // and the two are genuinely hard to tell apart from here — but a person
+      // who is told they have reached nobody at all will check their own
+      // machine, which the old message actively discouraged by blaming the
+      // sender. Having reached someone rules that half out.
       throw new RoomError(
-        'nobody answered that invite. It may have been used already, or the person who sent it may be offline.'
+        this.connections === 0
+          ? 'nobody answered that invite, and this machine has not connected to any peer at all. Either the sender is offline, or something here is blocking connections — a firewall that was never allowed is the usual cause, and gives no other sign.'
+          : 'nobody answered that invite. It may have been used already, or the person who sent it may be offline.'
       )
     }
 
@@ -517,6 +525,18 @@ export class RoomHost {
 
   presenceOf(key: string): PresenceState {
     return this.#rooms.get(key)?.presence.state ?? { peers: 0, typing: 0 }
+  }
+
+  /**
+   * How many peers this machine is connected to, across every topic.
+   *
+   * Zero while rooms are open and a topic has been announced is the signature
+   * of being blocked locally rather than of nobody being there — reaching the
+   * DHT is outbound and works through almost anything, while accepting or
+   * completing a connection is not.
+   */
+  get connections(): number {
+    return [...this.#swarm.connections].length
   }
 
   /** Names a room, for everyone in it. */

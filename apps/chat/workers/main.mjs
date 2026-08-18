@@ -1431,6 +1431,17 @@ async function handle(req) {
       }
       return rooms.send(req.room, req.text)
 
+    /**
+     * Grants write access to a peer by their writer key.
+     *
+     * The manual path, and the reason it exists: an invite needs both people
+     * running at the same moment, and when it fails the joiner is left able to
+     * read and never able to write, with nothing in the interface to fix it.
+     * A writer key can be sent over anything, at any time.
+     */
+    case 'room.addWriter':
+      return rooms.addWriter(req.room, String(req.writerKey ?? '').trim())
+
     /** Names the room for everyone in it, not just on this machine. */
     case 'room.rename':
       return rooms.rename(req.room, String(req.name ?? ''))
@@ -1455,7 +1466,21 @@ async function handle(req) {
      * until the next keystroke anywhere in the room.
      */
     case 'room.presence':
-      return rooms.presenceOf(req.room)
+      return { ...rooms.presenceOf(req.room), connections: rooms.connections }
+
+    /**
+     * Whether this machine can reach anybody at all.
+     *
+     * Separate from a room's presence, because the interesting case is having
+     * rooms open and no connections anywhere — which means something local is
+     * in the way rather than the rooms being quiet.
+     */
+    case 'net.status':
+      return {
+        connections: rooms.connections,
+        rooms: (await rooms.states()).length,
+        dhtKey: ID.encode(swarm.dht.defaultKeyPair.publicKey)
+      }
 
     /**
      * An invite, and the same invite as something clickable.
