@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AppStream metadata for the Flatpak build.
+
+  Flatpak is not a decided distribution channel: packages installed through a
+  store cannot receive the peer-to-peer updates this application is built
+  around, so shipping here means shipping something that stops updating itself.
+  See the open decisions in ROADMAP.md.
+-->
+<component type="desktop-application">
+  <id>ai.lightchain.Hub</id>
+
+  <name>Lightchain</name>
+  <summary>Peer-to-peer rooms and paid AI inference</summary>
+
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+
+  <developer id="ai.lightchain">
+    <name>Lightchain</name>
+  </developer>
+
+  <content_rating type="oars-1.1" />
+
+  <url type="homepage">https://lightchain.ai</url>
+  <url type="help">https://github.com/lightchain-protocol/lightchain-p2p/issues/new/choose</url>
+  <url type="bugtracker">https://github.com/lightchain-protocol/lightchain-p2p/issues</url>
+
+  <releases>
+    <release date="2026-08-18" version="0.1.0" />
+  </releases>
+
+  <recommends>
+    <display_length compare="ge">600</display_length>
+  </recommends>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+
+  <description>
+    <p>
+      Rooms between people that keep working when whoever created them is offline, and paid
+      inference from models on the Lightchain network. Keys are generated on your machine and
+      never leave it.
+    </p>
+    <ul>
+      <li>Encrypted multi-writer rooms over Hyperswarm, joined by an invite that carries no room key</li>
+      <li>Prompts encrypted to the worker that answers them, and answers checked against its signature</li>
+      <li>A wallet that is also your identity, backed up as twelve words</li>
+      <li>Peer-to-peer over-the-air updates</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">ai.lightchain.Hub.desktop</launchable>
+</component>

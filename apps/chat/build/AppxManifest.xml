@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Publisher CN must match the certificate the package is signed with, and
+  once a package is published under an Identity Name that pair is permanent:
+  changing either produces an application Windows treats as unrelated, which
+  will not update over the installed one. It is a placeholder only until the
+  certificate exists — see docs/signing-procurement.md.
+-->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
@@ -6,11 +13,16 @@
   xmlns:desktop6="http://schemas.microsoft.com/appx/manifest/desktop/windows10/6"
   IgnorableNamespaces="rescap desktop6"
 >
-  <Identity Name="HelloPear" Version="1.0.0.0" Publisher="CN=My Publisher" ProcessorArchitecture="x64" />
+  <Identity
+    Name="Lightchain.Hub"
+    Version="1.0.0.0"
+    Publisher="CN=Lightchain"
+    ProcessorArchitecture="x64"
+  />
   <Properties>
-    <DisplayName>Hello Pear</DisplayName>
-    <PublisherDisplayName>My Publisher</PublisherDisplayName>
-    <Description>Description of my app</Description>
+    <DisplayName>Lightchain</DisplayName>
+    <PublisherDisplayName>Lightchain</PublisherDisplayName>
+    <Description>Peer-to-peer rooms and paid AI inference on Lightchain.</Description>
     <Logo>build\icon.png</Logo>
     <desktop6:FileSystemWriteVirtualization>disabled</desktop6:FileSystemWriteVirtualization>
   </Properties>
@@ -26,8 +38,18 @@
     <rescap:Capability Name="unvirtualizedResources" />
   </Capabilities>
   <Applications>
-    <Application Id="App" Executable="app\HelloPear.exe" EntryPoint="Windows.FullTrustApplication">
-      <uap:VisualElements DisplayName="Hello Pear" Description="Description of my app" Square150x150Logo="build\icon.png" Square44x44Logo="build\icon.png" BackgroundColor="transparent" />
+    <Application
+      Id="App"
+      Executable="app\LightchainChat.exe"
+      EntryPoint="Windows.FullTrustApplication"
+    >
+      <uap:VisualElements
+        DisplayName="Lightchain"
+        Description="Peer-to-peer rooms and paid AI inference on Lightchain."
+        Square150x150Logo="build\icon.png"
+        Square44x44Logo="build\icon.png"
+        BackgroundColor="transparent"
+      />
     </Application>
   </Applications>
 </Package>

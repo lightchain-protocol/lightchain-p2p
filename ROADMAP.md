@@ -211,6 +211,25 @@ The same gap now applies to rooms. A room survives its creator leaving only if
 some other participant is online, so a conversation between two people who are
 never online together does not replicate. Blind peers are what close that.
 
+### Release
+
+**Nothing is published.** CI now builds the installers as well as the binaries —
+a DMG, an MSIX and an AppImage per tag, alongside standalone Bare binaries for
+six hosts — and every one of them is unsigned, uploaded as a CI artifact and
+released nowhere. [`docs/install.md`](docs/install.md) says so plainly rather
+than describing a download that does not exist.
+
+The template branding it shipped with is gone: an MSIX published under
+`CN=My Publisher` would have fixed that identity permanently, and a later
+correction produces an application Windows treats as unrelated and will not
+update over. Notarization for the Bare binaries exists now too
+(`scripts/notarize-macos.mjs`), skipping itself when no credentials are set, so
+the workflow is unchanged before and after certificates arrive.
+
+What is left is procurement and policy rather than code: an Apple Developer
+certificate, a Windows certificate, and a production `pear://` link under a
+multisig quorum.
+
 ### Verification
 
 **A second machine.** Nothing crossed the network in the publish round trip: the

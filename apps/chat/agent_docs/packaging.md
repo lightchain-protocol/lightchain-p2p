@@ -17,10 +17,12 @@
   (+ `KEYCHAIN_PROFILE` for notarization). The `APPLE_*` vars in the README are
   consumed by the CI action, **not** by `forge.config.js`.
 - The snap maker force-sets `base: core24`, strict confinement, name/version and
-  the app command (`HelloPear --no-sandbox`) **after** merging config — overriding
-  those in the `snapcraft` block is silently ignored.
-- The flatpak maker emits a **tarball** consumed by `flatpak/*.yml`, whose
-  URLs/sha512 are localhost placeholders; version syncs by hand in three places.
+  the app command (`LightchainChat --no-sandbox`) **after** merging config —
+  overriding those in the `snapcraft` block is silently ignored.
+- The flatpak maker emits a **tarball** consumed by `flatpak/ai.lightchain.Hub.yml`,
+  whose URLs and sha512 sums cannot be filled until the release assets are
+  hosted somewhere; they read `REPLACE-WITH-…` so a build fails loudly rather
+  than fetching something unexpected. Version syncs by hand in three places.
 - deb/rpm/zip makers are installed but unconfigured. The prebuild plugins rename
   (not merge) darwin prebuilds and prune non-target platforms.
 - `allowScripts` is a convention for allow-scripts tooling — nothing enforces it

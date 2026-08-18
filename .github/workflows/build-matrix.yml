@@ -70,6 +70,20 @@ jobs:
           WINDOWS_CERT_SHA1: ${{ secrets.WINDOWS_CERT_SHA1 }}
         run: node scripts/sign-windows.mjs apps/${{ matrix.app.name }}/out/${{ matrix.target.host }}/${{ matrix.app.binary }}.exe
 
+      # bare-build signs and cannot notarize, so without this Gatekeeper blocks
+      # the binary on every Mac that did not build it — reporting the file as
+      # damaged, which sends people looking in the wrong place. Skips itself
+      # when no credentials are configured, so the workflow is the same before
+      # and after they exist.
+      - name: Notarize (macOS)
+        if: runner.os == 'macOS'
+        env:
+          NOTARY_PROFILE: ${{ secrets.NOTARY_PROFILE }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+        run: node scripts/notarize-macos.mjs apps/${{ matrix.app.name }}/out/${{ matrix.target.host }}/${{ matrix.app.binary }}
+
       # Every runner is native to the target it builds, so all of them can
       # execute what they produce. An artifact that compiles but has never been
       # run is not evidence of anything. Deliberately after signing, because
@@ -88,12 +102,62 @@ jobs:
           path: apps/${{ matrix.app.name }}/out/${{ matrix.target.host }}
           if-no-files-found: error
 
+  desktop:
+    # The application people actually install, which the binary matrix above
+    # does not cover: it is Electron, packaged by Forge into a DMG, an MSIX and
+    # an AppImage rather than a standalone Bare binary.
+    #
+    # Three targets rather than six. Forge builds for the architecture it runs
+    # on, and the arm64 runners are not needed until there is demand for them.
+    name: desktop ${{ matrix.target.host }}
+    runs-on: ${{ matrix.target.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - { runner: ubuntu-latest, host: linux-x64 }
+          - { runner: macos-latest, host: darwin-arm64 }
+          - { runner: windows-latest, host: win32-x64 }
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      # Signing is by presence of the secrets, matching the binary matrix.
+      # MAC_CODESIGN_IDENTITY and WINDOWS_SIGN_HOOK are read by forge.config.js;
+      # unset, it packages unsigned rather than failing.
+      - name: Package installers
+        working-directory: apps/chat
+        env:
+          MAC_CODESIGN_IDENTITY: ${{ secrets.MAC_CODESIGN_IDENTITY }}
+          KEYCHAIN_PROFILE: ${{ secrets.NOTARY_PROFILE }}
+          WINDOWS_SIGN_HOOK: ${{ secrets.WINDOWS_SIGN_HOOK }}
+        run: pnpm make
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.target.host }}
+          path: apps/chat/out/make
+          if-no-files-found: error
+
   assemble:
     # Collects every platform artifact into the by-arch layout that pear stage
     # expects. Staging and seeding are deliberately manual until the release
     # multisig policy is agreed.
     name: assemble deployment
-    needs: build
+    needs: [build, desktop]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

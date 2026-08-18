@@ -84,14 +84,17 @@ module.exports = {
         ]
       }
     },
+    // Flatpak and Snap are configured but not decided: neither can receive
+    // peer-to-peer updates, so shipping through them means an application that
+    // silently stops updating itself. See the open decisions in ROADMAP.md.
     {
       name: 'pear-electron-forge-maker-flatpak',
       platforms: ['linux'],
       config: {
-        appId: 'com.pears.HelloPear',
+        appId: 'ai.lightchain.Hub',
         icon: `${packagerConfig.icon}.png`,
-        comment: 'Integrating Pear into a hello world electron desktop app',
-        categories: ['Development']
+        comment: pkg.description,
+        categories: ['Network', 'Chat']
       }
     },
     {
@@ -100,13 +103,13 @@ module.exports = {
       config: {
         icon: `${packagerConfig.icon}.png`,
         snapcraft: {
-          summary: 'Integrating Pear into a hello world electron desktop app',
+          summary: pkg.description,
           description:
-            'End-to-end boilerplate for embedding pear-runtime into Electron apps and deploying peer-to-peer application updates.',
-          contact: 'hello@holepunchto.to',
-          license: 'Apache-2.0',
-          issues: 'https://github.com/holepunchto/hello-pear-electron/issues',
-          website: 'https://github.com/holepunchto/hello-pear-electron',
+            'Peer-to-peer rooms between people, and paid inference from models on the Lightchain network. Keys stay on your machine.',
+          contact: 'https://github.com/lightchain-protocol/lightchain-p2p/issues',
+          license: 'MIT',
+          issues: 'https://github.com/lightchain-protocol/lightchain-p2p/issues',
+          website: 'https://lightchain.ai',
           app: {
             extensions: ['gnome'],
             plugs: [

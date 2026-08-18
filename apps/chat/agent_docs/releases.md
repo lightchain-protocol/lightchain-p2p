@@ -5,15 +5,21 @@
 > facts — the code is the reference for everything else. Index:
 > [AGENTS.md](../AGENTS.md).
 
-- `integrate.yml`: lint only — no build, no tests. `build-release.yml`: manual
-  dispatch, five per-platform jobs gated on the GitHub `release` environment
-  (signing secrets live there); covers only "make distributables" — `pear build`
-  and staging stay manual.
-- `publish.yml` npm-publishes on any `v*` tag (what `npm version` creates) — don't
-  tag unless releasing.
-- Rebrand trap: CI lowercases `productName` with `tr` only, but the snap/flatpak
-  makers also replace non-`[a-z0-9-]` chars — a `productName` with spaces or
-  punctuation breaks the Linux jobs' artifact lookup.
+- This repository has **two** workflows, not the template's three. `ci.yml` runs
+  format, lint, typecheck, test and build on Linux only. `build-matrix.yml` runs
+  on a `v*` tag or by hand: standalone Bare binaries for supervisor and seeder
+  across six hosts, plus Forge installers for chat on three. There is no
+  `integrate.yml`, no `build-release.yml` and no `publish.yml`, and nothing
+  npm-publishes on a tag.
+- **Nothing is released.** Both jobs upload artifacts; no GitHub Release is
+  created, and `pear stage`, `seed`, `provision` and `multisig` are all manual
+  until the release policy is agreed.
+- Signing is by presence of a secret, everywhere. Unset, the step skips and the
+  build produces an unsigned artifact rather than failing — so the workflow is
+  the same before and after certificates exist.
+- Rebrand trap: the snap and flatpak makers replace non-`[a-z0-9-]` characters
+  in `productName`, so anything with spaces or punctuation breaks the Linux
+  artifact lookup. `LightchainChat` is deliberately one word for this reason.
 - `package.json#upgrade` decides the release line — every build follows the link it
   ships with. `pear.json#multisig` derives the production key: **any edit = new
   key**.

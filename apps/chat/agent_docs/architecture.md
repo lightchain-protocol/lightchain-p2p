@@ -34,7 +34,7 @@ The code is small — read it for the wiring; below are only the non-obvious fac
 - `sendToAll` broadcasts every worker channel to **all** windows; nothing restarts
   a crashed worker.
 - Per-platform storage dir is chosen in `getWorker()` (dev:
-  `<tmpdir>/pear/HelloPear`). Inside: `pear-runtime/corestore`,
+  `<tmpdir>/pear/LightchainChat`). Inside: `pear-runtime/corestore`,
   `pear-runtime/next/<length>.<fork>/` (wiped on every updates-enabled launch),
   `app-storage/` (suggested `pear.storage` for app data).
 - **A stall is usually the network, not the code, and the two look identical.** An

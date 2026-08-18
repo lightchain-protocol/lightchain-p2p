@@ -1,0 +1,53 @@
+# Flatpak manifest.
+#
+# Two values here cannot be filled in until there is somewhere to host the
+# built assets: the archive URLs and their hashes. They are left pointing
+# nowhere on purpose, so that a build fails loudly rather than fetching
+# something unexpected.
+#
+# Flatpak is also not a decided channel — a store install cannot receive
+# peer-to-peer updates, which is most of the point of this application. See the
+# open decisions in ROADMAP.md.
+id: ai.lightchain.Hub
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+base: org.electronjs.Electron2.BaseApp
+base-version: '25.08'
+command: lightchain # Must match the installed launcher script
+separate-locales: false
+finish-args:
+  # Rooms and inference both need the network; the rest is what an Electron
+  # window needs to draw itself. Nothing here reaches the host filesystem.
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --env=XCURSOR_PATH=/run/host/user-share/icons:/run/host/share/icons
+modules:
+  - name: lightchain
+    buildsystem: simple
+    build-commands:
+      - install -Dm644 ${FLATPAK_ID}.metainfo.xml -t /app/share/metainfo/
+      - install -Dm644 flatpak/${FLATPAK_ID}.desktop -t /app/share/applications/
+      - install -Dm644 flatpak/${FLATPAK_ID}.png -t /app/share/icons/hicolor/128x128/apps/
+      - install -Dm755 flatpak/entrypoint.sh /app/bin/lightchain
+      - mkdir -p /app/lib/${FLATPAK_ID}
+      - cp -r ./LightchainChat-*/* /app/lib/${FLATPAK_ID}
+    sources:
+      - type: archive
+        url: https://REPLACE-WITH-RELEASE-HOST/lightchain_0.1.0_arm64_flatpak.tar.gz
+        only-arches:
+          - aarch64
+        strip-components: 0
+        sha512: REPLACE-WITH-SHA512
+      - type: archive
+        url: https://REPLACE-WITH-RELEASE-HOST/lightchain_0.1.0_x64_flatpak.tar.gz
+        only-arches:
+          - x86_64
+        strip-components: 0
+        sha512: REPLACE-WITH-SHA512
+      - type: file
+        path: ai.lightchain.Hub.metainfo.xml
