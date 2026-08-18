@@ -96,6 +96,35 @@ captured off the live mainnet relay and checks it recovers the worker the
 dispatcher actually assigned. Signing and verifying with the same mistaken
 preimage would pass everything else.
 
+## Quoting a model into a room
+
+When one person asks a model on a room's behalf, everyone else is reading a
+quotation. A chat where anyone can attribute arbitrary text to a model is worse
+than one with no models in it, because the text arrives with the authority of
+having been paid for.
+
+So a relayed answer carries its evidence: the worker's signature, the ciphertext
+that signature covers, and the session key that opens it. Any member can then
+check two things, and both are needed:
+
+1. The worker signed **this ciphertext**, for this job and session.
+2. It decrypts, under the published key, to **exactly the text shown**.
+
+The first alone proves a worker once said something; the second alone proves the
+poster knows a key. Together they say that this worker said this. The attack
+they stop is keeping a real signed answer and putting different words in front
+of it.
+
+Publishing the session key is safe **here and nowhere else**: the room is
+already encrypted to its members and the plaintext is going into it anyway. It
+does mean a room's session must never be reused for anything private, so asking
+on a room's behalf opens its own.
+
+One honest limit: an answer that arrived in several signed frames cannot be
+quoted yet. Each frame is signed over its own ciphertext, so posting one
+chunk's evidence beside all of the text would look like proof of something it
+does not prove. `Conversation.evidence()` returns null and the relay refuses.
+
 ## History
 
 Transcripts live in an append-only log, encrypted under a key **derived from

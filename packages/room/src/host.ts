@@ -4,7 +4,7 @@ import z32 from 'z32'
 import Autobase from 'autobase'
 import BlindPairing from 'blind-pairing'
 import type Corestore from 'corestore'
-import { verifyAuthor, type ChatMessage } from '@lcai-p2p/protocol'
+import { verifyAuthor, type ChatMessage, type ModelAnswer } from '@lcai-p2p/protocol'
 import { Room, RoomError, type Identity } from './room.js'
 
 /**
@@ -50,12 +50,20 @@ export interface RoomRegistry {
  */
 export interface AttributedMessage extends ChatMessage {
   readonly verified?: boolean
+  /**
+   * Whether a relayed model answer holds up: the worker signed this ciphertext,
+   * and it decrypts to exactly the text shown. Absent when the message is not
+   * an answer.
+   */
+  readonly answered?: boolean
 }
 
 /** What a host needs to check an author claim, if it is to check them at all. */
 export interface AuthorChecks {
   recover(preimage: string, signature: string): string
   hashText(text: string): string
+  /** Checks a relayed model answer. Omit and answers are shown unproven. */
+  answer?(answer: ModelAnswer, text: string): boolean
 }
 
 /** Everything a view needs to render one room. */
@@ -413,6 +421,13 @@ export class RoomHost {
     return this.#stateOf(room)
   }
 
+  /** Posts a model's answer into a room, with the evidence that it said it. */
+  async relay(key: string, text: string, answer: ModelAnswer): Promise<RoomState> {
+    const room = this.#require(key)
+    await room.relay(text, answer)
+    return this.#stateOf(room)
+  }
+
   /**
    * Grants write access to a peer whose writer key you already have.
    *
@@ -515,12 +530,21 @@ export class RoomHost {
   #attribute(roomKey: string, message: ChatMessage): AttributedMessage {
     if (!this.#verify) return message
 
+    let attributed: AttributedMessage
     try {
       const author = verifyAuthor(roomKey, message, this.#verify.recover, this.#verify.hashText)
-      return author === null ? message : { ...message, verified: true }
+      attributed = author === null ? message : { ...message, verified: true }
     } catch {
-      return { ...message, verified: false }
+      attributed = { ...message, verified: false }
     }
+
+    // Who relayed it and what the model said are separate claims, and the
+    // second does not depend on the first: a stranger can quote a model
+    // provably.
+    if (!message.answer) return attributed
+
+    const answered = this.#verify.answer?.(message.answer, message.text) ?? false
+    return { ...attributed, answered }
   }
 
   async #open(record: { key?: string; namespace: string; encryptionKey?: string }): Promise<Room> {

@@ -20,6 +20,7 @@ export {
   parseEntry,
   type AddWriterCommand,
   type ChatMessage,
+  type ModelAnswer,
   type RoomEntry
 } from './message.js'
 

@@ -77,6 +77,11 @@ export class Conversation {
   #pending: { resolve(text: string): void; reject(error: Error): void } | null = null
   /** By sequence number, so duplicates collapse and order is the wire's, not arrival's. */
   #chunks = new Map<number, string>()
+  /**
+   * The signed frames behind the last answer, kept so it can be quoted to
+   * somebody else with the evidence attached.
+   */
+  #evidence = new Map<number, { ciphertext: string; signature: string }>()
 
   readonly #chain: ConversationOptions['chain']
   readonly #verify: boolean
@@ -330,6 +335,10 @@ export class Conversation {
         }
 
         this.#chunks.set(seq, text)
+        this.#evidence.set(seq, {
+          ciphertext: message.payload,
+          signature: message.signature ?? ''
+        })
         onProgress({ phase: 'token', text })
       }
     }
@@ -377,6 +386,7 @@ export class Conversation {
     if (prompt.trim() === '') throw new ConversationError('the prompt is empty')
 
     this.#chunks.clear()
+    this.#evidence.clear()
 
     const answer = new Promise<string>((resolve, reject) => {
       this.#pending = { resolve, reject }
@@ -414,6 +424,28 @@ export class Conversation {
 
     onProgress({ phase: 'done', jobId })
     return { jobId, text }
+  }
+
+  /**
+   * Everything needed to quote the last answer to somebody else.
+   *
+   * Null when the answer arrived in more than one frame. Each frame is signed
+   * over its own ciphertext, so a chunked answer has no single artifact that
+   * covers the whole text — and posting one chunk's evidence beside all of the
+   * text would look like proof of something it does not prove. Refusing is the
+   * only honest option until the format carries a list.
+   */
+  evidence(): { ciphertext: string; sessionKey: string; signature: string } | null {
+    if (this.#evidence.size !== 1 || !this.#sessionKey) return null
+
+    const [only] = [...this.#evidence.values()]
+    if (!only?.signature) return null
+
+    return {
+      ciphertext: only.ciphertext,
+      sessionKey: toHex(this.#sessionKey),
+      signature: only.signature
+    }
   }
 
   /**

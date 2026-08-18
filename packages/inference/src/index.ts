@@ -29,3 +29,10 @@ export {
   verifyFrame,
   type FrameToVerify
 } from './verify.js'
+
+export {
+  AnswerError,
+  isAnswerVerified,
+  verifyRoomAnswer,
+  type AnswerChecks
+} from './room-answer.js'

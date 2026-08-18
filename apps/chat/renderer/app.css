@@ -279,6 +279,14 @@ body {
   color: var(--lc-fg);
 }
 
+.message-proof {
+  padding: 0 6px;
+  border-radius: var(--lc-radius-sm, 4px);
+  background: var(--lc-bg-elevated-2);
+  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-xs);
+}
+
 .message-warning {
   padding: 0 6px;
   border-radius: var(--lc-radius-sm, 4px);

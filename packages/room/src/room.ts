@@ -9,7 +9,8 @@ import {
   isValidEntry,
   orderMessages,
   parseEntry,
-  type ChatMessage
+  type ChatMessage,
+  type ModelAnswer
 } from '@lcai-p2p/protocol'
 
 /**
@@ -209,6 +210,42 @@ export class Room {
       from: this.writerKey,
       at: Date.now(),
       text
+    }
+
+    const signed = this.#identity
+      ? {
+          ...message,
+          author: this.#identity.address,
+          sig: this.#identity.sign(
+            authorPreimage(this.key, message, (t) => this.#identity!.hashText(t))
+          )
+        }
+      : message
+
+    await this.#base.append(signed)
+    return signed
+  }
+
+  /**
+   * Posts a model's answer into the room, with everything needed to check it.
+   *
+   * Signed by the relayer as well, so there are two separate claims: this
+   * person put it here, and that worker said it. The second is the one that
+   * matters, and it does not depend on trusting the first.
+   */
+  async relay(text: string, answer: ModelAnswer): Promise<ChatMessage> {
+    if (!this.writable) {
+      throw new RoomError('not a writer in this room yet')
+    }
+
+    const message: ChatMessage = {
+      type: 'message',
+      v: MESSAGE_VERSION,
+      id: b4a.toString(crypto.randomBytes(12), 'hex'),
+      from: this.writerKey,
+      at: Date.now(),
+      text,
+      answer
     }
 
     const signed = this.#identity

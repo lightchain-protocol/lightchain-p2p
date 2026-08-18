@@ -38,7 +38,7 @@ import {
   toHex
 } from '@lcai-p2p/chain'
 import { Wallet } from '@lcai-p2p/wallet'
-import { Api, Conversation, History } from '@lcai-p2p/inference'
+import { Api, Conversation, History, isAnswerVerified } from '@lcai-p2p/inference'
 
 /**
  * The data plane.
@@ -354,6 +354,27 @@ const networkOf = () => (setting('network', 'NETWORK') === 'testnet' ? 'testnet'
 let network = networkOf()
 let rpc = new Rpc({ url: NETWORKS[network].rpcUrl, errors: lightchainErrors() })
 
+/**
+ * What checking a relayed model answer needs: the chain it was signed against
+ * and the registry address inside the digest.
+ *
+ * Resolved in the background rather than awaited, because a room must open
+ * whether or not an RPC is reachable. Until it lands, answers read as unproven,
+ * which is the truthful state — nothing has been checked.
+ */
+let answerChecks = null
+
+async function resolveAnswerChecks() {
+  try {
+    const [chainId, addresses] = await Promise.all([rpc.chainId(), resolveAddresses(rpc)])
+    answerChecks = { chainId, jobRegistry: addresses.jobRegistry }
+  } catch {
+    answerChecks = null
+  }
+}
+
+void resolveAnswerChecks()
+
 const rooms = await RoomHost.open({
   store: chatStore,
   swarm,
@@ -365,7 +386,11 @@ const rooms = await RoomHost.open({
     // Hashed as text, because that is what signMessage signs. Using the
     // 32-byte-digest form here instead would reject every honest message.
     recover: (preimage, signature) => recoverAddress(hashMessageForSigning(preimage), signature),
-    hashText: (text) => toHex(keccak256(new TextEncoder().encode(text)))
+    hashText: (text) => toHex(keccak256(new TextEncoder().encode(text))),
+    // Needs the chain and registry the worker signed against, which are known
+    // only once resolved — so answers read as unproven until then rather than
+    // blocking the room from opening.
+    answer: (answer, text) => answerChecks !== null && isAnswerVerified(answer, text, answerChecks)
   }
 })
 
@@ -519,6 +544,8 @@ async function handle(req) {
       // balance all belong to the network it was made on.
       network = networkOf()
       rpc = new Rpc({ url: NETWORKS[network].rpcUrl, errors: lightchainErrors() })
+      answerChecks = null
+      void resolveAnswerChecks()
       forgetInference()
 
       return { ok: true }
@@ -712,6 +739,65 @@ async function handle(req) {
     case 'ai.forget': {
       await (await transcripts()).deleted(String(req.conversation ?? ''))
       return { ok: true }
+    }
+
+    /**
+     * Asks a model on behalf of a room, and posts the answer back into it.
+     *
+     * The person who asks pays: their session, their prepaid balance, their
+     * fee. Everyone else reads a quotation, which is why the answer carries the
+     * worker's signature, the ciphertext it covers and the key that opens it —
+     * so the room can check the model really said this rather than trusting
+     * whoever pasted it.
+     *
+     * The session key is published into the room, which is safe here and
+     * nowhere else: the room is already encrypted to its members and the answer
+     * is going into it regardless. It does mean a room session must never be
+     * reused for anything private, so this makes its own.
+     */
+    case 'room.ask': {
+      const roomKey = String(req.key ?? '')
+      const prompt = String(req.prompt ?? '')
+      const api = await inference()
+
+      const models = await api.models()
+      const model = models.find((m) => m.name === req.model)
+      if (!model) throw new Error(`no model called ${req.model}`)
+
+      send({ t: 'ai.progress', phase: 'drawing' })
+
+      const asking = new Conversation({
+        api,
+        relayUrl: NETWORKS[network].relayUrl,
+        model,
+        chain: { rpc, account: wallet.account() }
+      })
+
+      try {
+        await asking.start((progress) => send({ t: 'ai.progress', ...progress }))
+        const answer = await asking.ask(prompt, (progress) =>
+          send({ t: 'ai.progress', ...progress })
+        )
+
+        const evidence = asking.evidence()
+        if (!evidence) {
+          throw new Error(
+            'this answer arrived in several signed pieces, and cannot yet be quoted into a room with proof attached'
+          )
+        }
+
+        await rooms.relay(roomKey, answer.text, {
+          model: model.name,
+          jobId: String(answer.jobId),
+          sessionId: String(asking.sessionId),
+          worker: String(asking.worker),
+          ...evidence
+        })
+
+        return { jobId: answer.jobId }
+      } finally {
+        asking.close()
+      }
     }
 
     case 'ai.stop': {

@@ -271,6 +271,20 @@ function renderRoom() {
 
     meta.append(author, stamp)
 
+    // An answer relayed from a model. Attributed to the model rather than to
+    // whoever paid for it, with the room's own verdict on whether it holds.
+    if (message.answer) {
+      author.textContent = message.answer.model
+
+      const provenance = document.createElement('span')
+      provenance.className = message.answered ? 'message-proof' : 'message-warning'
+      provenance.textContent = message.answered ? 'signed by the worker' : 'unproven'
+      provenance.title = message.answered
+        ? `Worker ${message.answer.worker} signed this text for job ${message.answer.jobId}.`
+        : 'The evidence attached to this answer does not check out. Read it as ordinary text from whoever posted it.'
+      meta.append(provenance)
+    }
+
     const text = document.createElement('p')
     text.className = 'message-text'
     text.textContent = message.text
@@ -422,6 +436,22 @@ async function submitMessage() {
     el.composerInput.value = text
     resize()
     toast(err.message, 'error')
+    return
+  }
+
+  // The question is in the room either way; the answer follows if a model was
+  // addressed. Deliberately after the message lands, so the room sees what was
+  // asked even when the answer fails or is never paid for.
+  const asked = addressedToModel(text)
+  if (!asked) return
+
+  const key = activeKey
+  toast(`Asking ${asked.model.name}…`)
+
+  try {
+    await request('room.ask', { key, model: asked.model.name, prompt: asked.prompt })
+  } catch (err) {
+    toast(err.message, 'error')
   }
 }
 
@@ -557,6 +587,23 @@ async function refreshWorker() {
 }
 
 el.workerRefresh.addEventListener('click', () => void refreshWorker())
+
+// --- Asking a model in a room -----------------------------------------------
+
+/**
+ * A room message addressed to a model, if it is one.
+ *
+ * `@name the question`. Matched against the models actually on the network
+ * rather than any `@word`, so mentioning a person called @sam does not spend
+ * anybody's money.
+ */
+function addressedToModel(text) {
+  const match = /^@(\S+)\s+([\s\S]+)$/.exec(text.trim())
+  if (!match) return null
+
+  const model = models.find((m) => m.name.toLowerCase() === match[1].toLowerCase())
+  return model ? { model, prompt: match[2].trim() } : null
+}
 
 // --- Funding ----------------------------------------------------------------
 

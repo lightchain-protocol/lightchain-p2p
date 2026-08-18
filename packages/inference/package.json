@@ -46,6 +46,7 @@
   "dependencies": {
     "@lcai-p2p/chain": "workspace:*",
     "@lcai-p2p/inference-crypto": "workspace:*",
+    "@lcai-p2p/protocol": "workspace:*",
     "bare-fetch": "^1.2.4",
     "bare-fs": "^4.4.1",
     "bare-process": "^4.2.5",

@@ -381,6 +381,9 @@ importers:
       '@lcai-p2p/inference-crypto':
         specifier: workspace:*
         version: link:../inference-crypto
+      '@lcai-p2p/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       bare-fetch:
         specifier: ^1.2.4
         version: 1.6.0(bare-buffer@3.7.0)(bare-events@2.9.1)

@@ -60,6 +60,38 @@ export interface ChatMessage {
    * malformed entry rather than an unsigned one.
    */
   readonly sig?: string
+  /**
+   * Where this text came from, when a model produced it rather than a person.
+   *
+   * Carried on an ordinary message rather than as a new entry type, so a client
+   * that predates this shows the answer as a normal message from whoever asked
+   * — which is true, and better than dropping it — while a client that
+   * understands it can check the model really said this.
+   */
+  readonly answer?: ModelAnswer
+}
+
+/**
+ * Everything needed to check a model's answer, by anyone in the room.
+ *
+ * The worker signs the **ciphertext**, so proving it said something means
+ * publishing both the ciphertext and the key that opens it. That is safe here
+ * and nowhere else: a room is already encrypted to its members, and the
+ * plaintext is being posted into it regardless. It does mean the session key
+ * must not be shared with anything outside the room.
+ */
+export interface ModelAnswer {
+  readonly model: string
+  readonly jobId: string
+  readonly sessionId: string
+  /** The worker the session was assigned to, as an address. */
+  readonly worker: string
+  /** Base64. What the worker actually signed. */
+  readonly ciphertext: string
+  /** Hex, 32 bytes. Opens the ciphertext, and only this room's traffic. */
+  readonly sessionKey: string
+  /** The worker's signature over the response digest. */
+  readonly signature: string
 }
 
 export interface AddWriterCommand {
@@ -172,8 +204,54 @@ export function parseEntry(value: unknown): RoomEntry {
   }
 
   const withReply = replyTo === undefined ? base : { ...base, replyTo }
-  if (author === undefined && sig === undefined) return withReply
-  return { ...withReply, author: author as string | undefined, sig: sig as string | undefined }
+  const answer = parseAnswer(value.answer)
+
+  const attributed =
+    author === undefined && sig === undefined
+      ? withReply
+      : { ...withReply, author: author as string | undefined, sig: sig as string | undefined }
+
+  return answer === undefined ? attributed : { ...attributed, answer }
+}
+
+const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/
+const SESSION_KEY = /^0x[0-9a-fA-F]{64}$/
+const DIGITS = /^\d+$/
+
+function parseAnswer(value: unknown): ModelAnswer | undefined {
+  if (value === undefined) return undefined
+  if (!isRecord(value)) throw new MessageError('message answer must be an object')
+
+  const { model, jobId, sessionId, worker, ciphertext, sessionKey, signature } = value as Record<
+    string,
+    unknown
+  >
+
+  // All or nothing. A half-populated claim cannot be checked, and showing it as
+  // if it could would be worse than showing an ordinary message.
+  if (typeof model !== 'string' || model === '') {
+    throw new MessageError('answer model must be a non-empty string')
+  }
+  if (typeof jobId !== 'string' || !DIGITS.test(jobId)) {
+    throw new MessageError('answer jobId must be a decimal string')
+  }
+  if (typeof sessionId !== 'string' || !DIGITS.test(sessionId)) {
+    throw new MessageError('answer sessionId must be a decimal string')
+  }
+  if (typeof worker !== 'string' || !ADDRESS.test(worker)) {
+    throw new MessageError('answer worker must be a 20-byte hex address')
+  }
+  if (typeof ciphertext !== 'string' || !BASE64.test(ciphertext)) {
+    throw new MessageError('answer ciphertext must be base64')
+  }
+  if (typeof sessionKey !== 'string' || !SESSION_KEY.test(sessionKey)) {
+    throw new MessageError('answer sessionKey must be 32 bytes of hex')
+  }
+  if (typeof signature !== 'string' || !SIGNATURE.test(signature)) {
+    throw new MessageError('answer signature must be 65 bytes of hex')
+  }
+
+  return { model, jobId, sessionId, worker, ciphertext, sessionKey, signature }
 }
 
 /**

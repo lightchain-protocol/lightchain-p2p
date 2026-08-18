@@ -67,6 +67,13 @@ better.
 and receive messages live, and keep both the history and the write access across
 a restart. Verified between two application instances on the public DHT.
 
+**And a model can be in the room.** Address one with `@llama3-8b …` and the
+answer is posted back for everyone. Whoever asked pays; everyone else gets the
+evidence — the worker's signature, the ciphertext it covers and the key that
+opens it — so the room can check the model really said this rather than
+trusting whoever pasted it. Verified between two instances where the second
+paid nothing and held no session of its own.
+
 **The AI half works, in the app, on mainnet.** Pick a model, ask a question,
 watch the answer arrive. Job 2702 answered from the interface, paid for out of a
 prepaid balance deposited through the Wallet section:
