@@ -1109,6 +1109,30 @@ async function handle(req) {
       return { hash: sent.hash, block: receipt.blockNumber.toString() }
     }
 
+    /**
+     * Sends LCAI from this wallet to another address.
+     *
+     * A plain value transfer, with nothing clever around it. The recipient is
+     * whatever the caller passes, and the caller got it from a message this
+     * machine verified the signature on — which is the only reason an address
+     * in a chat room is safe to pay: it was proven, not typed.
+     */
+    case 'wallet.send': {
+      const to = String(req.to ?? '')
+      if (!/^0x[0-9a-fA-F]{40}$/.test(to)) throw new Error('that is not an address')
+
+      const account = wallet.account()
+      if (to.toLowerCase() === account.address.toLowerCase()) {
+        throw new Error('that is your own address')
+      }
+
+      const sent = await sendTransaction(rpc, account, { to, value: BigInt(req.amount ?? 0) })
+      const receipt = await sent.wait()
+      if (!receipt.status) throw new Error(`the transfer reverted (${sent.hash})`)
+
+      return { hash: sent.hash, block: receipt.blockNumber.toString() }
+    }
+
     case 'ai.start': {
       const api = await inference()
       const models = await api.models()

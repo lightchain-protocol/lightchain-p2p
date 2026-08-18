@@ -715,16 +715,21 @@
               </p>
             </div>
 
-            <form class="composer" id="composer">
-              <textarea
-                class="composer-input"
-                id="composer-input"
-                rows="1"
-                placeholder="Write a message"
-                aria-label="Message"
-              ></textarea>
-              <button class="button button-primary" type="submit" id="send-btn">Send</button>
-            </form>
+            <!-- Anchored to the composer so the list appears above what is
+                 being typed, the way every mention picker does. -->
+            <div class="composer-wrap">
+              <ul class="mentions" id="mentions" role="listbox" aria-label="Models" hidden></ul>
+              <form class="composer" id="composer">
+                <textarea
+                  class="composer-input"
+                  id="composer-input"
+                  rows="1"
+                  placeholder="Write a message, or @ a model to ask one"
+                  aria-label="Message"
+                ></textarea>
+                <button class="button button-primary" type="submit" id="send-btn">Send</button>
+              </form>
+            </div>
           </div>
         </div>
 
@@ -1038,6 +1043,37 @@
           </button>
         </div>
       </div>
+    </dialog>
+
+    <dialog class="dialog" id="pay-dialog">
+      <form method="dialog" class="dialog-form" id="pay-form">
+        <h2 class="dialog-title">Send LCAI</h2>
+        <p class="dialog-body">
+          Straight from your wallet to theirs, on chain. Nothing about this goes through the room —
+          it is a transfer, and it is irreversible.
+        </p>
+        <div class="key-row">
+          <code class="key" id="pay-to"></code>
+        </div>
+        <p class="dialog-note" id="pay-proof"></p>
+        <label class="field">
+          <span class="field-label">Amount in LCAI</span>
+          <input
+            class="input"
+            id="pay-amount"
+            type="text"
+            inputmode="decimal"
+            placeholder="0.1"
+            autocomplete="off"
+          />
+        </label>
+        <p class="dialog-note" id="pay-available"></p>
+        <p class="dialog-error" id="pay-error" hidden></p>
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close="pay-dialog">Cancel</button>
+          <button class="button button-primary" type="submit" id="pay-submit">Send</button>
+        </div>
+      </form>
     </dialog>
 
     <dialog class="dialog" id="rename-dialog">

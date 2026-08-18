@@ -800,23 +800,111 @@ dash.refresh.addEventListener('click', () => void refreshDashboard())
 const URL_PATTERN = /https?:\/\/[^\s<>"'`]+[^\s<>"'`.,;:!?)\]}]/g
 
 /**
- * Puts message text into a node, turning links into links.
+ * The inline marks, in the order they are looked for.
+ *
+ * Code first and deliberately: inside backticks nothing else applies, so
+ * `**not bold**` in a code span stays literal. Anything matched here is
+ * consumed whole, which is what stops a later rule reaching into it.
+ */
+const MARKS = [
+  { pattern: /`([^`\n]+)`/, tag: 'code', className: 'md-code' },
+  { pattern: /\*\*([^*\n]+)\*\*/, tag: 'strong', className: null },
+  { pattern: /(?<![\w*])\*([^*\n]+)\*(?![\w*])/, tag: 'em', className: null },
+  { pattern: /~~([^~\n]+)~~/, tag: 's', className: null }
+]
+
+/**
+ * Shortcodes worth typing. Deliberately a short list rather than a full emoji
+ * set: a thousand names nobody remembers is a dictionary, not a feature.
+ */
+const EMOJI = {
+  ':)': '🙂',
+  ':(': '🙁',
+  ':D': '😀',
+  ';)': '😉',
+  ':smile:': '😄',
+  ':grin:': '😁',
+  ':wink:': '😉',
+  ':thumbsup:': '👍',
+  ':thumbsdown:': '👎',
+  ':heart:': '❤️',
+  ':fire:': '🔥',
+  ':tada:': '🎉',
+  ':eyes:': '👀',
+  ':thinking:': '🤔',
+  ':check:': '✅',
+  ':x:': '❌',
+  ':warning:': '⚠️',
+  ':rocket:': '🚀',
+  ':100:': '💯',
+  ':pray:': '🙏',
+  ':clap:': '👏',
+  ':lock:': '🔒'
+}
+
+const EMOJI_PATTERN = new RegExp(
+  Object.keys(EMOJI)
+    .map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|'),
+  'g'
+)
+
+/**
+ * Puts message text into a node, with links, marks and emoji.
  *
  * Built from text nodes and elements, never from a markup string. The content
  * is written by other people, and the moment any of it reaches `innerHTML` a
- * room member can run script in everybody else's window.
+ * room member can run script in everybody else's window. That constraint is
+ * why this is a small recursive matcher rather than a markdown library: every
+ * one of those produces HTML, and the safe ones are larger than this file.
  */
 function renderText(into, text) {
   into.replaceChildren()
-  URL_PATTERN.lastIndex = 0
+  into.append(...inline(text))
+}
 
-  let at = 0
-  for (const match of text.matchAll(URL_PATTERN)) {
-    if (match.index > at) into.append(text.slice(at, match.index))
-    into.append(link(match[0]))
-    at = match.index + match[0].length
+/** The pieces of one run of text, as nodes. */
+function inline(text) {
+  if (text === '') return []
+
+  // Links win over marks, because a URL is full of characters the marks use
+  // and an underscore in a query string is not emphasis.
+  URL_PATTERN.lastIndex = 0
+  const url = URL_PATTERN.exec(text)
+  if (url) {
+    // Both offsets are taken before recursing. The pattern is global, so its
+    // `lastIndex` is shared state the recursive call overwrites — reading it
+    // afterwards gave the wrong tail, and when it came back zero the slice was
+    // the whole string again and this recursed until the renderer hung.
+    const start = url.index
+    const end = start + url[0].length
+    return [...inline(text.slice(0, start)), link(url[0]), ...inline(text.slice(end))]
   }
-  if (at < text.length) into.append(text.slice(at))
+
+  for (const mark of MARKS) {
+    const match = mark.pattern.exec(text)
+    if (!match) continue
+
+    const node = document.createElement(mark.tag)
+    if (mark.className) node.className = mark.className
+    // Code is literal all the way down; everything else can nest.
+    if (mark.tag === 'code') node.append(...emoji(match[1]))
+    else node.append(...inline(match[1]))
+
+    return [
+      ...inline(text.slice(0, match.index)),
+      node,
+      ...inline(text.slice(match.index + match[0].length))
+    ]
+  }
+
+  return emoji(text)
+}
+
+/** Text with shortcodes swapped for the characters they name. */
+function emoji(text) {
+  EMOJI_PATTERN.lastIndex = 0
+  return [text.replace(EMOJI_PATTERN, (found) => EMOJI[found])]
 }
 
 /**
@@ -897,10 +985,16 @@ function renderRoom() {
           : message.verified
             ? shortAddress(message.author)
             : short(message.from)
-      notice.append(
-        el2('span', 'system-text', `${who} ${message.text}`),
-        el2('span', 'system-when', time(message.at))
-      )
+
+      // "You joined" rather than "You added 0f8040… to the room" when the
+      // writer being added is this peer — which is how it reads to the person
+      // who was let in, and is the same fact from the other side.
+      const text =
+        message.event.kind === 'joined' && message.event.writer === room.writerKey
+          ? 'You joined the room'
+          : `${who} ${message.text}`
+
+      notice.append(el2('span', 'system-text', text), el2('span', 'system-when', time(message.at)))
       el.messages.append(notice)
       previous = null
       continue
@@ -924,17 +1018,34 @@ function renderRoom() {
     const meta = document.createElement('div')
     meta.className = 'message-meta'
 
+    const mine = message.from === room.writerKey
     const author = document.createElement('span')
     author.className = 'message-author'
     // The wallet address when the message proves one, because that is an
     // identity that means something outside this room. The writer key is a
     // fallback for messages written before signing existed.
-    author.textContent =
-      message.from === room.writerKey
-        ? 'you'
-        : message.verified
-          ? shortAddress(message.author)
-          : short(message.from)
+    author.textContent = mine
+      ? 'you'
+      : message.verified
+        ? shortAddress(message.author)
+        : short(message.from)
+
+    // Only a verified author can be paid, and only from the message that proved
+    // them. An address that was merely claimed is an address an impostor chose,
+    // and paying it would send money to whoever asked most convincingly.
+    if (!mine && message.verified === true) {
+      author.classList.add('message-author-payable')
+      author.setAttribute('role', 'button')
+      author.setAttribute('tabindex', '0')
+      author.title = `Send LCAI to ${message.author}`
+      const pay = () => openPay(message.author)
+      author.addEventListener('click', pay)
+      author.addEventListener('keydown', (evt) => {
+        if (evt.key !== 'Enter' && evt.key !== ' ') return
+        evt.preventDefault()
+        pay()
+      })
+    }
 
     if (message.verified === false) {
       // Not hidden: somebody is in the room saying this, and pretending
@@ -1081,6 +1192,75 @@ function stopTyping() {
   typingTimer = null
   iAmTyping(false)
 }
+
+// --- Paying someone in the room ---------------------------------------------
+
+/**
+ * Sends LCAI to a person in the room.
+ *
+ * Reachable only from a message whose signature this machine checked. That is
+ * the whole safety story: the address is not typed and not claimed, it is
+ * recovered from a signature over that exact message in that exact room, so
+ * paying it cannot be redirected by anyone who did not write it.
+ */
+const pay = {
+  dialog: document.getElementById('pay-dialog'),
+  form: document.getElementById('pay-form'),
+  to: document.getElementById('pay-to'),
+  proof: document.getElementById('pay-proof'),
+  amount: document.getElementById('pay-amount'),
+  available: document.getElementById('pay-available'),
+  error: document.getElementById('pay-error'),
+  submit: document.getElementById('pay-submit')
+}
+
+let payingTo = null
+
+function openPay(address) {
+  payingTo = address
+  pay.to.textContent = address
+  pay.proof.textContent =
+    'This address was recovered from the signature on their message, not typed by anyone.'
+  pay.amount.value = ''
+  pay.error.hidden = true
+  pay.available.textContent = lastSummary?.balances
+    ? `${formatLcai(lastSummary.balances.native)} LCAI in your wallet.`
+    : ''
+  pay.dialog.showModal()
+  pay.amount.focus()
+}
+
+pay.form.addEventListener('submit', async (evt) => {
+  evt.preventDefault()
+  pay.error.hidden = true
+
+  let amount
+  try {
+    amount = toWei(pay.amount.value)
+    if (amount === 0n) throw new Error('Sending nothing would just cost you the gas')
+  } catch (err) {
+    pay.error.textContent = err.message
+    pay.error.hidden = false
+    return
+  }
+
+  pay.submit.disabled = true
+  pay.submit.textContent = 'Sending…'
+
+  try {
+    const sent = await request('wallet.send', { to: payingTo, amount: amount.toString() })
+    toast(`Sent in block ${sent.block}`)
+    pay.dialog.close()
+    void refreshTitlebarBalance()
+    void refreshDashboard()
+  } catch (err) {
+    pay.error.textContent = err.message
+    pay.error.hidden = false
+  } finally {
+    pay.submit.disabled = false
+    pay.submit.textContent = 'Send'
+  }
+})
 
 // --- Naming a room ----------------------------------------------------------
 
@@ -1367,6 +1547,12 @@ async function submitMessage() {
   // The question is in the room either way; the answer follows if a model was
   // addressed. Deliberately after the message lands, so the room sees what was
   // asked even when the answer fails or is never paid for.
+  //
+  // The list is loaded first when the message looks like it addresses one,
+  // because otherwise a cold start matches nothing and the ask is dropped in
+  // silence.
+  if (/^@\S+\s+\S/.test(text.trim())) await ensureModels().catch(() => {})
+
   const asked = addressedToModel(text)
   if (!asked) return
 
@@ -1386,6 +1572,28 @@ el.composer.addEventListener('submit', (evt) => {
 })
 
 el.composerInput.addEventListener('keydown', (evt) => {
+  // The picker owns these keys while it is open, or Enter sends "@lla" as a
+  // message instead of completing it.
+  if (!mentions.hidden && mentionMatches.length > 0) {
+    if (evt.key === 'ArrowDown' || evt.key === 'ArrowUp') {
+      evt.preventDefault()
+      const step = evt.key === 'ArrowDown' ? 1 : -1
+      mentionAt = (mentionAt + step + mentionMatches.length) % mentionMatches.length
+      renderMentions()
+      return
+    }
+    if (evt.key === 'Enter' || evt.key === 'Tab') {
+      evt.preventDefault()
+      chooseMention(mentionAt)
+      return
+    }
+    if (evt.key === 'Escape') {
+      evt.preventDefault()
+      closeMentions()
+      return
+    }
+  }
+
   if (evt.key !== 'Enter' || evt.shiftKey) return
   evt.preventDefault()
   void submitMessage()
@@ -1401,9 +1609,99 @@ el.composerInput.addEventListener('input', () => {
   // An empty box is not typing. Clearing it back to nothing should stop the
   // indicator rather than keep it alive on the last keystroke.
   iAmTyping(el.composerInput.value !== '')
+  void offerModels()
 })
 
-el.composerInput.addEventListener('blur', stopTyping)
+el.composerInput.addEventListener('blur', () => {
+  stopTyping()
+  // Deferred, or clicking an entry in the list dismisses it before the click
+  // is delivered.
+  setTimeout(closeMentions, 150)
+})
+
+// --- Addressing a model -----------------------------------------------------
+
+/**
+ * A picker for `@model`, which is otherwise a feature nobody can find.
+ *
+ * The ask itself works by typing the name, and did before this existed — but a
+ * capability whose only affordance is knowing the exact name of something is a
+ * capability that does not exist for anybody who was not told.
+ */
+const mentions = document.getElementById('mentions')
+let mentionMatches = []
+let mentionAt = -1
+
+/** The `@word` being typed at the caret, if the message starts with one. */
+function mentionPrefix() {
+  const value = el.composerInput.value
+  // Only at the start: a model is addressed, not mentioned in passing, and the
+  // worker takes the whole remainder as the prompt.
+  const match = /^@(\S*)$/.exec(value)
+  return match ? match[1] : null
+}
+
+async function offerModels() {
+  const prefix = mentionPrefix()
+  if (prefix === null) return closeMentions()
+
+  try {
+    await ensureModels()
+  } catch {
+    return closeMentions()
+  }
+
+  mentionMatches = models.filter((m) => m.name.toLowerCase().startsWith(prefix.toLowerCase()))
+  if (mentionMatches.length === 0) return closeMentions()
+
+  mentionAt = 0
+  renderMentions()
+}
+
+function renderMentions() {
+  mentions.replaceChildren()
+
+  mentionMatches.forEach((model, i) => {
+    const item = el2('li', 'mention' + (i === mentionAt ? ' is-active' : ''))
+    item.setAttribute('role', 'option')
+    item.setAttribute('aria-selected', String(i === mentionAt))
+
+    item.append(el2('span', 'mention-name', `@${model.name}`))
+    // The price is the reason this is not a plain mention: addressing a model
+    // spends money, and the amount belongs next to the choice.
+    item.append(
+      el2(
+        'span',
+        'mention-meta',
+        model.fee === null ? 'price unknown' : `${formatLcai(model.fee)} LCAI a question`
+      )
+    )
+
+    item.addEventListener('mousedown', (evt) => {
+      // mousedown, not click: the input blurs first otherwise.
+      evt.preventDefault()
+      chooseMention(i)
+    })
+    mentions.append(item)
+  })
+
+  mentions.hidden = false
+}
+
+function chooseMention(index) {
+  const model = mentionMatches[index]
+  if (!model) return
+  el.composerInput.value = `@${model.name} `
+  closeMentions()
+  el.composerInput.focus()
+  resize()
+}
+
+function closeMentions() {
+  mentions.hidden = true
+  mentionMatches = []
+  mentionAt = -1
+}
 
 // --- Worker ----------------------------------------------------------------
 
@@ -1646,6 +1944,32 @@ balanceButton.addEventListener('click', () => {
 setInterval(() => void refreshTitlebarBalance(), 60_000)
 
 // --- Asking a model in a room -----------------------------------------------
+
+/**
+ * The published models, fetched at most once until something invalidates them.
+ *
+ * The list used to arrive only when the Models section was opened, and asking a
+ * model in a room is matched against it — so on a fresh launch `@llama3-8b …`
+ * matched nothing, returned null, and posted as an ordinary message. No error,
+ * no hint, and no way to tell that a feature existed at all.
+ */
+let modelsLoaded = null
+
+function ensureModels() {
+  if (modelsLoaded) return modelsLoaded
+  modelsLoaded = request('ai.models')
+    .then((reply) => {
+      models = reply.models
+      return models
+    })
+    .catch((err) => {
+      // Not cached, so the next `@` tries again rather than being stuck with a
+      // failure from whenever the network happened to be down.
+      modelsLoaded = null
+      throw err
+    })
+  return modelsLoaded
+}
 
 /**
  * A room message addressed to a model, if it is one.
@@ -1934,8 +2258,10 @@ async function refreshModels() {
 
   ai.note.textContent = 'Loading…'
   try {
-    const reply = await request('ai.models')
-    models = reply.models
+    // Refreshed rather than reused: this panel is where someone comes to see
+    // current prices and how many workers are eligible.
+    modelsLoaded = null
+    await ensureModels()
     renderModels()
 
     const funds = await request('ai.status')

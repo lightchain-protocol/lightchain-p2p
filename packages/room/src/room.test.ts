@@ -32,7 +32,20 @@ async function openRoom(peer: Peer, from?: Room, namespace?: string): Promise<Ro
   return room
 }
 
-const textsOf = async (room: Room) => (await room.messages()).map((m) => m.text)
+/**
+ * What people said, without what happened to the room.
+ *
+ * Joins and renames are ordinary messages carrying an event, so that older
+ * clients render a sentence rather than skipping the entry. Assertions about a
+ * conversation want the conversation.
+ */
+const textsOf = async (room: Room) =>
+  (await room.messages()).filter((m) => !m.event).map((m) => m.text)
+
+const eventsOf = async (room: Room) => (await room.messages()).flatMap((m) => m.event ?? [])
+
+/** How many things people said, ignoring joins and renames. */
+const spoken = async (room: Room) => (await textsOf(room)).length
 
 describe('a single writer', () => {
   it('creates a room and reads its own messages back', async () => {
@@ -159,11 +172,38 @@ describe('two writers', () => {
     await bobRoom.send('from bob')
 
     // Both sides see both messages, in the same order.
-    await waitFor(async () => (await aliceRoom.messages()).length === 2, 'alice to see both')
-    await waitFor(async () => (await bobRoom.messages()).length === 2, 'bob to see both')
+    await waitFor(async () => (await spoken(aliceRoom)) === 2, 'alice to see both')
+    await waitFor(async () => (await spoken(bobRoom)) === 2, 'bob to see both')
 
     expect(await textsOf(aliceRoom)).toEqual(await textsOf(bobRoom))
     expect((await textsOf(aliceRoom)).sort()).toEqual(['from alice', 'from bob'])
+  })
+
+  it('announces the join to everyone, including the person who joined', async () => {
+    // The add-writer command is consumed by apply and never reaches the view,
+    // so without a message alongside it a room gains a member with nothing to
+    // show for it — people just start talking and nobody knows when they came.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const bob = await net.createPeer('bob')
+
+    const aliceRoom = await openRoom(alice)
+    const bobRoom = await openRoom(bob, aliceRoom)
+    await alice.swarm.flush()
+    await bob.swarm.flush()
+
+    await aliceRoom.addWriter(bobRoom.writerKey)
+    await waitFor(async () => {
+      await bobRoom.update()
+      return bobRoom.writable
+    }, 'bob to be granted write access')
+
+    await waitFor(async () => (await eventsOf(bobRoom)).length === 1, 'bob to see the announcement')
+    expect(await eventsOf(aliceRoom)).toEqual([{ kind: 'joined', writer: bobRoom.writerKey }])
+    expect(await eventsOf(bobRoom)).toEqual(await eventsOf(aliceRoom))
+
+    // And nobody said anything, which is the other half of the claim.
+    expect(await textsOf(aliceRoom)).toEqual([])
   })
 
   it('refuses to send before being granted write access', async () => {
@@ -249,7 +289,8 @@ describe('naming a room', () => {
     const room = await openRoom(alice)
 
     await room.rename('Design')
-    expect(await textsOf(room)).toEqual(['named the room “Design”'])
+    expect((await room.messages()).map((m) => m.text)).toEqual(['named the room “Design”'])
+    expect(await eventsOf(room)).toEqual([{ kind: 'renamed', name: 'Design' }])
   })
 
   it('refuses a name longer than the limit rather than truncating one', async () => {
@@ -333,7 +374,7 @@ describe('change notification', () => {
     const afterUnsubscribe = fired
 
     await aliceRoom.send('and again')
-    await waitFor(async () => (await bobRoom.messages()).length === 2, 'bob to receive the second')
+    await waitFor(async () => (await spoken(bobRoom)) === 2, 'bob to receive the second')
 
     // Bob still converges; he is simply no longer being told about it.
     expect(fired).toBe(afterUnsubscribe)
@@ -361,7 +402,7 @@ describe('surviving the creator leaving', () => {
       return bobRoom.writable
     }, 'bob to become a writer')
 
-    await waitFor(async () => (await bobRoom.messages()).length === 1, 'bob to catch up')
+    await waitFor(async () => (await spoken(bobRoom)) === 1, 'bob to catch up')
 
     await aliceRoom.close()
     await alice.goOffline()
@@ -416,7 +457,7 @@ describe('three writers', () => {
       [bobRoom, 'bob'],
       [carolRoom, 'carol']
     ] as const) {
-      await waitFor(async () => (await room.messages()).length === 3, `${name} to see all three`, {
+      await waitFor(async () => (await spoken(room)) === 3, `${name} to see all three`, {
         timeout: 30_000
       })
     }

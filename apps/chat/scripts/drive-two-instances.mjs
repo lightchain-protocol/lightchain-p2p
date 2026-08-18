@@ -268,6 +268,47 @@ if ((await b.eval(`return document.querySelectorAll('.message').length`)) !== be
 }
 step(11, 'and typing added nothing to the history')
 
+// The join was announced, and B was told in the second person.
+await b.until(
+  `[...document.querySelectorAll('.system-text')].some((n) => n.textContent === 'You joined the room')`,
+  'B to be told it joined'
+)
+await a.until(
+  `[...document.querySelectorAll('.system-text')].some((n) => n.textContent.includes('added'))`,
+  'A to see who it let in'
+)
+step(12, 'the join is announced to both, in the right person')
+
+// Formatting, emoji and links, all built from text nodes rather than markup.
+await a.eval(`
+  document.getElementById('composer-input').value = 'read \`apply\` in **room.ts** :thumbsup: https://docs.pears.com/'
+  document.getElementById('composer').requestSubmit()
+`)
+await b.until(`document.querySelector('#messages .md-code')`, 'B to see the code span')
+
+const formatted = await b.eval(`
+  const last = [...document.querySelectorAll('.message-text')].pop()
+  return JSON.stringify({
+    code: last.querySelector('code')?.textContent,
+    bold: last.querySelector('strong')?.textContent,
+    link: last.querySelector('.link')?.textContent,
+    emoji: last.textContent.includes('👍'),
+    literal: last.textContent.includes(':thumbsup:')
+  })
+`)
+const marks = JSON.parse(formatted)
+if (marks.code !== 'apply' || marks.bold !== 'room.ts' || !marks.emoji || marks.literal) {
+  throw new Error(`formatting did not survive the trip: ${formatted}`)
+}
+step(13, 'code, bold, emoji and a link all arrive intact')
+
+// A verified author can be paid, and only a verified one.
+const payable = await b.eval(`
+  return document.querySelectorAll('#messages .message-author-payable').length
+`)
+if (payable === 0) throw new Error('no author was payable, so nobody could be sent anything')
+step(14, `${payable} of A's messages offer to pay their author`)
+
 // An invite carries a lightchain:// link and a scannable code.
 await a.eval(`document.getElementById('invite-btn').click()`)
 const link = await a.until(
@@ -277,7 +318,7 @@ const link = await a.until(
 const squares = await a.eval(`return document.querySelectorAll('#invite-qr .qr-fg').length`)
 await a.eval(`document.getElementById('invite-dialog').close()`)
 if (squares === 0) throw new Error('the invite produced no QR code')
-step(12, `A produced ${link.slice(0, 24)}… and a QR code of ${squares} runs`)
+step(15, `A produced ${link.slice(0, 24)}… and a QR code of ${squares} runs`)
 
 const read = `return [...document.querySelectorAll('.message-text')].map((n) => n.textContent)`
 const [seenByA, seenByB] = await Promise.all([a.eval(read), b.eval(read)])
@@ -288,7 +329,7 @@ console.log('B sees:', JSON.stringify(seenByB, null, 1))
 if (JSON.stringify(seenByA) !== JSON.stringify(seenByB)) {
   throw new Error('the two clients disagree on the order of the conversation')
 }
-step(13, 'both clients render the same history in the same order')
+step(16, 'both clients render the same history in the same order')
 
 console.log('\nPASS')
 

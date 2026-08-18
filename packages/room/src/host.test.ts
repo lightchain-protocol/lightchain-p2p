@@ -18,7 +18,15 @@ async function hostFor(peer: Peer, opts: Partial<Parameters<typeof RoomHost.open
   return host
 }
 
-const textsOf = (state: RoomState) => state.messages.map((m) => m.text)
+/**
+ * What people said, without what happened to the room.
+ *
+ * Joins and renames ride on ordinary messages so that a client predating them
+ * shows a sentence rather than nothing. Assertions about a conversation want
+ * the conversation.
+ */
+const textsOf = (state: RoomState) => state.messages.filter((m) => !m.event).map((m) => m.text)
+const spoken = (state: RoomState) => textsOf(state).length
 const hexOf = (bytes: Uint8Array) => Buffer.from(bytes).toString('hex')
 
 describe('two clients', () => {
@@ -45,14 +53,8 @@ describe('two clients', () => {
     await waitFor(async () => (await bobHost.state(created.key)).writable, 'bob to become a writer')
     await bobHost.send(created.key, 'from bob')
 
-    await waitFor(
-      async () => (await aliceHost.state(created.key)).messages.length === 2,
-      'alice to see both'
-    )
-    await waitFor(
-      async () => (await bobHost.state(created.key)).messages.length === 2,
-      'bob to see both'
-    )
+    await waitFor(async () => spoken(await aliceHost.state(created.key)) === 2, 'alice to see both')
+    await waitFor(async () => spoken(await bobHost.state(created.key)) === 2, 'bob to see both')
 
     const fromAlice = textsOf(await aliceHost.state(created.key))
     expect(fromAlice).toEqual(textsOf(await bobHost.state(created.key)))
@@ -104,7 +106,7 @@ describe('invites', () => {
 
     await bobHost.send(joined.key, 'said after')
     await waitFor(
-      async () => (await aliceHost.state(created.key)).messages.length === 2,
+      async () => spoken(await aliceHost.state(created.key)) === 2,
       'alice to see both messages'
     )
     expect(textsOf(await aliceHost.state(created.key))).toEqual(

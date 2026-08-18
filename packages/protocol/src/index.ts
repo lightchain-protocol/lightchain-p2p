@@ -24,7 +24,9 @@ export {
   type ChatMessage,
   type ModelAnswer,
   type RoomEntry,
-  type RoomEvent
+  type RoomEvent,
+  type RoomJoined,
+  type RoomRenamed
 } from './message.js'
 
 export {

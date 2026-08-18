@@ -2224,12 +2224,41 @@ body {
   color: var(--lc-fg-muted);
 }
 
+/* Only on an author whose signature checked out. The affordance is the point:
+   an address you can pay should look different from one you cannot. */
+.message-author-payable {
+  cursor: default;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.message-author-payable:hover {
+  color: var(--lc-brand-ink);
+}
+
+.message-author-payable:focus-visible {
+  outline: 2px solid var(--lc-brand);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 /* The clock is the least important thing in the row and it repeats on every
    one, so it sits at the end and stays out of the way. */
 .message-time {
   margin-left: auto;
   padding-left: var(--lc-space-sm);
   font-variant-numeric: tabular-nums;
+}
+
+/* --- Formatting in a message ----------------------------------------------- */
+
+.md-code {
+  padding: 1px 5px;
+  border-radius: var(--lc-radius-sm);
+  background: color-mix(in srgb, var(--lc-fg-dim) 22%, transparent);
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.92em;
 }
 
 .link {
@@ -2338,6 +2367,11 @@ body {
   flex: 0 0 auto;
 }
 
+.composer-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
 .composer {
   display: flex;
   gap: var(--lc-space-sm);
@@ -2345,6 +2379,53 @@ body {
   padding: var(--lc-space-md) var(--lc-space-lg);
   border-top: 1px solid var(--lc-rule);
   flex: 0 0 auto;
+}
+
+/* --- Addressing a model ----------------------------------------------------- */
+
+.mentions {
+  position: absolute;
+  bottom: 100%;
+  left: var(--lc-space-lg);
+  z-index: 5;
+  min-width: 280px;
+  max-width: 44ch;
+  max-height: 40vh;
+  margin: 0 0 var(--lc-space-sm);
+  padding: var(--lc-space-xs);
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-lg);
+  background: var(--lc-bg-elevated-2);
+  box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.6);
+}
+
+.mention {
+  display: flex;
+  align-items: baseline;
+  gap: var(--lc-space-md);
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  border-radius: var(--lc-radius-md);
+  cursor: default;
+}
+
+.mention.is-active {
+  background: color-mix(in srgb, var(--lc-brand) 20%, transparent);
+}
+
+.mention-name {
+  font-size: var(--lc-text-sm);
+  font-weight: 500;
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+}
+
+.mention-meta {
+  margin-left: auto;
+  font-size: var(--lc-text-xs);
+  white-space: nowrap;
+  color: var(--lc-fg-dim);
+  font-variant-numeric: tabular-nums;
 }
 
 .composer-input {

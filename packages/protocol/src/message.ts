@@ -89,10 +89,27 @@ export interface ChatMessage {
  * replicated to every member forever, and a log of ephemera would outweigh the
  * conversation it belongs to and could never be pruned.
  */
-export interface RoomEvent {
+export type RoomEvent = RoomRenamed | RoomJoined
+
+export interface RoomRenamed {
   readonly kind: 'renamed'
   /** The room's new name. Empty means the name was cleared. */
   readonly name: string
+}
+
+/**
+ * Somebody was granted write access.
+ *
+ * Written by whoever let them in, because that peer is the one that knows it
+ * happened. Autobase records the writer change in its own metadata, but that is
+ * not in the view and surfacing it would mean changing what every peer's view
+ * contains — which forks the room. An ordinary message says the same thing and
+ * costs one entry per join, which is a rate nobody will notice.
+ */
+export interface RoomJoined {
+  readonly kind: 'joined'
+  /** The writer key that was added, hex. Not an identity — a peer may have several. */
+  readonly writer: string
 }
 
 /** Longest a room name may be. Enough to be descriptive, short enough for a sidebar. */
@@ -247,20 +264,27 @@ function parseEvent(value: unknown): RoomEvent | undefined {
   if (value === undefined) return undefined
   if (!isRecord(value)) throw new MessageError('message event must be an object')
 
+  if (value.kind === 'renamed') {
+    if (typeof value.name !== 'string') {
+      throw new MessageError('a rename event must carry a name')
+    }
+    if (value.name.length > MAX_NAME_LENGTH) {
+      throw new MessageError(`a room name may not exceed ${MAX_NAME_LENGTH} characters`)
+    }
+    return { kind: 'renamed', name: value.name }
+  }
+
+  if (value.kind === 'joined') {
+    if (typeof value.writer !== 'string' || !HEX_KEY.test(value.writer)) {
+      throw new MessageError('a join event must carry a 32-byte lowercase hex writer key')
+    }
+    return { kind: 'joined', writer: value.writer }
+  }
+
   // An unknown kind is rejected rather than ignored. A client that cannot say
   // what an event did must not render it as though it knows, and the message's
   // own text still describes it.
-  if (value.kind !== 'renamed') {
-    throw new MessageError(`unknown room event: ${JSON.stringify(value.kind)}`)
-  }
-  if (typeof value.name !== 'string') {
-    throw new MessageError('a rename event must carry a name')
-  }
-  if (value.name.length > MAX_NAME_LENGTH) {
-    throw new MessageError(`a room name may not exceed ${MAX_NAME_LENGTH} characters`)
-  }
-
-  return { kind: 'renamed', name: value.name }
+  throw new MessageError(`unknown room event: ${JSON.stringify(value.kind)}`)
 }
 
 /**
@@ -271,15 +295,18 @@ function parseEvent(value: unknown): RoomEvent | undefined {
  * named it or the name was cleared.
  */
 export function roomName(messages: readonly ChatMessage[]): string | null {
+  let name: string | null = null
   let latest: ChatMessage | null = null
 
   for (const message of messages) {
-    if (message.event?.kind !== 'renamed') continue
-    if (latest === null || compareMessages(latest, message) < 0) latest = message
+    const event = message.event
+    if (event?.kind !== 'renamed') continue
+    if (latest !== null && compareMessages(latest, message) >= 0) continue
+    latest = message
+    name = event.name.trim()
   }
 
-  const name = latest?.event?.name.trim()
-  return name ? name : null
+  return name === null || name === '' ? null : name
 }
 
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/

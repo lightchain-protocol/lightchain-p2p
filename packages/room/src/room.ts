@@ -316,7 +316,15 @@ export class Room {
     return this.#base
   }
 
-  /** Grants write access to another peer, by their `writerKey`. */
+  /**
+   * Grants write access to another peer, by their `writerKey`.
+   *
+   * Two entries: the command that changes the writer set, and a message saying
+   * it happened. The command is consumed by `apply` and never reaches the view,
+   * so without the second the room would gain a member with nothing to show for
+   * it — people would simply start talking and nobody would know when they
+   * arrived.
+   */
   async addWriter(writerKey: string): Promise<void> {
     if (!/^[0-9a-f]{64}$/.test(writerKey)) {
       throw new RoomError(`writer key must be 32 bytes of lowercase hex, got "${writerKey}"`)
@@ -325,6 +333,18 @@ export class Room {
       throw new RoomError('only an existing writer can add another')
     }
     await this.#base.append({ type: 'add-writer', v: MESSAGE_VERSION, key: writerKey })
+
+    await this.#base.append(
+      this.#sign({
+        type: 'message',
+        v: MESSAGE_VERSION,
+        id: b4a.toString(crypto.randomBytes(12), 'hex'),
+        from: this.writerKey,
+        at: Date.now(),
+        text: `added ${writerKey.slice(0, 8)}… to the room`,
+        event: { kind: 'joined', writer: writerKey }
+      })
+    )
   }
 
   /**
