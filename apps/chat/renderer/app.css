@@ -2094,6 +2094,58 @@ body {
   color: var(--lc-warning);
 }
 
+/* A claim about the room, so it is a control rather than a label: it opens the
+   panel that says what the claim is made of. A padlock nobody can interrogate
+   is decoration. */
+.badge-secure {
+  gap: 5px;
+  border: 0;
+  font: inherit;
+  font-size: var(--lc-text-xs);
+  font-weight: 500;
+  cursor: default;
+  color: var(--lc-success);
+  background: color-mix(in srgb, var(--lc-success) 15%, transparent);
+  transition: background-color 120ms ease-out;
+}
+
+.badge-secure .icon {
+  width: 13px;
+  height: 13px;
+}
+
+.badge-secure:hover {
+  background: color-mix(in srgb, var(--lc-success) 26%, transparent);
+}
+
+/* --- Room events ---------------------------------------------------------- */
+
+/* A rename is not addressed to anyone, so it reads across the conversation
+   rather than sitting in a bubble on one side of it. */
+.system {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--lc-space-sm);
+  align-self: center;
+  max-width: 100%;
+  padding: 2px var(--lc-space-md);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+.system-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.system-when {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
 /* --- Messages ------------------------------------------------------------- */
 
 .messages {
@@ -2173,6 +2225,24 @@ body {
   margin-left: auto;
   padding-left: var(--lc-space-sm);
   font-variant-numeric: tabular-nums;
+}
+
+.link {
+  color: var(--lc-brand-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: default;
+  overflow-wrap: anywhere;
+}
+
+.link:hover {
+  color: var(--lc-brand);
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--lc-brand);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .message-text {
@@ -2478,6 +2548,24 @@ select.input option {
   color: var(--lc-fg-dim);
 }
 
+.dialog-wide {
+  width: min(70ch, 92vw);
+}
+
+.invite-share {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lc-space-lg);
+}
+
+.invite-codes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-sm);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .invite {
   display: block;
   padding: var(--lc-space-md);
@@ -2490,6 +2578,45 @@ select.input option {
   color: var(--lc-fg);
   overflow-wrap: anywhere;
   user-select: text;
+}
+
+/* The raw string is the fallback, so it is quieter than the link and capped:
+   an invite is over a hundred characters and would otherwise be the tallest
+   thing in the dialog. */
+.invite-raw {
+  max-height: 5.4em;
+  overflow-y: auto;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-muted);
+}
+
+.qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.qr svg {
+  display: block;
+  border-radius: var(--lc-radius-md);
+}
+
+/* A scanner needs light modules on dark, in that polarity, whatever the app's
+   theme is doing. Inverting a QR code for aesthetics stops phones reading it. */
+.qr-bg {
+  fill: #ffffff;
+}
+
+.qr-fg {
+  fill: #000000;
+}
+
+.qr-caption {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
 }
 
 .dialog-actions {

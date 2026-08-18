@@ -4,11 +4,13 @@ import crypto from 'hypercore-crypto'
 import type Corestore from 'corestore'
 import type { HypercoreLike } from 'corestore'
 import {
+  MAX_NAME_LENGTH,
   MESSAGE_VERSION,
   authorPreimage,
   isValidEntry,
   orderMessages,
   parseEntry,
+  roomName,
   type ChatMessage,
   type ModelAnswer
 } from '@lcai-p2p/protocol'
@@ -134,7 +136,13 @@ export class Room {
             continue
           }
 
-          await view.append(entry)
+          // The raw value, not the parsed one. The view is a Hypercore that
+          // indexers sign and every peer must agree on byte for byte, so
+          // anything that goes into it must not depend on this build's parser.
+          // Appending `entry` made the view the parser's *output*: a client
+          // that understood one more optional field wrote a different view from
+          // one that did not, and the two forked. Reading re-parses anyway.
+          await view.append(node.value)
         }
       },
       valueEncoding: 'json'
@@ -196,6 +204,25 @@ export class Room {
     this.#identity = identity
   }
 
+  /**
+   * Attaches the wallet's claim to a message, when one is attached.
+   *
+   * The preimage covers the id, writer, clock and a hash of the text, so the
+   * signature is over this message in this room and cannot be lifted into
+   * another. Everything written here goes through it — a path that forgot to
+   * would produce entries that look unattributed rather than ones that fail.
+   */
+  #sign(message: ChatMessage): ChatMessage {
+    if (!this.#identity) return message
+    const identity = this.#identity
+
+    return {
+      ...message,
+      author: identity.address,
+      sig: identity.sign(authorPreimage(this.key, message, (t) => identity.hashText(t)))
+    }
+  }
+
   async send(text: string): Promise<ChatMessage> {
     if (!this.writable) {
       throw new RoomError(
@@ -203,24 +230,14 @@ export class Room {
       )
     }
 
-    const message: ChatMessage = {
+    const signed = this.#sign({
       type: 'message',
       v: MESSAGE_VERSION,
       id: b4a.toString(crypto.randomBytes(12), 'hex'),
       from: this.writerKey,
       at: Date.now(),
       text
-    }
-
-    const signed = this.#identity
-      ? {
-          ...message,
-          author: this.#identity.address,
-          sig: this.#identity.sign(
-            authorPreimage(this.key, message, (t) => this.#identity!.hashText(t))
-          )
-        }
-      : message
+    })
 
     await this.#base.append(signed)
     return signed
@@ -238,7 +255,7 @@ export class Room {
       throw new RoomError('not a writer in this room yet')
     }
 
-    const message: ChatMessage = {
+    const signed = this.#sign({
       type: 'message',
       v: MESSAGE_VERSION,
       id: b4a.toString(crypto.randomBytes(12), 'hex'),
@@ -246,20 +263,44 @@ export class Room {
       at: Date.now(),
       text,
       answer
-    }
-
-    const signed = this.#identity
-      ? {
-          ...message,
-          author: this.#identity.address,
-          sig: this.#identity.sign(
-            authorPreimage(this.key, message, (t) => this.#identity!.hashText(t))
-          )
-        }
-      : message
+    })
 
     await this.#base.append(signed)
     return signed
+  }
+
+  /**
+   * Names the room, for everyone in it.
+   *
+   * Written as an ordinary message carrying a rename event, so a client that
+   * predates this shows a sentence saying what happened rather than skipping
+   * the entry. The sentence is the message; the structured name beside it is
+   * what a client that understands the event reads.
+   */
+  async rename(name: string): Promise<ChatMessage> {
+    const trimmed = name.trim()
+    if (trimmed.length > MAX_NAME_LENGTH) {
+      throw new RoomError(`a room name may not exceed ${MAX_NAME_LENGTH} characters`)
+    }
+    if (!this.writable) throw new RoomError('only a writer can name a room')
+
+    const message: ChatMessage = {
+      type: 'message',
+      v: MESSAGE_VERSION,
+      id: b4a.toString(crypto.randomBytes(12), 'hex'),
+      from: this.writerKey,
+      at: Date.now(),
+      text: trimmed === '' ? 'cleared the room name' : `named the room “${trimmed}”`,
+      event: { kind: 'renamed', name: trimmed }
+    }
+
+    await this.#base.append(this.#sign(message))
+    return message
+  }
+
+  /** The room's name, or null if nobody has set one. */
+  async name(): Promise<string | null> {
+    return roomName(await this.messages())
   }
 
   /**

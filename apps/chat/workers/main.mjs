@@ -81,6 +81,7 @@ import { Api, Conversation, History, isAnswerVerified } from '@lcai-p2p/inferenc
  *     { id, t: 'room.invite',  room }
  *     { id, t: 'room.pair',    invite }
  *     { id, t: 'room.send',    room, text }
+ *     { id, t: 'room.rename',  room, name }
  *     { id, t: 'room.leave',   room }
  *     { id, t: 'worker.doctor' }
  *     { id, t: 'worker.status' }
@@ -793,6 +794,35 @@ function recentActivity(conversations, states) {
   return entries.sort((a, b) => b.at - a.at).slice(0, 6)
 }
 
+/**
+ * The URL scheme invites travel as. Matches `electron/main.js`, which registers
+ * it with the operating system; the two have to agree.
+ */
+const INVITE_SCHEME = 'lightchain'
+
+/**
+ * The invite inside whatever someone pasted.
+ *
+ * People paste the link, the bare string, or the link with a trailing full stop
+ * a chat client helpfully appended. Accepting all of them costs four lines;
+ * refusing them costs someone the join and tells them nothing useful.
+ */
+function inviteFrom(value) {
+  if (typeof value !== 'string') return ''
+
+  let text = value.trim()
+  const prefix = `${INVITE_SCHEME}://`
+  if (text.toLowerCase().startsWith(prefix)) {
+    // A path segment is tolerated so an earlier `lightchain://room/<invite>`
+    // keeps working, but is not what this produces.
+    text = text.slice(prefix.length).replace(/^(?:join|room|invite)\//i, '')
+  }
+
+  // Anything after a separator belongs to the URL, not the invite. z32 has no
+  // uppercase, so trailing punctuation cannot be part of one.
+  return text.split(/[/?#\s]/)[0].replace(/[.,;:)\]}'"]+$/, '')
+}
+
 async function handle(req) {
   switch (req.t) {
     // --- Worker -----------------------------------------------------------
@@ -1374,14 +1404,27 @@ async function handle(req) {
       }
       return rooms.send(req.room, req.text)
 
-    case 'room.invite':
-      return { invite: await rooms.invite(req.room) }
+    /** Names the room for everyone in it, not just on this machine. */
+    case 'room.rename':
+      return rooms.rename(req.room, String(req.name ?? ''))
 
-    case 'room.pair':
-      if (typeof req.invite !== 'string' || req.invite.trim() === '') {
-        throw new Error('paste an invite')
-      }
-      return rooms.pair(req.invite)
+    /**
+     * An invite, and the same invite as something clickable.
+     *
+     * Both, because they are for different places. The bare string survives
+     * being pasted into anything; the link opens the app directly and is what
+     * most people will send. The app accepts either on the way back in.
+     */
+    case 'room.invite': {
+      const invite = await rooms.invite(req.room)
+      return { invite, link: `${INVITE_SCHEME}://${invite}` }
+    }
+
+    case 'room.pair': {
+      const invite = inviteFrom(req.invite)
+      if (invite === '') throw new Error('paste an invite')
+      return rooms.pair(invite)
+    }
 
     case 'room.leave':
       return { left: await rooms.leave(req.room) }

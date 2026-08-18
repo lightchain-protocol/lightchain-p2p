@@ -69,7 +69,34 @@ export interface ChatMessage {
    * understands it can check the model really said this.
    */
   readonly answer?: ModelAnswer
+  /**
+   * Something that happened to the room, rather than something someone said.
+   *
+   * Also carried on an ordinary message, and for the same reason: a new entry
+   * *type* would be skipped wholesale by a client that predates it, while a new
+   * optional field on a familiar type degrades to a readable sentence. The
+   * `text` is written to stand alone, so an older build shows "renamed the room
+   * to Design" as a normal message — which is exactly what happened.
+   */
+  readonly event?: RoomEvent
 }
+
+/**
+ * A room-level change, recorded in the log because it is permanent and shared.
+ *
+ * Deliberately small. Anything that changes many times a minute — who is
+ * typing, who is online — must never come through here: entries are signed and
+ * replicated to every member forever, and a log of ephemera would outweigh the
+ * conversation it belongs to and could never be pruned.
+ */
+export interface RoomEvent {
+  readonly kind: 'renamed'
+  /** The room's new name. Empty means the name was cleared. */
+  readonly name: string
+}
+
+/** Longest a room name may be. Enough to be descriptive, short enough for a sidebar. */
+export const MAX_NAME_LENGTH = 64
 
 /**
  * Everything needed to check a model's answer, by anyone in the room.
@@ -205,13 +232,54 @@ export function parseEntry(value: unknown): RoomEntry {
 
   const withReply = replyTo === undefined ? base : { ...base, replyTo }
   const answer = parseAnswer(value.answer)
+  const event = parseEvent(value.event)
 
   const attributed =
     author === undefined && sig === undefined
       ? withReply
       : { ...withReply, author: author as string | undefined, sig: sig as string | undefined }
 
-  return answer === undefined ? attributed : { ...attributed, answer }
+  const withAnswer = answer === undefined ? attributed : { ...attributed, answer }
+  return event === undefined ? withAnswer : { ...withAnswer, event }
+}
+
+function parseEvent(value: unknown): RoomEvent | undefined {
+  if (value === undefined) return undefined
+  if (!isRecord(value)) throw new MessageError('message event must be an object')
+
+  // An unknown kind is rejected rather than ignored. A client that cannot say
+  // what an event did must not render it as though it knows, and the message's
+  // own text still describes it.
+  if (value.kind !== 'renamed') {
+    throw new MessageError(`unknown room event: ${JSON.stringify(value.kind)}`)
+  }
+  if (typeof value.name !== 'string') {
+    throw new MessageError('a rename event must carry a name')
+  }
+  if (value.name.length > MAX_NAME_LENGTH) {
+    throw new MessageError(`a room name may not exceed ${MAX_NAME_LENGTH} characters`)
+  }
+
+  return { kind: 'renamed', name: value.name }
+}
+
+/**
+ * The room's current name, from the messages that set it.
+ *
+ * Last writer wins, by the same total order everything else uses, so every peer
+ * agrees on the name without any coordination. Returns null when nobody has
+ * named it or the name was cleared.
+ */
+export function roomName(messages: readonly ChatMessage[]): string | null {
+  let latest: ChatMessage | null = null
+
+  for (const message of messages) {
+    if (message.event?.kind !== 'renamed') continue
+    if (latest === null || compareMessages(latest, message) < 0) latest = message
+  }
+
+  const name = latest?.event?.name.trim()
+  return name ? name : null
 }
 
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/

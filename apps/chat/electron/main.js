@@ -1,8 +1,9 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, Notification, ipcMain, shell } = require('electron')
 const os = require('os')
 const path = require('path')
 const PearRuntime = require('pear-runtime')
 const FramedStream = require('framed-stream')
+const QRCode = require('qrcode')
 
 const { isMac, isLinux, isWindows } = require('which-runtime')
 const { command, flag, sloppy } = require('paparam')
@@ -198,6 +199,53 @@ ipcMain.handle('pear:startWorker', (evt, filename) => {
   getWorker(filename)
   return true
 })
+/**
+ * The module grid for a QR code, for the renderer to draw.
+ *
+ * Encoded here rather than in the renderer because the encoder is a CommonJS
+ * package with Node dependencies and the renderer is a sandboxed `file://` page
+ * with no bundler. Only the grid crosses: the renderer builds the SVG from
+ * `<rect>` elements, so nothing has to be injected as markup.
+ */
+ipcMain.handle('app:qr', (evt, text) => {
+  try {
+    // Medium correction. An invite is long, so the grid is already dense, and
+    // the higher levels buy redundancy nobody needs on a screen at arm's length.
+    const { modules } = QRCode.create(String(text ?? ''), { errorCorrectionLevel: 'M' })
+    return { size: modules.size, data: Array.from(modules.data) }
+  } catch (err) {
+    console.error('could not encode a QR code:', err.message)
+    return null
+  }
+})
+
+/**
+ * A desktop notification, raised only when the window cannot already show it.
+ *
+ * Focus is decided here rather than in the renderer: `document.hasFocus()` is
+ * true for a window sitting behind another one, so a renderer that trusts it
+ * stays silent exactly when a notification was the point.
+ */
+ipcMain.handle('app:notify', (evt, { title, body } = {}) => {
+  if (!Notification.isSupported()) return false
+
+  const [win] = BrowserWindow.getAllWindows()
+  if (win && !win.isDestroyed() && win.isFocused()) return false
+
+  const notification = new Notification({
+    title: String(title ?? 'Lightchain'),
+    body: String(body ?? ''),
+    silent: false
+  })
+  notification.on('click', () => {
+    if (!win || win.isDestroyed()) return
+    if (win.isMinimized()) win.restore()
+    win.focus()
+  })
+  notification.show()
+  return true
+})
+
 ipcMain.handle('app:afterUpdate', () => {
   if (isLinux && process.env.APPIMAGE) {
     app.relaunch({
@@ -213,11 +261,73 @@ ipcMain.handle('app:afterUpdate', () => {
   app.quit()
 })
 
+/**
+ * Hands a `lightchain://` link to the window, raising it first.
+ *
+ * Held until a window exists: on Windows and Linux a link is what *starts* the
+ * app, so it arrives before there is anything to send it to. Dropping it then
+ * would mean the first click of an invite silently does nothing and the second
+ * works, which is the kind of bug people blame themselves for.
+ */
+let pendingLink = null
+
 function handleDeepLink(url) {
-  console.log('deep link:', url)
+  if (typeof url !== 'string' || !url.toLowerCase().startsWith(protocol + '://')) return
+
+  const [win] = BrowserWindow.getAllWindows()
+  if (!win || win.isDestroyed() || win.webContents.isLoading()) {
+    pendingLink = url
+    return
+  }
+
+  if (win.isMinimized()) win.restore()
+  win.focus()
+  win.webContents.send('app:deepLink', url)
 }
 
-app.setAsDefaultProtocolClient(protocol)
+function flushDeepLink() {
+  if (pendingLink === null) return
+  const url = pendingLink
+  pendingLink = null
+  handleDeepLink(url)
+}
+
+// The renderer asks once it is listening, rather than the main process guessing
+// when that happened. A link sent before the handler is attached is lost.
+ipcMain.handle('app:takeDeepLink', () => {
+  const url = pendingLink
+  pendingLink = null
+  return url
+})
+
+/**
+ * Opens a link in the user's browser, and refuses anything that is not a page.
+ *
+ * The allowlist is the whole point. `shell.openExternal` will hand the system
+ * anything it is given, and a `file://` or a Windows shortcut from a stranger
+ * in a chat room is a way to run a program on this machine.
+ */
+ipcMain.handle('app:openExternal', (evt, url) => {
+  if (typeof url !== 'string') return false
+  let parsed
+  try {
+    parsed = new URL(url)
+  } catch {
+    return false
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false
+  void shell.openExternal(parsed.href)
+  return true
+})
+
+// In development the executable is Electron itself, so the scheme has to be
+// registered against it with this project as the argument, or the OS launches a
+// bare Electron with no app when a link is clicked.
+if (app.isPackaged) {
+  app.setAsDefaultProtocolClient(protocol)
+} else {
+  app.setAsDefaultProtocolClient(protocol, process.execPath, [path.resolve(process.argv[1] ?? '.')])
+}
 
 app.on('open-url', (evt, url) => {
   evt.preventDefault()
@@ -229,16 +339,25 @@ const lock = app.requestSingleInstanceLock()
 if (!lock) {
   app.quit()
 } else {
+  // Clicking a link while the app is already running starts a second process,
+  // which hands its arguments here and exits. Without the single-instance lock
+  // it would instead open a second window onto the same Corestore, which
+  // deadlocks rather than failing.
   app.on('second-instance', (evt, args) => {
-    const url = args.find((arg) => arg.startsWith(protocol + '://'))
-    if (url) handleDeepLink(url)
+    handleDeepLink(args.find((arg) => arg.toLowerCase().startsWith(protocol + '://')))
   })
 
+  // The link that started the app, on Windows and Linux, is just an argument.
+  pendingLink =
+    process.argv.find((arg) => arg.toLowerCase().startsWith(protocol + '://')) ?? pendingLink
+
   app.whenReady().then(() => {
-    createWindow().catch((err) => {
-      console.error('Failed to create window:', err)
-      app.quit()
-    })
+    createWindow()
+      .then(flushDeepLink)
+      .catch((err) => {
+        console.error('Failed to create window:', err)
+        app.quit()
+      })
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {

@@ -4,7 +4,7 @@ import z32 from 'z32'
 import Autobase from 'autobase'
 import BlindPairing from 'blind-pairing'
 import type Corestore from 'corestore'
-import { verifyAuthor, type ChatMessage, type ModelAnswer } from '@lcai-p2p/protocol'
+import { roomName, verifyAuthor, type ChatMessage, type ModelAnswer } from '@lcai-p2p/protocol'
 import { Room, RoomError, type Identity } from './room.js'
 
 /**
@@ -87,6 +87,12 @@ export interface RoomState {
    */
   readonly writerKey: string
   readonly writable: boolean
+  /**
+   * What the room is called, agreed by every member, or null if nobody has
+   * named it. Derived from the log rather than stored locally, so a name set on
+   * one machine is the name everyone sees.
+   */
+  readonly name: string | null
   readonly messages: readonly AttributedMessage[]
 }
 
@@ -480,6 +486,13 @@ export class RoomHost {
     return this.#stateOf(room)
   }
 
+  /** Names a room, for everyone in it. */
+  async rename(key: string, name: string): Promise<RoomState> {
+    const room = this.#require(key)
+    await room.rename(name)
+    return this.#stateOf(room)
+  }
+
   /** Posts a model's answer into a room, with the evidence that it said it. */
   async relay(key: string, text: string, answer: ModelAnswer): Promise<RoomState> {
     const room = this.#require(key)
@@ -575,6 +588,8 @@ export class RoomHost {
       key: room.key,
       writerKey: room.writerKey,
       writable: room.writable,
+      // From the same messages already in hand, rather than a second read.
+      name: roomName(messages),
       messages: this.#verify ? messages.map((m) => this.#attribute(room.key, m)) : messages
     }
   }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  MAX_NAME_LENGTH,
   MAX_TEXT_LENGTH,
   MESSAGE_VERSION,
   MessageError,
@@ -7,6 +8,7 @@ import {
   isValidEntry,
   orderMessages,
   parseEntry,
+  roomName,
   type ChatMessage
 } from './index.js'
 
@@ -83,6 +85,48 @@ describe('parsing add-writer', () => {
     // Adding the wrong key grants write access to nobody and looks like the
     // join silently failed.
     expect(() => parseEntry({ type: 'add-writer', v: 1, key: '0x123' })).toThrow(/hex/)
+  })
+})
+
+describe('room events', () => {
+  const renamed = (name: string, over: Partial<ChatMessage> = {}) =>
+    message({ text: `named the room “${name}”`, event: { kind: 'renamed', name }, ...over })
+
+  it('carries a rename and omits the field when absent', () => {
+    expect(parseEntry(renamed('Design'))).toHaveProperty('event.name', 'Design')
+    expect(parseEntry(message())).not.toHaveProperty('event')
+  })
+
+  it('refuses an event it cannot describe rather than rendering it blindly', () => {
+    expect(() => parseEntry(message({ event: { kind: 'exploded' } } as never))).toThrow(
+      MessageError
+    )
+  })
+
+  it('refuses a name longer than the limit', () => {
+    expect(() => parseEntry(renamed('x'.repeat(MAX_NAME_LENGTH + 1)))).toThrow(/64 characters/)
+  })
+
+  it('takes the last name written, by the same order everything else uses', () => {
+    // Two peers renaming without seeing each other must still agree afterwards.
+    const first = parseEntry(renamed('First', { id: 'msg-00000001', at: 10 })) as ChatMessage
+    const second = parseEntry(renamed('Second', { id: 'msg-00000002', at: 20 })) as ChatMessage
+
+    expect(roomName([first, second])).toBe('Second')
+    expect(roomName([second, first])).toBe('Second')
+  })
+
+  it('breaks a tied clock the same way on every peer', () => {
+    const a = parseEntry(renamed('Ay', { id: 'msg-0000000a', at: 10 })) as ChatMessage
+    const b = parseEntry(renamed('Bee', { id: 'msg-0000000b', at: 10 })) as ChatMessage
+
+    expect(roomName([a, b])).toBe('Bee')
+    expect(roomName([b, a])).toBe('Bee')
+  })
+
+  it('has no name when nobody set one, or when it was cleared', () => {
+    expect(roomName([parseEntry(message()) as ChatMessage])).toBeNull()
+    expect(roomName([parseEntry(renamed('')) as ChatMessage])).toBeNull()
   })
 })
 

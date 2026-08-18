@@ -9,6 +9,7 @@ export {
 } from './ref.js'
 
 export {
+  MAX_NAME_LENGTH,
   MAX_TEXT_LENGTH,
   MESSAGE_VERSION,
   MessageError,
@@ -18,10 +19,12 @@ export {
   isValidEntry,
   orderMessages,
   parseEntry,
+  roomName,
   type AddWriterCommand,
   type ChatMessage,
   type ModelAnswer,
-  type RoomEntry
+  type RoomEntry,
+  type RoomEvent
 } from './message.js'
 
 export {

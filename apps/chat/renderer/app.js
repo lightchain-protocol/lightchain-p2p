@@ -37,8 +37,11 @@ const el = {
   joinBtn: document.getElementById('join-btn'),
   empty: document.getElementById('empty'),
   room: document.getElementById('room'),
+  roomTitle: document.getElementById('room-title'),
   roomKey: document.getElementById('room-key'),
   roomRole: document.getElementById('room-role'),
+  roomSecure: document.getElementById('room-secure'),
+  renameBtn: document.getElementById('rename-btn'),
   inviteBtn: document.getElementById('invite-btn'),
   leaveBtn: document.getElementById('leave-btn'),
   messages: document.getElementById('messages'),
@@ -78,6 +81,7 @@ const el = {
   joinSubmit: document.getElementById('join-submit'),
   inviteDialog: document.getElementById('invite-dialog'),
   inviteValue: document.getElementById('invite-value'),
+  inviteRaw: document.getElementById('invite-raw'),
   inviteError: document.getElementById('invite-error'),
   copyInviteBtn: document.getElementById('copy-invite-btn'),
   toast: document.getElementById('toast')
@@ -232,6 +236,32 @@ function adopt(states) {
   renderRoom()
 }
 
+/**
+ * Raises a desktop notification for messages somebody else just wrote.
+ *
+ * Compared against the previous state rather than triggered on every push: the
+ * worker re-sends a room's whole state whenever anything in it changes, so
+ * notifying per push would fire on our own messages and on renames.
+ *
+ * Whether the window is focused is decided in the main process, not here.
+ * `document.hasFocus()` is true for a window sitting behind another one, which
+ * is exactly when a notification was the point.
+ */
+function announce(before, after) {
+  if (!before) return
+
+  const seen = new Set(before.messages.map((m) => m.id))
+  const arrived = after.messages.filter((m) => !seen.has(m.id) && m.from !== after.writerKey)
+  if (arrived.length === 0) return
+
+  const room = after.name ?? `Room ${short(after.key)}`
+  const last = arrived[arrived.length - 1]
+  const body =
+    arrived.length === 1 ? last.text : `${arrived.length} new messages. Latest: ${last.text}`
+
+  void bridge.notify(room, body.slice(0, 240)).catch(() => {})
+}
+
 function onChatMessage(msg) {
   if (msg.t === 'ready') {
     adopt(msg.rooms)
@@ -239,6 +269,7 @@ function onChatMessage(msg) {
   }
 
   if (msg.t === 'room') {
+    announce(rooms.get(msg.room.key), msg.room)
     rooms.set(msg.room.key, msg.room)
     renderRooms()
     if (msg.room.key === activeKey) renderRoom()
@@ -317,7 +348,9 @@ function renderRooms() {
 
     const name = document.createElement('span')
     name.className = 'nav-item-name'
-    name.textContent = short(room.key)
+    // The name if the room has one, and the key only as a fallback. A column of
+    // 64-character hex is not a list anybody can navigate.
+    name.textContent = room.name ?? short(room.key)
 
     const sub = document.createElement('span')
     sub.className = 'nav-item-sub'
@@ -751,6 +784,65 @@ new ResizeObserver(([entry]) => {
 
 dash.refresh.addEventListener('click', () => void refreshDashboard())
 
+// --- Rendering what somebody wrote ------------------------------------------
+
+/**
+ * Matches a bare http or https URL up to the first character that cannot be in
+ * one. Trailing punctuation is excluded so "see https://x.com." does not
+ * produce a link with a full stop on the end.
+ */
+const URL_PATTERN = /https?:\/\/[^\s<>"'`]+[^\s<>"'`.,;:!?)\]}]/g
+
+/**
+ * Puts message text into a node, turning links into links.
+ *
+ * Built from text nodes and elements, never from a markup string. The content
+ * is written by other people, and the moment any of it reaches `innerHTML` a
+ * room member can run script in everybody else's window.
+ */
+function renderText(into, text) {
+  into.replaceChildren()
+  URL_PATTERN.lastIndex = 0
+
+  let at = 0
+  for (const match of text.matchAll(URL_PATTERN)) {
+    if (match.index > at) into.append(text.slice(at, match.index))
+    into.append(link(match[0]))
+    at = match.index + match[0].length
+  }
+  if (at < text.length) into.append(text.slice(at))
+}
+
+/**
+ * A link that opens in the browser rather than in here.
+ *
+ * An anchor with an href would navigate the application window, replacing the
+ * app with whatever a stranger linked. This is a span that asks the main
+ * process to open it, and the main process refuses anything that is not http or
+ * https — `shell.openExternal` will otherwise hand the system a `file://` URL
+ * or a shortcut, which is a way to run a program on this machine.
+ */
+function link(href) {
+  const node = el2('span', 'link', href)
+  node.setAttribute('role', 'link')
+  node.setAttribute('tabindex', '0')
+  node.title = `Open ${href} in your browser`
+
+  const open = () => {
+    void bridge.openExternal(href).then((ok) => {
+      if (!ok) toast('That link could not be opened', 'error')
+    })
+  }
+  node.addEventListener('click', open)
+  node.addEventListener('keydown', (evt) => {
+    if (evt.key === 'Enter' || evt.key === ' ') {
+      evt.preventDefault()
+      open()
+    }
+  })
+  return node
+}
+
 function renderRoom() {
   const room = activeKey ? rooms.get(activeKey) : null
 
@@ -758,12 +850,14 @@ function renderRoom() {
   el.room.hidden = !room
   if (!room) return
 
+  el.roomTitle.textContent = room.name ?? 'Room'
   el.roomKey.textContent = room.key
   el.roomRole.textContent = room.writable ? 'writer' : 'read only'
   el.roomRole.dataset.role = room.writable ? 'writer' : 'reader'
   el.readonlyNotice.hidden = room.writable
   // Accepting an invite grants write access, so only a writer can offer one.
   el.inviteBtn.hidden = !room.writable
+  el.renameBtn.hidden = !room.writable
   el.composerInput.disabled = !room.writable
   el.sendBtn.disabled = !room.writable
   el.composerInput.placeholder = room.writable
@@ -785,6 +879,27 @@ function renderRoom() {
   let previous = null
 
   for (const message of room.messages) {
+    // Something that happened to the room rather than something someone said.
+    // Rendered as a line across the conversation instead of a bubble, because
+    // it is not addressed to anybody.
+    if (message.event) {
+      const notice = document.createElement('li')
+      notice.className = 'system'
+      const who =
+        message.from === room.writerKey
+          ? 'You'
+          : message.verified
+            ? shortAddress(message.author)
+            : short(message.from)
+      notice.append(
+        el2('span', 'system-text', `${who} ${message.text}`),
+        el2('span', 'system-when', time(message.at))
+      )
+      el.messages.append(notice)
+      previous = null
+      continue
+    }
+
     const item = document.createElement('li')
     item.className = 'message' + (message.from === room.writerKey ? ' is-own' : '')
 
@@ -849,7 +964,7 @@ function renderRoom() {
 
     const text = document.createElement('p')
     text.className = 'message-text'
-    text.textContent = message.text
+    renderText(text, message.text)
 
     item.append(meta, text)
     el.messages.append(item)
@@ -867,6 +982,76 @@ function select(key) {
   renderRoom()
   if (rooms.get(key)?.writable) el.composerInput.focus()
 }
+
+// --- Naming a room ----------------------------------------------------------
+
+const renameDialog = document.getElementById('rename-dialog')
+const renameInput = document.getElementById('rename-input')
+const renameError = document.getElementById('rename-error')
+const renameSubmit = document.getElementById('rename-submit')
+
+el.renameBtn.addEventListener('click', () => {
+  renameInput.value = rooms.get(activeKey)?.name ?? ''
+  renameError.hidden = true
+  renameDialog.showModal()
+  renameInput.focus()
+  renameInput.select()
+})
+
+document.getElementById('rename-form').addEventListener('submit', async (evt) => {
+  evt.preventDefault()
+  renameError.hidden = true
+  renameSubmit.disabled = true
+
+  try {
+    adopt([await request('room.rename', { room: activeKey, name: renameInput.value })])
+    renameDialog.close()
+  } catch (err) {
+    renameError.textContent = err.message
+    renameError.hidden = false
+  } finally {
+    renameSubmit.disabled = false
+  }
+})
+
+// --- What protects this room ------------------------------------------------
+
+/**
+ * Says what is actually true rather than showing a padlock and hoping.
+ *
+ * Every claim here is a property of how the room was opened: the Autobase is
+ * encrypted, the key is separate from the room key, and messages carry a wallet
+ * signature this peer checked itself.
+ */
+document.getElementById('room-secure').addEventListener('click', () => {
+  const room = activeKey ? rooms.get(activeKey) : null
+  if (!room) return
+
+  const signed = room.messages.filter((m) => m.verified === true).length
+  const unsigned = room.messages.filter((m) => m.verified === undefined && !m.event).length
+  const disputed = room.messages.filter((m) => m.verified === false).length
+
+  const facts = document.getElementById('secure-facts')
+  facts.replaceChildren()
+  for (const [term, detail] of [
+    ['At rest', 'Encrypted on disk. The blocks in this directory are unreadable without the key.'],
+    ['In flight', 'Encrypted end to end between members. Relays and blind peers carry ciphertext.'],
+    [
+      'The key',
+      'Held only by members. It never travels with the room key, and is not on any server.'
+    ],
+    [
+      'Authorship',
+      disputed > 0
+        ? `${disputed} message${disputed === 1 ? '' : 's'} claim an author whose signature does not match. Treat them as unattributed.`
+        : `${signed} message${signed === 1 ? '' : 's'} carry a wallet signature this machine checked.${unsigned > 0 ? ` ${unsigned} predate signing and are shown unattributed.` : ''}`
+    ]
+  ]) {
+    facts.append(el2('dt', null, term), el2('dd', null, detail))
+  }
+
+  document.getElementById('secure-dialog').showModal()
+})
 
 let toastTimer = null
 function toast(text, tone) {
@@ -963,11 +1148,15 @@ el.inviteBtn.addEventListener('click', async () => {
 
   el.inviteError.hidden = true
   el.inviteValue.textContent = 'Creating…'
+  el.inviteRaw.textContent = ''
+  clearQr()
   el.inviteDialog.showModal()
 
   try {
-    const { invite } = await request('room.invite', { room: activeKey })
-    el.inviteValue.textContent = invite
+    const { invite, link } = await request('room.invite', { room: activeKey })
+    el.inviteValue.textContent = link
+    el.inviteRaw.textContent = invite
+    await drawQr(link)
   } catch (err) {
     el.inviteValue.textContent = ''
     el.inviteError.textContent = err.message
@@ -975,7 +1164,65 @@ el.inviteBtn.addEventListener('click', async () => {
   }
 })
 
-el.copyInviteBtn.addEventListener('click', () => copy(el.inviteValue.textContent, 'Invite'))
+el.copyInviteBtn.addEventListener('click', () => copy(el.inviteValue.textContent, 'Link'))
+document
+  .getElementById('copy-invite-raw')
+  .addEventListener('click', () => copy(el.inviteRaw.textContent, 'Invite'))
+
+// --- QR codes ---------------------------------------------------------------
+
+const qrFigure = document.getElementById('invite-qr')
+
+function clearQr() {
+  qrFigure.querySelector('svg')?.remove()
+}
+
+/**
+ * Draws a QR code as SVG rectangles.
+ *
+ * One rect per run of dark modules rather than per module: an invite fills a
+ * grid of around 60 squared, and six hundred elements render visibly slower
+ * than the sixty or so that runs collapse into.
+ */
+async function drawQr(text) {
+  clearQr()
+  const grid = await bridge.qr(text)
+  if (!grid) return
+
+  const { size, data } = grid
+  const quiet = 2
+  const span = size + quiet * 2
+
+  const chart = svg('svg', {
+    viewBox: `0 0 ${span} ${span}`,
+    width: 168,
+    height: 168,
+    role: 'img'
+  })
+  const title = svg('title', {})
+  title.textContent = 'An invite to this room, as a QR code'
+  chart.append(title)
+  chart.append(svg('rect', { class: 'qr-bg', x: 0, y: 0, width: span, height: span }))
+
+  for (let y = 0; y < size; y++) {
+    let run = 0
+    for (let x = 0; x <= size; x++) {
+      const dark = x < size && data[y * size + x] === 1
+      if (dark) {
+        run += 1
+        continue
+      }
+      if (run > 0) {
+        chart.append(
+          svg('rect', { class: 'qr-fg', x: x - run + quiet, y: y + quiet, width: run, height: 1 })
+        )
+        run = 0
+      }
+    }
+  }
+
+  qrFigure.prepend(chart)
+}
 
 for (const button of document.querySelectorAll('[data-close]')) {
   button.addEventListener('click', () => document.getElementById(button.dataset.close).close())
@@ -2374,6 +2621,27 @@ function showUpdateReady() {
   }
 }
 
+// --- Deep links -------------------------------------------------------------
+
+/**
+ * A `lightchain://` link, clicked anywhere on the machine.
+ *
+ * The join dialog is opened prefilled rather than joining outright. Following a
+ * link should never be enough on its own to put someone in a stranger's room:
+ * they see what they are about to join, and press the button.
+ */
+function openInvite(url) {
+  if (typeof url !== 'string' || url === '') return
+  showSection('chat')
+  el.joinInput.value = url
+  el.joinError.hidden = true
+  if (!el.joinDialog.open) el.joinDialog.showModal()
+  el.joinSubmit.focus()
+  toast('Invite ready to join')
+}
+
+bridge.onDeepLink(openInvite)
+
 // --- Worker lifecycle ------------------------------------------------------
 
 setStatus('connecting')
@@ -2439,6 +2707,10 @@ async function restorePreferences() {
   const { values } = await request('settings.read').catch(() => ({ values: {} }))
   applyTheme(values?.theme)
   applyCollapsed(values?.sidebar === 'collapsed')
+
+  // A link can be what started the app, in which case it arrived before this
+  // window existed and is waiting rather than having been delivered.
+  openInvite(await bridge.takeDeepLink().catch(() => null))
 }
 
 bridge

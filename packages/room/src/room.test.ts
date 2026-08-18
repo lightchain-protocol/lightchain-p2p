@@ -196,6 +196,71 @@ describe('two writers', () => {
   })
 })
 
+describe('naming a room', () => {
+  it('reaches the other side, and the last name wins', async () => {
+    // The point of putting the name in the log rather than in a local file: a
+    // name set on one machine is the name everyone sees.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const bob = await net.createPeer('bob')
+
+    const aliceRoom = await openRoom(alice)
+    expect(await aliceRoom.name()).toBeNull()
+
+    const bobRoom = await openRoom(bob, aliceRoom)
+    await alice.swarm.flush()
+    await bob.swarm.flush()
+    await aliceRoom.addWriter(bobRoom.writerKey)
+    await waitFor(async () => {
+      await bobRoom.update()
+      return bobRoom.writable
+    }, 'bob to be granted write access')
+
+    await aliceRoom.rename('Design')
+    await waitFor(async () => (await bobRoom.name()) === 'Design', 'bob to see the name')
+
+    // Either writer may rename, and both converge on whichever wrote last.
+    await bobRoom.rename('Design and build')
+    await waitFor(
+      async () => (await aliceRoom.name()) === 'Design and build',
+      'alice to see the rename'
+    )
+    expect(await bobRoom.name()).toBe(await aliceRoom.name())
+  })
+
+  it('clears the name when renamed to nothing', async () => {
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const room = await openRoom(alice)
+
+    await room.rename('Temporary')
+    expect(await room.name()).toBe('Temporary')
+
+    await room.rename('   ')
+    expect(await room.name()).toBeNull()
+  })
+
+  it('leaves a sentence an older client can still read', async () => {
+    // The name travels as an optional field on an ordinary message. A build
+    // that predates the field ignores it and shows the text, so the text has to
+    // say what happened on its own.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const room = await openRoom(alice)
+
+    await room.rename('Design')
+    expect(await textsOf(room)).toEqual(['named the room “Design”'])
+  })
+
+  it('refuses a name longer than the limit rather than truncating one', async () => {
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const room = await openRoom(alice)
+
+    await expect(room.rename('x'.repeat(65))).rejects.toThrow(/64 characters/)
+  })
+})
+
 describe('several rooms in one store', () => {
   it('keeps them separate', async () => {
     // A client is in more than one room at a time, and they share a store. Two

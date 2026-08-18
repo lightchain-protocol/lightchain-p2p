@@ -87,6 +87,10 @@
         <symbol id="i-moon" viewBox="0 0 16 16">
           <path d="M13.5 9.7A5.8 5.8 0 0 1 6.3 2.5a5.8 5.8 0 1 0 7.2 7.2Z" />
         </symbol>
+        <symbol id="i-lock" viewBox="0 0 16 16">
+          <rect x="3.25" y="7" width="9.5" height="7" rx="1.6" />
+          <path d="M5.5 7V4.9a2.5 2.5 0 0 1 5 0V7" />
+        </symbol>
         <symbol id="i-eye" viewBox="0 0 16 16">
           <path d="M1.4 8S3.9 3.4 8 3.4 14.6 8 14.6 8 12.1 12.6 8 12.6 1.4 8 1.4 8Z" />
           <circle cx="8" cy="8" r="2.05" />
@@ -669,11 +673,24 @@
           <div class="room" id="room" hidden>
             <header class="room-head">
               <div class="room-head-main">
-                <h1 class="room-title">Room</h1>
+                <h1 class="room-title" id="room-title">Room</h1>
                 <code class="key" id="room-key" title="Room key"></code>
               </div>
               <div class="room-head-actions">
+                <!-- Not decoration. Somebody has to be able to tell whether the
+                     thing they are typing into is encrypted, and the only
+                     honest place to say so is beside the conversation. -->
+                <button
+                  class="badge badge-secure"
+                  type="button"
+                  id="room-secure"
+                  title="How this room is protected"
+                >
+                  <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+                  Encrypted
+                </button>
                 <span class="badge" id="room-role"></span>
+                <button class="button button-sm" type="button" id="rename-btn">Rename</button>
                 <button class="button button-sm" type="button" id="invite-btn">
                   Invite someone
                 </button>
@@ -981,14 +998,27 @@
       </form>
     </dialog>
 
-    <dialog class="dialog" id="invite-dialog">
+    <dialog class="dialog dialog-wide" id="invite-dialog">
       <div class="dialog-form">
         <h2 class="dialog-title">Invite someone</h2>
         <p class="dialog-body">
           Send them this. It carries no room key, so it cannot be used to read the room — it is
           spent once, when they join, and they arrive able to write.
         </p>
-        <code class="invite" id="invite-value"></code>
+        <div class="invite-share">
+          <div class="invite-codes">
+            <code class="invite" id="invite-value"></code>
+            <p class="dialog-note">
+              Or the raw invite, for anywhere a link will not survive being pasted.
+            </p>
+            <code class="invite invite-raw" id="invite-raw"></code>
+          </div>
+          <!-- Drawn from a module grid rather than an image, so it needs no
+               network, no data URL and no exception to the content policy. -->
+          <figure class="qr" id="invite-qr">
+            <figcaption class="qr-caption">Scan to join</figcaption>
+          </figure>
+        </div>
         <p class="dialog-error" id="invite-error" hidden></p>
         <p class="dialog-note">
           It only works while this app is running, because the invite is held in memory rather than
@@ -996,8 +1026,49 @@
         </p>
         <div class="dialog-actions">
           <button class="button" type="button" data-close="invite-dialog">Close</button>
+          <button class="button" type="button" id="copy-invite-raw">Copy raw invite</button>
           <button class="button button-primary" type="button" id="copy-invite-btn">
-            Copy invite
+            Copy link
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="dialog" id="rename-dialog">
+      <form method="dialog" class="dialog-form" id="rename-form">
+        <h2 class="dialog-title">Name this room</h2>
+        <p class="dialog-body">
+          Everyone in the room sees the same name, and any writer can change it. It is written into
+          the room's history, so it survives every member going offline.
+        </p>
+        <input
+          class="input"
+          id="rename-input"
+          type="text"
+          maxlength="64"
+          autocomplete="off"
+          placeholder="Design"
+          aria-label="Room name"
+        />
+        <p class="dialog-error" id="rename-error" hidden></p>
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close="rename-dialog">Cancel</button>
+          <button class="button button-primary" type="submit" id="rename-submit">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="dialog" id="secure-dialog">
+      <div class="dialog-form">
+        <h2 class="dialog-title">How this room is protected</h2>
+        <dl class="facts" id="secure-facts"></dl>
+        <p class="dialog-note">
+          The encryption key never travels with the room key. A blind peer can hold this room and
+          keep it available without being able to read a word of it.
+        </p>
+        <div class="dialog-actions">
+          <button class="button button-primary" type="button" data-close="secure-dialog">
+            Close
           </button>
         </div>
       </div>

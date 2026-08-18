@@ -17,6 +17,22 @@ contextBridge.exposeInMainWorld('bridge', {
   },
   applyUpdate: () => ipcRenderer.invoke('pear:applyUpdate'),
   appAfterUpdate: () => ipcRenderer.invoke('app:afterUpdate'),
+  /**
+   * Opens a URL in the user's browser. Refused unless it is http or https —
+   * the check is in the main process, because a renderer that can be persuaded
+   * to open `file://` has been persuaded to run something.
+   */
+  openExternal: (url) => ipcRenderer.invoke('app:openExternal', url),
+  notify: (title, body) => ipcRenderer.invoke('app:notify', { title, body }),
+  /** The module grid for a QR code: `{ size, data }`, or null if it would not fit. */
+  qr: (text) => ipcRenderer.invoke('app:qr', text),
+  /** The `lightchain://` link that started the app, if one did. Consumed once. */
+  takeDeepLink: () => ipcRenderer.invoke('app:takeDeepLink'),
+  onDeepLink: (listener) => {
+    const wrap = (evt, url) => listener(url)
+    ipcRenderer.on('app:deepLink', wrap)
+    return () => ipcRenderer.removeListener('app:deepLink', wrap)
+  },
   startWorker: (specifier) => ipcRenderer.invoke('pear:startWorker', specifier),
   onWorkerStdout: (specifier, listener) => {
     const wrap = (evt, data) => listener(toBuffer(data))
