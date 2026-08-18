@@ -22,10 +22,20 @@ recover, and that is the last moment when finding out is free. The phrase is
 standard BIP-39 at `m/44'/60'/0'/0/0`, so it restores in MetaMask or a Ledger.
 Details in [`packages/wallet`](../../packages/wallet).
 
-And the Worker section, read-only: host readiness checks with remedies, and
-container state when a worker is configured. Installing, registering and
-starting stay in `lcai-supervisor`, because the private key is stdin-only by
-design and a pull runs for minutes with no way to report progress here yet.
+And the Worker section: host readiness checks with remedies, container state,
+and buttons for the three things an operator does repeatedly — pull the image,
+start it, stop it. Docker's output streams into the panel as it arrives, because
+a pull takes minutes and a spinner four minutes in looks exactly like one that
+is stuck.
+
+**Importing a key and generating one stay in `lcai-supervisor`**, and not by
+oversight. The supervisor reads a private key from stdin precisely so it never
+reaches argv, an environment variable or a log; routing it through an IPC
+channel to save a terminal would undo the reason for that.
+
+Verified against a real Docker CLI with the daemon stopped, where the panel
+reports what Docker actually said. A successful pull is untested on the machine
+this was built on, which has no Docker engine installed.
 
 Configuration lives in **one settings panel** behind the gear, not scattered
 across the sections that use it: a section shows what is happening, settings is

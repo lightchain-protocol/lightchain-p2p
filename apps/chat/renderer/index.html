@@ -470,8 +470,15 @@
                 <h1 class="worker-title">Worker</h1>
                 <p class="worker-sub">Whether this machine can run one, and what it is doing.</p>
               </div>
-              <button class="button button-sm" type="button" id="worker-refresh">Refresh</button>
+              <div class="wallet-head-actions">
+                <button class="button button-sm" type="button" id="worker-pull">Pull image</button>
+                <button class="button button-sm" type="button" id="worker-start">Start</button>
+                <button class="button button-sm" type="button" id="worker-stop">Stop</button>
+                <button class="button button-sm" type="button" id="worker-refresh">Refresh</button>
+              </div>
             </header>
+
+            <p class="worker-summary" id="worker-busy" hidden></p>
 
             <section class="worker-block">
               <h2 class="worker-heading">Host readiness</h2>

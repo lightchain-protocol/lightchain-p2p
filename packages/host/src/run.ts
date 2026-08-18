@@ -18,6 +18,15 @@ export interface CommandResult {
 export interface RunOptions {
   /** Milliseconds. `0` means no limit, for pulls and container starts. */
   readonly timeout?: number
+  /**
+   * Called with output as it arrives, as well as collected into the result.
+   *
+   * `docker pull` runs for minutes and says a great deal while it does. Without
+   * this the only honest thing an interface can show is a spinner, and a
+   * spinner that has been turning for four minutes is indistinguishable from
+   * one that is stuck.
+   */
+  readonly onOutput?: (chunk: string, stream: 'stdout' | 'stderr') => void
 }
 
 /**
@@ -103,10 +112,15 @@ export function runAsync(
     }
 
     child.stdout?.on('data', (chunk: Buffer | string) => {
-      stdout += chunk.toString()
+      const text = chunk.toString()
+      stdout += text
+      opts.onOutput?.(text, 'stdout')
     })
     child.stderr?.on('data', (chunk: Buffer | string) => {
-      stderr += chunk.toString()
+      const text = chunk.toString()
+      stderr += text
+      // Docker writes its progress to stderr, so this is the interesting one.
+      opts.onOutput?.(text, 'stderr')
     })
 
     // A missing binary arrives here rather than as a throw from spawn.

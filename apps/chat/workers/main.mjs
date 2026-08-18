@@ -16,11 +16,16 @@ import { probeAll, runAsync } from '@lcai-p2p/host'
 import { runChecks, summarize } from '@lcai-p2p/preflight'
 import {
   NETWORKS,
+  containerKeystorePath,
   inspectWorker,
   isHealthy,
   logsWorker,
   parseContainerState,
-  resolveConfig
+  pullImage,
+  resolveConfig,
+  runWorker,
+  selectKeystore,
+  stopWorker
 } from '@lcai-p2p/worker'
 import {
   Rpc,
@@ -386,6 +391,27 @@ async function modelFee(aiConfig, id) {
  * stake — but zero here is a definite no, which is worth showing before
  * someone waits out a draw that cannot succeed.
  */
+/** One Docker action at a time, so a start cannot race a stop. */
+let busyWith = null
+
+/**
+ * Which keystore the container should open.
+ *
+ * The same selection the supervisor makes: the directory may hold several, and
+ * picking the wrong one starts a worker that registers as somebody else.
+ * `selectKeystore` throws with a message written for an operator when there is
+ * no obvious answer, which is better than choosing for them.
+ */
+function keystoreFor(config) {
+  let names = []
+  try {
+    names = fs.readdirSync(path.join(config.keysDir, 'eth-keystore'))
+  } catch {
+    // selectKeystore has the better message for a missing or empty directory.
+  }
+  return containerKeystorePath(selectKeystore(names).file)
+}
+
 async function eligibleWorkerCount(id) {
   const raw = await rpc.call({
     to: WORKER_REGISTRY_ADDRESS,
@@ -926,6 +952,67 @@ async function handle(req) {
       conversation = null
       conversationId = null
       return { ok: true }
+    }
+
+    /**
+     * The things an operator does repeatedly: fetch the image, start it, stop
+     * it.
+     *
+     * Importing a key and generating one stay in `lcai-supervisor`. Not an
+     * oversight — the supervisor reads a private key from stdin precisely so it
+     * never reaches argv, an environment variable or a log, and routing it
+     * through an Electron IPC channel to get a button would undo the reason
+     * that decision was made.
+     */
+    case 'worker.pull':
+    case 'worker.start':
+    case 'worker.stop': {
+      const { config, problem } = workerConfig()
+      if (!config) throw new Error(problem ?? 'the worker is not configured')
+
+      if (busyWith) throw new Error(`already ${busyWith}`)
+      busyWith = {
+        'worker.pull': 'pulling',
+        'worker.start': 'starting',
+        'worker.stop': 'stopping'
+      }[req.t]
+      send({ t: 'worker.busy', doing: busyWith })
+
+      try {
+        const command =
+          req.t === 'worker.pull'
+            ? pullImage(config)
+            : req.t === 'worker.stop'
+              ? stopWorker(config)
+              : runWorker(config, keystoreFor(config))
+
+        let streamed = false
+        const res = await runAsync('docker', command.argv, {
+          // No limit. A pull is minutes on a cold host, and killing it halfway
+          // leaves a partial image that fails in a less obvious way.
+          timeout: 0,
+          onOutput: (chunk) => {
+            streamed = true
+            send({ t: 'worker.output', text: chunk })
+          }
+        })
+
+        if (!res.ok) {
+          // Docker's own words already reached the log as they were written, so
+          // repeating them here prints the same failure twice. When nothing was
+          // streamed they are all there is.
+          throw new Error(
+            streamed
+              ? `docker exited ${res.status}`
+              : res.stderr.trim() || res.stdout.trim() || `docker exited ${res.status}`
+          )
+        }
+
+        return { ok: true }
+      } finally {
+        busyWith = null
+        send({ t: 'worker.busy', doing: null })
+      }
     }
 
     case 'worker.logs': {

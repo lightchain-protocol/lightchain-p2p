@@ -154,6 +154,17 @@ function onChatMessage(msg) {
     return
   }
 
+  if (msg.t === 'worker.busy') {
+    setWorkerBusy(msg.doing)
+    return
+  }
+
+  if (msg.t === 'worker.output') {
+    el.workerLogs.textContent += msg.text
+    el.workerLogs.scrollTop = el.workerLogs.scrollHeight
+    return
+  }
+
   const waiting = pending.get(msg.id)
   if (!waiting) return
   pending.delete(msg.id)
@@ -592,6 +603,44 @@ async function refreshWorker() {
 }
 
 el.workerRefresh.addEventListener('click', () => void refreshWorker())
+
+/**
+ * Docker actions, with their output as it arrives.
+ *
+ * A pull is minutes long and noisy, and the noise is the only evidence it is
+ * progressing — a spinner four minutes in looks exactly like a spinner that is
+ * stuck.
+ */
+const workerBusy = document.getElementById('worker-busy')
+
+function setWorkerBusy(doing) {
+  workerBusy.hidden = doing === null
+  workerBusy.textContent = doing === null ? '' : `${doing}…`
+
+  for (const id of ['worker-pull', 'worker-start', 'worker-stop']) {
+    document.getElementById(id).disabled = doing !== null
+  }
+}
+
+for (const [id, action, label] of [
+  ['worker-pull', 'worker.pull', 'Pulling the image'],
+  ['worker-start', 'worker.start', 'Starting the worker'],
+  ['worker-stop', 'worker.stop', 'Stopping the worker']
+]) {
+  document.getElementById(id).addEventListener('click', async () => {
+    el.workerLogs.textContent = `${label}…\n`
+    try {
+      await request(action)
+      toast(`${label.replace(/ing\b/, 'ed')}`)
+      void refreshWorker()
+    } catch (err) {
+      // Left in the log rather than only in a toast: docker's reason is usually
+      // several lines and worth reading.
+      el.workerLogs.textContent += `\n${err.message}`
+      toast(err.message.split('\n')[0], 'error')
+    }
+  })
+}
 
 // --- Asking a model in a room -----------------------------------------------
 
