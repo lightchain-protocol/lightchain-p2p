@@ -1059,11 +1059,36 @@ async function openSettings() {
   document.getElementById('set-ollama').value = state.values.ollamaUrl ?? ''
   document.getElementById('set-ollama').placeholder = state.effective.ollamaUrl ?? ''
 
+  document.getElementById('set-blind-peers').value = state.values.blindPeers ?? ''
+  document.getElementById('blind-status').textContent =
+    state.blindPeerCount > 0
+      ? `${state.blindPeerCount} blind peer${state.blindPeerCount === 1 ? '' : 's'} in use. Rooms opened from now on are lodged with them.`
+      : 'No blind peers. Rooms live only while someone who has them is online.'
+
   facts(document.getElementById('storage-facts'), [
     ['Directory', state.storage],
     ['Version', bridge.pkg().version]
   ])
 }
+
+document.getElementById('blind-form').addEventListener('submit', async (evt) => {
+  evt.preventDefault()
+  const error = document.getElementById('blind-error')
+  error.hidden = true
+
+  try {
+    await request('settings.write', {
+      values: { blindPeers: document.getElementById('set-blind-peers').value.trim() }
+    })
+    // Rooms are lodged as they open, so existing ones are unaffected until the
+    // app restarts. Saying so beats letting someone believe otherwise.
+    toast('Saved. Restart to lodge rooms you already have.')
+    void openSettings()
+  } catch (err) {
+    error.textContent = err.message
+    error.hidden = false
+  }
+})
 
 document.getElementById('settings-btn').addEventListener('click', () => void openSettings())
 document.getElementById('settings-close').addEventListener('click', () => {

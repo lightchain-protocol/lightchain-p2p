@@ -9,6 +9,7 @@ export {
   type RoomRegistry,
   type AttributedMessage,
   type AuthorChecks,
+  type RoomAvailability,
   type RoomState,
   type SwarmLike
 } from './host.js'

@@ -58,6 +58,17 @@ export interface AttributedMessage extends ChatMessage {
   readonly answered?: boolean
 }
 
+/**
+ * Somewhere that will hold a room while nobody is online.
+ *
+ * An interface rather than `BlindRegistry`, so this package does not depend on
+ * blind peering to open a room — a peer with no availability configured must
+ * still work, and most will not have any.
+ */
+export interface RoomAvailability {
+  registerAutobase(base: unknown, opts?: { announce?: boolean }): Promise<void>
+}
+
 /** What a host needs to check an author claim, if it is to check them at all. */
 export interface AuthorChecks {
   recover(preimage: string, signature: string): string
@@ -112,6 +123,14 @@ export interface RoomHostOptions {
   readonly announceTimeout?: number
   /** Delays, in milliseconds, at which to look the topic up again. */
   readonly rediscoverAfter?: readonly number[]
+  /**
+   * Where to lodge rooms so they outlive everyone being offline.
+   *
+   * Without this a room replicates only while some participant is running, so
+   * two people who are never online at the same time never exchange anything.
+   * The peer holds ciphertext and cannot read the room.
+   */
+  readonly availability?: RoomAvailability
   /**
    * How to check who wrote a message. Omit and messages are passed through
    * unattributed, which is what a peer without a wallet should do.
@@ -188,6 +207,7 @@ export class RoomHost {
   readonly #rediscoverAfter: readonly number[]
   readonly #pairTimeout: number
   readonly #verify: AuthorChecks | null
+  readonly #availability: RoomAvailability | null
   #identity: Identity | null = null
   #pairing: BlindPairing | null = null
   /** Room key to the member serving its invite. */
@@ -203,12 +223,22 @@ export class RoomHost {
   /** Rooms in the registry that would not reopen. Empty on a healthy start. */
   readonly failed: FailedRoom[] = []
 
+  /**
+   * Rooms that could not be lodged with a blind peer.
+   *
+   * Kept rather than thrown, because failing to arrange availability is not a
+   * reason to refuse a room — but it is a reason the room will vanish when
+   * everyone closes the app, and nothing else would say so.
+   */
+  readonly lodgingFailures: FailedRoom[] = []
+
   private constructor(opts: RoomHostOptions) {
     this.#store = opts.store
     this.#swarm = opts.swarm
     this.#registry = opts.registry ?? null
     this.#onChange = opts.onChange ?? null
     this.#verify = opts.verify ?? null
+    this.#availability = opts.availability ?? null
     this.#settle = opts.settle ?? 50
     this.#announceTimeout = opts.announceTimeout ?? 10_000
     this.#rediscoverAfter = opts.rediscoverAfter ?? REDISCOVER_AFTER
@@ -585,6 +615,15 @@ export class RoomHost {
     })
 
     room.useIdentity(this.#identity)
+
+    // Lodged in the background. A blind peer that is slow or unreachable must
+    // not hold up opening the room — the room works either way, it just does
+    // not outlive its participants.
+    if (this.#availability) {
+      this.#availability
+        .registerAutobase(room.base, { announce: true })
+        .catch((err: Error) => this.lodgingFailures.push({ key: room.key, reason: err.message }))
+    }
 
     // A create only learns its key here, and a duplicate record would otherwise
     // open the same room twice over one namespace, which deadlocks.

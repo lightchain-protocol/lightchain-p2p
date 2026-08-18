@@ -16,6 +16,7 @@
     "make": "npm run build && electron-forge make"
   },
   "dependencies": {
+    "@lcai-p2p/blind": "workspace:*",
     "@lcai-p2p/chain": "workspace:*",
     "@lcai-p2p/host": "workspace:*",
     "@lcai-p2p/inference": "workspace:*",

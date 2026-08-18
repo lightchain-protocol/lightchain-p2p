@@ -262,6 +262,19 @@ export class Room {
     return signed
   }
 
+  /**
+   * The Autobase behind this room, for handing to a blind peer.
+   *
+   * Exposed reluctantly and narrowly: everything else here is deliberately
+   * about rooms rather than about Autobase, and a caller that reaches through
+   * this to write would bypass every check above it. It exists because
+   * availability is arranged from outside — the host knows which blind peers to
+   * use and the room does not.
+   */
+  get base(): unknown {
+    return this.#base
+  }
+
   /** Grants write access to another peer, by their `writerKey`. */
   async addWriter(writerKey: string): Promise<void> {
     if (!/^[0-9a-f]{64}$/.test(writerKey)) {

@@ -11,6 +11,7 @@ import b4a from 'b4a'
 import { persistent } from 'bare-storage'
 import { isBareKit } from 'which-runtime'
 import { RoomHost } from '@lcai-p2p/room'
+import { BlindRegistry, Priority } from '@lcai-p2p/blind'
 import { probeAll, runAsync } from '@lcai-p2p/host'
 import { runChecks, summarize } from '@lcai-p2p/preflight'
 import {
@@ -431,10 +432,50 @@ async function resolveAnswerChecks() {
 
 void resolveAnswerChecks()
 
+/**
+ * Where rooms are lodged so they outlive everyone closing the app.
+ *
+ * Off unless keys are configured, because there is no public fleet and
+ * `blind-peering` treats an empty list as success — a peer with none set would
+ * report availability it does not have.
+ */
+function blindPeers() {
+  const configured = setting('blindPeers', 'BLIND_PEERS')
+  if (!configured) return null
+
+  const peers = configured
+    .split(',')
+    .map((key) => key.trim())
+    .filter((key) => key !== '')
+
+  if (peers.length === 0) return null
+
+  try {
+    return new BlindRegistry({
+      dht: swarm.dht,
+      store: chatStore,
+      peers: peers.map((key) => ({ key }))
+    })
+  } catch (err) {
+    console.error('blind peers are configured but unusable:', err.message)
+    return null
+  }
+}
+
+const availability = blindPeers()
+
 const rooms = await RoomHost.open({
   store: chatStore,
   swarm,
   registry,
+  availability: availability
+    ? {
+        // Announce is what makes the peer serve rather than merely store, and
+        // it only sticks on a peer that trusts this machine's DHT key.
+        registerAutobase: (base) =>
+          availability.registerAutobase(base, { priority: Priority.High, announce: true })
+      }
+    : undefined,
   onChange: (room) => send({ t: 'room', room }),
   // Reading who wrote a message needs no wallet, only a curve — so rooms are
   // attributed whether or not this peer has one of its own.
@@ -582,6 +623,7 @@ async function handle(req) {
           rpcUrl: NETWORKS[net].rpcUrl,
           chainId: NETWORKS[net].chainId
         },
+        blindPeerCount: availability?.peerCount ?? 0,
         storage: chatDir
       }
     }

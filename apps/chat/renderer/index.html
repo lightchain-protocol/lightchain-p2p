@@ -294,6 +294,23 @@
           </section>
 
           <section class="settings-page" id="settings-advanced" hidden>
+            <h3 class="settings-heading">Availability</h3>
+            <p class="settings-note">
+              Blind peers are always-on machines that hold your rooms without being able to read
+              them. Without one, a room only replicates while someone who has it is online — so two
+              people who are never online together never see each other's messages. There is no
+              public fleet; these are machines you or someone you trust runs.
+            </p>
+            <form class="wallet-form" id="blind-form">
+              <label class="field">
+                <span class="field-label">Blind peer keys, comma separated</span>
+                <input class="input" id="set-blind-peers" type="text" spellcheck="false" />
+              </label>
+              <p class="dialog-error" id="blind-error" hidden></p>
+              <button class="button" type="submit">Save</button>
+            </form>
+            <p class="settings-note" id="blind-status"></p>
+
             <h3 class="settings-heading">Storage</h3>
             <p class="settings-note">
               Where rooms, the wallet vault and these settings live on this machine. Anyone who can

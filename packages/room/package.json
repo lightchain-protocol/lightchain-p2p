@@ -22,12 +22,17 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@lcai-p2p/blind": "workspace:*",
     "@lcai-p2p/eslint-config": "workspace:*",
     "@lcai-p2p/testkit": "workspace:*",
     "@lcai-p2p/typescript-config": "workspace:*",
     "@lcai-p2p/vitest-config": "workspace:*",
+    "blind-peer": "^3.13.3",
+    "corestore": "^7.12.0",
     "eslint": "^10.8.1",
+    "hypercore-id-encoding": "^1.3.0",
     "hyperswarm": "^4.17.0",
+    "rocksdb-native": "^3.17.4",
     "vitest": "^4.1.10"
   },
   "dependencies": {

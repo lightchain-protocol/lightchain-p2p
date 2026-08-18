@@ -208,10 +208,18 @@ Windows Publisher CN, and the CN is permanent once a signed release ships.
 
 ### Infrastructure to operate
 
-**Blind peers.** There is no public fleet, and a third-party peer will cache for
-us but will not serve on our behalf — announcing requires trusted status on a
-server we run. Until we operate blind peers, availability does not exist
-regardless of what the tests show.
+**Blind peers.** The code gap is closed: a room is now lodged with the blind
+peers configured in Settings as it opens, and
+`packages/room/src/availability.test.ts` shuts down **every** participant and
+reads the room back from a machine that was never given the keys. Registration
+follows the Autobase rather than a snapshot of its cores, so a room stays
+covered as writers join.
+
+What remains is a machine. There is no public fleet, and a third-party peer will
+cache for us but not serve on our behalf — announcing requires trusted status on
+a server we run. [`docs/availability.md`](docs/availability.md) has the systemd
+units and the trap that makes an untrusted peer look healthy while serving
+nobody.
 
 **Seeders.** `apps/seeder` exists and is verified holding a real Pear-staged
 release, so this is no longer an engineering item — it needs a host to run on.

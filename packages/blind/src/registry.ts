@@ -142,6 +142,25 @@ export class BlindRegistry {
     await this.registerCore(blobs.core, opts)
   }
 
+  /**
+   * Registers an Autobase, which is what a room is.
+   *
+   * Not the same as registering its cores by hand. An Autobase is a moving set:
+   * every writer has a core, the view has one, and the set changes whenever
+   * somebody is added. `addAutobase` follows that — it registers what exists and
+   * keeps up as writers join — where a one-off `registerCore` on today's list
+   * quietly stops covering the room the moment it grows.
+   *
+   * The peer holds ciphertext. A room is encrypted under a key that never
+   * leaves the members, so this buys availability without buying a reader.
+   */
+  async registerAutobase(base: unknown, opts: RegisterOptions = {}): Promise<void> {
+    await this.#peering.addAutobase(base, {
+      priority: opts.priority ?? Priority.Normal,
+      announce: opts.announce ?? false
+    })
+  }
+
   async close(): Promise<void> {
     await this.#peering.close()
   }
