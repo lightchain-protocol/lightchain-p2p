@@ -247,6 +247,35 @@ export class RoomHost {
     return [...this.#rooms.keys()]
   }
 
+  /**
+   * Opens rooms from records that were not available when the host started.
+   *
+   * A registry can be unreadable at boot — sealed under a key that does not
+   * exist until a wallet is unlocked — which means the rooms cannot be opened
+   * in the constructor. This is that second chance, and it skips whatever is
+   * already open so calling it twice is harmless.
+   *
+   * Returns what could be opened. Failures land in `failed`, as at startup: one
+   * unreadable room must not cost the others.
+   */
+  async reload(records: readonly RoomRecord[]): Promise<RoomState[]> {
+    const opened: RoomState[] = []
+
+    for (const record of records) {
+      if (this.#rooms.has(record.key)) continue
+
+      try {
+        const room = await this.#open(record)
+        opened.push(await this.#stateOf(room))
+      } catch (err) {
+        this.#unopened.push(record)
+        this.failed.push({ key: record.key, reason: (err as Error).message })
+      }
+    }
+
+    return opened
+  }
+
   async create(): Promise<RoomState> {
     // Random because the namespace determines the key: reusing one reopens the
     // existing room instead of making a new one.

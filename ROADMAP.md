@@ -159,9 +159,13 @@ no room key, and the joiner arrives able to write. Rooms are encrypted, so a
 room key alone reads nothing and the blind peers we will rely on to hold rooms
 cannot read what they hold.
 
-The remaining limit is local: the encryption key sits in `chat/rooms.json`
-beside the data, because a room must reopen unattended, so anyone who can read
-that directory can read every room.
+That limit is now closed too. The keys that open rooms used to sit beside the
+data in the clear, justified by rooms needing to reopen unattended — which
+stopped being true when the wallet became mandatory at first run. They are
+sealed under a key derived from that wallet, as transcripts are, so reading them
+costs the password rather than access to the directory. An older installation's
+plaintext registry is carried across once and deleted, verified against a real
+one rather than an invented record.
 
 The **graphical interface and install experience for every platform** remains the
 largest single piece of work, and it is more than packaging. It is the first

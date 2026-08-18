@@ -1,5 +1,7 @@
 export { KeystoreError, addressOf, decrypt, encrypt, type KeystoreV3 } from './keystore.js'
 
+export { DerivedKeyError, deriveKey, openData, openJson, sealData, sealJson } from './derived.js'
+
 export {
   ACCOUNT_PATH,
   SCRYPT_N,

@@ -56,10 +56,15 @@ makes the wallet the root identity, so the key that pays is the key that signs;
 today a peer in a room is still identified only by its Autobase writer key, and
 the two have not been joined up.
 
-**Encryption stops at this machine.** Rooms are encrypted, so the peers
-replicating them cannot read them — but the key is stored in
-`chat/rooms.json` beside the data, because a room has to reopen without anyone
-typing a password. Whoever can read that directory can read every room.
+**Encryption no longer stops at this machine.** Rooms are encrypted against the
+peers replicating them, and the keys that open them are sealed in
+`chat/rooms.sealed` under a key derived from the wallet — so reading them costs
+the password, not merely access to the directory. Transcripts are held the same
+way. The consequence is deliberate: rooms do not open until the wallet is
+unlocked, which is already true of everything else here.
+
+An installation from before this carried its room keys in `chat/rooms.json` in
+the clear. That file is read once, rewritten sealed and deleted.
 
 ## Architecture
 
@@ -160,6 +165,6 @@ removes the dependency on being able to reach the DHT at all.
 wrong for a long conversation, which wants an indexed view.
 
 **Storage layout is fixed at first run.** Rooms live in `chat/corestore`, and
-which writer core a room reopens under is recorded in `chat/rooms.json`. Losing
-that file costs the write access each room granted this peer, not merely the
-list of rooms.
+which writer core a room reopens under is recorded in `chat/rooms.sealed`.
+Losing that file costs the write access each room granted this peer, not merely
+the list of rooms — and so does losing the wallet that seals it.

@@ -37,7 +37,7 @@ import {
   toBytes,
   toHex
 } from '@lcai-p2p/chain'
-import { Wallet } from '@lcai-p2p/wallet'
+import { Wallet, deriveKey, openJson, sealJson } from '@lcai-p2p/wallet'
 import { Api, Conversation, History, isAnswerVerified } from '@lcai-p2p/inference'
 
 /**
@@ -122,7 +122,9 @@ const pear = new PearRuntime({ ...config, swarm, store: pearStore })
 
 const chatDir = path.join(config.dir, 'chat')
 const chatStore = new Corestore(path.join(chatDir, 'corestore'))
-const registryFile = path.join(chatDir, 'rooms.json')
+// Not `.json`: it is ciphertext, and a name promising otherwise invites
+// somebody to open it in an editor and conclude the file is corrupt.
+const registryFile = path.join(chatDir, 'rooms.sealed')
 
 function send(message) {
   pipe.write(JSON.stringify(message))
@@ -135,46 +137,100 @@ function send(message) {
  * comes back on, so losing this file costs the write access each room granted
  * this peer, not merely the list.
  *
- * **This file holds secrets.** Every record carries its room's encryption key,
- * so whoever can read it can read every room. It is written `0600` where that
- * means anything — Windows ignores the mode — and the key sits in the same
- * directory as the data it protects regardless. Encryption defends a room
- * against the peers replicating it, not against access to this machine.
+ * **Every record carries its room's encryption key**, so this file is the one
+ * thing that reads every room. It used to sit in the clear, on the reasoning
+ * that a room has to reopen without anyone typing a password — which stopped
+ * being true when the wallet became mandatory at first run. It is now sealed
+ * under a key derived from that wallet, so reading it costs the same password
+ * the wallet does, and file permissions are no longer the boundary.
+ *
+ * The consequence is deliberate: rooms do not open until the wallet is
+ * unlocked. Nothing else in the app does either.
  */
+const ROOM_KEY_PURPOSE = 'room registry'
+const legacyRegistryFile = path.join(chatDir, 'rooms.json')
+
+let registryKey = null
+
+function usableRecords(parsed) {
+  if (!Array.isArray(parsed)) return []
+
+  const usable = parsed.filter(
+    (e) =>
+      e &&
+      typeof e.key === 'string' &&
+      typeof e.namespace === 'string' &&
+      typeof e.encryptionKey === 'string'
+  )
+
+  // A record with no encryption key cannot open its room at all. Say so, rather
+  // than letting the room disappear from the list without comment.
+  const dropped = parsed.length - usable.length
+  if (dropped > 0) console.error(`${dropped} room(s) have no encryption key and cannot open`)
+
+  return usable
+}
+
 const registry = {
   read() {
+    if (!registryKey) return []
+
     try {
-      const parsed = JSON.parse(fs.readFileSync(registryFile, 'utf8'))
-      if (!Array.isArray(parsed)) return []
-
-      const usable = parsed.filter(
-        (e) =>
-          e &&
-          typeof e.key === 'string' &&
-          typeof e.namespace === 'string' &&
-          typeof e.encryptionKey === 'string'
-      )
-
-      // A record with no encryption key cannot open its room at all. Say so,
-      // rather than letting the room disappear from the list without comment.
-      const dropped = parsed.length - usable.length
-      if (dropped > 0) console.error(`${dropped} room(s) have no encryption key and cannot open`)
-
-      return usable
+      return usableRecords(openJson(registryKey, fs.readFileSync(registryFile)))
     } catch {
-      // Absent on first run. A damaged file should not stop the app starting:
-      // it costs the room list, and the rooms are still on disk.
+      // Absent on first run, and a damaged file should not stop the app
+      // starting: it costs the room list, and the rooms are still on disk.
       return []
     }
   },
   write(records) {
+    if (!registryKey) return
+
     try {
       fs.mkdirSync(chatDir, { recursive: true })
-      fs.writeFileSync(registryFile, JSON.stringify(records, null, 2), { mode: 0o600 })
+      fs.writeFileSync(registryFile, Buffer.from(sealJson(registryKey, records)), { mode: 0o600 })
     } catch (err) {
       console.error('could not record the room list:', err.message)
     }
   }
+}
+
+/**
+ * Unlocks the registry, bringing across anything left in the clear.
+ *
+ * The old plaintext file is read once, rewritten sealed and then deleted.
+ * Skipping the migration would silently orphan every room somebody already had
+ * — they would still be on disk, and nothing would know how to open them.
+ */
+async function unlockRegistry() {
+  if (registryKey) return
+
+  registryKey = deriveKey(wallet.account(), ROOM_KEY_PURPOSE)
+
+  let carried = []
+  try {
+    carried = usableRecords(JSON.parse(fs.readFileSync(legacyRegistryFile, 'utf8')))
+  } catch {
+    // Nothing to bring across, which is the normal case.
+  }
+
+  if (carried.length > 0) {
+    registry.write(carried)
+    console.log(`sealed ${carried.length} room(s) that were stored in the clear`)
+  }
+
+  try {
+    fs.unlinkSync(legacyRegistryFile)
+  } catch {
+    // Already gone.
+  }
+
+  for (const room of await rooms.reload(registry.read())) send({ t: 'room', room })
+}
+
+/** Locking closes the registry too: its key is the wallet's. */
+function lockRegistry() {
+  registryKey = null
 }
 
 /**
@@ -405,8 +461,13 @@ function useWalletInRooms() {
   const { unlocked } = wallet.status()
   if (!unlocked) {
     rooms.useIdentity(null)
+    lockRegistry()
     return
   }
+
+  // The registry is sealed under this wallet, so unlocking it is what makes the
+  // rooms openable at all — not merely signed.
+  void unlockRegistry().catch((err) => console.error('could not open the room list:', err.message))
 
   const account = wallet.account()
   rooms.useIdentity({
