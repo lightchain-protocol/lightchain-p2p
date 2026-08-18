@@ -63,6 +63,39 @@ conversation cannot start, and says so rather than failing later.
   plausible id for a model nobody has — which the chain reports as
   `ModelDisabled` on a hash appearing nowhere. That one cost a transaction.
 
+## Checking that the worker really said it
+
+Every relay frame carries a signature, and in this stack as it stands **nothing
+verifies it**: the relay forwards it unchanged, and the web client types the
+field and never reads it. A relay that wanted to could substitute an answer. It
+could not read the prompt or forge the payment, but it could lie about the
+reply, which for something people act on is the part that matters.
+
+This checks every frame before decrypting it, against the worker the dispatcher
+assigned. The preimage is not ours to choose — it is what `JobRegistry`'s
+`disputeResponseMismatch` recomputes on chain:
+
+```solidity
+keccak256(abi.encode(block.chainid, address(this), jobId, sessionId, ciphertext))
+```
+
+then EIP-191 over that 32-byte digest. Verifying the same thing the contract
+does means a frame that fails here is a frame we hold the evidence to dispute.
+
+Three details that are easy to get wrong, each of which rejects every honest
+answer:
+
+- The signed bytes are the **decoded ciphertext**, not the base64 it arrives as.
+- The outer hash is EIP-191 over the digest — `"\x19Ethereum Signed Message:\n32"`
+  with a literal `32`, because the length is of the digest.
+- The recovery byte on the wire is **0 or 1**, while Ethereum tooling writes 27
+  or 28. Both are accepted.
+
+A verifier can be self-consistently wrong, so the test that matters uses a frame
+captured off the live mainnet relay and checks it recovers the worker the
+dispatcher actually assigned. Signing and verifying with the same mistaken
+preimage would pass everything else.
+
 ## History
 
 Transcripts live in an append-only log, encrypted under a key **derived from
@@ -112,10 +145,9 @@ Verified end to end against both live networks under both runtimes:
 
 ## What this does not do
 
-**It does not verify the worker's signature.** Every relay frame carries one and
-this reads none of them, so a compromised relay could substitute an answer. It
-could not read the prompt or forge the payment, but it could lie about the
-reply.
+**A failed signature is refused, not disputed.** The evidence is exactly what
+`disputeResponseMismatch` wants, and nothing here files it — the answer is
+discarded and the fee is gone.
 
 There is no retry, no reconnection if the relay drops mid-answer, and no way to
 resume a session after the process restarts. A job that times out was still

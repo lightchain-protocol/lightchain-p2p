@@ -42,6 +42,56 @@ export interface Account {
   signMessage(message: string): string
 }
 
+/**
+ * EIP-191 over a 32-byte digest.
+ *
+ * The `personal_sign` prefix, but applied to a hash rather than to text —
+ * `"\x19Ethereum Signed Message:\n32"` with the literal string `32`, because
+ * the length is of the bytes being signed and those bytes are a digest.
+ * Contracts do exactly this before `ecrecover`, so getting it wrong recovers a
+ * plausible address that matches nothing.
+ */
+export function hashDigestForSigning(digest: Uint8Array): Uint8Array {
+  if (digest.length !== 32) {
+    throw new AccountError(`expected a 32-byte digest, got ${digest.length}`)
+  }
+  return keccak256(concat(new TextEncoder().encode('\x19Ethereum Signed Message:\n32'), digest))
+}
+
+/**
+ * Who signed something.
+ *
+ * The recovery byte is 27 or 28 by Ethereum convention and 0 or 1 as
+ * secp256k1 actually defines it. Both appear in the wild — the Lightchain
+ * workers emit 0/1 while contracts expect 27/28 — so both are accepted rather
+ * than making the caller know which they have.
+ */
+export function recoverAddress(digest: Uint8Array, signature: string | Uint8Array): string {
+  const bytes = typeof signature === 'string' ? toBytes(signature) : signature
+  if (bytes.length !== 65) {
+    throw new AccountError(`a signature is 65 bytes, got ${bytes.length}`)
+  }
+
+  const raw = bytes[64] as number
+  const yParity = raw >= 27 ? raw - 27 : raw
+  if (yParity !== 0 && yParity !== 1) {
+    throw new AccountError(`recovery byte must be 0, 1, 27 or 28, got ${raw}`)
+  }
+
+  try {
+    // noble wants `recovery || r || s`, the order it signs in, and hands back a
+    // compressed point — while an address is the hash of the uncompressed one.
+    const recovered = secp256k1.recoverPublicKey(
+      concat(new Uint8Array([yParity]), bytes.slice(0, 64)),
+      digest,
+      { prehash: false }
+    )
+    return toAddress(secp256k1.Point.fromBytes(recovered).toBytes(false))
+  } catch (err) {
+    throw new AccountError(`could not recover a signer: ${(err as Error).message}`)
+  }
+}
+
 /** The address a public key belongs to: last 20 bytes of the hash of the point. */
 export function toAddress(publicKey: Uint8Array): string {
   if (publicKey.length !== 65 || publicKey[0] !== 0x04) {

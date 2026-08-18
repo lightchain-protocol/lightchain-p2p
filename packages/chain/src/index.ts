@@ -15,6 +15,8 @@ export {
 export {
   AccountError,
   fromPrivateKey,
+  hashDigestForSigning,
+  recoverAddress,
   toAddress,
   type Account,
   type Transaction

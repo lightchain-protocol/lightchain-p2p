@@ -12,6 +12,7 @@ import {
 import { decrypt, encrypt, encryptSessionKey, generateSessionKey } from '@lcai-p2p/inference-crypto'
 import { Api, ApiError, type Draw, type Model } from './api.js'
 import { decodeKey, encodeSealed } from './keys.js'
+import { verifyFrame } from './verify.js'
 
 /**
  * One conversation with one model.
@@ -27,10 +28,15 @@ export interface ConversationOptions {
   readonly relayUrl: string
   readonly model: Model
   /**
-   * Needed only where the deployment has no sortition, because then the
-   * caller — not the service — sends the `createSession` transaction.
+   * Needed to send the `createSession` transaction where the deployment has no
+   * sortition, and to check the signature on every answer.
    */
   readonly chain?: { readonly rpc: Rpc; readonly account: Account }
+  /**
+   * Whether to check that the assigned worker signed each answer. On by
+   * default: an unverified answer is one a relay could have written.
+   */
+  readonly verify?: boolean
 }
 
 export interface Answer {
@@ -73,12 +79,18 @@ export class Conversation {
   #chunks = new Map<number, string>()
 
   readonly #chain: ConversationOptions['chain']
+  readonly #verify: boolean
 
-  constructor({ api, relayUrl, model, chain }: ConversationOptions) {
+  /** What the signature check needs, learned once when the session opens. */
+  #chainId: number | null = null
+  #jobRegistry: string | null = null
+
+  constructor({ api, relayUrl, model, chain, verify = true }: ConversationOptions) {
     this.#api = api
     this.#relayUrl = relayUrl.replace(/\/$/, '')
     this.model = model
     this.#chain = chain
+    this.#verify = verify
   }
 
   get sessionId(): string | null {
@@ -137,6 +149,18 @@ export class Conversation {
     this.#sessionKey = sessionKey
     this.#sessionId = sessionId
     this.#worker = drawn.worker
+
+    if (this.#verify) {
+      if (!this.#chain) {
+        throw new ConversationError(
+          'answers cannot be checked without a chain client. Pass one, or set verify: false and know what that means.'
+        )
+      }
+      // Both are part of what the worker signed, so they are fetched once here
+      // rather than per frame.
+      this.#chainId = await this.#chain.rpc.chainId()
+      this.#jobRegistry = (await resolveAddresses(this.#chain.rpc)).jobRegistry
+    }
 
     const token = await this.#api.relayToken(sessionId)
     this.#socket = await connect(`${this.#relayUrl}?token=${token}`, {
@@ -243,7 +267,14 @@ export class Conversation {
   }
 
   #onFrame(frame: string, onProgress: (progress: Progress) => void): void {
-    let message: { type?: string; payload?: string; jobId?: string; error?: string; seq?: number }
+    let message: {
+      type?: string
+      payload?: string
+      jobId?: string | number
+      error?: string
+      seq?: number
+      signature?: string
+    }
     try {
       message = JSON.parse(frame)
     } catch {
@@ -263,11 +294,33 @@ export class Conversation {
       const seq = typeof message.seq === 'number' ? message.seq : this.#chunks.size
 
       if (!this.#chunks.has(seq)) {
+        const ciphertext = new Uint8Array(Buffer.from(message.payload, 'base64'))
+
+        // Checked before it is decrypted, let alone shown. An answer that the
+        // assigned worker did not sign is one the relay could have written.
+        if (this.#verify) {
+          try {
+            verifyFrame(
+              {
+                chainId: this.#chainId as number,
+                jobRegistry: this.#jobRegistry as string,
+                jobId: BigInt(message.jobId ?? 0),
+                sessionId: BigInt(this.#sessionId ?? 0),
+                ciphertext,
+                signature: message.signature ?? ''
+              },
+              this.#worker as string
+            )
+          } catch (err) {
+            this.#pending?.reject(err as Error)
+            this.#pending = null
+            return
+          }
+        }
+
         let text: string
         try {
-          text = new TextDecoder().decode(
-            decrypt(this.#sessionKey, new Uint8Array(Buffer.from(message.payload, 'base64')))
-          )
+          text = new TextDecoder().decode(decrypt(this.#sessionKey, ciphertext))
         } catch {
           // Something that will not decrypt is not ours, and guessing at it
           // would put plausible nonsense in front of someone who paid.

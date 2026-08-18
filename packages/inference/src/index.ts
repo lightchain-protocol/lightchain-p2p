@@ -21,3 +21,11 @@ export {
   type ConversationOptions,
   type Progress
 } from './conversation.js'
+
+export {
+  SignatureError,
+  recoverFrameSigner,
+  responseDigest,
+  verifyFrame,
+  type FrameToVerify
+} from './verify.js'
