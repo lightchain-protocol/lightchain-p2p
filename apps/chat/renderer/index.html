@@ -11,6 +11,61 @@
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
+    <!-- One definition per icon, referenced by `<use>` wherever it appears. An
+         icon copied into the markup twice is one that gets corrected once. -->
+    <svg class="sprite" aria-hidden="true" focusable="false">
+      <defs>
+        <symbol id="i-dashboard" viewBox="0 0 16 16">
+          <rect x="1.75" y="1.75" width="5" height="5.5" rx="1.2" />
+          <rect x="9.25" y="1.75" width="5" height="3.5" rx="1.2" />
+          <rect x="9.25" y="7.25" width="5" height="7" rx="1.2" />
+          <rect x="1.75" y="9.25" width="5" height="5" rx="1.2" />
+        </symbol>
+        <symbol id="i-chat" viewBox="0 0 16 16">
+          <path d="M13.75 9.5a2 2 0 0 1-2 2H5.5L2.25 14V4a2 2 0 0 1 2-2h7.5a2 2 0 0 1 2 2Z" />
+        </symbol>
+        <symbol id="i-models" viewBox="0 0 16 16">
+          <path d="M8 1.5 9.6 5.4 13.5 7 9.6 8.6 8 12.5 6.4 8.6 2.5 7 6.4 5.4Z" />
+          <path d="M12.5 10.5 13.2 12.3 15 13l-1.8.7-.7 1.8-.7-1.8L10 13l1.8-.7Z" />
+        </symbol>
+        <symbol id="i-worker" viewBox="0 0 16 16">
+          <rect x="1.75" y="2.25" width="12.5" height="4.5" rx="1.4" />
+          <rect x="1.75" y="9.25" width="12.5" height="4.5" rx="1.4" />
+          <path d="M4.5 4.5h.01M4.5 11.5h.01" />
+        </symbol>
+        <symbol id="i-wallet" viewBox="0 0 16 16">
+          <path d="M13.75 5.5v6.75a1.5 1.5 0 0 1-1.5 1.5h-8.5a1.5 1.5 0 0 1-1.5-1.5V3.75" />
+          <path d="M2.25 3.75A1.5 1.5 0 0 1 3.75 2.25h7.5V5.5H3.75a1.5 1.5 0 0 1-1.5-1.75Z" />
+          <path d="M10.75 9.5h1.5" />
+        </symbol>
+        <!-- A cog, not a circle with rays: the theme control is a sun, and at
+             15px the two were indistinguishable sitting next to each other. -->
+        <symbol id="i-settings" viewBox="0 0 16 16">
+          <path
+            d="M6.75 1.6h2.5l.28 1.58 1.05.44 1.33-.9 1.77 1.77-.9 1.33.44 1.05 1.58.28v2.5l-1.58.28-.44 1.05.9 1.33-1.77 1.77-1.33-.9-1.05.44-.28 1.58h-2.5l-.28-1.58-1.05-.44-1.33.9-1.77-1.77.9-1.33-.44-1.05L1.6 9.25v-2.5l1.58-.28.44-1.05-.9-1.33 1.77-1.77 1.33.9 1.05-.44Z"
+          />
+          <circle cx="8" cy="8" r="2.05" />
+        </symbol>
+        <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9" /></symbol>
+        <symbol id="i-collapse" viewBox="0 0 16 16">
+          <circle cx="8" cy="8" r="6.25" />
+          <path d="M9.25 5.5 6.75 8l2.5 2.5" />
+        </symbol>
+        <symbol id="i-chevron" viewBox="0 0 16 16">
+          <path d="M6.25 3.75 10.5 8l-4.25 4.25" />
+        </symbol>
+        <symbol id="i-sun" viewBox="0 0 16 16">
+          <circle cx="8" cy="8" r="3.1" />
+          <path
+            d="M8 1v1.5M8 13.5V15M15 8h-1.5M2.5 8H1M12.95 3.05l-1.06 1.06M4.11 11.89l-1.06 1.06M12.95 12.95l-1.06-1.06M4.11 4.11 3.05 3.05"
+          />
+        </symbol>
+        <symbol id="i-moon" viewBox="0 0 16 16">
+          <path d="M13.5 9.7A5.8 5.8 0 0 1 6.3 2.5a5.8 5.8 0 1 0 7.2 7.2Z" />
+        </symbol>
+      </defs>
+    </svg>
+
     <!-- Drawn by us on Windows and Linux; on macOS the traffic lights sit here
          and the content is inset to clear them. -->
     <header class="titlebar" id="titlebar">
@@ -24,6 +79,9 @@
       ></button>
       <span class="titlebar-status" id="status">starting</span>
       <button class="button button-primary button-sm" id="update-btn" hidden>Apply update</button>
+      <button class="icon-button" type="button" id="theme-btn" title="Theme" aria-label="Theme">
+        <svg class="icon" aria-hidden="true"><use href="#i-sun" /></svg>
+      </button>
       <button
         class="icon-button"
         type="button"
@@ -31,21 +89,7 @@
         title="Settings"
         aria-label="Settings"
       >
-        <svg
-          viewBox="0 0 16 16"
-          width="15"
-          height="15"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.3"
-          stroke-linecap="round"
-          aria-hidden="true"
-        >
-          <circle cx="8" cy="8" r="2.3" />
-          <path
-            d="M8 1.5v1.6M8 12.9v1.6M14.5 8h-1.6M3.1 8H1.5M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1M12.6 12.6l-1.1-1.1M4.5 4.5L3.4 3.4"
-          />
-        </svg>
+        <svg class="icon" aria-hidden="true"><use href="#i-settings" /></svg>
       </button>
     </header>
 
@@ -362,7 +406,7 @@
               they will hold your rooms and never advertise them — which looks like it is working
               until the last person closes the app.
             </p>
-            <div class="wallet-head-actions">
+            <div class="key-row">
               <code class="key" id="dht-key"></code>
               <button class="button button-sm" type="button" id="dht-copy">Copy</button>
             </div>
@@ -379,44 +423,164 @@
     </div>
 
     <main class="shell">
-      <nav class="sidebar" aria-label="Primary">
-        <!-- The four areas the hub is specified to cover. Three are unbuilt and
-             say so rather than being hidden, because an app that shows only
-             what works reads as though nothing else was ever intended. -->
+      <nav class="sidebar" id="sidebar" aria-label="Primary">
+        <div class="sidebar-head">
+          <span class="sidebar-brand">Hub</span>
+          <button
+            class="icon-button sidebar-collapse"
+            type="button"
+            id="collapse-btn"
+            title="Collapse the sidebar"
+            aria-label="Collapse the sidebar"
+            aria-expanded="true"
+          >
+            <svg class="icon" aria-hidden="true"><use href="#i-collapse" /></svg>
+          </button>
+        </div>
+
+        <!-- Grouped rather than one flat list, because the five sections are not
+             peers: three are things you do, two are machinery behind them. -->
+        <p class="sidebar-title">Workspace</p>
         <ul class="sections">
           <li>
             <button
               class="nav-item is-active"
               type="button"
-              data-section="chat"
+              data-section="dashboard"
               aria-current="page"
             >
-              Chat
+              <svg class="nav-icon" aria-hidden="true"><use href="#i-dashboard" /></svg>
+              <span class="nav-label">Dashboard</span>
             </button>
           </li>
-          <li><button class="nav-item" type="button" data-section="models">Models</button></li>
-          <li><button class="nav-item" type="button" data-section="worker">Worker</button></li>
-          <li><button class="nav-item" type="button" data-section="wallet">Wallet</button></li>
+          <li>
+            <button class="nav-item" type="button" data-section="chat">
+              <svg class="nav-icon" aria-hidden="true"><use href="#i-chat" /></svg>
+              <span class="nav-label">Chat</span>
+              <span class="nav-badge" id="rooms-badge" hidden></span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-item" type="button" data-section="models">
+              <svg class="nav-icon" aria-hidden="true"><use href="#i-models" /></svg>
+              <span class="nav-label">Models</span>
+            </button>
+          </li>
         </ul>
 
-        <div class="sidebar-context" id="chat-context">
-          <h2 class="sidebar-title">Rooms</h2>
+        <p class="sidebar-title">Network</p>
+        <ul class="sections">
+          <li>
+            <button class="nav-item" type="button" data-section="worker">
+              <svg class="nav-icon" aria-hidden="true"><use href="#i-worker" /></svg>
+              <span class="nav-label">Worker</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-item" type="button" data-section="wallet">
+              <svg class="nav-icon" aria-hidden="true"><use href="#i-wallet" /></svg>
+              <span class="nav-label">Wallet</span>
+            </button>
+          </li>
+        </ul>
+
+        <div class="sidebar-context" id="chat-context" hidden>
+          <p class="sidebar-title">Rooms</p>
           <ul class="room-list" id="room-list"></ul>
           <p class="sidebar-empty" id="sidebar-empty">No rooms yet.</p>
           <div class="sidebar-actions">
-            <button class="button button-block" type="button" id="create-btn">New room</button>
+            <button class="button button-block" type="button" id="create-btn">
+              <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
+              <span class="nav-label">New room</span>
+            </button>
             <button class="button button-block" type="button" id="join-btn">
-              Join with an invite
+              <span class="nav-label">Join with an invite</span>
             </button>
           </div>
         </div>
 
-        <p class="version" id="version"></p>
+        <div class="sidebar-foot">
+          <!-- The wallet is the identity, so it sits where an account does. -->
+          <button class="account" type="button" id="account-btn">
+            <span class="avatar" id="account-avatar" aria-hidden="true"></span>
+            <span class="account-text">
+              <span class="account-name" id="account-name">No wallet</span>
+              <span class="account-role" id="account-role">Set one up</span>
+            </span>
+            <svg class="icon account-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+          </button>
+          <p class="version" id="version"></p>
+        </div>
       </nav>
 
       <section class="content">
+        <!-- Dashboard ------------------------------------------------------->
+        <!-- Every number here is derived from something this machine already
+             holds. Where there is none the card says so, rather than drawing a
+             zero that reads as a measurement. -->
+        <div class="panel" id="panel-dashboard">
+          <div class="dash">
+            <header class="dash-head">
+              <div class="dash-head-main">
+                <h1 class="dash-title">Welcome back</h1>
+                <p class="dash-sub" id="dash-sub">
+                  Your identity, your models, your workers and one balance behind all of them.
+                </p>
+              </div>
+              <div class="dash-head-actions">
+                <span class="pill" id="dash-network">—</span>
+                <div class="segmented" role="group" aria-label="Range">
+                  <button class="segment" type="button" data-months="6">6m</button>
+                  <button class="segment is-active" type="button" data-months="12">12m</button>
+                  <button class="segment" type="button" data-months="24">24m</button>
+                </div>
+                <button class="button button-sm" type="button" id="dash-refresh">Refresh</button>
+              </div>
+            </header>
+
+            <p class="dash-locked" id="dash-locked" hidden>
+              Balances are public, so they show while locked. Your conversations are not — the key
+              that opens them comes from the wallet, so unlock it to see the rest.
+            </p>
+
+            <ul class="stats" id="dash-stats"></ul>
+
+            <div class="dash-grid">
+              <section class="card">
+                <header class="card-head">
+                  <div>
+                    <h2 class="card-title">Inference activity</h2>
+                    <p class="card-note" id="chart-note">Questions asked and answers returned.</p>
+                  </div>
+                </header>
+                <div class="chart" id="dash-chart"></div>
+                <ul class="legend" id="dash-legend"></ul>
+              </section>
+
+              <section class="card">
+                <header class="card-head">
+                  <h2 class="card-title">Recent activity</h2>
+                </header>
+                <ul class="feed" id="dash-feed"></ul>
+              </section>
+            </div>
+
+            <section class="card">
+              <header class="card-head">
+                <div>
+                  <h2 class="card-title">Models used</h2>
+                  <p class="card-note">
+                    Conversations per model, and how many of their turns reached the chain.
+                  </p>
+                </div>
+              </header>
+              <ul class="bars" id="dash-models"></ul>
+            </section>
+          </div>
+        </div>
+
         <!-- Chat ------------------------------------------------------------>
-        <div class="panel" id="panel-chat">
+        <div class="panel" id="panel-chat" hidden>
           <div class="empty" id="empty">
             <h1 class="empty-title">The universal hub</h1>
             <p class="empty-body">
@@ -639,14 +803,19 @@
             <!-- Unlocked -->
             <section class="wallet-stage" id="wallet-open" hidden>
               <header class="wallet-head">
-                <div>
+                <div class="wallet-head-row">
                   <h1 class="wallet-title">Wallet</h1>
-                  <code class="key" id="wallet-address"></code>
+                  <div class="wallet-head-actions">
+                    <span class="badge" id="wallet-network"></span>
+                    <button class="button button-sm" type="button" id="wallet-lock">Lock</button>
+                  </div>
                 </div>
-                <div class="wallet-head-actions">
-                  <span class="badge" id="wallet-network"></span>
+                <!-- An address is read and compared by eye against whatever
+                     someone is about to send money to, so it is shown whole and
+                     on one line rather than shortened or wrapped. -->
+                <div class="key-row">
+                  <code class="key" id="wallet-address"></code>
                   <button class="button button-sm" type="button" id="wallet-copy">Copy</button>
-                  <button class="button button-sm" type="button" id="wallet-lock">Lock</button>
                 </div>
               </header>
 

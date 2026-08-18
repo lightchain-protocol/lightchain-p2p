@@ -21,6 +21,14 @@ document.documentElement.dataset.platform = bridge.platform()
 const el = {
   sections: [...document.querySelectorAll('.sections .nav-item')],
   chatContext: document.getElementById('chat-context'),
+  sidebar: document.getElementById('sidebar'),
+  collapseBtn: document.getElementById('collapse-btn'),
+  themeBtn: document.getElementById('theme-btn'),
+  roomsBadge: document.getElementById('rooms-badge'),
+  accountBtn: document.getElementById('account-btn'),
+  accountAvatar: document.getElementById('account-avatar'),
+  accountName: document.getElementById('account-name'),
+  accountRole: document.getElementById('account-role'),
   status: document.getElementById('status'),
   version: document.getElementById('version'),
   updateBtn: document.getElementById('update-btn'),
@@ -76,10 +84,100 @@ const el = {
   toast: document.getElementById('toast')
 }
 
+const dash = {
+  sub: document.getElementById('dash-sub'),
+  network: document.getElementById('dash-network'),
+  locked: document.getElementById('dash-locked'),
+  refresh: document.getElementById('dash-refresh'),
+  stats: document.getElementById('dash-stats'),
+  chart: document.getElementById('dash-chart'),
+  chartNote: document.getElementById('chart-note'),
+  legend: document.getElementById('dash-legend'),
+  feed: document.getElementById('dash-feed'),
+  models: document.getElementById('dash-models'),
+  segments: [...document.querySelectorAll('.segment')]
+}
+
 el.version.textContent = `v${bridge.pkg().version}`
 
 const rooms = new Map()
 let activeKey = null
+
+// --- Theme -----------------------------------------------------------------
+
+/**
+ * Dark or light, remembered across restarts.
+ *
+ * Kept in the worker's settings rather than in `localStorage`, which is not
+ * available: the renderer is loaded from a `file://` URL and so has no origin
+ * to store anything against. Dark stays the default, so the first paint is
+ * never wrong for the overwhelming case and a stored light theme arrives with
+ * the settings a moment later.
+ */
+let theme = 'dark'
+
+function applyTheme(next) {
+  theme = next === 'light' ? 'light' : 'dark'
+
+  const root = document.documentElement
+  root.classList.add('is-theming')
+  root.dataset.theme = theme
+  // Reading a layout property forces the new colours to be applied while
+  // transitions are still off, so nothing is left mid-animation when they come
+  // back on the next frame.
+  void root.offsetHeight
+  requestAnimationFrame(() => root.classList.remove('is-theming'))
+
+  const icon = theme === 'dark' ? '#i-sun' : '#i-moon'
+  el.themeBtn.querySelector('use').setAttribute('href', icon)
+  const label = theme === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme'
+  el.themeBtn.title = label
+  el.themeBtn.setAttribute('aria-label', label)
+}
+
+el.themeBtn.addEventListener('click', () => {
+  applyTheme(theme === 'dark' ? 'light' : 'dark')
+  // Not awaited: the theme is already applied, and a failed write costs the
+  // preference at the next launch rather than anything happening now.
+  void request('settings.write', { values: { theme } }).catch(() => {})
+})
+
+// --- Sidebar ---------------------------------------------------------------
+
+let collapsed = false
+
+function applyCollapsed(next) {
+  collapsed = next
+  el.sidebar.classList.toggle('is-collapsed', collapsed)
+  el.collapseBtn.setAttribute('aria-expanded', String(!collapsed))
+  const label = collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'
+  el.collapseBtn.title = label
+  el.collapseBtn.setAttribute('aria-label', label)
+}
+
+el.collapseBtn.addEventListener('click', () => {
+  applyCollapsed(!collapsed)
+  void request('settings.write', { values: { sidebar: collapsed ? 'collapsed' : '' } }).catch(
+    () => {}
+  )
+})
+
+el.accountBtn.addEventListener('click', () => {
+  showSection('wallet')
+  void refreshWallet()
+})
+
+/** The wallet, where an account would be in any other application. */
+function renderAccount(status) {
+  const address = status?.address ?? null
+  el.accountAvatar.textContent = address ? address.slice(2, 3) : '?'
+  el.accountName.textContent = address ? shortAddress(address) : 'No wallet'
+  el.accountRole.textContent = address
+    ? status.unlocked
+      ? (status.network ?? 'locked')
+      : 'Locked'
+    : 'Set one up'
+}
 
 // --- Sections --------------------------------------------------------------
 
@@ -108,6 +206,7 @@ for (const button of el.sections) {
     if (button.dataset.section === 'worker') void refreshWorker()
     if (button.dataset.section === 'wallet') void refreshWallet()
     if (button.dataset.section === 'models') void refreshModels()
+    if (button.dataset.section === 'dashboard') void refreshDashboard()
   })
 }
 
@@ -175,8 +274,15 @@ function onChatMessage(msg) {
 
 // --- Rendering -------------------------------------------------------------
 
+/**
+ * The word is the detail; the dot beside it is what gets read at a glance.
+ * Anything unrecognised is treated as trouble, because every message that is
+ * not one of the two good ones is a failure or an interruption.
+ */
 function setStatus(text) {
   el.status.textContent = text
+  el.status.dataset.state =
+    text === 'connected' ? 'ok' : text === 'connecting' || text === 'starting' ? 'busy' : 'bad'
 }
 
 function short(key) {
@@ -195,12 +301,17 @@ function time(at) {
 function renderRooms() {
   el.roomList.replaceChildren()
   el.sidebarEmpty.hidden = rooms.size > 0
+  el.roomsBadge.hidden = rooms.size === 0
+  el.roomsBadge.textContent = String(rooms.size)
 
   for (const room of rooms.values()) {
     const item = document.createElement('li')
     const button = document.createElement('button')
     button.type = 'button'
     button.className = 'nav-item' + (room.key === activeKey ? ' is-active' : '')
+
+    const body = document.createElement('span')
+    body.className = 'nav-item-body'
 
     const name = document.createElement('span')
     name.className = 'nav-item-name'
@@ -213,12 +324,325 @@ function renderRooms() {
     // document is textContent; none is innerHTML.
     sub.textContent = last ? last.text : room.writable ? 'No messages yet' : 'Read only'
 
-    button.append(name, sub)
+    body.append(name, sub)
+    button.append(body)
     button.addEventListener('click', () => select(room.key))
     item.append(button)
     el.roomList.append(item)
   }
 }
+
+// --- Dashboard -------------------------------------------------------------
+
+const SVG = 'http://www.w3.org/2000/svg'
+
+/** How many months of history the chart covers. */
+let dashMonths = 12
+
+function svg(name, attributes) {
+  const node = document.createElementNS(SVG, name)
+  for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, String(value))
+  return node
+}
+
+function el2(tag, className, text) {
+  const node = document.createElement(tag)
+  if (className) node.className = className
+  if (text !== undefined) node.textContent = text
+  return node
+}
+
+/** A whole number with thousands separators, which is how a total is read. */
+function count(n) {
+  return n.toLocaleString()
+}
+
+function stat(label, value, note, tone) {
+  const item = el2('li', 'stat')
+  item.append(el2('span', 'stat-label', label))
+
+  const row = el2('div', 'stat-row')
+  const unknown = value === null || value === undefined
+  row.append(el2('span', 'stat-value' + (unknown ? ' is-unknown' : ''), unknown ? '—' : value))
+  if (note) {
+    const hint = el2('span', 'stat-note', note)
+    if (tone) hint.dataset.tone = tone
+    row.append(hint)
+  }
+
+  item.append(row)
+  return item
+}
+
+async function refreshDashboard() {
+  let summary
+  try {
+    summary = await request('dashboard.read', { months: dashMonths })
+  } catch (err) {
+    dash.stats.replaceChildren(stat('Dashboard', null, err.message))
+    return
+  }
+
+  dash.network.textContent = summary.network
+  dash.locked.hidden = !summary.address || summary.unlocked
+
+  renderAccount({ address: summary.address, unlocked: summary.unlocked, network: summary.network })
+
+  const inference = summary.inference
+  dash.stats.replaceChildren(
+    stat('LCAI on chain', summary.balances ? formatLcai(summary.balances.native) : null),
+    stat(
+      'Prepaid for inference',
+      summary.balances?.prepaid == null ? null : formatLcai(summary.balances.prepaid)
+    ),
+    stat('Questions asked', inference ? count(inference.asked) : null),
+    stat(
+      'Paid for on chain',
+      inference ? count(inference.jobs) : null,
+      inference && inference.asked > 0
+        ? `${Math.round((inference.jobs / inference.asked) * 100)}% of asks`
+        : undefined
+    ),
+    stat(
+      'Rooms',
+      count(summary.rooms.total),
+      summary.rooms.total > 0 ? `${count(summary.rooms.messages)} messages` : undefined
+    )
+  )
+
+  renderChart(inference)
+  renderFeed(summary.recent)
+  renderModelUse(inference)
+}
+
+/** The last series drawn, so a resize can redraw it without asking again. */
+let lastInference = null
+
+/**
+ * Months on the x axis, two stacked series per month.
+ *
+ * SVG rather than a canvas or a div per bar: the geometry lives in attributes,
+ * which the content security policy permits where an inline style would not.
+ *
+ * Drawn at the container's real width rather than at a fixed viewBox scaled to
+ * fit. A viewBox that is scaled shrinks the type with everything else, and an
+ * axis labelled at six effective pixels is decoration rather than a scale.
+ */
+function renderChart(inference) {
+  lastInference = inference
+  dash.chart.replaceChildren()
+  dash.legend.replaceChildren()
+
+  const series = inference?.series ?? []
+  // Rounded up to a multiple of four so the four gridlines land on whole
+  // numbers. Scaling to the exact peak gives an axis like 0, 2, 3, 5, 6, whose
+  // uneven steps read as a mistake even though every label is correct.
+  const tallest = Math.max(1, ...series.map((m) => m.asked + m.answered))
+  const step = Math.ceil(tallest / 4)
+  const peak = step * 4
+  const width = Math.max(320, dash.chart.clientWidth || 640)
+  const height = 208
+  const padding = { top: 8, right: 4, bottom: 22, left: 30 }
+  const plot = {
+    w: width - padding.left - padding.right,
+    h: height - padding.top - padding.bottom
+  }
+
+  const chart = svg('svg', {
+    viewBox: `0 0 ${width} ${height}`,
+    width,
+    height,
+    role: 'img'
+  })
+
+  // The chart's accessible name. A bar chart with no title is announced as an
+  // unlabelled image, which is worse than not marking it up as one at all.
+  const title = svg('title', {})
+  title.textContent = `Questions asked and answers returned by month, over ${series.length} months`
+  chart.append(title)
+
+  // Four gridlines with their values, so a bar can be read as a number rather
+  // than only compared with the bar beside it.
+  for (let i = 0; i <= 4; i++) {
+    const value = step * i
+    const y = padding.top + plot.h - (plot.h / 4) * i
+    chart.append(
+      svg('line', {
+        class: 'chart-grid',
+        x1: padding.left,
+        x2: width - padding.right,
+        y1: y,
+        y2: y
+      })
+    )
+    const label = svg('text', { class: 'chart-axis', x: 0, y: y + 3 })
+    label.textContent = String(value)
+    chart.append(label)
+  }
+
+  if (inference && inference.asked + inference.answered === 0) {
+    const note = svg('text', {
+      class: 'chart-empty',
+      x: width / 2,
+      y: padding.top + plot.h / 2,
+      'text-anchor': 'middle'
+    })
+    note.textContent = 'Nothing asked yet. Open Models and ask something.'
+    chart.append(note)
+  }
+
+  const slot = plot.w / Math.max(1, series.length)
+  const barWidth = Math.min(26, slot * 0.55)
+
+  series.forEach((month, i) => {
+    const x = padding.left + slot * i + (slot - barWidth) / 2
+    let y = padding.top + plot.h
+
+    for (const [key, className] of [
+      ['answered', 'chart-bar is-answered'],
+      ['asked', 'chart-bar']
+    ]) {
+      const value = month[key]
+      if (value === 0) continue
+      const h = (value / peak) * plot.h
+      y -= h
+      chart.append(svg('rect', { class: className, x, y, width: barWidth, height: h, rx: 2 }))
+    }
+
+    // Every month for a short range, every other one when they would collide.
+    if (series.length <= 12 || i % 2 === 0) {
+      const label = svg('text', {
+        class: 'chart-axis',
+        x: x + barWidth / 2,
+        y: height - 6,
+        'text-anchor': 'middle'
+      })
+      label.textContent = new Date(`${month.month}-02`).toLocaleString([], { month: 'short' })
+      chart.append(label)
+    }
+  })
+
+  dash.chart.append(chart)
+
+  if (!inference) {
+    dash.chartNote.textContent = 'Unlock your wallet to read your history.'
+    return
+  }
+
+  dash.chartNote.textContent = `Over the last ${series.length} months.`
+  for (const [key, label, value] of [
+    ['asked', 'Questions asked', inference.asked],
+    ['answered', 'Answers returned', inference.answered],
+    ['jobs', 'Paid for on chain', inference.jobs]
+  ]) {
+    const item = el2('li', 'legend-item')
+    const head = el2('span', 'legend-key')
+    const swatch = el2('span', 'legend-swatch')
+    swatch.dataset.series = key
+    head.append(swatch, el2('span', null, label))
+    item.append(head, el2('span', 'legend-value', count(value)))
+    dash.legend.append(item)
+  }
+}
+
+function renderFeed(recent) {
+  dash.feed.replaceChildren()
+
+  if (!recent || recent.length === 0) {
+    dash.feed.append(el2('li', 'dash-empty', 'Nothing has happened here yet.'))
+    return
+  }
+
+  for (const entry of recent) {
+    const item = el2('li', 'feed-item')
+
+    const tags = el2('div', 'feed-tags')
+    const kind = el2('span', 'tag', entry.kind === 'room' ? 'Room' : 'Model')
+    if (entry.kind === 'room') kind.dataset.tone = 'room'
+    tags.append(kind, el2('span', 'tag', entry.label))
+    if (entry.proven) {
+      const proven = el2('span', 'tag', entry.kind === 'room' ? 'Signed' : 'On chain')
+      proven.dataset.tone = 'proven'
+      tags.append(proven)
+    }
+
+    // Text written by other people, and by models. textContent throughout.
+    item.append(tags, el2('p', 'feed-text', entry.text), el2('span', 'feed-when', when(entry.at)))
+    dash.feed.append(item)
+  }
+}
+
+/** Relative for the recent past, absolute once "3 days ago" stops helping. */
+function when(at) {
+  const seconds = Math.round((Date.now() - at) / 1000)
+  if (seconds < 60) return 'just now'
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m ago`
+  if (seconds < 86_400) return `${Math.round(seconds / 3600)}h ago`
+  if (seconds < 604_800) return `${Math.round(seconds / 86_400)}d ago`
+  return new Date(at).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function renderModelUse(inference) {
+  dash.models.replaceChildren()
+
+  const models = inference?.models ?? []
+  if (models.length === 0) {
+    dash.models.append(
+      el2(
+        'li',
+        'dash-empty',
+        inference ? 'No model has been asked anything yet.' : 'Unlock your wallet to read this.'
+      )
+    )
+    return
+  }
+
+  const peak = Math.max(...models.map((m) => m.conversations))
+
+  for (const model of models) {
+    const item = el2('li')
+
+    const head = el2('div', 'bar-head')
+    head.append(
+      el2('span', 'bar-name', model.name),
+      el2(
+        'span',
+        'bar-count',
+        `${count(model.conversations)} conversation${model.conversations === 1 ? '' : 's'} · ${count(model.jobs)} on chain`
+      )
+    )
+
+    // Width through the CSSOM rather than a style attribute: the policy blocks
+    // the attribute, and this is the same declaration by another route.
+    const track = el2('div', 'bar-track')
+    const fill = el2('div', 'bar-fill')
+    fill.style.width = `${(model.conversations / peak) * 100}%`
+    track.append(fill)
+
+    item.append(head, track)
+    dash.models.append(item)
+  }
+}
+
+for (const segment of dash.segments) {
+  segment.addEventListener('click', () => {
+    dashMonths = Number(segment.dataset.months)
+    for (const other of dash.segments) other.classList.toggle('is-active', other === segment)
+    void refreshDashboard()
+  })
+}
+
+// The chart is drawn at a pixel width, so it has to be drawn again when that
+// width changes: collapsing the sidebar and resizing the window both do it.
+let chartWidth = 0
+new ResizeObserver(([entry]) => {
+  const width = Math.round(entry.contentRect.width)
+  if (width === chartWidth || width === 0) return
+  chartWidth = width
+  renderChart(lastInference)
+}).observe(dash.chart)
+
+dash.refresh.addEventListener('click', () => void refreshDashboard())
 
 function renderRoom() {
   const room = activeKey ? rooms.get(activeKey) : null
@@ -251,9 +675,23 @@ function renderRoom() {
     return
   }
 
+  let previous = null
+
   for (const message of room.messages) {
     const item = document.createElement('li')
     item.className = 'message' + (message.from === room.writerKey ? ' is-own' : '')
+
+    // Consecutive turns from one writer, close together in time, read as one
+    // person still talking. Ten minutes is long enough that the next line is a
+    // new thought and deserves its own heading again.
+    const run =
+      previous !== null &&
+      previous.from === message.from &&
+      !previous.answer &&
+      !message.answer &&
+      message.at - previous.at < 10 * 60 * 1000
+    if (run) item.classList.add('is-run')
+    previous = message
 
     const meta = document.createElement('div')
     meta.className = 'message-meta'
@@ -281,6 +719,7 @@ function renderRoom() {
     }
 
     const stamp = document.createElement('span')
+    stamp.className = 'message-time'
     // The author's own clock, which they could have set to anything. Shown
     // because people expect a timestamp, and never relied on for order.
     stamp.textContent = time(message.at)
@@ -1623,6 +2062,11 @@ function formatLcai(wei) {
   return fraction === '' ? whole.toString() : `${whole}.${fraction.slice(0, 6)}`
 }
 
+/**
+ * The one place wallet state reaches the interface, so everything that depends
+ * on it hangs off here: creating, unlocking, locking and removing all arrive
+ * through this function, and none of them has to remember what else to update.
+ */
 function showWallet(status) {
   el.walletNone.hidden = status.exists
   el.walletLocked.hidden = !status.exists || status.unlocked
@@ -1633,6 +2077,11 @@ function showWallet(status) {
     el.walletAddress.textContent = status.address
   }
   el.walletNetwork.textContent = status.network ?? ''
+
+  renderAccount(status)
+  // Locking closes the transcripts and unlocking opens them, so the summary is
+  // a different one either way.
+  void refreshDashboard().catch(() => {})
 }
 
 async function refreshWallet() {
@@ -1808,9 +2257,28 @@ const offExit = bridge.onWorkerExit(WORKER, (code) => {
 // one, leaves it running and already in every room. So the current state is
 // asked for rather than waited for. The `ready` push still arrives on a cold
 // start and is handled the same way, which is harmless when both happen.
+/**
+ * View preferences, which live in the worker because a `file://` renderer has
+ * no origin and so no storage of its own.
+ *
+ * Failing to read them is not worth reporting: the defaults are already applied
+ * and the app works, so an error here would be noise about nothing the user can
+ * act on.
+ */
+async function restorePreferences() {
+  const { values } = await request('settings.read').catch(() => ({ values: {} }))
+  applyTheme(values?.theme)
+  applyCollapsed(values?.sidebar === 'collapsed')
+}
+
 bridge
   .startWorker(WORKER)
   .then(() => request('room.list'))
   .then(adopt)
+  .then(restorePreferences)
   .then(startOnboarding)
+  // Last, and unable to take the rest down with it. The dashboard is a summary
+  // of the app; the app has to come up whether or not its summary does, and a
+  // broken panel that blocks the unlock prompt locks someone out of everything.
+  .then(() => refreshDashboard().catch((err) => console.error('[dashboard]', err)))
   .catch((err) => setStatus(`worker unreachable: ${err.message}`))

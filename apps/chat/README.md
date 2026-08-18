@@ -6,6 +6,23 @@ system so the same product ships on every platform.
 
 ## What works today
 
+The app opens on a **Dashboard**: balances, how much has been asked and how much
+of it reached the chain, a twelve-month activity chart, which models have been
+used, and the most recent thing that happened in either half of the app. Every
+figure is derived from something this machine already holds — the transcript log,
+the room states, and two chain reads. Nothing is estimated, and where there is no
+data the card shows a dash rather than a nought, because "not known" and "zero"
+call for different actions.
+
+Balances read while the wallet is locked, because they are public. Transcripts do
+not, because the key that opens them comes from the wallet, and the panel says so
+instead of showing an empty chart.
+
+**Dark and light**, from the same tokens, remembered across restarts. The
+preference is kept in the worker's settings rather than in `localStorage`: the
+renderer is loaded from a `file://` URL and so has no origin to store anything
+against.
+
 Conversation, end to end and over a real network:
 
 - Create an encrypted room, and invite someone with a single string that
@@ -127,6 +144,40 @@ eventually disagree with the design system and with the other platforms, so
 Brand identity is identical on every platform. Platform conventions deliberately
 are not: window controls sit left on macOS and right elsewhere, `Cmd` against
 `Ctrl`, each OS's system font.
+
+Buttons, inputs and selects take their height from `CONTROL` rather than from
+vertical padding. Padding plus line height resolves differently for every font
+and font size, which is how a button and the field beside it end up a few pixels
+apart in a way nobody can see the cause of.
+
+Icons are defined once in an SVG sprite at the top of `index.html` and referenced
+with `<use href="#i-name">`. An icon pasted into the markup twice is one that
+gets corrected once.
+
+The activity chart is SVG built in script, sized to the container's real pixel
+width rather than drawn into a fixed `viewBox` and scaled to fit. A scaled
+viewBox shrinks the type along with the geometry, and an axis labelled at six
+effective pixels is decoration rather than a scale. It is redrawn on resize.
+
+**The content security policy forbids inline styles.** `style-src 'self'` blocks
+both `<style>` blocks and `style` attributes, so geometry goes in SVG attributes
+and anything genuinely dynamic goes through the CSSOM (`el.style.width = …`),
+which is the same declaration by a route the policy does not cover.
+
+## Looking at it
+
+```bash
+.\scripts\run-app.ps1 -Storage A -Port 9301   # from the repo root
+node scripts/shoot.mjs <password> 9301 shots/after
+```
+
+Writes a PNG per section, plus the same sections at 720px wide. A design change
+cannot be reviewed by reading the stylesheet — what matters is where the text
+lands, and only a picture shows that. The narrow pass is the one that finds
+things: text fitting its box at a comfortable width proves nothing about the
+window someone has docked to half a screen.
+
+Output goes to `shots/`, which is not committed.
 
 ## Running it
 

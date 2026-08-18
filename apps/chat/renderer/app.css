@@ -24,14 +24,67 @@ body {
 body {
   font-family: var(--lc-font, system-ui, sans-serif);
   font-size: var(--lc-text-md);
-  line-height: 1.5;
+  line-height: var(--lc-leading-normal);
   color: var(--lc-fg);
   background: var(--lc-bg);
+  /* Interface text is drawn at whatever size the panel gives it, and the
+     hinting Chromium picks for that makes the stems uneven at 13px. Greyscale
+     antialiasing on a dark background is the difference between text that
+     looks placed and text that looks pasted. */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   /* The renderer is a view. Selecting chrome text is a desktop-app smell —
      message bodies and keys opt back in, because those get copied. */
   user-select: none;
   display: flex;
   flex-direction: column;
+}
+
+/* --- Scrollbars ----------------------------------------------------------- */
+
+/* The stock Windows scrollbar is a light grey track with stepper arrows. On a
+   near-black panel it is the brightest thing on screen and it belongs to a
+   different application. These are drawn from the palette, have no steppers,
+   and stay out of the way until the pointer is near them.
+
+   The thumb is inset with a transparent border rather than made narrow, so the
+   hit area stays the full width of the gutter while the visible bar is thin. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--lc-scroll-thumb) transparent;
+}
+
+:root {
+  --lc-scroll-thumb: color-mix(in srgb, var(--lc-fg-dim) 40%, transparent);
+  --lc-scroll-thumb-hover: color-mix(in srgb, var(--lc-fg-dim) 75%, transparent);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 4px solid transparent;
+  border-radius: var(--lc-radius-pill);
+  background-color: var(--lc-scroll-thumb);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  border-width: 3px;
+  background-color: var(--lc-scroll-thumb-hover);
+}
+
+/* Stepper arrows are a Windows-only relic and they are what makes the bar read
+   as a widget rather than an indicator. */
+::-webkit-scrollbar-button {
+  display: none;
 }
 
 /* --- Title bar ------------------------------------------------------------ */
@@ -74,9 +127,41 @@ body {
 }
 
 .titlebar-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-left: auto;
   font-size: var(--lc-text-xs);
   color: var(--lc-fg-dim);
+}
+
+/* Whether the app is talking to its worker is the one thing worth knowing
+   without reading, so it gets a shape and a colour as well as a word. */
+.titlebar-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-fg-dim);
+}
+
+.titlebar-status[data-state='ok']::before {
+  background: var(--lc-success);
+}
+
+.titlebar-status[data-state='busy']::before {
+  background: var(--lc-warning);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.titlebar-status[data-state='bad']::before {
+  background: var(--lc-danger);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
 }
 
 /* --- Layout --------------------------------------------------------------- */
@@ -91,11 +176,35 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--lc-space-xs);
-  width: 232px;
-  padding: var(--lc-space-md);
+  width: 236px;
+  padding: var(--lc-space-md) var(--lc-space-sm) var(--lc-space-sm);
   border-right: 1px solid var(--lc-rule);
   background: var(--lc-bg-elevated);
   flex: 0 0 auto;
+  transition: width 160ms ease-out;
+}
+
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  padding: 0 var(--lc-space-sm) var(--lc-space-md);
+}
+
+.sidebar-brand {
+  font-size: var(--lc-text-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lc-fg-dim);
+}
+
+.sidebar-collapse {
+  margin-left: auto;
+}
+
+.sidebar-collapse .icon {
+  transition: transform 160ms ease-out;
 }
 
 .sections {
@@ -106,6 +215,41 @@ body {
   padding: 0;
   list-style: none;
   flex: 0 0 auto;
+}
+
+/* --- Collapsed sidebar ----------------------------------------------------- */
+
+/* Icons only. The room list goes with the labels: a column of unlabelled keys
+   is not a navigable list, it is a puzzle. */
+.sidebar.is-collapsed {
+  width: 60px;
+}
+
+.sidebar.is-collapsed .nav-label,
+.sidebar.is-collapsed .nav-badge,
+.sidebar.is-collapsed .sidebar-title,
+.sidebar.is-collapsed .sidebar-brand,
+.sidebar.is-collapsed .sidebar-context,
+.sidebar.is-collapsed .account-text,
+.sidebar.is-collapsed .account-chevron,
+.sidebar.is-collapsed .version {
+  display: none;
+}
+
+.sidebar.is-collapsed .sidebar-collapse .icon {
+  transform: rotate(180deg);
+}
+
+.sidebar.is-collapsed .sidebar-head,
+.sidebar.is-collapsed .nav-item,
+.sidebar.is-collapsed .account {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sidebar.is-collapsed .sidebar-foot {
+  align-items: center;
 }
 
 /* The contextual half of the sidebar. Only Chat has one; the others are a
@@ -126,6 +270,83 @@ body {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: var(--lc-fg-dim);
+}
+
+.sidebar-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  margin-top: auto;
+  padding-top: var(--lc-space-sm);
+  border-top: 1px solid var(--lc-rule);
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  width: 100%;
+  min-width: 0;
+  padding: var(--lc-space-sm);
+  appearance: none;
+  border: 0;
+  border-radius: var(--lc-radius-md);
+  font: inherit;
+  text-align: left;
+  color: var(--lc-fg);
+  background: transparent;
+  cursor: default;
+  transition: background-color 120ms ease-out;
+}
+
+.account:hover {
+  background: var(--lc-bg-elevated-2);
+}
+
+/* The first character of the address, which is all an identicon would honestly
+   convey at this size and is at least not mistakable for a photograph. */
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: var(--lc-radius-pill);
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--lc-brand-violet), var(--lc-brand-magenta));
+  text-transform: uppercase;
+}
+
+.account-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.account-name,
+.account-role {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-name {
+  font-size: var(--lc-text-sm);
+  font-weight: 500;
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+}
+
+.account-role {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+.account-chevron {
+  flex: 0 0 auto;
   color: var(--lc-fg-dim);
 }
 
@@ -154,19 +375,85 @@ body {
   padding-top: var(--lc-space-md);
 }
 
+/* --- Icons ---------------------------------------------------------------- */
+
+/* Defined once in a sprite and referenced by `<use>`. Stroked rather than
+   filled so one definition works at any weight of text it sits beside. */
+.sprite {
+  display: none;
+}
+
+.icon,
+.nav-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .nav-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
+  min-width: 0;
   appearance: none;
   border: 0;
   border-radius: var(--lc-radius-md);
   padding: var(--lc-space-sm) var(--lc-space-md);
   font: inherit;
   font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-tight);
   text-align: left;
   color: var(--lc-fg-muted);
   background: transparent;
   cursor: default;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-icon {
+  color: var(--lc-fg-dim);
+}
+
+.nav-item:hover .nav-icon,
+.nav-item.is-active .nav-icon {
+  color: var(--lc-brand);
+}
+
+.nav-badge {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: var(--lc-radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 17px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--lc-brand-ink);
+  background: var(--lc-bg-elevated-2);
+}
+
+/* A room entry stacks a key over a preview, so its two lines need a column of
+   their own inside what is otherwise a row. */
+.nav-item-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .nav-item:hover {
@@ -180,13 +467,24 @@ body {
   box-shadow: inset 2px 0 0 var(--lc-brand);
 }
 
-.nav-item-name {
+/* A room is named by its key and described by its last message, and neither has
+   a length anyone controls. Both are given one line: a sidebar entry that grows
+   to three lines to fit somebody else's sentence pushes the rest of the list
+   around every time a message arrives. */
+.nav-item-name,
+.nav-item-sub {
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-item-name {
   font-variant-numeric: tabular-nums;
 }
 
 .nav-item-sub {
-  display: block;
+  margin-top: 2px;
   font-size: var(--lc-text-xs);
   color: var(--lc-fg-dim);
 }
@@ -213,6 +511,449 @@ body {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
+}
+
+/* --- Dashboard ------------------------------------------------------------ */
+
+.dash {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-lg);
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--lc-space-xl) var(--lc-space-lg) var(--lc-space-xl) var(--lc-space-xl);
+  overflow-y: auto;
+}
+
+.dash-head {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--lc-space-md) var(--lc-space-lg);
+}
+
+.dash-head-main {
+  flex: 1 1 28ch;
+  min-width: 0;
+}
+
+.dash-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.dash-title {
+  margin: 0;
+  font-size: var(--lc-text-xxl);
+  font-weight: 600;
+  line-height: var(--lc-leading-tight);
+}
+
+.dash-sub {
+  margin: var(--lc-space-xs) 0 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+.dash-locked {
+  margin: 0;
+  padding: var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-left: 2px solid var(--lc-warning);
+  border-radius: var(--lc-radius-md);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+  background: var(--lc-bg-elevated);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  height: var(--lc-control-md);
+  padding: 0 var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-pill);
+  font-size: var(--lc-text-xs);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--lc-fg-muted);
+  background: var(--lc-bg-elevated);
+}
+
+/* One control with several states, rather than three buttons that happen to be
+   adjacent. The shared border makes the choice look exclusive, which it is. */
+.segmented {
+  display: inline-flex;
+  height: var(--lc-control-md);
+  padding: 2px;
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated);
+}
+
+.segment {
+  padding: 0 var(--lc-space-md);
+  appearance: none;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  font-size: var(--lc-text-xs);
+  font-weight: 500;
+  color: var(--lc-fg-dim);
+  background: transparent;
+  cursor: default;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.segment:hover {
+  color: var(--lc-fg);
+}
+
+.segment.is-active {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+}
+
+/* --- Cards ---------------------------------------------------------------- */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-lg);
+  background: var(--lc-bg-elevated);
+}
+
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lc-space-md);
+  margin-bottom: var(--lc-space-lg);
+}
+
+.card-title {
+  margin: 0;
+  font-size: var(--lc-text-md);
+  font-weight: 600;
+}
+
+.card-note {
+  margin: 2px 0 0;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+/* --- Stat cards ----------------------------------------------------------- */
+
+/* `auto-fit` rather than a fixed count: the row reflows to four or three across
+   in a narrow window instead of squeezing five columns until the numbers wrap.
+   Separate cards rather than one divided strip, because a strip whose last row
+   is half full leaves a gap that reads as a rendering fault. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: var(--lc-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  min-width: 0;
+  padding: var(--lc-space-md) var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-lg);
+  background: var(--lc-bg-elevated);
+}
+
+.stat-label {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+.stat-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--lc-space-sm);
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: var(--lc-text-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Absent is not zero. A dash says the app does not know; a nought would claim
+   it measured nothing, and those call for different actions. */
+.stat-value.is-unknown {
+  color: var(--lc-fg-dim);
+  font-weight: 400;
+}
+
+.stat-note {
+  font-size: var(--lc-text-xs);
+  white-space: nowrap;
+  color: var(--lc-fg-dim);
+}
+
+.stat-note[data-tone='up'] {
+  color: var(--lc-success);
+}
+
+.stat-note[data-tone='down'] {
+  color: var(--lc-danger);
+}
+
+/* --- Dashboard grid ------------------------------------------------------- */
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+  gap: var(--lc-space-lg);
+}
+
+@media (max-width: 1080px) {
+  .dash-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* --- Chart ---------------------------------------------------------------- */
+
+/* Drawn as SVG with the geometry in attributes. The content security policy
+   forbids inline styles, and an SVG needs no exception to it. */
+.chart {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Sized in pixels by the script that builds it, so the type inside is at its
+   real size rather than scaled down with the geometry. */
+.chart svg {
+  display: block;
+}
+
+.chart-grid {
+  stroke: var(--lc-rule);
+  stroke-dasharray: 3 4;
+}
+
+.chart-axis {
+  fill: var(--lc-fg-dim);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-bar {
+  fill: var(--lc-brand-violet);
+}
+
+.chart-bar.is-answered {
+  fill: var(--lc-brand);
+}
+
+.chart-empty {
+  fill: var(--lc-fg-dim);
+  font-size: 11px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lc-space-lg);
+  margin: var(--lc-space-lg) 0 0;
+  padding: var(--lc-space-lg) 0 0;
+  border-top: 1px solid var(--lc-rule);
+  list-style: none;
+}
+
+.legend-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.legend-key {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+.legend-swatch {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 2px;
+  background: var(--lc-brand-violet);
+}
+
+.legend-swatch[data-series='answered'] {
+  background: var(--lc-brand);
+}
+
+.legend-swatch[data-series='jobs'] {
+  background: var(--lc-brand-magenta);
+}
+
+.legend-value {
+  font-size: var(--lc-text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Activity feed -------------------------------------------------------- */
+
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.feed-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding-bottom: var(--lc-space-md);
+  border-bottom: 1px solid var(--lc-rule);
+}
+
+.feed-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.feed-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: var(--lc-radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--lc-brand-ink);
+  background: var(--lc-bg-elevated-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag[data-tone='proven'] {
+  color: var(--lc-success);
+  background: color-mix(in srgb, var(--lc-success) 16%, transparent);
+}
+
+.tag[data-tone='room'] {
+  color: var(--lc-brand);
+  background: color-mix(in srgb, var(--lc-brand) 16%, transparent);
+}
+
+.feed-text {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-tight);
+  /* Two lines: enough to tell one item from another, not so many that six
+     entries become a wall. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.feed-when {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Distribution bars ---------------------------------------------------- */
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bar-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--lc-space-sm);
+  margin-bottom: 6px;
+  font-size: var(--lc-text-sm);
+}
+
+.bar-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-count {
+  margin-left: auto;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bar-track {
+  display: flex;
+  height: 8px;
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-bg-elevated-2);
+  overflow: hidden;
+}
+
+.bar-fill {
+  background: var(--lc-brand-violet);
+  transition: width 220ms ease-out;
+}
+
+.bar-fill[data-series='jobs'] {
+  background: var(--lc-brand-magenta);
+}
+
+.dash-empty {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
 }
 
 /* --- Sections that do not exist yet --------------------------------------- */
@@ -290,45 +1031,60 @@ body {
 .dialog-details summary {
   cursor: default;
   user-select: none;
+  color: var(--lc-fg-muted);
+  list-style: none;
+}
+
+.dialog-details summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The default marker is a solid triangle sized to the text, which at 13px is a
+   blot. A chevron drawn from a border rotates instead of swapping glyph. */
+.dialog-details summary::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: var(--lc-space-sm);
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-1px) rotate(-45deg);
+  transition: transform 140ms ease-out;
+}
+
+.dialog-details[open] summary::before {
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.dialog-details summary:hover {
+  color: var(--lc-fg);
 }
 
 .dialog-details[open] summary {
   margin-bottom: var(--lc-space-xs);
 }
 
-.message-proof {
+.message-proof,
+.message-warning {
+  display: inline-flex;
+  align-items: center;
+  height: 17px;
   padding: 0 6px;
-  border-radius: var(--lc-radius-sm, 4px);
-  background: var(--lc-bg-elevated-2);
-  color: var(--lc-fg-muted);
+  border-radius: var(--lc-radius-sm);
   font-size: var(--lc-text-xs);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.message-proof {
+  background: color-mix(in srgb, var(--lc-success) 16%, transparent);
+  color: var(--lc-success);
 }
 
 .message-warning {
-  padding: 0 6px;
-  border-radius: var(--lc-radius-sm, 4px);
-  background: var(--lc-danger-bg, rgba(220, 60, 60, 0.15));
-  color: var(--lc-danger, #ff8080);
-  font-size: var(--lc-text-xs);
-}
-
-.wallet-fund {
-  display: flex;
-  flex-direction: column;
-  gap: var(--lc-space-md);
-  margin-top: var(--lc-space-xl);
-  padding-top: var(--lc-space-xl);
-  border-top: 1px solid var(--lc-rule);
-}
-
-.wallet-fund-form {
-  flex-direction: row;
-  align-items: flex-end;
-  gap: var(--lc-space-sm);
-}
-
-.wallet-fund-form .field {
-  flex: 0 1 220px;
+  background: color-mix(in srgb, var(--lc-danger) 16%, transparent);
+  color: var(--lc-danger);
 }
 
 /* --- Asking a model ------------------------------------------------------- */
@@ -354,6 +1110,12 @@ body {
   justify-content: space-between;
   gap: var(--lc-space-sm);
   padding: var(--lc-space-md) var(--lc-space-md) var(--lc-space-sm);
+}
+
+/* The heading carries a bottom margin for when it stands alone above a list.
+   In a row beside a button that margin lifts it off the shared centre line. */
+.ai-models-head .sidebar-title {
+  margin: 0;
 }
 
 .model-list {
@@ -462,7 +1224,8 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  max-width: 46ch;
+  align-items: center;
+  text-align: center;
   padding: var(--lc-space-xxl);
 }
 
@@ -470,10 +1233,12 @@ body {
   margin: 0 0 var(--lc-space-sm);
   font-size: var(--lc-text-xxl);
   font-weight: 600;
+  line-height: var(--lc-leading-tight);
 }
 
 .ai-empty-body {
   margin: 0;
+  max-width: 46ch;
   color: var(--lc-fg-muted);
 }
 
@@ -570,11 +1335,13 @@ body {
   flex: 1 1 auto;
   min-width: 0;
   overflow-y: auto;
-  padding: var(--lc-space-xxl);
+  /* Less on the right than the left, because the scrollbar occupies that edge
+     and a symmetric pad leaves the thumb floating away from the panel. */
+  padding: var(--lc-space-xxl) var(--lc-space-lg) var(--lc-space-xxl) var(--lc-space-xxl);
 }
 
 .settings-page {
-  max-width: 60ch;
+  max-width: 62ch;
   display: flex;
   flex-direction: column;
   gap: var(--lc-space-lg);
@@ -584,6 +1351,7 @@ body {
   margin: 0;
   font-size: var(--lc-text-lg);
   font-weight: 600;
+  line-height: var(--lc-leading-tight);
 }
 
 /* Not the first heading, which already sits under the panel's own padding. */
@@ -598,12 +1366,8 @@ body {
 .settings-note {
   margin: 0;
   font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
   color: var(--lc-fg-muted);
-}
-
-select.input {
-  appearance: none;
-  font-family: inherit;
 }
 
 /* --- First run ------------------------------------------------------------ */
@@ -689,12 +1453,23 @@ select.input {
 
 /* --- Wallet --------------------------------------------------------------- */
 
+/* Wide enough for a 42-character address on one line, and anchored to the top
+   like every other section. Centring it vertically made the panel jump as the
+   balances arrived and the content grew. */
 .wallet {
   width: 100%;
-  max-width: 60ch;
-  margin: auto;
+  max-width: 74ch;
+  margin: 0 auto;
   padding: var(--lc-space-xxl);
   overflow-y: auto;
+}
+
+/* The three stages before the wallet is open are short, and a short panel
+   pinned to the top of a tall window looks abandoned. */
+.wallet:has(#wallet-none:not([hidden])),
+.wallet:has(#wallet-locked:not([hidden])) {
+  margin: auto;
+  max-width: 56ch;
 }
 
 .wallet-title {
@@ -711,9 +1486,15 @@ select.input {
 
 .wallet-head {
   display: flex;
-  align-items: flex-start;
-  gap: var(--lc-space-lg);
+  flex-direction: column;
+  gap: var(--lc-space-md);
   margin-bottom: var(--lc-space-xl);
+}
+
+.wallet-head-row {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-lg);
 }
 
 .wallet-head-actions {
@@ -724,33 +1505,52 @@ select.input {
   flex: 0 0 auto;
 }
 
-/* An address is 42 characters and every one of them matters. Truncating a room
-   key is fine, because it is copied by button; an address is read and compared
-   by eye against whatever someone is about to send money to. */
+/* An address is 42 characters and every one of them matters, so it is never
+   shortened here. It is allowed to scroll rather than wrap: broken across two
+   lines it is materially harder to compare against the one in another window,
+   which is the only reason it is on screen. */
 .wallet .key {
   max-width: none;
-  overflow: visible;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-x: auto;
+  white-space: nowrap;
   font-size: var(--lc-text-sm);
   color: var(--lc-fg-muted);
+  scrollbar-width: none;
+}
+
+.wallet .key::-webkit-scrollbar {
+  display: none;
 }
 
 .wallet-form {
   display: flex;
   flex-direction: column;
+  /* Label-and-field pairs are one thing each, so the gap between pairs has to
+     be clearly larger than the gap inside one. */
   gap: var(--lc-space-lg);
+  /* Without this a form in a wide panel stretches its fields to the full width
+     and a password box ends up eight inches long. */
+  max-width: 44ch;
+}
+
+/* Settings fields hold keys, paths and URLs rather than passwords, and those
+   have real lengths. Here the form takes the reading column it sits in, which
+   at least lines its edge up with the paragraph explaining it. */
+.settings-page .wallet-form {
+  max-width: none;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--lc-space-xs);
+  gap: 6px;
+  min-width: 0;
 }
 
 .field-label {
-  font-size: var(--lc-text-sm);
-  color: var(--lc-fg-dim);
+  font-size: var(--lc-text-xs);
+  font-weight: 500;
+  color: var(--lc-fg-muted);
 }
 
 /* Passwords are typed, not pasted from a key. Monospace makes them look like
@@ -758,11 +1558,39 @@ select.input {
 .wallet-form .input {
   font-family: inherit;
   font-size: var(--lc-text-md);
-  padding: var(--lc-space-md);
 }
 
-.wallet-form .button-primary {
+/* A form's submit is an action, not a banner. Stretching it across the column
+   made every secondary button read as the primary one. */
+.wallet-form .button {
   align-self: flex-start;
+}
+
+.wallet-fund {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  margin-top: var(--lc-space-xl);
+  padding-top: var(--lc-space-xl);
+  border-top: 1px solid var(--lc-rule);
+}
+
+/* An amount and its button are one gesture, so they sit on one line. This has
+   to come after `.wallet-form`: the two selectors carry the same weight, and
+   when this was declared first the column direction won and the field stretched
+   to a 220px-tall box with the button stranded below it. */
+.wallet-fund-form {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: var(--lc-space-sm);
+}
+
+.wallet-fund-form .field {
+  flex: 0 1 200px;
+}
+
+.wallet-fund-form .button {
+  align-self: flex-end;
 }
 
 .wallet-warning {
@@ -886,9 +1714,12 @@ select.input {
   list-style: none;
 }
 
+/* Sized to the longest status rather than to a round number. At 5rem the
+   verdict and the sentence it applies to sat far enough apart to read as two
+   columns of unrelated text. */
 .check {
   display: grid;
-  grid-template-columns: 5rem 1fr;
+  grid-template-columns: 3.25rem minmax(0, 1fr);
   gap: var(--lc-space-md);
   align-items: baseline;
 }
@@ -896,7 +1727,7 @@ select.input {
 .check-status {
   font-size: var(--lc-text-xs);
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--lc-success);
 }
@@ -931,7 +1762,7 @@ select.input {
 
 .facts {
   display: grid;
-  grid-template-columns: minmax(0, 9rem) 1fr;
+  grid-template-columns: minmax(0, 7rem) minmax(0, 1fr);
   gap: var(--lc-space-sm) var(--lc-space-lg);
   margin: 0;
 }
@@ -944,6 +1775,7 @@ select.input {
 .facts dd {
   margin: 0;
   font-size: var(--lc-text-sm);
+  overflow-wrap: anywhere;
   user-select: text;
 }
 
@@ -1064,10 +1896,15 @@ select.input {
 }
 
 .badge {
+  display: inline-flex;
+  align-items: center;
+  height: var(--lc-control-sm);
+  padding: 0 var(--lc-space-md);
   border-radius: var(--lc-radius-pill);
-  padding: 2px var(--lc-space-sm);
   font-size: var(--lc-text-xs);
   font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
   color: var(--lc-brand-ink);
   background: var(--lc-bg-elevated-2);
 }
@@ -1086,38 +1923,80 @@ select.input {
   padding: var(--lc-space-lg);
   list-style: none;
   overflow-y: auto;
+  overflow-wrap: anywhere;
   flex: 1 1 auto;
   min-height: 0;
 }
 
+/* The hairline is what makes a bubble a bubble on a light background, where the
+   raised surface is only a couple of steps off the page behind it. */
 .message {
-  max-width: 68ch;
-  padding: var(--lc-space-sm) var(--lc-space-md);
+  max-width: min(68ch, 76%);
+  padding: 6px var(--lc-space-md) var(--lc-space-sm);
   border-radius: var(--lc-radius-lg);
   background: var(--lc-bg-elevated);
+  box-shadow: inset 0 0 0 1px var(--lc-rule);
   align-self: flex-start;
 }
 
 .message.is-own {
   align-self: flex-end;
   background: var(--lc-bg-elevated-2);
-  box-shadow: inset 0 0 0 1px var(--lc-rule);
+}
+
+/* Consecutive turns from one person are one utterance broken over several
+   lines, not several announcements. Repeating the name and the clock above each
+   of them is the single loudest thing a chat interface can get wrong: the
+   metadata ends up outweighing what was actually said. */
+.message.is-run {
+  margin-top: calc(-1 * var(--lc-space-sm));
+  border-top-left-radius: var(--lc-radius-sm);
+}
+
+.message.is-run.is-own {
+  border-top-left-radius: var(--lc-radius-lg);
+  border-top-right-radius: var(--lc-radius-sm);
+}
+
+.message.is-run .message-author,
+.message.is-run .message-time {
+  display: none;
+}
+
+/* With the name and clock suppressed the row has nothing left to say, unless
+   it is carrying a verdict on the message — which always earns its space. */
+.message.is-run .message-meta:not(:has(.message-proof, .message-warning)) {
+  display: none;
 }
 
 .message-meta {
   display: flex;
-  gap: var(--lc-space-sm);
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px var(--lc-space-sm);
   margin-bottom: 2px;
   font-size: var(--lc-text-xs);
+  line-height: var(--lc-leading-tight);
   color: var(--lc-fg-dim);
 }
 
 .message-author {
   font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-weight: 500;
+  color: var(--lc-fg-muted);
+}
+
+/* The clock is the least important thing in the row and it repeats on every
+   one, so it sits at the end and stays out of the way. */
+.message-time {
+  margin-left: auto;
+  padding-left: var(--lc-space-sm);
+  font-variant-numeric: tabular-nums;
 }
 
 .message-text {
   margin: 0;
+  line-height: var(--lc-leading-normal);
   /* Preserves the line breaks someone typed without collapsing runs of them. */
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1167,44 +2046,109 @@ select.input {
 
 .composer-input {
   flex: 1 1 auto;
+  min-width: 0;
   resize: none;
+  min-height: var(--lc-control-md);
   max-height: 30vh;
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  padding: var(--lc-space-sm) var(--lc-space-md);
+  padding: 5px var(--lc-space-md);
   font: inherit;
+  font-size: var(--lc-text-md);
+  line-height: var(--lc-leading-normal);
   color: var(--lc-fg);
   background: var(--lc-bg-elevated);
   user-select: text;
+  transition:
+    border-color 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+
+.composer-input::placeholder {
+  color: var(--lc-fg-dim);
+}
+
+.composer-input:focus {
+  outline: none;
+  border-color: var(--lc-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lc-brand) 24%, transparent);
 }
 
 .composer-input:disabled {
   color: var(--lc-fg-dim);
 }
 
+/* A value that exists to be copied: shown in full where it fits, with the
+   button that copies it attached rather than floated off to one side. */
+.key-row {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  min-width: 0;
+  max-width: 62ch;
+  padding: var(--lc-space-xs) var(--lc-space-xs) var(--lc-space-xs) var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated);
+}
+
+.key-row .key {
+  flex: 1 1 auto;
+  max-width: none;
+  min-width: 0;
+}
+
+.key-row .button {
+  flex: 0 0 auto;
+}
+
 /* --- Controls ------------------------------------------------------------- */
 
+/* Every control is the same height and centres its own label, rather than
+   arriving at a height through padding. Padding plus line height resolves
+   differently for each font, so a button and the field next to it used to
+   settle a few pixels apart and the row looked subtly broken. */
 .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--lc-space-sm);
+  height: var(--lc-control-md);
+  padding: 0 var(--lc-space-md);
   appearance: none;
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  padding: var(--lc-space-sm) var(--lc-space-lg);
   font: inherit;
   font-size: var(--lc-text-sm);
   font-weight: 500;
+  line-height: 1;
   color: var(--lc-fg);
   background: var(--lc-bg-elevated-2);
   cursor: default;
   white-space: nowrap;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--lc-brand);
+  background: color-mix(in srgb, var(--lc-brand) 14%, var(--lc-bg-elevated-2));
+}
+
+.button:active:not(:disabled) {
+  background: color-mix(in srgb, var(--lc-brand) 22%, var(--lc-bg-elevated-2));
 }
 
 .button-sm {
-  padding: var(--lc-space-xs) var(--lc-space-md);
+  height: var(--lc-control-sm);
+  padding: 0 var(--lc-space-sm);
   font-size: var(--lc-text-xs);
 }
 
 .button-block {
-  display: block;
+  display: flex;
   width: 100%;
 }
 
@@ -1214,24 +2158,82 @@ select.input {
   background: linear-gradient(90deg, var(--lc-brand-violet), var(--lc-brand-magenta));
 }
 
-.button-primary:hover {
-  filter: brightness(1.08);
+.button-primary:hover:not(:disabled),
+.button-primary:active:not(:disabled) {
+  border-color: transparent;
+  background: linear-gradient(90deg, var(--lc-brand-violet), var(--lc-brand-magenta));
+  filter: brightness(1.12);
 }
 
 .button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 .input {
   width: 100%;
+  height: var(--lc-control-md);
+  padding: 0 var(--lc-space-md);
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  padding: var(--lc-space-sm) var(--lc-space-md);
   font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
   font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
   color: var(--lc-fg);
   background: var(--lc-bg);
   user-select: text;
+  transition:
+    border-color 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+
+/* A textarea has to grow, so it gets the height as a floor and pays for its
+   own vertical padding. */
+textarea.input {
+  height: auto;
+  min-height: var(--lc-control-md);
+  padding: var(--lc-space-sm) var(--lc-space-md);
+}
+
+.input::placeholder {
+  color: var(--lc-fg-dim);
+}
+
+.input:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--lc-brand) 55%, var(--lc-rule));
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--lc-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lc-brand) 24%, transparent);
+}
+
+.input:disabled {
+  opacity: 0.55;
+}
+
+/* `appearance: none` takes the chevron with it, and a select that looks exactly
+   like a text field is a select nobody clicks. */
+select.input {
+  appearance: none;
+  padding-right: var(--lc-space-xxl);
+  font-family: inherit;
+  font-size: var(--lc-text-md);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--lc-fg-dim) 50%),
+    linear-gradient(135deg, var(--lc-fg-dim) 50%, transparent 50%);
+  background-position:
+    right calc(var(--lc-space-lg) + 4px) center,
+    right var(--lc-space-lg) center;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+}
+
+select.input option {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated);
 }
 
 /* --- Dialogs -------------------------------------------------------------- */
@@ -1243,10 +2245,25 @@ select.input {
   padding: 0;
   color: var(--lc-fg);
   background: var(--lc-bg-elevated);
+  box-shadow: 0 24px 48px -12px rgb(0 0 0 / 0.65);
+}
+
+/* A dialog that appears between one frame and the next reads as a glitch. The
+   fade is short enough not to be a delay and long enough to be a movement. */
+.dialog[open] {
+  animation: dialog-in 140ms ease-out;
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
 }
 
 .dialog::backdrop {
-  background: rgb(0 0 0 / 0.5);
+  background: rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(2px);
 }
 
 .dialog-form {
@@ -1306,6 +2323,7 @@ select.input {
   position: fixed;
   left: 50%;
   bottom: var(--lc-space-xl);
+  z-index: 30;
   transform: translateX(-50%);
   margin: 0;
   border: 1px solid var(--lc-rule);
@@ -1314,10 +2332,27 @@ select.input {
   font-size: var(--lc-text-sm);
   color: var(--lc-fg);
   background: var(--lc-bg-elevated-2);
+  box-shadow: 0 12px 28px -8px rgb(0 0 0 / 0.6);
+  animation: toast-in 160ms ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
 }
 
 .toast[data-tone='error'] {
   color: var(--lc-danger);
+}
+
+/* Changing theme repaints every surface in the window at once. Letting each of
+   them animate turns that into a smear across the whole app rather than a
+   transition of anything in particular, so transitions are suppressed for the
+   one frame it takes to swap. */
+.is-theming * {
+  transition: none !important;
 }
 
 /* Respect the setting rather than animating regardless. */

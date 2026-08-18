@@ -92,6 +92,9 @@ import { Api, Conversation, History, isAnswerVerified } from '@lcai-p2p/inferenc
  *     { id, t: 'wallet.lock' }
  *     { id, t: 'wallet.remove',  password }
  *     { id, t: 'wallet.balances' }
+ *     { id, t: 'settings.read' }
+ *     { id, t: 'settings.write', values }
+ *     { id, t: 'dashboard.read', months }   → the whole summary in one reply
  *
  * Passwords cross this seam, and so does the recovery phrase — but only when
  * the user asked to see it, and never a derived private key. Otherwise the
@@ -686,6 +689,97 @@ function workerConfig(overrides = {}) {
   }
 }
 
+/**
+ * Totals and a month-by-month series over the transcript log.
+ *
+ * A job id is the honest measure of what was paid for: a turn can be asked and
+ * fail before it ever reaches the chain, so counting questions would overstate
+ * spend and counting answers would understate the attempt.
+ */
+function summariseInference(conversations, months) {
+  const now = new Date()
+  // The first of the month `months - 1` ago, so the series always covers the
+  // same span and empty months are drawn rather than dropped.
+  const series = []
+  for (let i = months - 1; i >= 0; i--) {
+    const at = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    series.push({ month: at.toISOString().slice(0, 7), asked: 0, answered: 0, jobs: 0 })
+  }
+  const index = new Map(series.map((bucket, i) => [bucket.month, i]))
+
+  const byModel = new Map()
+  let asked = 0
+  let answered = 0
+  let jobs = 0
+
+  for (const conversation of conversations) {
+    const use = byModel.get(conversation.model) ?? { conversations: 0, jobs: 0 }
+    use.conversations += 1
+
+    for (const turn of conversation.turns) {
+      if (turn.role === 'you') asked += 1
+      else answered += 1
+      if (turn.jobId) {
+        jobs += 1
+        use.jobs += 1
+      }
+
+      const bucket = series[index.get(new Date(turn.at).toISOString().slice(0, 7)) ?? -1]
+      if (!bucket) continue
+      if (turn.role === 'you') bucket.asked += 1
+      else bucket.answered += 1
+      if (turn.jobId) bucket.jobs += 1
+    }
+
+    byModel.set(conversation.model, use)
+  }
+
+  return {
+    conversations: conversations.length,
+    asked,
+    answered,
+    jobs,
+    series,
+    models: [...byModel.entries()]
+      .map(([name, use]) => ({ name, ...use }))
+      .sort((a, b) => b.conversations - a.conversations)
+  }
+}
+
+/** The newest handful of things that happened, from both halves of the app. */
+function recentActivity(conversations, states) {
+  const entries = []
+
+  for (const conversation of conversations ?? []) {
+    const last = conversation.turns.at(-1)
+    const first = conversation.turns.find((turn) => turn.role === 'you')
+    if (!last) continue
+    entries.push({
+      kind: 'model',
+      label: conversation.model,
+      proven: Boolean(conversation.turns.some((turn) => turn.jobId)),
+      text: first?.text ?? last.text,
+      at: last.at,
+      id: conversation.id
+    })
+  }
+
+  for (const room of states) {
+    const last = room.messages.at(-1)
+    if (!last) continue
+    entries.push({
+      kind: 'room',
+      label: room.key.slice(0, 8),
+      proven: last.verified === true,
+      text: last.text,
+      at: last.at,
+      id: room.key
+    })
+  }
+
+  return entries.sort((a, b) => b.at - a.at).slice(0, 6)
+}
+
 async function handle(req) {
   switch (req.t) {
     // --- Worker -----------------------------------------------------------
@@ -785,18 +879,22 @@ async function handle(req) {
         else next[key] = value
       }
 
+      const before = network
       writeSettings(next)
       settings = next
-
-      // The chain client is bound to a network, so changing it has to rebuild
-      // the client rather than leave it pointing at the old chain. The same
-      // goes for the inference session: its token, its worker and its prepaid
-      // balance all belong to the network it was made on.
       network = networkOf()
-      rpc = new Rpc({ url: NETWORKS[network].rpcUrl, errors: lightchainErrors() })
-      answerChecks = null
-      void resolveAnswerChecks()
-      forgetInference()
+
+      // Only the network justifies tearing any of this down, and only when it
+      // actually changed. A session's token, its worker and its prepaid balance
+      // all belong to the chain it was opened on — but the theme and the
+      // container name do not, and dropping a conversation someone has paid for
+      // because they changed a preference is a bill for nothing.
+      if (network !== before) {
+        rpc = new Rpc({ url: NETWORKS[network].rpcUrl, errors: lightchainErrors() })
+        answerChecks = null
+        void resolveAnswerChecks()
+        forgetInference()
+      }
 
       return { ok: true }
     }
@@ -1016,6 +1114,47 @@ async function handle(req) {
 
     case 'ai.history':
       return { conversations: await (await transcripts()).transcripts() }
+
+    /**
+     * Everything the dashboard shows, in one reply.
+     *
+     * Assembled here rather than in the renderer because it is arithmetic over
+     * wei and over the transcript log, and both belong to the data plane. A view
+     * that does its own totals is a second implementation of them, and the two
+     * drift.
+     *
+     * Every field is derived from something this machine already holds. Nothing
+     * is estimated: where there is no data the field is null, and the interface
+     * says so rather than drawing a zero that looks like a measurement.
+     */
+    case 'dashboard.read': {
+      const { address, unlocked } = wallet.status()
+      const months = Math.min(24, Math.max(1, Number(req.months) || 12))
+
+      // Balances are public, so they survive a locked wallet. Transcripts do
+      // not: the key that opens them is derived from the wallet.
+      const balances = address ? await handle({ t: 'wallet.balances' }).catch(() => null) : null
+
+      const conversations = unlocked
+        ? await (await transcripts()).transcripts().catch(() => [])
+        : null
+
+      const states = await rooms.states()
+
+      return {
+        network,
+        address,
+        unlocked,
+        balances: balances && { native: balances.native, prepaid: balances.prepaid },
+        rooms: {
+          total: states.length,
+          writable: states.filter((room) => room.writable).length,
+          messages: states.reduce((n, room) => n + room.messages.length, 0)
+        },
+        inference: conversations && summariseInference(conversations, months),
+        recent: recentActivity(conversations, states)
+      }
+    }
 
     case 'ai.forget': {
       await (await transcripts()).deleted(String(req.conversation ?? ''))

@@ -4,6 +4,7 @@ import {
   AA_NON_TEXT,
   AA_NORMAL,
   BRAND,
+  CONTROL,
   DARK,
   LIGHT,
   SPACE,
@@ -88,7 +89,15 @@ describe('brand consistency', () => {
 
   it('emits every token as a CSS variable', () => {
     const css = cssVariables('dark')
-    for (const name of ['--lc-bg:', '--lc-fg:', '--lc-brand:', '--lc-space-md:', '--lc-text-lg:']) {
+    for (const name of [
+      '--lc-bg:',
+      '--lc-fg:',
+      '--lc-brand:',
+      '--lc-space-md:',
+      '--lc-text-lg:',
+      '--lc-leading-normal:',
+      '--lc-control-md:'
+    ]) {
       expect(css, name).toContain(name)
     }
   })
@@ -100,6 +109,13 @@ describe('brand consistency', () => {
 
   it('keeps spacing on a 4px rhythm', () => {
     for (const value of Object.values(SPACE)) expect(value % 4).toBe(0)
+  })
+
+  // A control shorter than this is a small target for a mouse and a bad one for
+  // a trackpad, and the label inside stops having room to breathe.
+  it('keeps controls big enough to hit', () => {
+    for (const value of Object.values(CONTROL)) expect(value).toBeGreaterThanOrEqual(24)
+    expect(CONTROL.sm).toBeLessThan(CONTROL.md)
   })
 })
 

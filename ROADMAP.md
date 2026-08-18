@@ -13,14 +13,15 @@ with the longest lead times are procurement and infrastructure rather than code.
 
 |                             | Tests | Notes                                                                                         |
 | --------------------------- | ----- | --------------------------------------------------------------------------------------------- |
-| `packages/protocol`         | 31    | Model references, manifests and room entries. A reference is a key **and** a version.         |
+| `packages/chain`            | 103   | Reads Lightchain and signs for it, every byte checked against viem.                           |
+| `packages/wallet`           | 68    | BIP-39 phrase, BIP-32 accounts, matched to viem. Keystore V3 export checked against Foundry.  |
+| `packages/inference`        | 48    | The session handshake, the prompt and the relay. Runs under Bare.                             |
+| `packages/protocol`         | 44    | Model references, manifests and room entries. A reference is a key **and** a version.         |
+| `packages/room`             | 30    | Multi-writer rooms on Autobase, and the host that keeps several of them.                      |
 | `packages/worker`           | 30    | Network profiles, config validation, Docker orchestration, container state.                   |
-| `packages/ui`               | 28    | Design tokens and platform conventions, held to WCAG contrast in tests.                       |
-| `packages/room`             | 20    | Multi-writer rooms on Autobase, and the host that keeps several of them.                      |
-| `packages/preflight`        | 19    | Host readiness with actionable remedies.                                                      |
-| `packages/chain`            | 96    | Reads Lightchain and signs for it, every byte checked against viem.                           |
-| `packages/inference`        | 19    | The session handshake, the prompt and the relay. Runs under Bare.                             |
-| `packages/wallet`           | 48    | BIP-39 phrase, BIP-32 accounts, matched to viem. Keystore V3 export checked against Foundry.  |
+| `packages/ui`               | 29    | Design tokens and platform conventions, held to WCAG contrast in tests.                       |
+| `packages/preflight`        | 28    | Host readiness with actionable remedies.                                                      |
+| `packages/host`             | 15    | Probes the machine a worker would run on: Docker, Ollama, GPU, memory, disk.                  |
 | `packages/inference-crypto` | 15    | ECDH P-256 and AES-256-GCM as the deployed workers speak it, under Bare.                      |
 | `packages/safety`           | 10    | Refusal-list decision logic.                                                                  |
 | `packages/drive`            | 9     | Publish a model, resolve it, range-read weights. Survives the publisher going offline.        |
@@ -28,7 +29,7 @@ with the longest lead times are procurement and infrastructure rather than code.
 | `packages/testkit`          | 6     | Two-machine harness with a negative control.                                                  |
 | `packages/blind`            | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server. |
 
-**364 tests.** CI green on every push. The six-platform build matrix compiles a
+**445 tests.** CI green on every push. The six-platform build matrix compiles a
 standalone supervisor binary for Windows, macOS and Linux on x64 and arm64, and
 every runner executes the binary it produced.
 

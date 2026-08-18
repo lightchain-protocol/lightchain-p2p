@@ -63,8 +63,11 @@ export const DARK: Palette = {
 
 export const LIGHT: Palette = {
   bg: '#ffffff',
-  bgElevated: '#f8f9fc',
-  bgElevated2: '#f5f4ff',
+  // Deeper than the site's own greys. At #f8f9fc a raised surface was a single
+  // step off white, which is enough for a sidebar with a border beside it and
+  // not nearly enough for a chat bubble floating in the middle of a panel.
+  bgElevated: '#f2f4fa',
+  bgElevated2: '#eae7fb',
   fg: '#0f0f14',
   fgMuted: '#4e4e5c',
   // Darkened from the document palette: the original fails AA against white at
@@ -118,6 +121,23 @@ export const TYPE = {
   }
 } as const
 
+/**
+ * Heights for interactive controls, in pixels.
+ *
+ * Buttons, inputs and selects are sized to these rather than to vertical
+ * padding. Padding plus line height gives a different height for every font,
+ * every font size and every platform, which is how a button and the field
+ * beside it end up a few pixels apart and the row looks broken without it being
+ * obvious why. A fixed height with the label centred inside is the same
+ * everywhere.
+ */
+export const CONTROL = {
+  /** Toolbar and inline actions. */
+  sm: 26,
+  /** The default: form fields and their buttons. */
+  md: 32
+} as const
+
 export type Theme = 'dark' | 'light'
 
 export function palette(theme: Theme): Palette {
@@ -149,7 +169,9 @@ export function cssVariables(theme: Theme): string {
     `--lc-brand-magenta: ${BRAND.magenta};`,
     ...Object.entries(SPACE).map(([k, v]) => `--lc-space-${k}: ${v}px;`),
     ...Object.entries(RADIUS).map(([k, v]) => `--lc-radius-${k}: ${v}px;`),
-    ...Object.entries(TYPE.scale).map(([k, v]) => `--lc-text-${k}: ${v}px;`)
+    ...Object.entries(TYPE.scale).map(([k, v]) => `--lc-text-${k}: ${v}px;`),
+    ...Object.entries(TYPE.lineHeight).map(([k, v]) => `--lc-leading-${k}: ${v};`),
+    ...Object.entries(CONTROL).map(([k, v]) => `--lc-control-${k}: ${v}px;`)
   ]
   return lines.join('\n  ')
 }
