@@ -35,7 +35,7 @@ describe('two clients', () => {
     const created = await aliceHost.create()
     await aliceHost.send(created.key, 'from alice')
 
-    const joined = await bobHost.join(created.key)
+    const joined = await bobHost.join(created.key, aliceHost.credentials(created.key).encryptionKey)
     expect(joined.key).toBe(created.key)
     expect(joined.writable).toBe(false)
 
@@ -69,7 +69,7 @@ describe('two clients', () => {
     const bobHost = await hostFor(bob, { onChange: (state) => seen.push(state) })
 
     const created = await aliceHost.create()
-    await bobHost.join(created.key)
+    await bobHost.join(created.key, aliceHost.credentials(created.key).encryptionKey)
     await net.connect()
 
     await aliceHost.send(created.key, 'are you there')
@@ -138,7 +138,7 @@ describe('invites', () => {
     const bobHost = await hostFor(bob)
 
     const created = await aliceHost.create()
-    await bobHost.join(created.key)
+    await bobHost.join(created.key, aliceHost.credentials(created.key).encryptionKey)
 
     await expect(bobHost.invite(created.key)).rejects.toThrow(/only a writer can invite/)
     await expect(aliceHost.invite('f'.repeat(64))).rejects.toThrow(RoomError)
@@ -330,7 +330,10 @@ describe('restarting', () => {
     const good = await seed.create()
     await seed.close()
 
-    const damaged = [...registry.read(), { key: 'not-a-room-key', namespace: 'orphan' }]
+    const damaged = [
+      ...registry.read(),
+      { key: 'not-a-room-key', namespace: 'orphan', encryptionKey: 'a'.repeat(64) }
+    ]
     registry.write(damaged)
 
     const host = await hostFor(alice, { registry })

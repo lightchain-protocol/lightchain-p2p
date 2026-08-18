@@ -8,8 +8,9 @@ system so the same product ships on every platform.
 
 Conversation, end to end and over a real network:
 
-- Create a room, and invite someone with a single string that carries no room
-  key. They arrive able to write; nothing is sent back the other way.
+- Create an encrypted room, and invite someone with a single string that
+  carries no room key. They arrive able to write; nothing is sent back the
+  other way.
 - Send messages, and receive theirs without refreshing anything.
 - Rooms and write access survive a restart.
 - Over-the-air updates, from the Pear runtime.
@@ -37,11 +38,10 @@ built. What exists is the conversation half: people talking to each other.
 identity, so the key that pays is the key that signs. Today a peer is identified
 only by its Autobase writer key.
 
-**Rooms are not encrypted.** Invites no longer hand out the room key, but the
-key remains sufficient to read the history for anyone who obtains it, and blind
-peers holding a room for availability can read it as well. `autopass` passes an
-encryption key alongside the room key when confirming a pairing; this does not
-yet.
+**Encryption stops at this machine.** Rooms are encrypted, so the peers
+replicating them cannot read them — but the key is stored in
+`chat/rooms.json` beside the data, because a room has to reopen without anyone
+typing a password. Whoever can read that directory can read every room.
 
 ## Architecture
 

@@ -103,13 +103,33 @@ function send(message) {
  * The namespace matters as much as the key: it decides which writer core a room
  * comes back on, so losing this file costs the write access each room granted
  * this peer, not merely the list.
+ *
+ * **This file holds secrets.** Every record carries its room's encryption key,
+ * so whoever can read it can read every room. It is written `0600` where that
+ * means anything — Windows ignores the mode — and the key sits in the same
+ * directory as the data it protects regardless. Encryption defends a room
+ * against the peers replicating it, not against access to this machine.
  */
 const registry = {
   read() {
     try {
       const parsed = JSON.parse(fs.readFileSync(registryFile, 'utf8'))
       if (!Array.isArray(parsed)) return []
-      return parsed.filter((e) => e && typeof e.key === 'string' && typeof e.namespace === 'string')
+
+      const usable = parsed.filter(
+        (e) =>
+          e &&
+          typeof e.key === 'string' &&
+          typeof e.namespace === 'string' &&
+          typeof e.encryptionKey === 'string'
+      )
+
+      // A record with no encryption key cannot open its room at all. Say so,
+      // rather than letting the room disappear from the list without comment.
+      const dropped = parsed.length - usable.length
+      if (dropped > 0) console.error(`${dropped} room(s) have no encryption key and cannot open`)
+
+      return usable
     } catch {
       // Absent on first run. A damaged file should not stop the app starting:
       // it costs the room list, and the rooms are still on disk.
@@ -119,7 +139,7 @@ const registry = {
   write(records) {
     try {
       fs.mkdirSync(chatDir, { recursive: true })
-      fs.writeFileSync(registryFile, JSON.stringify(records, null, 2))
+      fs.writeFileSync(registryFile, JSON.stringify(records, null, 2), { mode: 0o600 })
     } catch (err) {
       console.error('could not record the room list:', err.message)
     }

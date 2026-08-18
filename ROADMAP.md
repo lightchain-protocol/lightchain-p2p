@@ -90,11 +90,14 @@ recommendation is a minimal client rather than a bundler or moving chain access
 into the Electron main process, which would break the one-core-five-platforms
 architecture.
 
-Invites now use `blind-pairing` as the proposal specifies: one string that
-carries no room key, and the joiner arrives able to write. What remains is
-**encryption** — `autopass` passes an encryption key alongside the room key when
-confirming, and this does not, so the room key is still sufficient to read a
-room and blind peers holding one can read it too.
+Invites use `blind-pairing` as the proposal specifies: one string that carries
+no room key, and the joiner arrives able to write. Rooms are encrypted, so a
+room key alone reads nothing and the blind peers we will rely on to hold rooms
+cannot read what they hold.
+
+The remaining limit is local: the encryption key sits in `chat/rooms.json`
+beside the data, because a room must reopen unattended, so anyone who can read
+that directory can read every room.
 
 The **graphical interface and install experience for every platform** remains the
 largest single piece of work, and it is more than packaging. It is the first
@@ -184,9 +187,10 @@ Mobile is decided: deferred, see [ADR 0001](docs/decisions/0001-defer-mobile.md)
    test into a property of the system, and is what lets a room outlive every
    participant being offline.
 3. **Verify from a second machine.**
-4. **Encrypt rooms**, before anyone uses the chat client for something they
-   would mind being read. Invites stop the key spreading; encryption is what
-   makes holding the key insufficient.
+4. **Build the minimal chain client**, per
+   [ADR 0004](docs/decisions/0004-chain-access-from-bare.md). It unblocks three
+   things at once: the wallet, model discovery, and the supervisor's contract
+   address resolution.
 5. **Build the inference path in `apps/chat`**: model picker, dispatch to the
    worker network, responses, and settlement. This is the bulk of Advancement 4
    and none of it exists.

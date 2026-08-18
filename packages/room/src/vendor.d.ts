@@ -48,12 +48,18 @@ declare module 'autobase' {
     valueEncoding?: string
     /** Milliseconds. Source default is 10_000, not the 1000 the README implies. */
     ackInterval?: number
+    /** Generate an encryption key when creating. Ignored when one is supplied. */
+    encrypt?: boolean
+    /** Required to open a room someone else created encrypted. */
+    encryptionKey?: Uint8Array | null
   }
 
   export default class Autobase<V = unknown> {
     constructor(store: Corestore, bootstrap: Uint8Array | string | null, opts: AutobaseOptions<V>)
     readonly key: Buffer
     readonly discoveryKey: Buffer
+    /** Set after `ready`. Generated on create, or the one that was supplied. */
+    readonly encryptionKey: Buffer | null
     /** This peer's writer core. Its key is what an existing writer must add. */
     readonly local: HypercoreLike
     readonly view: V
@@ -91,8 +97,8 @@ declare module 'blind-pairing' {
     /** Whatever the joiner sent. Only readable after `open`. */
     readonly userData: Uint8Array
     open(publicKey: Uint8Array): void
-    /** Hands over the room key. Nothing before this reveals it. */
-    confirm(payload: { key: Uint8Array }): void
+    /** Hands over the room key and its encryption key. Nothing before this reveals either. */
+    confirm(payload: { key: Uint8Array; encryptionKey?: Uint8Array }): void
   }
 
   export interface Member {
@@ -102,7 +108,7 @@ declare module 'blind-pairing' {
 
   export interface CandidateSession {
     /** Resolves with the confirmation, or null if it never came. */
-    readonly pairing: Promise<{ key: Buffer } | null>
+    readonly pairing: Promise<{ key: Buffer; encryptionKey?: Buffer } | null>
     close(): Promise<void>
   }
 

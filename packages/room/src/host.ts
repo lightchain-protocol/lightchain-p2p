@@ -20,10 +20,19 @@ import { Room, RoomError } from './room.js'
  * under Node in tests, where a restart can be simulated without touching a disk.
  */
 
-/** What has to be remembered about a room to reopen it as the same writer. */
+/**
+ * What has to be remembered about a room to reopen it as the same writer.
+ *
+ * **This includes a secret.** `encryptionKey` decrypts the room, so wherever a
+ * registry is persisted is as sensitive as the room itself. Encryption keeps a
+ * room from the peers replicating it — blind peers especially — and does
+ * nothing against someone reading this machine's storage, where the key sits
+ * beside the data it protects.
+ */
 export interface RoomRecord {
   readonly key: string
   readonly namespace: string
+  readonly encryptionKey: string
 }
 
 export interface RoomRegistry {
@@ -211,11 +220,21 @@ export class RoomHost {
     return this.#stateOf(await this.#announced(room))
   }
 
-  async join(key: string): Promise<RoomState> {
+  /**
+   * Opens a room from its key and encryption key.
+   *
+   * Both are required, which is the point: a room key alone no longer reads
+   * anything. {@link pair} is the normal path and carries both for you.
+   */
+  async join(key: string, encryptionKey: string): Promise<RoomState> {
     const trimmed = key.trim()
     // The room key is a stable, durable identifier, which is exactly what the
     // namespace has to be for write access to survive a restart.
-    const room = await this.#open({ key: trimmed, namespace: trimmed })
+    const room = await this.#open({
+      key: trimmed,
+      namespace: trimmed,
+      encryptionKey: encryptionKey.trim()
+    })
     return this.#stateOf(await this.#announced(room))
   }
 
@@ -262,7 +281,14 @@ export class RoomHost {
         if (!joiner) return
 
         await entry.room.addWriter(joiner.writerKey)
-        candidate.confirm({ key: roomKey })
+
+        // The encryption key travels with the room key, and only here. Handing
+        // over one without the other would grant a peer that can replicate the
+        // room and read none of it.
+        candidate.confirm({
+          key: roomKey,
+          encryptionKey: b4a.from(entry.room.encryptionKey, 'hex')
+        })
       }
     })
 
@@ -315,7 +341,17 @@ export class RoomHost {
       )
     }
 
-    const room = await this.#open({ key: b4a.toString(result.key, 'hex'), namespace })
+    if (!result.encryptionKey) {
+      throw new RoomError(
+        'that invite came from a peer that did not send an encryption key, so the room cannot be read'
+      )
+    }
+
+    const room = await this.#open({
+      key: b4a.toString(result.key, 'hex'),
+      namespace,
+      encryptionKey: b4a.toString(result.encryptionKey, 'hex')
+    })
     await this.#announced(room)
 
     // The confirmation says the host accepted; it does not mean their
@@ -378,6 +414,18 @@ export class RoomHost {
     return true
   }
 
+  /**
+   * Both halves needed to open this room again elsewhere.
+   *
+   * Deliberately not part of {@link RoomState}, which crosses into the view:
+   * the encryption key is a secret and the view has no use for one. Use this
+   * for a backup, or to hand a room over by hand where an invite will not do.
+   */
+  credentials(key: string): { key: string; encryptionKey: string } {
+    const room = this.#require(key)
+    return { key: room.key, encryptionKey: room.encryptionKey }
+  }
+
   async state(key: string): Promise<RoomState> {
     return this.#stateOf(this.#require(key))
   }
@@ -417,11 +465,12 @@ export class RoomHost {
     }
   }
 
-  async #open(record: { key?: string; namespace: string }): Promise<Room> {
+  async #open(record: { key?: string; namespace: string; encryptionKey?: string }): Promise<Room> {
     const room = await Room.open({
       store: this.#store,
       key: record.key,
-      namespace: record.namespace
+      namespace: record.namespace,
+      encryptionKey: record.encryptionKey
     })
 
     // A create only learns its key here, and a duplicate record would otherwise
@@ -509,7 +558,11 @@ export class RoomHost {
 
   #save(): void {
     this.#registry?.write([
-      ...[...this.#rooms.values()].map(({ room, namespace }) => ({ key: room.key, namespace })),
+      ...[...this.#rooms.values()].map(({ room, namespace }) => ({
+        key: room.key,
+        namespace,
+        encryptionKey: room.encryptionKey
+      })),
       ...this.#unopened
     ])
   }

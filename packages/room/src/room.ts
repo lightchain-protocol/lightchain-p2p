@@ -61,6 +61,14 @@ export interface RoomOptions {
    * access it was granted.
    */
   readonly namespace?: string
+  /**
+   * The room's encryption key, as hex.
+   *
+   * Omit when creating and one is generated. **Required to open a room someone
+   * else created**, and travels with the room key in a pairing confirmation
+   * rather than separately.
+   */
+  readonly encryptionKey?: string
 }
 
 export class Room {
@@ -79,7 +87,19 @@ export class Room {
       bootstrap = b4a.from(opts.key, 'hex')
     }
 
+    let encryptionKey: Uint8Array | null = null
+    if (opts.encryptionKey !== undefined) {
+      if (!/^[0-9a-f]{64}$/.test(opts.encryptionKey)) {
+        throw new RoomError('encryption key must be 32 bytes of lowercase hex')
+      }
+      encryptionKey = b4a.from(opts.encryptionKey, 'hex')
+    }
+
     const base = new Autobase<View>(opts.store.namespace(opts.namespace ?? 'room'), bootstrap, {
+      // Without this the room is readable by anyone holding its key, including
+      // the blind peers we rely on to keep it available.
+      encrypt: true,
+      encryptionKey,
       open(store) {
         // The view needs its own encoding. It defaults to binary, and appending
         // an object to a binary core throws from inside apply, which surfaces
@@ -112,6 +132,19 @@ export class Room {
   /** The room key. This is what someone needs to join. */
   get key(): string {
     return b4a.toString(this.#base.key, 'hex')
+  }
+
+  /**
+   * The key that decrypts this room, as hex.
+   *
+   * Needed alongside the room key to open it. Both are handed over together in
+   * a pairing confirmation, so a room key on its own is not enough to read
+   * anything.
+   */
+  get encryptionKey(): string {
+    const key = this.#base.encryptionKey
+    if (!key) throw new RoomError('room opened without encryption')
+    return b4a.toString(key, 'hex')
   }
 
   /** Swarm topic for this room. */

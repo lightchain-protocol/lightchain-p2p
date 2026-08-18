@@ -1,3 +1,5 @@
+import { readFile, readdir } from 'node:fs/promises'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createTestNetwork, waitFor, type Peer, type TestNetwork } from '@lcai-p2p/testkit'
 import { Room, RoomError } from './index.js'
@@ -11,8 +13,19 @@ afterEach(async () => {
   net = undefined
 })
 
-async function openRoom(peer: Peer, key?: string, namespace?: string): Promise<Room> {
-  const room = await Room.open({ store: peer.store, key, namespace })
+/**
+ * Opens a room, joining `from` when given.
+ *
+ * Takes the room rather than its key because a key alone no longer opens
+ * anything — the encryption key has to travel with it.
+ */
+async function openRoom(peer: Peer, from?: Room, namespace?: string): Promise<Room> {
+  const room = await Room.open({
+    store: peer.store,
+    key: from?.key,
+    encryptionKey: from?.encryptionKey,
+    namespace
+  })
   rooms.push(room)
   peer.swarm.on('connection', (socket) => room.replicate(socket))
   peer.swarm.join(room.discoveryKey, { server: true, client: true })
@@ -41,6 +54,84 @@ describe('a single writer', () => {
     const alice = await net.createPeer('alice')
     await expect(Room.open({ store: alice.store, key: 'nope' })).rejects.toThrow(RoomError)
   })
+
+  it('is encrypted, with a key distinct from the room key', async () => {
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const room = await openRoom(alice)
+
+    expect(room.encryptionKey).toMatch(/^[0-9a-f]{64}$/)
+    expect(room.encryptionKey).not.toBe(room.key)
+
+    await expect(
+      Room.open({ store: alice.store, key: room.key, encryptionKey: 'nope', namespace: 'x' })
+    ).rejects.toThrow(/encryption key/)
+  })
+})
+
+describe('what is written to disk', () => {
+  it('does not contain the messages in the clear', async () => {
+    // The room is encrypted, so its blocks should be unreadable at rest as well
+    // as in flight. Asserting the absence of something is only worth anything
+    // alongside a control, so this also checks the scan can find what it should.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+
+    const room = await Room.open({ store: alice.store })
+    const secret = 'the quiet part out loud'
+    await room.send(secret)
+    const roomKey = room.key
+    await room.close()
+
+    // Closed before reading: an open Corestore holds its files.
+    await alice.goOffline()
+
+    const files = await readdir(alice.dir, { recursive: true, withFileTypes: true })
+    let sawSecret = false
+    let sawRoomKey = false
+
+    for (const entry of files) {
+      if (!entry.isFile()) continue
+      const bytes = await readFile(join(entry.parentPath, entry.name))
+      if (bytes.includes(Buffer.from(secret, 'utf8'))) sawSecret = true
+      if (bytes.includes(Buffer.from(roomKey, 'hex'))) sawRoomKey = true
+    }
+
+    // The control. Core keys are not secret and are stored as-is, so finding
+    // one proves the scan is capable of finding a byte sequence at all.
+    expect(sawRoomKey).toBe(true)
+    expect(sawSecret).toBe(false)
+  })
+})
+
+describe('a room key on its own', () => {
+  it('does not read the room', async () => {
+    // The point of encrypting. Blind peers hold rooms to keep them available,
+    // and replicating a room must not mean being able to read it.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const eve = await net.createPeer('eve')
+
+    const aliceRoom = await openRoom(alice)
+    await aliceRoom.send('something private')
+
+    // Everything an eavesdropper could have: the room key, and no more.
+    const withoutTheKey = await Room.open({
+      store: eve.store,
+      key: aliceRoom.key,
+      namespace: aliceRoom.key
+    })
+    rooms.push(withoutTheKey)
+    eve.swarm.on('connection', (socket) => withoutTheKey.replicate(socket))
+    eve.swarm.join(withoutTheKey.discoveryKey, { server: true, client: true })
+
+    await net.connect()
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    await withoutTheKey.update().catch(() => undefined)
+
+    const seen = await withoutTheKey.messages().catch(() => [])
+    expect(seen.map((m) => m.text)).not.toContain('something private')
+  })
 })
 
 describe('two writers', () => {
@@ -52,7 +143,7 @@ describe('two writers', () => {
     const aliceRoom = await openRoom(alice)
     await aliceRoom.send('from alice')
 
-    const bobRoom = await openRoom(bob, aliceRoom.key)
+    const bobRoom = await openRoom(bob, aliceRoom)
     await alice.swarm.flush()
     await bob.swarm.flush()
 
@@ -81,7 +172,7 @@ describe('two writers', () => {
     const bob = await net.createPeer('bob')
 
     const aliceRoom = await openRoom(alice)
-    const bobRoom = await openRoom(bob, aliceRoom.key)
+    const bobRoom = await openRoom(bob, aliceRoom)
 
     await expect(bobRoom.send('let me in')).rejects.toThrow(/writerKey/)
   })
@@ -95,7 +186,7 @@ describe('two writers', () => {
     const bob = await net.createPeer('bob')
 
     const aliceRoom = await openRoom(alice)
-    const bobRoom = await openRoom(bob, aliceRoom.key)
+    const bobRoom = await openRoom(bob, aliceRoom)
 
     expect(aliceRoom.writerKey).toBe(aliceRoom.key)
     expect(bobRoom.key).toBe(aliceRoom.key)
@@ -133,11 +224,16 @@ describe('several rooms in one store', () => {
     const alice = await net.createPeer('alice')
 
     const room = await Room.open({ store: alice.store, namespace: 'stable' })
-    const { key, writerKey } = room
+    const { key, writerKey, encryptionKey } = room
     await room.send('before restart')
     await room.close()
 
-    const reopened = await Room.open({ store: alice.store, key, namespace: 'stable' })
+    const reopened = await Room.open({
+      store: alice.store,
+      key,
+      encryptionKey,
+      namespace: 'stable'
+    })
     rooms.push(reopened)
 
     expect(reopened.writerKey).toBe(writerKey)
@@ -155,7 +251,7 @@ describe('change notification', () => {
     const bob = await net.createPeer('bob')
 
     const aliceRoom = await openRoom(alice)
-    const bobRoom = await openRoom(bob, aliceRoom.key)
+    const bobRoom = await openRoom(bob, aliceRoom)
     await alice.swarm.flush()
     await bob.swarm.flush()
 
@@ -190,7 +286,7 @@ describe('surviving the creator leaving', () => {
     const aliceRoom = await openRoom(alice)
     await aliceRoom.send('before alice left')
 
-    const bobRoom = await openRoom(bob, aliceRoom.key)
+    const bobRoom = await openRoom(bob, aliceRoom)
     await alice.swarm.flush()
     await bob.swarm.flush()
 
@@ -225,8 +321,8 @@ describe('three writers', () => {
     ])
 
     const aliceRoom = await openRoom(alice!)
-    const bobRoom = await openRoom(bob!, aliceRoom.key)
-    const carolRoom = await openRoom(carol!, aliceRoom.key)
+    const bobRoom = await openRoom(bob!, aliceRoom)
+    const carolRoom = await openRoom(carol!, aliceRoom)
 
     await Promise.all([alice!.swarm.flush(), bob!.swarm.flush(), carol!.swarm.flush()])
 

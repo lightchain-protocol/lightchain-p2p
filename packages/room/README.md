@@ -34,6 +34,25 @@ or simply be wrong, so nothing security-relevant may depend on it.
 There is a three-writer test that sends concurrently from all three and asserts
 every peer produces the same order.
 
+## Encryption
+
+Rooms are encrypted. A room key alone opens nothing — the encryption key is
+needed too, and the two travel together inside a pairing confirmation.
+
+That matters most for the peers we ask to hold rooms. Blind peers exist to keep
+a room reachable when nobody is online, which means they replicate it; without
+encryption, replicating it would mean reading it.
+
+There are two tests behind this. One gives an eavesdropper the room key and
+nothing else and asserts it reads no messages. The other scans the storage
+directory for a message it just wrote, and asserts the room's public key **is**
+found in the same scan — an absence proves nothing without a control.
+
+```ts
+const room = await Room.open({ store }) // generates a key
+const joined = await Room.open({ store, key, encryptionKey }) // needs both
+```
+
 ## Invites
 
 ```ts
@@ -131,8 +150,7 @@ when something goes wrong, which matters more while the format is settling.
 Either way the format is permanent once written — add optional fields, never
 remove or retype one.
 
-Rooms are **not encrypted**. `autopass` passes an `encryptionKey` alongside the
-room key when it confirms a pairing; this does not, so anyone who obtains the
-room key reads the history, and blind peers holding a room for availability can
-read it too. Invites keep the key from spreading, which is a different problem
-from the key being sufficient.
+**Encryption protects a room from the peers replicating it, not from this
+machine.** The key is stored beside the data it protects, because a room has to
+reopen without a human present. Anyone who can read the storage directory can
+read every room in it.
