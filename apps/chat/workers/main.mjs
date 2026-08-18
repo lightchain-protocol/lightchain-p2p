@@ -47,8 +47,9 @@ import {
  *     { id, t: 'room.list' }
  *     { id, t: 'room.create' }
  *     { id, t: 'room.join',    key }
+ *     { id, t: 'room.invite',  room }
+ *     { id, t: 'room.pair',    invite }
  *     { id, t: 'room.send',    room, text }
- *     { id, t: 'room.invite',  room, writerKey }
  *     { id, t: 'room.leave',   room }
  *     { id, t: 'worker.doctor' }
  *     { id, t: 'worker.status' }
@@ -233,8 +234,13 @@ async function handle(req) {
       return rooms.send(req.room, req.text)
 
     case 'room.invite':
-      if (typeof req.writerKey !== 'string') throw new Error('invite needs a writer key')
-      return rooms.invite(req.room, req.writerKey)
+      return { invite: await rooms.invite(req.room) }
+
+    case 'room.pair':
+      if (typeof req.invite !== 'string' || req.invite.trim() === '') {
+        throw new Error('paste an invite')
+      }
+      return rooms.pair(req.invite)
 
     case 'room.leave':
       return { left: await rooms.leave(req.room) }

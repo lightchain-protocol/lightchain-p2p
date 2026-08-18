@@ -724,6 +724,26 @@ body {
   color: var(--lc-danger);
 }
 
+.dialog-note {
+  margin: 0;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+.invite {
+  display: block;
+  padding: var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg);
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-size: var(--lc-text-sm);
+  line-height: 1.5;
+  color: var(--lc-fg);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
 .dialog-actions {
   display: flex;
   justify-content: flex-end;

@@ -121,33 +121,32 @@ const roomKey = await a.until(
 )
 step(2, `A created room ${roomKey.slice(0, 12)}…`)
 
+await a.eval(`document.getElementById('invite-btn').click()`)
+const invite = await a.until(
+  `(() => { const v = document.getElementById('invite-value').textContent; return v && v !== 'Creating…' ? v : null })()`,
+  'A to produce an invite'
+)
+await a.eval(`document.getElementById('invite-dialog').close()`)
+
+// The property invites exist for: a capability, not the room key.
+if (invite.includes(roomKey)) throw new Error('the invite contains the room key')
+step(3, `A made an invite of ${invite.length} characters, carrying no room key`)
+
 await b.eval(`
   document.getElementById('join-btn').click()
-  document.getElementById('join-input').value = ${JSON.stringify(roomKey)}
+  document.getElementById('join-input').value = ${JSON.stringify(invite)}
   document.getElementById('join-form').requestSubmit()
 `)
 await b.until(
   `document.getElementById('room-key').textContent === ${JSON.stringify(roomKey)}`,
-  'B to join the room'
+  'B to pair into the room',
+  90_000
 )
 
+// Straight to writer: nothing had to be sent back the other way.
 const role = await b.eval(`return document.getElementById('room-role').textContent`)
-if (role !== 'read only') throw new Error(`B should join without write access, got "${role}"`)
-
-const writerKey = await b.eval(`return document.getElementById('writer-key').textContent`)
-if (writerKey === roomKey) throw new Error('B reported the room key as its writer key')
-step(3, `B joined read only, writer key ${writerKey.slice(0, 12)}…`)
-
-await a.eval(`
-  document.getElementById('invite-btn').click()
-  document.getElementById('invite-input').value = ${JSON.stringify(writerKey)}
-  document.getElementById('invite-form').requestSubmit()
-`)
-await b.until(
-  `document.getElementById('room-role').textContent === 'writer'`,
-  'B to gain write access'
-)
-step(4, 'A granted write access and B received it')
+if (role !== 'writer') throw new Error(`B should arrive able to write, got "${role}"`)
+step(4, 'B joined with that one string and arrived as a writer')
 
 async function say(from, to, text) {
   await from.eval(`

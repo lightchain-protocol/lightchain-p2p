@@ -34,19 +34,44 @@ or simply be wrong, so nothing security-relevant may depend on it.
 There is a three-writer test that sends concurrently from all three and asserts
 every peer produces the same order.
 
-## Writers
+## Invites
+
+```ts
+const invite = await host.invite(roomKey) // a writer creates one
+const state = await otherHost.pair(invite) // and the joiner arrives writable
+```
+
+The invite is a capability, not a key. **It does not contain the room key**, so
+sending it over anything readable does not hand out the room — the key travels
+only inside the confirmation, after the host has accepted the joiner. There is a
+test asserting the room key appears nowhere in the invite.
+
+The joiner's writer key rides along in the same exchange as `userData`, which is
+why nothing has to be sent back the other way. `pair` resolves once the granted
+write has actually replicated, so it means "you can write" rather than "the
+other side said yes".
+
+Two things to know. The invite is **held in memory**, so it stops working when
+the host process exits; putting it in the room instead means a permanent entry
+type and any writer being able to service it, which is a decision not yet made.
+And a payload arriving from a candidate is parsed defensively — accepting one
+grants write access, so a malformed `userData` is dropped rather than passed to
+`addWriter`.
+
+## Writers, by hand
 
 ```ts
 const room = await Room.open({ store }) // create
-const joined = await Room.open({ store, key }) // join by room key
+const joined = await Room.open({ store, key }) // join by room key, read only
 
 await room.addWriter(joined.writerKey) // an existing writer grants access
 ```
 
-A joiner cannot add itself. An existing writer appends a command, and every
-peer's `apply` performs the same change, so the writer set converges like
-everything else. `addWriter` is only available on the host passed to `apply` —
-it does not exist on the base.
+Still available for a peer that joined read-only with a room key. A joiner
+cannot add itself: an existing writer appends a command, and every peer's
+`apply` performs the same change, so the writer set converges like everything
+else. `addWriter` is only available on the host passed to `apply` — it does not
+exist on the base.
 
 **`writerKey` is not the room key.** For the creator they happen to be the same
 core, so the distinction only shows up on a joiner, which is exactly who has to
@@ -106,6 +131,8 @@ when something goes wrong, which matters more while the format is settling.
 Either way the format is permanent once written — add optional fields, never
 remove or retype one.
 
-There is no pairing yet. Joining takes a room key passed out of band, where
-`autopass` and `pear-chat` use `blind-pairing` to hand over the key and
-encryption key through an invite. That is the next piece.
+Rooms are **not encrypted**. `autopass` passes an `encryptionKey` alongside the
+room key when it confirms a pairing; this does not, so anyone who obtains the
+room key reads the history, and blind peers holding a room for availability can
+read it too. Invites keep the key from spreading, which is a different problem
+from the key being sufficient.

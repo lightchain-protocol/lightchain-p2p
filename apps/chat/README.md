@@ -8,11 +8,16 @@ system so the same product ships on every platform.
 
 Conversation, end to end and over a real network:
 
-- Create a room, or join one with a key.
-- Grant write access to another peer.
+- Create a room, and invite someone with a single string that carries no room
+  key. They arrive able to write; nothing is sent back the other way.
 - Send messages, and receive theirs without refreshing anything.
 - Rooms and write access survive a restart.
 - Over-the-air updates, from the Pear runtime.
+
+And the Worker section, read-only: host readiness checks with remedies, and
+container state when a worker is configured. Installing, registering and
+starting stay in `lcai-supervisor`, because the private key is stdin-only by
+design and a pull runs for minutes with no way to report progress here yet.
 
 Verified between two separate application instances on the public DHT: create,
 join, grant, exchange, and both sides rendering the same history in the same
@@ -32,10 +37,11 @@ built. What exists is the conversation half: people talking to each other.
 identity, so the key that pays is the key that signs. Today a peer is identified
 only by its Autobase writer key.
 
-**Invites expose the room key.** The proposal calls for `blind-pairing` invites
-that never reveal it. This ships the crude version — copy a 64-character key and
-paste it — which is a deviation, not merely an unpolished flow. Anyone who ever
-sees that key can read the room forever.
+**Rooms are not encrypted.** Invites no longer hand out the room key, but the
+key remains sufficient to read the history for anyone who obtains it, and blind
+peers holding a room for availability can read it as well. `autopass` passes an
+encryption key alongside the room key when confirming a pairing; this does not
+yet.
 
 ## Architecture
 

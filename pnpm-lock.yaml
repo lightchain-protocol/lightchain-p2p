@@ -393,12 +393,18 @@ importers:
       b4a:
         specifier: ^1.8.1
         version: 1.8.1
+      blind-pairing:
+        specifier: ^2.3.1
+        version: 2.3.1(bare-buffer@3.7.0)(bare-url@2.5.2)
       corestore:
         specifier: ^7.12.0
         version: 7.12.0(bare-buffer@3.7.0)(bare-url@2.5.2)
       hypercore-crypto:
         specifier: ^3.7.0
         version: 3.7.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
+      z32:
+        specifier: ^1.1.0
+        version: 1.1.0
     devDependencies:
       '@lcai-p2p/eslint-config':
         specifier: workspace:*
@@ -1847,6 +1853,12 @@ packages:
 
   bl@4.1.0:
     resolution: {integrity: sha512-1W07cM9gS6DcLperZfFSj+bWLtaPGSOHWhPiGzXmvVJbRLdG82sH/Kn8EtW1VqWVA54AKf2h5k5BbnIbwF3h6w==}
+
+  blind-pairing-core@2.10.1:
+    resolution: {integrity: sha512-CD16k4iFJdrSruNUJOB12jRPGHlWR43CJQ9ss4lRkg44f+YCmrrkmCGUbg2hLnxdPkulkix56fjiNIYMRMe19Q==}
+
+  blind-pairing@2.3.1:
+    resolution: {integrity: sha512-E678Mi6n07Yc8iRtgwzQLmk9EgHmYHBRzKDxpkdkS+Sh476RQ88iv75cvRkPp62rd7nsrP4lqku8uU9EeKGLiA==}
 
   blind-peer-encodings@3.3.1:
     resolution: {integrity: sha512-E3ZT3SvGEZHg3s05w+JCisS4uoUzl1ICJg+A72nHU5jPViNzj7BSbH5y5Qba2NkqpXiETwOAIXus1pa1+fGqfg==}
@@ -6399,6 +6411,40 @@ snapshots:
       buffer: 5.7.1
       inherits: 2.0.4
       readable-stream: 3.6.2
+
+  blind-pairing-core@2.10.1(bare-buffer@3.7.0)(bare-url@2.5.2):
+    dependencies:
+      b4a: 1.8.1
+      bare-events: 2.9.1
+      bogon: 1.3.0
+      compact-encoding: 3.3.1
+      hypercore-crypto: 3.7.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
+      sodium-universal: 5.0.1(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
+      tiny-buffer-map: 1.1.1
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - bare-buffer
+      - bare-url
+      - react-native-b4a
+      - sodium-javascript
+
+  blind-pairing@2.3.1(bare-buffer@3.7.0)(bare-url@2.5.2):
+    dependencies:
+      b4a: 1.8.1
+      blind-pairing-core: 2.10.1(bare-buffer@3.7.0)(bare-url@2.5.2)
+      debounceify: 1.1.0
+      hypercore-crypto: 3.7.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
+      is-options: 1.0.2
+      ready-resource: 1.2.0
+      safety-catch: 1.0.3
+      xache: 1.3.0
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - bare-buffer
+      - bare-events
+      - bare-url
+      - react-native-b4a
+      - sodium-javascript
 
   blind-peer-encodings@3.3.1(bare-buffer@3.7.0)(bare-url@2.5.2):
     dependencies:

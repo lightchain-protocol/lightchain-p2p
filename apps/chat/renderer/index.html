@@ -46,7 +46,9 @@
           <p class="sidebar-empty" id="sidebar-empty">No rooms yet.</p>
           <div class="sidebar-actions">
             <button class="button button-block" type="button" id="create-btn">New room</button>
-            <button class="button button-block" type="button" id="join-btn">Join with a key</button>
+            <button class="button button-block" type="button" id="join-btn">
+              Join with an invite
+            </button>
           </div>
         </div>
 
@@ -73,8 +75,9 @@
               </div>
               <div class="room-head-actions">
                 <span class="badge" id="room-role"></span>
-                <button class="button button-sm" type="button" id="copy-key-btn">Copy key</button>
-                <button class="button button-sm" type="button" id="invite-btn">Add writer</button>
+                <button class="button button-sm" type="button" id="invite-btn">
+                  Invite someone
+                </button>
                 <button class="button button-sm" type="button" id="leave-btn">Leave</button>
               </div>
             </header>
@@ -85,15 +88,9 @@
 
             <div class="notice" id="readonly-notice" hidden>
               <p class="notice-body">
-                You can read this room but not write to it yet. Send an existing writer your writer
-                key and ask them to add you.
+                You can read this room but not write to it. Ask someone already in it for an invite,
+                which grants write access as you join.
               </p>
-              <div class="notice-actions">
-                <code class="key" id="writer-key"></code>
-                <button class="button button-sm" type="button" id="copy-writer-btn">
-                  Copy my writer key
-                </button>
-              </div>
             </div>
 
             <form class="composer" id="composer">
@@ -205,46 +202,47 @@
     <dialog class="dialog" id="join-dialog">
       <form method="dialog" class="dialog-form" id="join-form">
         <h2 class="dialog-title">Join a room</h2>
-        <p class="dialog-body">Paste the room key you were sent.</p>
+        <p class="dialog-body">
+          Paste the invite you were sent. You will arrive able to write, and nothing else is needed
+          from either side.
+        </p>
         <input
           class="input"
           id="join-input"
           type="text"
           spellcheck="false"
           autocomplete="off"
-          placeholder="64 hex characters"
-          aria-label="Room key"
+          placeholder="Invite"
+          aria-label="Invite"
         />
         <p class="dialog-error" id="join-error" hidden></p>
         <div class="dialog-actions">
           <button class="button" type="button" data-close="join-dialog">Cancel</button>
-          <button class="button button-primary" type="submit">Join</button>
+          <button class="button button-primary" type="submit" id="join-submit">Join</button>
         </div>
       </form>
     </dialog>
 
     <dialog class="dialog" id="invite-dialog">
-      <form method="dialog" class="dialog-form" id="invite-form">
-        <h2 class="dialog-title">Add a writer</h2>
+      <div class="dialog-form">
+        <h2 class="dialog-title">Invite someone</h2>
         <p class="dialog-body">
-          Paste their writer key, not the room key. They are different, and the room key produces a
-          join that never gains write access.
+          Send them this. It carries no room key, so it cannot be used to read the room — it is
+          spent once, when they join, and they arrive able to write.
         </p>
-        <input
-          class="input"
-          id="invite-input"
-          type="text"
-          spellcheck="false"
-          autocomplete="off"
-          placeholder="64 hex characters"
-          aria-label="Writer key"
-        />
+        <code class="invite" id="invite-value"></code>
         <p class="dialog-error" id="invite-error" hidden></p>
+        <p class="dialog-note">
+          It only works while this app is running, because the invite is held in memory rather than
+          written into the room.
+        </p>
         <div class="dialog-actions">
-          <button class="button" type="button" data-close="invite-dialog">Cancel</button>
-          <button class="button button-primary" type="submit">Add writer</button>
+          <button class="button" type="button" data-close="invite-dialog">Close</button>
+          <button class="button button-primary" type="button" id="copy-invite-btn">
+            Copy invite
+          </button>
         </div>
-      </form>
+      </div>
     </dialog>
 
     <p class="toast" id="toast" hidden></p>

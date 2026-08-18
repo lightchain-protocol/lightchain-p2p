@@ -14,8 +14,6 @@ const decoder = new TextDecoder('utf-8')
  */
 
 const WORKER = '/workers/main.mjs'
-const HEX_KEY = /^[0-9a-f]{64}$/
-
 // Drives the platform-specific rules in the stylesheet: title bar inset for the
 // macOS traffic lights, and the system font for each OS.
 document.documentElement.dataset.platform = bridge.platform()
@@ -34,13 +32,10 @@ const el = {
   room: document.getElementById('room'),
   roomKey: document.getElementById('room-key'),
   roomRole: document.getElementById('room-role'),
-  copyKeyBtn: document.getElementById('copy-key-btn'),
   inviteBtn: document.getElementById('invite-btn'),
   leaveBtn: document.getElementById('leave-btn'),
   messages: document.getElementById('messages'),
   readonlyNotice: document.getElementById('readonly-notice'),
-  writerKey: document.getElementById('writer-key'),
-  copyWriterBtn: document.getElementById('copy-writer-btn'),
   composer: document.getElementById('composer'),
   composerInput: document.getElementById('composer-input'),
   sendBtn: document.getElementById('send-btn'),
@@ -53,10 +48,11 @@ const el = {
   joinForm: document.getElementById('join-form'),
   joinInput: document.getElementById('join-input'),
   joinError: document.getElementById('join-error'),
+  joinSubmit: document.getElementById('join-submit'),
   inviteDialog: document.getElementById('invite-dialog'),
-  inviteForm: document.getElementById('invite-form'),
-  inviteInput: document.getElementById('invite-input'),
+  inviteValue: document.getElementById('invite-value'),
   inviteError: document.getElementById('invite-error'),
+  copyInviteBtn: document.getElementById('copy-invite-btn'),
   toast: document.getElementById('toast')
 }
 
@@ -186,8 +182,8 @@ function renderRoom() {
   el.roomKey.textContent = room.key
   el.roomRole.textContent = room.writable ? 'writer' : 'read only'
   el.roomRole.dataset.role = room.writable ? 'writer' : 'reader'
-  el.writerKey.textContent = room.writerKey
   el.readonlyNotice.hidden = room.writable
+  // Accepting an invite grants write access, so only a writer can offer one.
   el.inviteBtn.hidden = !room.writable
   el.composerInput.disabled = !room.writable
   el.sendBtn.disabled = !room.writable
@@ -290,48 +286,54 @@ el.joinBtn.addEventListener('click', () => {
 })
 
 el.joinForm.addEventListener('submit', async (evt) => {
-  const key = el.joinInput.value.trim()
-  if (!HEX_KEY.test(key)) {
-    // Caught here so the dialog can stay open with the text still in it.
-    evt.preventDefault()
-    el.joinError.textContent = 'A room key is 64 hexadecimal characters.'
+  // Always prevented: pairing takes a round trip to the other side, and letting
+  // the dialog close would hide both the progress and any failure.
+  evt.preventDefault()
+
+  const invite = el.joinInput.value.trim()
+  if (invite === '') {
+    el.joinError.textContent = 'Paste the invite you were sent.'
     el.joinError.hidden = false
     return
   }
 
+  el.joinError.hidden = true
+  el.joinSubmit.disabled = true
+  el.joinSubmit.textContent = 'Joining…'
+
   try {
-    const room = await request('room.join', { key })
+    const room = await request('room.pair', { invite })
     rooms.set(room.key, room)
+    el.joinDialog.close()
     select(room.key)
-    toast(room.writable ? 'Joined' : 'Joined as a reader. Ask a writer to add you.')
+    toast('Joined')
   } catch (err) {
-    toast(err.message, 'error')
+    el.joinError.textContent = err.message
+    el.joinError.hidden = false
+  } finally {
+    el.joinSubmit.disabled = false
+    el.joinSubmit.textContent = 'Join'
   }
 })
 
-el.inviteBtn.addEventListener('click', () => {
-  el.inviteInput.value = ''
+el.inviteBtn.addEventListener('click', async () => {
+  if (!activeKey) return
+
   el.inviteError.hidden = true
+  el.inviteValue.textContent = 'Creating…'
   el.inviteDialog.showModal()
-})
 
-el.inviteForm.addEventListener('submit', async (evt) => {
-  const writerKey = el.inviteInput.value.trim()
-  if (!HEX_KEY.test(writerKey)) {
-    evt.preventDefault()
-    el.inviteError.textContent = 'A writer key is 64 hexadecimal characters.'
-    el.inviteError.hidden = false
-    return
-  }
-
-  const room = activeKey
   try {
-    await request('room.invite', { room, writerKey })
-    toast('Added. They become a writer once it reaches them.')
+    const { invite } = await request('room.invite', { room: activeKey })
+    el.inviteValue.textContent = invite
   } catch (err) {
-    toast(err.message, 'error')
+    el.inviteValue.textContent = ''
+    el.inviteError.textContent = err.message
+    el.inviteError.hidden = false
   }
 })
+
+el.copyInviteBtn.addEventListener('click', () => copy(el.inviteValue.textContent, 'Invite'))
 
 for (const button of document.querySelectorAll('[data-close]')) {
   button.addEventListener('click', () => document.getElementById(button.dataset.close).close())
@@ -350,9 +352,6 @@ el.leaveBtn.addEventListener('click', async () => {
     toast(err.message, 'error')
   }
 })
-
-el.copyKeyBtn.addEventListener('click', () => copy(el.roomKey.textContent, 'Room key'))
-el.copyWriterBtn.addEventListener('click', () => copy(el.writerKey.textContent, 'Writer key'))
 
 async function submitMessage() {
   const text = el.composerInput.value

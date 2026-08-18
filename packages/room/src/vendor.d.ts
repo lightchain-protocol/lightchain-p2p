@@ -67,6 +67,59 @@ declare module 'autobase' {
     /** Emitted after the view has advanced, locally or from a peer. */
     on(event: 'update', fn: () => void): this
     off(event: 'update', fn: () => void): this
+
+    /**
+     * The key of the writer core a room opened on this store would use, read
+     * without opening the room. A joiner needs it before it has the room key.
+     */
+    static getLocalKey(store: Corestore): Promise<Buffer>
+  }
+}
+
+declare module 'z32' {
+  const z32: {
+    encode(buffer: Uint8Array): string
+    decode(text: string): Buffer
+  }
+  export default z32
+}
+
+declare module 'blind-pairing' {
+  /** What a host receives when someone presents an invite. */
+  export interface Candidate {
+    readonly inviteId: Uint8Array
+    /** Whatever the joiner sent. Only readable after `open`. */
+    readonly userData: Uint8Array
+    open(publicKey: Uint8Array): void
+    /** Hands over the room key. Nothing before this reveals it. */
+    confirm(payload: { key: Uint8Array }): void
+  }
+
+  export interface Member {
+    flushed(): Promise<void>
+    close(): Promise<void>
+  }
+
+  export interface CandidateSession {
+    /** Resolves with the confirmation, or null if it never came. */
+    readonly pairing: Promise<{ key: Buffer } | null>
+    close(): Promise<void>
+  }
+
+  export default class BlindPairing {
+    constructor(swarm: unknown, opts?: { poll?: number })
+    /** The invite is a capability. It does not contain `key`. */
+    static createInvite(key: Uint8Array): {
+      invite: Buffer
+      publicKey: Buffer
+      discoveryKey: Buffer
+    }
+    addMember(opts: {
+      discoveryKey: Uint8Array
+      onadd: (candidate: Candidate) => Promise<void> | void
+    }): Member
+    addCandidate(opts: { invite: Uint8Array; userData: Uint8Array }): CandidateSession
+    close(): Promise<void>
   }
 }
 

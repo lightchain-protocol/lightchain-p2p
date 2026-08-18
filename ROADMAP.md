@@ -80,9 +80,11 @@ Routing is decided for now — the hub will use the same foundation-operated
 relay and dispatcher the web client uses, since direct client-to-worker routing
 is Advancement 5 and gated on verifiable randomness.
 
-Invites are also a known deviation: the proposal calls for `blind-pairing`
-invites that never expose the room key, and today a user copies and pastes the
-key itself. Anyone who ever sees it can read the room permanently.
+Invites now use `blind-pairing` as the proposal specifies: one string that
+carries no room key, and the joiner arrives able to write. What remains is
+**encryption** — `autopass` passes an encryption key alongside the room key when
+confirming, and this does not, so the room key is still sufficient to read a
+room and blind peers holding one can read it too.
 
 The **graphical interface and install experience for every platform** remains the
 largest single piece of work, and it is more than packaging. It is the first
@@ -172,8 +174,9 @@ Mobile is decided: deferred, see [ADR 0001](docs/decisions/0001-defer-mobile.md)
    test into a property of the system, and is what lets a room outlive every
    participant being offline.
 3. **Verify from a second machine.**
-4. **Replace key-paste invites with `blind-pairing`**, before anyone uses the
-   chat client for something they would mind being read.
+4. **Encrypt rooms**, before anyone uses the chat client for something they
+   would mind being read. Invites stop the key spreading; encryption is what
+   makes holding the key insufficient.
 5. **Build the inference path in `apps/chat`**: model picker, dispatch to the
    worker network, responses, and settlement. This is the bulk of Advancement 4
    and none of it exists.

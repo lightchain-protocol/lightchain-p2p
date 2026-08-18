@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import z32 from 'z32'
 import { createTestNetwork, waitFor, type Peer, type TestNetwork } from '@lcai-p2p/testkit'
 import { RoomHost, RoomError, memoryRegistry, type RoomState } from './index.js'
 
@@ -18,6 +19,7 @@ async function hostFor(peer: Peer, opts: Partial<Parameters<typeof RoomHost.open
 }
 
 const textsOf = (state: RoomState) => state.messages.map((m) => m.text)
+const hexOf = (bytes: Uint8Array) => Buffer.from(bytes).toString('hex')
 
 describe('two clients', () => {
   it('converge on the same history', async () => {
@@ -38,7 +40,7 @@ describe('two clients', () => {
     expect(joined.writable).toBe(false)
 
     await net.connect()
-    await aliceHost.invite(created.key, joined.writerKey)
+    await aliceHost.addWriter(created.key, joined.writerKey)
 
     await waitFor(async () => (await bobHost.state(created.key)).writable, 'bob to become a writer')
     await bobHost.send(created.key, 'from bob')
@@ -75,6 +77,97 @@ describe('two clients', () => {
     await waitFor(() => seen.length > 0, 'bob to be notified')
     // The notification carries the state, so a view never has to ask for it.
     expect(textsOf(seen[seen.length - 1]!)).toContain('are you there')
+  })
+})
+
+describe('invites', () => {
+  it('lets someone join and write, with one string and no second step', async () => {
+    // The whole flow, and the reason invites exist: the joiner arrives as a
+    // writer without anyone pasting a room key or a writer key back.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const bob = await net.createPeer('bob')
+
+    const aliceHost = await hostFor(alice)
+    const bobHost = await hostFor(bob)
+
+    const created = await aliceHost.create()
+    await aliceHost.send(created.key, 'said before bob arrived')
+
+    const invite = await aliceHost.invite(created.key)
+    await net.connect()
+
+    const joined = await bobHost.pair(invite)
+
+    expect(joined.key).toBe(created.key)
+    expect(joined.writable).toBe(true)
+
+    await bobHost.send(joined.key, 'said after')
+    await waitFor(
+      async () => (await aliceHost.state(created.key)).messages.length === 2,
+      'alice to see both messages'
+    )
+    expect(textsOf(await aliceHost.state(created.key))).toEqual(
+      textsOf(await bobHost.state(created.key))
+    )
+  })
+
+  it('does not put the room key in the invite', async () => {
+    // The property the whole change exists for. A room key in the invite is
+    // permanent read access to anyone who ever sees the message carrying it.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const host = await hostFor(alice)
+
+    const created = await host.create()
+    const invite = await host.invite(created.key)
+
+    expect(invite).not.toContain(created.key)
+    // z32 rather than hex, so also check the decoded bytes.
+    expect(hexOf(z32.decode(invite))).not.toContain(created.key)
+  })
+
+  it('refuses to invite to a room this peer cannot write to', async () => {
+    // Accepting a candidate grants write access, so a reader offering invites
+    // would be promising something it cannot deliver.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const bob = await net.createPeer('bob')
+
+    const aliceHost = await hostFor(alice)
+    const bobHost = await hostFor(bob)
+
+    const created = await aliceHost.create()
+    await bobHost.join(created.key)
+
+    await expect(bobHost.invite(created.key)).rejects.toThrow(/only a writer can invite/)
+    await expect(aliceHost.invite('f'.repeat(64))).rejects.toThrow(RoomError)
+  })
+
+  it('rejects a malformed invite rather than hanging on it', async () => {
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const host = await hostFor(alice)
+
+    await expect(host.pair('not-an-invite!!')).rejects.toThrow(/does not look like an invite/)
+  })
+
+  it('gives up when nobody answers, instead of waiting forever', async () => {
+    // An invite whose host has gone offline should fail with something a person
+    // can act on, not leave a spinner running.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const bob = await net.createPeer('bob')
+
+    const aliceHost = await hostFor(alice)
+    const created = await aliceHost.create()
+    const invite = await aliceHost.invite(created.key)
+
+    await aliceHost.close()
+    await alice.goOffline()
+
+    const bobHost = await hostFor(bob, { pairTimeout: 1000 })
+    await expect(bobHost.pair(invite)).rejects.toThrow(/nobody answered/)
   })
 })
 

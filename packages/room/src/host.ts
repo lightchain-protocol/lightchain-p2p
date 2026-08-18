@@ -1,5 +1,8 @@
 import b4a from 'b4a'
 import crypto from 'hypercore-crypto'
+import z32 from 'z32'
+import Autobase from 'autobase'
+import BlindPairing from 'blind-pairing'
 import type Corestore from 'corestore'
 import type { ChatMessage } from '@lcai-p2p/protocol'
 import { Room, RoomError } from './room.js'
@@ -65,6 +68,8 @@ export interface RoomHostOptions {
   readonly onChange?: (state: RoomState) => void
   /** Coalescing window in milliseconds. */
   readonly settle?: number
+  /** How long `pair` waits for a host to answer an invite. */
+  readonly pairTimeout?: number
   /**
    * How long to wait for a room's topic to be announced before returning it
    * anyway. Zero disables the wait.
@@ -116,6 +121,23 @@ function randomNamespace(): string {
   return b4a.toString(crypto.randomBytes(16), 'hex')
 }
 
+/**
+ * What the joiner sent with their request.
+ *
+ * Rejected rather than trusted: accepting a candidate grants write access to
+ * the room, so a malformed or hostile payload must not reach `addWriter`.
+ */
+function readJoiner(userData: Uint8Array): { writerKey: string } | null {
+  try {
+    const parsed: unknown = JSON.parse(b4a.toString(userData))
+    const writerKey = (parsed as { writerKey?: unknown })?.writerKey
+    if (typeof writerKey !== 'string' || !/^[0-9a-f]{64}$/.test(writerKey)) return null
+    return { writerKey }
+  } catch {
+    return null
+  }
+}
+
 export class RoomHost {
   readonly #store: Corestore
   readonly #swarm: SwarmLike
@@ -124,6 +146,10 @@ export class RoomHost {
   readonly #settle: number
   readonly #announceTimeout: number
   readonly #rediscoverAfter: readonly number[]
+  readonly #pairTimeout: number
+  #pairing: BlindPairing | null = null
+  /** Room key to the member serving its invite. */
+  readonly #members = new Map<string, { close(): Promise<void> }>()
   readonly #rooms = new Map<string, Entry>()
   /**
    * Records that would not open. Kept so that saving the registry does not
@@ -143,6 +169,7 @@ export class RoomHost {
     this.#settle = opts.settle ?? 50
     this.#announceTimeout = opts.announceTimeout ?? 10_000
     this.#rediscoverAfter = opts.rediscoverAfter ?? REDISCOVER_AFTER
+    this.#pairTimeout = opts.pairTimeout ?? 60_000
   }
 
   static async open(opts: RoomHostOptions): Promise<RoomHost> {
@@ -192,13 +219,146 @@ export class RoomHost {
     return this.#stateOf(await this.#announced(room))
   }
 
+  /**
+   * An invite to a room, safe to send over anything.
+   *
+   * The alternative — handing someone the room key — gives permanent read
+   * access to whoever sees the message, forever, with no way to take it back.
+   * An invite is a capability that is spent once: it carries no room key, and
+   * the key is only handed over inside the confirmation, after this side has
+   * accepted the joiner and added them as a writer.
+   *
+   * The joiner's writer key travels in the same exchange, so the second
+   * copy-and-paste step disappears with the first.
+   *
+   * **The invite only works while this peer is running.** It is held in memory
+   * rather than written into the room, because putting it in the room means a
+   * permanent entry type and any writer being able to service it. Both are
+   * reasonable; neither is decided yet.
+   */
+  async invite(key: string): Promise<string> {
+    const entry = this.#rooms.get(key)
+    if (!entry) throw new RoomError(`not in room ${String(key).slice(0, 8)}`)
+    if (!entry.room.writable) {
+      throw new RoomError('only a writer can invite, because accepting one grants write access')
+    }
+
+    const roomKey = b4a.from(key, 'hex')
+    const { invite, publicKey, discoveryKey } = BlindPairing.createInvite(roomKey)
+
+    // Replaces any earlier invite for this room, so a link that has been shared
+    // around does not outlive the one the user is looking at.
+    await this.#members
+      .get(key)
+      ?.close()
+      .catch(() => undefined)
+
+    const member = this.#blindPairing().addMember({
+      discoveryKey,
+      onadd: async (candidate) => {
+        candidate.open(publicKey)
+
+        const joiner = readJoiner(candidate.userData)
+        if (!joiner) return
+
+        await entry.room.addWriter(joiner.writerKey)
+        candidate.confirm({ key: roomKey })
+      }
+    })
+
+    await member.flushed()
+    this.#members.set(key, member)
+
+    return z32.encode(invite)
+  }
+
+  /**
+   * Joins a room with an invite, arriving as a writer.
+   *
+   * The writer core is created before pairing so its key can be sent with the
+   * request, and the namespace is generated here and recorded with the room —
+   * which is what lets the same peer reopen as the same writer later.
+   */
+  async pair(invite: string): Promise<RoomState> {
+    let decoded: Uint8Array
+    try {
+      decoded = z32.decode(invite.trim())
+    } catch {
+      throw new RoomError('that does not look like an invite')
+    }
+
+    const namespace = randomNamespace()
+    const writerKey = b4a.toString(
+      await Autobase.getLocalKey(this.#store.namespace(namespace)),
+      'hex'
+    )
+
+    const session = this.#blindPairing().addCandidate({
+      invite: decoded,
+      userData: b4a.from(JSON.stringify({ writerKey }))
+    })
+
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const result = await Promise.race([
+      session.pairing,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), this.#pairTimeout)
+        timer.unref?.()
+      })
+    ])
+    clearTimeout(timer)
+    await session.close().catch(() => undefined)
+
+    if (!result) {
+      throw new RoomError(
+        'nobody answered that invite. It may have been used already, or the person who sent it may be offline.'
+      )
+    }
+
+    const room = await this.#open({ key: b4a.toString(result.key, 'hex'), namespace })
+    await this.#announced(room)
+
+    // The confirmation says the host accepted; it does not mean their
+    // add-writer entry has reached us yet. Waiting makes `pair` mean "you can
+    // write", so a caller does not have to poll to find out whether the thing
+    // it just awaited actually worked.
+    await this.#writable(room)
+
+    return this.#stateOf(room)
+  }
+
+  /** Waits, bounded, for a granted write to arrive over replication. */
+  async #writable(room: Room): Promise<void> {
+    const deadline = Date.now() + this.#pairTimeout
+    while (!room.writable && Date.now() < deadline) {
+      await room.update()
+      if (room.writable) return
+      await new Promise((resolve) => {
+        const timer = setTimeout(resolve, 100)
+        timer.unref?.()
+      })
+    }
+  }
+
+  #blindPairing(): BlindPairing {
+    if (!this.#pairing) this.#pairing = new BlindPairing(this.#swarm)
+    return this.#pairing
+  }
+
   async send(key: string, text: string): Promise<RoomState> {
     const room = this.#require(key)
     await room.send(text)
     return this.#stateOf(room)
   }
 
-  async invite(key: string, writerKey: string): Promise<RoomState> {
+  /**
+   * Grants write access to a peer whose writer key you already have.
+   *
+   * The manual path. {@link invite} is the one to reach for: it carries the
+   * writer key itself, so nobody has to move a second string by hand. This
+   * remains for a peer that joined read-only with a room key.
+   */
+  async addWriter(key: string, writerKey: string): Promise<RoomState> {
     const room = this.#require(key)
     await room.addWriter(writerKey.trim())
     return this.#stateOf(room)
@@ -227,6 +387,11 @@ export class RoomHost {
   }
 
   async close(): Promise<void> {
+    for (const member of this.#members.values()) await member.close().catch(() => undefined)
+    this.#members.clear()
+    await this.#pairing?.close().catch(() => undefined)
+    this.#pairing = null
+
     const entries = [...this.#rooms.values()]
     this.#rooms.clear()
     for (const entry of entries) {
