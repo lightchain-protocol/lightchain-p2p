@@ -271,7 +271,7 @@ el.createBtn.addEventListener('click', async () => {
     const room = await request('room.create')
     rooms.set(room.key, room)
     select(room.key)
-    toast('Room created. Copy the key to invite someone.')
+    toast('Room created. Use “Invite someone” to bring in the first person.')
   } catch (err) {
     toast(err.message, 'error')
   } finally {
