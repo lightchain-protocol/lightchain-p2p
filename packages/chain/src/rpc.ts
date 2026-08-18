@@ -27,6 +27,13 @@ export interface RpcOptions {
   readonly url: string
   /** Milliseconds. A node that never answers should not hang the worker. */
   readonly timeout?: number
+  /**
+   * Custom error selectors to signatures, so reverts read as something other
+   * than four bytes of hex. Injected rather than built in, because which
+   * contracts are being talked to is not this layer's business — pass
+   * `lightchainErrors()`.
+   */
+  readonly errors?: ReadonlyMap<string, string>
 }
 
 export interface CallRequest {
@@ -71,6 +78,7 @@ interface RawReceipt {
 export class Rpc {
   readonly #url: string
   readonly #timeout: number
+  readonly #errors: ReadonlyMap<string, string> | undefined
   #id = 0
 
   constructor(opts: RpcOptions) {
@@ -79,6 +87,7 @@ export class Rpc {
     }
     this.#url = opts.url
     this.#timeout = opts.timeout ?? 15_000
+    this.#errors = opts.errors
   }
 
   async send<T>(method: string, params: readonly unknown[] = []): Promise<T> {
@@ -118,7 +127,7 @@ export class Rpc {
     if (body.error) {
       // A revert carries its reason in `data`, and surfacing "execution
       // reverted" without it wastes everyone's afternoon.
-      const reason = body.error.data ? decodeRevert(body.error.data) : null
+      const reason = body.error.data ? decodeRevert(body.error.data, this.#errors) : null
       const detail = reason ? `${body.error.message}: ${reason}` : (body.error.message ?? 'failed')
       throw new RpcError(`${method}: ${detail}`, body.error.code ?? null, reason)
     }

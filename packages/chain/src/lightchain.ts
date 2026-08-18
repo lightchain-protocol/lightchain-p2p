@@ -1,4 +1,4 @@
-import { decodeAddress, decodeUint256, encodeCall, keccak256 } from './abi.js'
+import { decodeAddress, decodeBool, decodeUint256, encodeCall, keccak256, selector } from './abi.js'
 import { toHex } from './hex.js'
 import type { Rpc } from './rpc.js'
 
@@ -16,6 +16,62 @@ import type { Rpc } from './rpc.js'
 
 /** Genesis predeploy, identical on both networks. */
 export const WORKER_REGISTRY_ADDRESS = '0x0000000000000000000000000000000000001002'
+
+/**
+ * The custom errors these contracts revert with.
+ *
+ * Solidity replaced revert strings with four-byte selectors, so without this a
+ * failure reaches the user as `0x04bd4912`. The signatures are stored rather
+ * than the selectors, and hashed on first use — a table of hand-copied
+ * selectors would be wrong in a way nothing detects, whereas a wrong signature
+ * simply fails to match and falls back to the raw bytes.
+ *
+ * Not exhaustive. These are the ones a person using the hub can actually cause.
+ */
+const ERROR_SIGNATURES = [
+  // Paying, and being paid
+  'ZeroDeposit()',
+  'ZeroAddress()',
+  'InsufficientBalance(address,uint256,uint256)',
+  'InsufficientDelegateAllowance(address,address,uint256,uint256)',
+  'InsufficientFee(uint256,uint256)',
+  'NoBalanceToWithdraw(address)',
+  'NoPendingRefund(address)',
+  'EtherTransferFailed()',
+  'UnexpectedETH()',
+  'NotAuthorizedDelegate(address,address)',
+  // Models and workers
+  'ModelNotConfigured(bytes32)',
+  'ModelDisabled(bytes32)',
+  'ModelAlreadyEnabled(bytes32)',
+  'NoAvailableWorker(bytes32)',
+  'WorkerNotEligible(address,bytes32)',
+  // Sessions and jobs
+  'SessionNotFound(uint256)',
+  'SessionNotActive(uint256)',
+  'NotSessionOwner(uint256,address,address)',
+  'JobNotFound(uint256)',
+  'JobNotInState(uint256,uint8,uint8)',
+  'InvalidSessionKey()',
+  'InvalidDispatcherSignature()',
+  'SignatureExpired(uint256,uint256)',
+  'DeadlineExceeded(uint256,uint256,uint256)',
+  'DisputeWindowExpired(uint256,uint256,uint256)',
+  // Contract state
+  'EnforcedPause()',
+  'ReentrancyGuardReentrantCall()',
+  'OwnableUnauthorizedAccount(address)'
+] as const
+
+let errorTable: Map<string, string> | null = null
+
+/** Selector to signature, built once. */
+export function lightchainErrors(): ReadonlyMap<string, string> {
+  if (!errorTable) {
+    errorTable = new Map(ERROR_SIGNATURES.map((sig) => [toHex(selector(sig)), sig]))
+  }
+  return errorTable
+}
 
 /**
  * A model's on-chain identifier: `keccak256` of its plain name.
@@ -79,7 +135,33 @@ export async function isDelegateAuthorized(
     ['address', 'address'],
     [user, delegate]
   )
-  return decodeUint256(await rpc.call({ to: jobRegistry, data })) === 1n
+  return decodeBool(await rpc.call({ to: jobRegistry, data }))
+}
+
+/**
+ * How much of `user`'s balance `delegate` may spend, in wei.
+ *
+ * Separate from authorisation, and both are required: a delegate that is
+ * authorised with a zero allowance cannot submit anything. `depositAndAuthorize`
+ * raises the allowance by the amount deposited, which is why it is one call.
+ */
+export async function delegateAllowance(
+  rpc: Rpc,
+  jobRegistry: string,
+  user: string,
+  delegate: string
+): Promise<bigint> {
+  const data = encodeCall(
+    'delegateAllowance(address,address)',
+    ['address', 'address'],
+    [user, delegate]
+  )
+  return decodeUint256(await rpc.call({ to: jobRegistry, data }))
+}
+
+/** Whether the registry is paused. Every write reverts with `EnforcedPause` while it is. */
+export async function isPaused(rpc: Rpc, jobRegistry: string): Promise<boolean> {
+  return decodeBool(await rpc.call({ to: jobRegistry, data: encodeCall('paused()') }))
 }
 
 /**
@@ -93,8 +175,36 @@ export function depositAndAuthorize(delegate: string): string {
   return encodeCall('depositAndAuthorize(address)', ['address'], [delegate])
 }
 
+/** Call data for a deposit that authorises nobody. Payable; the amount is the value. */
+export function deposit(): string {
+  return encodeCall('deposit()')
+}
+
 export function withdrawBalance(amount: bigint): string {
   return encodeCall('withdrawBalance(uint256)', ['uint256'], [amount])
+}
+
+/**
+ * Call data to grant or revoke a delegate.
+ *
+ * Revoking leaves the allowance in place, so re-authorising the same delegate
+ * restores whatever it had. Setting the allowance to zero is the way to make
+ * that not so.
+ */
+export function setDelegateAuthorization(delegate: string, authorized: boolean): string {
+  return encodeCall(
+    'setDelegateAuthorization(address,bool)',
+    ['address', 'bool'],
+    [delegate, authorized]
+  )
+}
+
+export function setDelegateAllowance(delegate: string, allowance: bigint): string {
+  return encodeCall(
+    'setDelegateAllowance(address,uint256)',
+    ['address', 'uint256'],
+    [delegate, allowance]
+  )
 }
 
 export interface SessionRequest {
@@ -128,5 +238,26 @@ export function createSession(request: SessionRequest): string {
       request.dispatcherSignature,
       request.expiry
     ]
+  )
+}
+
+/**
+ * Call data for `submitJob`, paying the fee with the transaction's value.
+ *
+ * `blobHash` is the EIP-4844 versioned hash of the encrypted prompt, not a
+ * content address: the prompt itself rides in a blob and is retained on chain
+ * for `getBlobRetentionPeriod()`, which is what makes a dispute adjudicable.
+ * Anything above the fee is refunded.
+ */
+export function submitJob(sessionId: bigint, blobHash: string): string {
+  return encodeCall('submitJob(uint256,bytes32)', ['uint256', 'bytes32'], [sessionId, blobHash])
+}
+
+/** The same, paid from `user`'s prepaid balance by an authorised delegate. Not payable. */
+export function submitJobOnBehalf(user: string, sessionId: bigint, blobHash: string): string {
+  return encodeCall(
+    'submitJobOnBehalf(address,uint256,bytes32)',
+    ['address', 'uint256', 'bytes32'],
+    [user, sessionId, blobHash]
   )
 }

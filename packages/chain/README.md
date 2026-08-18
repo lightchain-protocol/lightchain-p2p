@@ -50,6 +50,40 @@ Reproduce it with `node scripts/dev-key.mjs` to get an address, a claim from
 [lightfaucet.ai](https://lightfaucet.ai), then `node scripts/broadcast.mjs`. The
 key lands in `.tmp`, which is gitignored.
 
+## The payment path, walked in both directions
+
+`depositAndAuthorize` has been executed against the live testnet and reversed:
+[deposit](https://testnet.lightscan.app/tx/0x19b5943d541860de6d282b8835a10b9fd63b1fd62109c277904ad1c7c7e03340),
+then
+[withdrawal](https://testnet.lightscan.app/tx/0x8ba05d1a71ba683ad4020ba77f847996501bec6abc8cadb607b865a08f766e54).
+The contract credited the balance, authorised the delegate, raised its allowance
+by the deposit, and gave everything back on request. The whole round trip cost
+1,119,792 wei in gas and nothing else. Reproduce with
+`node scripts/payments.mjs`.
+
+Three things that only running it revealed:
+
+- **The testnet contracts are not at the mainnet addresses.** They resolve to
+  `0xecf4ca5b…` and `0x531b3a87…`, which is why `resolveAddresses` asks the
+  genesis registry instead of taking configuration.
+- **Only `llama3-8b` is configured on testnet**, at 0.02 LCAI per job. Every
+  other name reverts `ModelNotConfigured`.
+- **Withdrawing does not revoke a delegate's allowance.** After taking the whole
+  balance back, the allowance still stood at the deposited amount — so a later
+  deposit is immediately spendable by that delegate, with no further approval.
+  Revoking is a separate call, and the UI will have to say so.
+
+## Reverts that read as English
+
+Solidity replaced revert strings with four-byte selectors, so a failure arrives
+as `0x04bd4912`. Pass `lightchainErrors()` when constructing the client and it
+becomes `ModelNotConfigured(bytes32)` — or, where the arguments sit in fixed
+slots, `InsufficientFee(20000000000000000, 0)`.
+
+The table stores signatures and hashes them on first use rather than storing
+selectors. A hand-copied selector is wrong in a way nothing detects; a wrong
+signature simply fails to match and falls back to the raw bytes.
+
 Two distinctions the code is careful about, because both cost money:
 
 - **A reverted transaction is not a failed send.** It was mined, it burned gas,

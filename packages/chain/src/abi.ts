@@ -179,7 +179,7 @@ export function decodeBool(data: string): boolean {
  * `ModelNotConfigured(bytes32)` arrives as a bare selector, which is returned
  * as-is because decoding it needs an ABI this package does not carry.
  */
-export function decodeRevert(data: string): string | null {
+export function decodeRevert(data: string, known?: ReadonlyMap<string, string>): string | null {
   let bytes: Uint8Array
   try {
     bytes = toBytes(data)
@@ -192,7 +192,12 @@ export function decodeRevert(data: string): string | null {
   if (bytes.length < 4) return `revert data too short: ${data}`
 
   const head = toHex(bytes.slice(0, 4))
-  if (head !== '0x08c379a0') return `reverted with custom error ${head}`
+  if (head !== '0x08c379a0') {
+    const signature = known?.get(head)
+    return signature
+      ? describeCustomError(signature, bytes.slice(4))
+      : `reverted with custom error ${head}`
+  }
 
   try {
     // Error(string): offset, length, then the bytes.
@@ -201,4 +206,33 @@ export function decodeRevert(data: string): string | null {
   } catch {
     return `reverted with unreadable Error(string): ${data}`
   }
+}
+
+/**
+ * A custom error with its arguments, where they are readable.
+ *
+ * Static types decode from fixed 32-byte slots, which covers nearly every error
+ * these contracts declare. The rest are named without arguments rather than
+ * guessed at: `InsufficientFee(20000000000000000, 0)` is worth having, and a
+ * misaligned `string` decoded from the wrong offset is worse than nothing.
+ */
+function describeCustomError(signature: string, args: Uint8Array): string {
+  const types = signature.slice(signature.indexOf('(') + 1, -1)
+  if (types === '') return signature
+
+  const parts = types.split(',')
+  const decoded: string[] = []
+
+  for (const [index, type] of parts.entries()) {
+    const slot = args.slice(index * 32, index * 32 + 32)
+    if (slot.length < 32) return signature
+
+    if (/^uint\d*$/.test(type)) decoded.push(BigInt(toHex(slot)).toString())
+    else if (type === 'address') decoded.push(toHex(slot.slice(12)))
+    else if (type === 'bytes32') decoded.push(toHex(slot))
+    else if (type === 'bool') decoded.push(BigInt(toHex(slot)) === 1n ? 'true' : 'false')
+    else return signature
+  }
+
+  return `${signature.slice(0, signature.indexOf('('))}(${decoded.join(', ')})`
 }

@@ -18,7 +18,7 @@ with the longest lead times are procurement and infrastructure rather than code.
 | `packages/ui`               | 28    | Design tokens and platform conventions, held to WCAG contrast in tests.                       |
 | `packages/room`             | 20    | Multi-writer rooms on Autobase, and the host that keeps several of them.                      |
 | `packages/preflight`        | 19    | Host readiness with actionable remedies.                                                      |
-| `packages/chain`            | 79    | Reads Lightchain and signs for it, every byte checked against viem.                           |
+| `packages/chain`            | 95    | Reads Lightchain and signs for it, every byte checked against viem.                           |
 | `packages/wallet`           | 48    | BIP-39 phrase, BIP-32 accounts, matched to viem. Keystore V3 export checked against Foundry.  |
 | `packages/inference-crypto` | 15    | ECDH P-256 and AES-256-GCM as the deployed workers speak it, under Bare.                      |
 | `packages/safety`           | 10    | Refusal-list decision logic.                                                                  |
@@ -27,7 +27,7 @@ with the longest lead times are procurement and infrastructure rather than code.
 | `packages/testkit`          | 6     | Two-machine harness with a negative control.                                                  |
 | `packages/blind`            | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server. |
 
-**328 tests.** CI green on every push. The six-platform build matrix compiles a
+**344 tests.** CI green on every push. The six-platform build matrix compiles a
 standalone supervisor binary for Windows, macOS and Linux on x64 and arm64, and
 every runner executes the binary it produced.
 
@@ -105,8 +105,19 @@ the signature, stored every field as signed, charged 21,000 gas at 8 wei, and
 the balance reconciled to the wei. Reproduce with
 `node packages/chain/scripts/broadcast.mjs` against a funded key.
 
-What is still untested is a **state-changing contract call** — reads resolve
-`AIConfig` and `JobRegistry` from the registry, but nothing has written to one.
+It has also **written to a contract**, and undone it:
+[`depositAndAuthorize`](https://testnet.lightscan.app/tx/0x19b5943d541860de6d282b8835a10b9fd63b1fd62109c277904ad1c7c7e03340)
+credited a prepaid balance, authorised a delegate and raised its allowance, and
+[`withdrawBalance`](https://testnet.lightscan.app/tx/0x8ba05d1a71ba683ad4020ba77f847996501bec6abc8cadb607b865a08f766e54)
+returned every wei. Running it settled three things no test could: the testnet
+contracts are **not** at the mainnet addresses, only `llama3-8b` is configured
+there at 0.02 LCAI a job, and **withdrawing does not revoke a delegate's
+allowance** — a later deposit is spendable by it without further approval.
+
+The foot of the payment path therefore works. What remains above it is
+`createSession`, which needs a dispatcher signature and a worker assignment, and
+`submitJob`, which needs an EIP-4844 blob carrying the encrypted prompt. Neither
+is reachable without the foundation's dispatcher.
 
 Invites use `blind-pairing` as the proposal specifies: one string that carries
 no room key, and the joiner arrives able to write. Rooms are encrypted, so a
@@ -210,10 +221,10 @@ Mobile is decided: deferred, see [ADR 0001](docs/decisions/0001-defer-mobile.md)
    test into a property of the system, and is what lets a room outlive every
    participant being offline.
 3. **Verify from a second machine.**
-4. **Write to a contract.** Broadcast is proven, and reads resolve the
-   contracts; what has never happened is changing state on one.
-   `depositAndAuthorize` is the first that matters, and it is the foot of the
-   payment path.
+4. **Get a dispatcher signature.** Deposits work and jobs cannot be submitted
+   without one, so this is now the binding constraint on inference rather than
+   anything in this repository. It is a conversation with whoever operates the
+   dispatcher, not a build task.
 5. **Build the inference path in `apps/chat`**: model picker, dispatch to the
    worker network, responses, and settlement. This is the bulk of Advancement 4,
    and with `packages/chain` in place the wallet is the next piece of it.
