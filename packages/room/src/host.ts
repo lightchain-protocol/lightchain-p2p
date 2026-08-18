@@ -365,10 +365,17 @@ export class RoomHost {
    * The joiner's writer key travels in the same exchange, so the second
    * copy-and-paste step disappears with the first.
    *
-   * **The invite only works while this peer is running.** It is held in memory
-   * rather than written into the room, because putting it in the room means a
-   * permanent entry type and any writer being able to service it. Both are
-   * reasonable; neither is decided yet.
+   * **Spent once, and only while this peer is running.** The link is a bearer
+   * token for write access, and it lands in places that keep a copy — a group
+   * chat, a screenshot, a mail thread. Serving it more than once would mean
+   * anybody who ever saw it could still be joining the room weeks later, so the
+   * first joiner to complete the exchange closes it. Everyone after them is
+   * told the invite has been used, which is the same thing they are told when
+   * the host is offline, and the remedy is the same: ask for another.
+   *
+   * It is held in memory rather than written into the room, because putting it
+   * in the room means a permanent entry type and any writer being able to
+   * service it. Both are reasonable; neither is decided yet.
    */
   async invite(key: string): Promise<string> {
     const entry = this.#rooms.get(key)
@@ -387,23 +394,46 @@ export class RoomHost {
       ?.close()
       .catch(() => undefined)
 
+    // Claimed before the first await, so two candidates arriving together
+    // cannot both pass the check and both be let in.
+    let claimed = false
+
     const member = this.#blindPairing().addMember({
       discoveryKey,
       onadd: async (candidate) => {
-        candidate.open(publicKey)
+        if (claimed) return
+        claimed = true
 
-        const joiner = readJoiner(candidate.userData)
-        if (!joiner) return
+        try {
+          candidate.open(publicKey)
 
-        await entry.room.addWriter(joiner.writerKey)
+          const joiner = readJoiner(candidate.userData)
+          if (!joiner) throw new RoomError('a candidate arrived without a writer key')
 
-        // The encryption key travels with the room key, and only here. Handing
-        // over one without the other would grant a peer that can replicate the
-        // room and read none of it.
-        candidate.confirm({
-          key: roomKey,
-          encryptionKey: b4a.from(entry.room.encryptionKey, 'hex')
-        })
+          await entry.room.addWriter(joiner.writerKey)
+
+          // The encryption key travels with the room key, and only here.
+          // Handing over one without the other would grant a peer that can
+          // replicate the room and read none of it.
+          candidate.confirm({
+            key: roomKey,
+            encryptionKey: b4a.from(entry.room.encryptionKey, 'hex')
+          })
+        } catch (err) {
+          // Nobody got in, so the invite was not spent. Releasing it means a
+          // candidate that failed on a bad writer key does not burn the link
+          // the user is still looking at.
+          claimed = false
+          throw err
+        }
+
+        // The member is deliberately left open. Closing it here is what a
+        // spent invite ought to look like, but the confirmation above has not
+        // reached the joiner yet — tearing the exchange down at this point
+        // loses it, and the person who was let in hangs until their own
+        // timeout. Refusing to serve a second candidate is the property that
+        // matters, and the flag above is what enforces it; the member is
+        // released when a fresh invite replaces it or the host closes.
       }
     })
 

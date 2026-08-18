@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createTestNetwork, waitFor, type Peer, type TestNetwork } from '@lcai-p2p/testkit'
+import { MAX_TEXT_LENGTH } from '@lcai-p2p/protocol'
 import { Room, RoomError } from './index.js'
 
 let net: TestNetwork | undefined
@@ -215,6 +216,20 @@ describe('two writers', () => {
     const bobRoom = await openRoom(bob, aliceRoom)
 
     await expect(bobRoom.send('let me in')).rejects.toThrow(/writerKey/)
+  })
+
+  it('refuses text past the limit rather than losing it silently', async () => {
+    // Readers skip anything that will not parse, so appending an over-length
+    // message reported success, burned a block in a log that cannot be
+    // compacted, and left the message readable nowhere — not even to the
+    // person who sent it.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const room = await openRoom(alice)
+
+    await expect(room.send('x'.repeat(MAX_TEXT_LENGTH + 1))).rejects.toThrow(/4096 characters/)
+    await room.send('y'.repeat(MAX_TEXT_LENGTH))
+    expect((await textsOf(room)).at(-1)).toHaveLength(MAX_TEXT_LENGTH)
   })
 
   it('gives a joiner a writer key distinct from the room key', async () => {

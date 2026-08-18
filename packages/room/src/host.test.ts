@@ -129,6 +129,51 @@ describe('invites', () => {
     expect(hexOf(z32.decode(invite))).not.toContain(created.key)
   })
 
+  it('serves an invite once and refuses it after that', async () => {
+    // The link is a bearer token for write access and it lands in places that
+    // keep a copy. Serving it twice meant anyone who saw the screenshot could
+    // still join, which is what the documentation had always said it did not.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const bob = await net.createPeer('bob')
+    const eve = await net.createPeer('eve')
+
+    const aliceHost = await hostFor(alice)
+    const bobHost = await hostFor(bob)
+    // A spent invite is simply never answered, which is indistinguishable from
+    // an absent host and reaches the joiner as the same timeout.
+    const eveHost = await hostFor(eve, { pairTimeout: 2000 })
+
+    const created = await aliceHost.create()
+    const invite = await aliceHost.invite(created.key)
+    await net.connect()
+
+    expect((await bobHost.pair(invite)).writable).toBe(true)
+    await expect(eveHost.pair(invite)).rejects.toThrow(/used already|nobody answered/)
+  })
+
+  it('replaces a spent invite when a fresh one is asked for', async () => {
+    // Spending one must not leave the room unable to invite again, which is
+    // the obvious way to get the fix wrong.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const bob = await net.createPeer('bob')
+    const carol = await net.createPeer('carol')
+
+    const aliceHost = await hostFor(alice)
+    const bobHost = await hostFor(bob)
+    const carolHost = await hostFor(carol)
+
+    const created = await aliceHost.create()
+    const first = await aliceHost.invite(created.key)
+    await net.connect()
+    await bobHost.pair(first)
+
+    const second = await aliceHost.invite(created.key)
+    expect(second).not.toBe(first)
+    expect((await carolHost.pair(second)).writable).toBe(true)
+  })
+
   it('refuses to invite to a room this peer cannot write to', async () => {
     // Accepting a candidate grants write access, so a reader offering invites
     // would be promising something it cannot deliver.

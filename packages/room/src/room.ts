@@ -5,6 +5,7 @@ import type Corestore from 'corestore'
 import type { HypercoreLike } from 'corestore'
 import {
   MAX_NAME_LENGTH,
+  MAX_TEXT_LENGTH,
   MESSAGE_VERSION,
   authorPreimage,
   isValidEntry,
@@ -223,12 +224,30 @@ export class Room {
     }
   }
 
+  /**
+   * Refuses text the readers would throw away.
+   *
+   * `parseEntry` rejects anything past the limit, and every reader — including
+   * this one — skips what will not parse. Appending it anyway produced the
+   * worst of both: the send reported success, the block was written into a log
+   * that can never be compacted, and the message then existed nowhere. Failing
+   * here is the only outcome the person typing can act on.
+   */
+  #checkLength(text: string): void {
+    if (text.length > MAX_TEXT_LENGTH) {
+      throw new RoomError(
+        `a message may not exceed ${MAX_TEXT_LENGTH} characters, and this one is ${text.length}`
+      )
+    }
+  }
+
   async send(text: string): Promise<ChatMessage> {
     if (!this.writable) {
       throw new RoomError(
         'not a writer in this room yet. An existing writer must add this peer\u2019s writerKey first.'
       )
     }
+    this.#checkLength(text)
 
     const signed = this.#sign({
       type: 'message',
@@ -254,6 +273,7 @@ export class Room {
     if (!this.writable) {
       throw new RoomError('not a writer in this room yet')
     }
+    this.#checkLength(text)
 
     const signed = this.#sign({
       type: 'message',

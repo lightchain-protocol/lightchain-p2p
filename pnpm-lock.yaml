@@ -123,9 +123,21 @@ importers:
       electron:
         specifier: ^40.2.1
         version: 40.10.6
+      electron-forge-plugin-prune-prebuilds:
+        specifier: ^1.0.1
+        version: 1.0.1
+      electron-forge-plugin-universal-prebuilds:
+        specifier: ^1.0.0
+        version: 1.0.0
       pear-electron-forge-maker-appimage:
         specifier: ^2.0.0
         version: 2.0.0(dmg-builder@25.1.8)(electron-builder-squirrel-windows@25.1.8)
+      pear-electron-forge-maker-flatpak:
+        specifier: ^0.0.6
+        version: 0.0.6
+      pear-electron-forge-maker-snap:
+        specifier: ^1.0.0
+        version: 1.0.0
 
   apps/seeder:
     dependencies:
@@ -2547,6 +2559,12 @@ packages:
   electron-builder-squirrel-windows@25.1.8:
     resolution: {integrity: sha512-2ntkJ+9+0GFP6nAISiMabKt6eqBB0kX1QqHNWFWAXgi0VULKGisM46luRFpIBiU3u/TDmhZMM8tzvo2Abn3ayg==}
 
+  electron-forge-plugin-prune-prebuilds@1.0.1:
+    resolution: {integrity: sha512-kR8ReoZzs1LgQ2TLupvjD+psWjkbAs1oGOgonQX/G6392cjhWRciOEluIIW4h9GSAb7CZP6Mu3fNJfxpeQT6CA==}
+
+  electron-forge-plugin-universal-prebuilds@1.0.0:
+    resolution: {integrity: sha512-1VJEYkwaWVJpH7SsUGEyjglsrFseO2B0yn7HK1GFiZ6We5gVVshDlfQcf19h9E77o00dKV7GtBGFJd7u3d8CVA==}
+
   electron-installer-dmg@5.0.1:
     resolution: {integrity: sha512-qOa1aAQdX57C+vzhDk3549dd/PRlNL4F8y736MTD1a43qptD+PvHY97Bo9gSf+OZ8iUWE7BrYSpk/FgLUe40EA==}
     engines: {node: '>= 16'}
@@ -3858,6 +3876,12 @@ packages:
 
   pear-electron-forge-maker-appimage@2.0.0:
     resolution: {integrity: sha512-Y4+NOt/dprJX59Ca6MS4pUxDNZUe+kGyH6/FcDI5LjnALagldYYgzbXn/dlAq16eYmSEB0QQg7Xb0FfGSeHeSQ==}
+
+  pear-electron-forge-maker-flatpak@0.0.6:
+    resolution: {integrity: sha512-8twxiHLPlltbM1V4kl0vMhvJYJAFd1CWMgNpsHs01M9cJM4CcHJeTJ/lJBniZ1QQ9CgBDyNhWwJ80haIkjxBlw==}
+
+  pear-electron-forge-maker-snap@1.0.0:
+    resolution: {integrity: sha512-bVEoNJ1JNFWEqiXvS5CVCHDu0HwoIByANKYSUrPzlHZU6aee18yWNjnPbvmmhn6VKRuvzJmhG3byWlC8XrU6GQ==}
 
   pear-errors@1.0.1:
     resolution: {integrity: sha512-KQyhym09QpLT4H/z3uLW0bqixgIZic2Eip2Q8Z72QmIpFzPtp6QmnzOUwB3kuHB4dqKNa+FQWHWH0NSK5lJjlw==}
@@ -7633,6 +7657,20 @@ snapshots:
       - dmg-builder
       - supports-color
 
+  electron-forge-plugin-prune-prebuilds@1.0.1:
+    dependencies:
+      '@electron-forge/plugin-base': 7.11.2
+    transitivePeerDependencies:
+      - bluebird
+      - supports-color
+
+  electron-forge-plugin-universal-prebuilds@1.0.0:
+    dependencies:
+      '@electron-forge/plugin-base': 7.11.2
+    transitivePeerDependencies:
+      - bluebird
+      - supports-color
+
   electron-installer-dmg@5.0.1:
     dependencies:
       '@types/appdmg': 0.5.5
@@ -9288,6 +9326,22 @@ snapshots:
       - bluebird
       - dmg-builder
       - electron-builder-squirrel-windows
+      - supports-color
+
+  pear-electron-forge-maker-flatpak@0.0.6:
+    dependencies:
+      '@electron-forge/maker-base': 7.11.2
+      '@electron/node-gyp': https://codeload.github.com/electron/node-gyp/tar.gz/06b29aafb7708acef8b3669835c8a7857ebc92d2
+    transitivePeerDependencies:
+      - bluebird
+      - supports-color
+
+  pear-electron-forge-maker-snap@1.0.0:
+    dependencies:
+      '@electron-forge/maker-base': 7.11.2
+      '@electron/node-gyp': https://codeload.github.com/electron/node-gyp/tar.gz/06b29aafb7708acef8b3669835c8a7857ebc92d2
+    transitivePeerDependencies:
+      - bluebird
       - supports-color
 
   pear-errors@1.0.1: {}

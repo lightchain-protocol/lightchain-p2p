@@ -43,6 +43,34 @@ The publish round trip is validated: `pear touch`, stage, seed, retrieve, update
 Staging is incremental — one changed file moved the drive from version 134 to 135
 and transferred that file alone.
 
+### Attacked, not only exercised
+
+The unit suite asks whether the good path works. These ask what happens when
+somebody is trying to break it, and each one reports every failure rather than
+stopping at the first — a suite that halts on failure one hides the rest, and
+those are the ones nobody has looked at.
+
+| Harness                           | What it does                                                                                                                                     |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scripts/wsl-adversarial.mjs`     | 19 abuses of a live room from a second machine: forged signatures, spent invites, oversize text, concurrent renames, a peer killed mid-sentence. |
+| `scripts/hostile-renderer.mjs`    | 29 attempts to turn message text into markup in an Electron window, plus a formatter fed input shaped to hang it.                                |
+| `scripts/survives-restart.mjs`    | 12 checks either side of a kill: sealed rooms, wallet, DHT identity, write access, history.                                                      |
+| `scripts/change-password.mjs`     | 9 checks that a password change moves the vault and nothing else.                                                                                |
+| `scripts/reconnects.mjs`          | 5 checks that a restarted instance is found again by the peer that stayed up, and does not return as a second writer.                            |
+| `scripts/drive-two-instances.mjs` | The whole conversation through the real interface, 16 steps.                                                                                     |
+| `scripts/wsl-soak.mjs`            | Four writers, concurrent bursts, clock skew, restart and catch-up.                                                                               |
+
+Five real defects came out of the first run and are fixed: invites were served
+to every comer rather than spent once, `send` wrote over-length messages that
+every reader then discarded in silence, and the release path could not run at
+all — three modules named in `forge.config.js` were in nobody's
+`devDependencies`, and Forge cannot resolve this workspace's layout without
+`pnpm deploy` first.
+
+The renderer came through clean. Nothing reached `innerHTML`, no payload
+executed, no anchor was given an `href`, and the main process refused every
+scheme that was not `http` or `https`.
+
 ---
 
 ## Not built yet — engineering

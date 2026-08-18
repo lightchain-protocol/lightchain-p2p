@@ -12,8 +12,8 @@
   "scripts": {
     "build": "node scripts/build-tokens.mjs",
     "start": "npm run build && electron-forge start -- --no-updates",
-    "package": "npm run build && electron-forge package",
-    "make": "npm run build && electron-forge make"
+    "package": "node scripts/forge.mjs package",
+    "make": "node scripts/forge.mjs make"
   },
   "dependencies": {
     "@lcai-p2p/blind": "workspace:*",
@@ -47,6 +47,10 @@
     "@electron-forge/maker-msix": "^7.11.1",
     "@electron-forge/maker-zip": "^7.11.1",
     "electron": "^40.2.1",
-    "pear-electron-forge-maker-appimage": "^2.0.0"
+    "electron-forge-plugin-prune-prebuilds": "^1.0.1",
+    "electron-forge-plugin-universal-prebuilds": "^1.0.0",
+    "pear-electron-forge-maker-appimage": "^2.0.0",
+    "pear-electron-forge-maker-flatpak": "^0.0.6",
+    "pear-electron-forge-maker-snap": "^1.0.0"
   }
 }
