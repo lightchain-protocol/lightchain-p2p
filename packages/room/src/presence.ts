@@ -36,23 +36,14 @@ import c from 'compact-encoding'
  * Naming would mean a signed challenge and response. That is a reasonable thing
  * to add and is deliberately not here yet.
  *
- * ## Known limit: this does not yet establish inside the application
+ * ## Attach order must not matter
  *
- * Between two peers on a local DHT — which is what the tests here drive — the
- * channel opens, typing crosses, it expires on its own and it writes nothing
- * into the room. All of that passes.
- *
- * Inside `apps/chat` it does not. Over a real pairing the remote closes the
- * channel immediately, every time: the stream stays alive, `onopen` never
- * fires, and retrying only produced 57 opens and 57 closes. Messages replicate
- * normally throughout, so the connection itself is healthy. The difference from
- * the tests is the company the socket keeps — blind-pairing, the wakeup
- * protocol, Corestore replication and Autobase all multiplex over it, and the
- * worker runs under Bare rather than Node.
- *
- * The cause is not established, so nothing here is wired to a user-facing
- * indicator: a typing dot that never appears is worse than none, because it
- * teaches people the room is quiet when it is not.
+ * Two peers rarely reach a connection at the same moment. One creates the room
+ * and attaches when the other dials in; the other attaches later, when its own
+ * room finishes opening. Protomux rejects an incoming channel for a protocol it
+ * has no local channel for, and a rejection closes the opener's side — so
+ * without care the earlier peer is refused, closes, and then refuses the later
+ * peer in turn. See {@link Presence.attach} for how that is avoided.
  */
 
 const PROTOCOL = 'lightchain/presence/v1'
@@ -102,6 +93,8 @@ export class Presence {
   readonly #onChange: (state: PresenceState) => void
   readonly #ttl: number
   readonly #remotes = new Set<Remote>()
+  /** Every multiplexer paired with, so closing can unregister from each. */
+  readonly #muxes = new Set<Protomux>()
 
   #typing = false
   #sweep: ReturnType<typeof setInterval> | null = null
@@ -113,15 +106,30 @@ export class Presence {
   }
 
   /**
-   * Opens the channel on a connection.
+   * Opens the channel on a connection, and agrees to answer if the peer opens
+   * first.
    *
-   * Safe to call for a socket that already has one: Protomux refuses a
-   * duplicate protocol and id, and this returns without a second channel rather
-   * than throwing. The host calls it for every room on every connection.
+   * Both halves are needed, and the second is the one that is easy to miss.
+   * Protomux **rejects** an incoming channel for a protocol the local side has
+   * not registered — and a rejection closes the opener's channel. Two peers
+   * that attach at different moments therefore refuse each other in turn: the
+   * earlier one is rejected, closes, and then rejects the later one right back.
+   * That deadlock is symmetric and silent, and it survives retrying, because
+   * retrying only repeats it.
+   *
+   * `pair` is the way out. It registers a notifier so that an open for this
+   * protocol gets a chance to be answered before it is refused, which makes the
+   * order the two sides attach in stop mattering.
+   *
+   * Safe to call repeatedly for the same socket: opening is guarded on whether
+   * a channel is already up.
    */
   attach(socket: unknown): void {
     try {
-      this.#attach(socket)
+      const mux = Protomux.from(socket as never)
+      mux.pair({ protocol: PROTOCOL, id: this.#topic }, () => this.#open(mux))
+      this.#muxes.add(mux)
+      this.#open(mux)
     } catch (err) {
       // Never take the connection handler down with it. Replication shares this
       // socket, and losing a room's messages because a typing indicator could
@@ -130,8 +138,7 @@ export class Presence {
     }
   }
 
-  #attach(socket: unknown): void {
-    const mux = Protomux.from(socket as never)
+  #open(mux: Protomux): void {
     if (mux.opened({ protocol: PROTOCOL, id: this.#topic })) return
 
     const remote: Remote = {
@@ -230,6 +237,16 @@ export class Presence {
     this.#sweep = null
     for (const remote of this.#remotes) remote.channel.close()
     this.#remotes.clear()
+    // Leaving the notifier behind would have a closed room answering opens for
+    // a channel it no longer has.
+    for (const mux of this.#muxes) {
+      try {
+        mux.unpair({ protocol: PROTOCOL, id: this.#topic })
+      } catch {
+        // The stream is already gone, which is the common case.
+      }
+    }
+    this.#muxes.clear()
   }
 
   #changed(): void {

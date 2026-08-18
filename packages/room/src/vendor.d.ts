@@ -146,6 +146,15 @@ declare module 'protomux' {
     /** True when a channel with this protocol and id is already open on the stream. */
     opened(opts: { protocol: string; id?: Uint8Array }): boolean
     /**
+     * Registers interest in a protocol before a channel for it exists.
+     *
+     * Without this, an incoming open for a protocol with no local channel is
+     * **rejected**, which closes the channel at the other end. `notify` is the
+     * chance to create the local side first.
+     */
+    pair(opts: { protocol: string; id?: Uint8Array }, notify: (id: Uint8Array) => void): void
+    unpair(opts: { protocol: string; id?: Uint8Array }): void
+    /**
      * Null when the stream is destroyed or a unique channel is already open —
      * **not** when the remote cannot speak the protocol. A channel to a peer
      * that never opens its side simply stays quiet, so absence of a reply is

@@ -241,10 +241,32 @@ await b.until(
 )
 step(8, "B sees the name A gave the room, and it came out of the room's own history")
 
-// Typing is deliberately not asserted here. The presence channel works between
-// two peers on its own — see packages/room/src/presence.test.ts — and does not
-// establish over a real pairing, for reasons not yet understood. Asserting it
-// would either fail every run or, worse, be quietly deleted until it passed.
+// Presence rides the room's own connection, which settles after pairing rather
+// than during it. Waiting for the peer count is not padding: before it appears
+// there is genuinely nobody to tell.
+await a.until(`!document.getElementById('room-peers').hidden`, 'A to see B connected', 90_000)
+await b.until(`!document.getElementById('room-peers').hidden`, 'B to see A connected', 90_000)
+step(9, 'each sees the other connected')
+
+await a.eval(`
+  document.getElementById('composer-input').value = 'still writing'
+  document.getElementById('composer-input').dispatchEvent(new Event('input'))
+`)
+await b.until(`!document.getElementById('typing').hidden`, 'B to see A typing')
+step(10, 'B sees A typing, over a channel that stores nothing')
+
+// The claim that matters: none of that reached the log.
+const before = await b.eval(`return document.querySelectorAll('.message').length`)
+await a.eval(`
+  document.getElementById('composer-input').value = ''
+  document.getElementById('composer-input').dispatchEvent(new Event('input'))
+`)
+await b.until(`document.getElementById('typing').hidden`, 'B to see A stop typing')
+
+if ((await b.eval(`return document.querySelectorAll('.message').length`)) !== before) {
+  throw new Error('typing left something behind in the room')
+}
+step(11, 'and typing added nothing to the history')
 
 // An invite carries a lightchain:// link and a scannable code.
 await a.eval(`document.getElementById('invite-btn').click()`)
@@ -255,7 +277,7 @@ const link = await a.until(
 const squares = await a.eval(`return document.querySelectorAll('#invite-qr .qr-fg').length`)
 await a.eval(`document.getElementById('invite-dialog').close()`)
 if (squares === 0) throw new Error('the invite produced no QR code')
-step(9, `A produced ${link.slice(0, 24)}… and a QR code of ${squares} runs`)
+step(12, `A produced ${link.slice(0, 24)}… and a QR code of ${squares} runs`)
 
 const read = `return [...document.querySelectorAll('.message-text')].map((n) => n.textContent)`
 const [seenByA, seenByB] = await Promise.all([a.eval(read), b.eval(read)])
@@ -266,7 +288,7 @@ console.log('B sees:', JSON.stringify(seenByB, null, 1))
 if (JSON.stringify(seenByA) !== JSON.stringify(seenByB)) {
   throw new Error('the two clients disagree on the order of the conversation')
 }
-step(10, 'both clients render the same history in the same order')
+step(13, 'both clients render the same history in the same order')
 
 console.log('\nPASS')
 

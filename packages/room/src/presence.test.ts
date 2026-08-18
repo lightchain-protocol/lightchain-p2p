@@ -110,6 +110,59 @@ describe('typing', () => {
     expect((await bobRoom.messages()).length).toBe(1)
   })
 
+  it('works when one side attaches long after the other', async () => {
+    // The case the application actually hits, and the one the other tests here
+    // hid by attaching both sides within a millisecond of each other. Protomux
+    // rejects an incoming channel for a protocol it has no local channel for,
+    // and a rejection closes the opener's side — so the peer that arrives first
+    // is refused, closes, and then refuses the second peer right back. It is
+    // silent, symmetric, and retrying only repeats it.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const bob = await net.createPeer('bob')
+
+    const aliceRoom = await Room.open({ store: alice.store })
+    const alicePresence = new Presence({ topic: aliceRoom.discoveryKey, onChange: () => {} })
+    alicePresence.start()
+    open.push(aliceRoom, alicePresence)
+
+    alice.swarm.on('connection', (socket) => {
+      aliceRoom.replicate(socket)
+      alicePresence.attach(socket)
+    })
+    await alice.swarm.join(aliceRoom.discoveryKey, { server: true, client: true }).flushed()
+
+    // Bob connects and replicates, but does not attach presence yet.
+    const bobRoom = await Room.open({
+      store: bob.store,
+      key: aliceRoom.key,
+      encryptionKey: aliceRoom.encryptionKey
+    })
+    const sockets: unknown[] = []
+    bob.swarm.on('connection', (socket) => {
+      bobRoom.replicate(socket)
+      sockets.push(socket)
+    })
+    bob.swarm.join(bobRoom.discoveryKey, { server: true, client: true })
+    await bob.swarm.flush()
+    await waitFor(
+      async () => (await bobRoom.messages()).length === 0 && sockets.length > 0,
+      'a connection'
+    )
+
+    // Long enough that Alice's open has arrived and been dealt with.
+    await new Promise((r) => setTimeout(r, 1_000))
+
+    const bobPresence = new Presence({ topic: bobRoom.discoveryKey, onChange: () => {} })
+    bobPresence.start()
+    open.push(bobRoom, bobPresence)
+    for (const socket of sockets) bobPresence.attach(socket)
+
+    await waitFor(() => bobPresence.state.peers > 0, 'bob to pick up the late attach')
+    alicePresence.setTyping(true)
+    await waitFor(() => bobPresence.state.typing === 1, 'typing to cross a late attach')
+  })
+
   it('drops a peer from the count when its connection goes', async () => {
     const { alicePresence, bobPresence } = await pair()
 
