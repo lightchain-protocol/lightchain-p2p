@@ -609,6 +609,9 @@ let models = []
 let openModel = null
 /** The assistant's turn while it is still being written into. */
 let streaming = null
+let conversations = []
+/** Which transcript is on screen. Null while a live session is showing. */
+let viewing = null
 
 function lcai(wei) {
   const s = BigInt(wei).toString().padStart(19, '0')
@@ -670,6 +673,65 @@ function renderModels() {
   }
 }
 
+function renderConversations() {
+  const list = document.getElementById('conversation-list')
+  document.getElementById('past-title').hidden = conversations.length === 0
+  list.replaceChildren()
+
+  for (const transcript of conversations) {
+    const item = document.createElement('li')
+    const button = document.createElement('button')
+    button.className = 'model' + (viewing === transcript.id ? ' is-active' : '')
+    button.type = 'button'
+
+    const name = document.createElement('span')
+    name.className = 'model-name'
+    // The first thing asked, which is what someone will recognise it by.
+    name.textContent = transcript.turns[0]?.text ?? transcript.model
+
+    const meta = document.createElement('span')
+    meta.className = 'model-meta is-preview'
+    meta.textContent = `${transcript.model} · ${transcript.turns.length} turns`
+
+    button.append(name, meta)
+    button.addEventListener('click', () => showTranscript(transcript))
+
+    item.append(button)
+    list.append(item)
+  }
+}
+
+/** A past conversation, read-only. Reopening it would mean paying for a new session. */
+function showTranscript(transcript) {
+  viewing = transcript.id
+  openModel = null
+  streaming = null
+
+  ai.empty.hidden = true
+  ai.head.hidden = false
+  ai.messages.hidden = false
+  ai.composer.hidden = true
+  ai.model.textContent = transcript.model
+  ai.session.textContent = `${transcript.turns.length} turns · session ended`
+  ai.messages.replaceChildren()
+
+  for (const t of transcript.turns)
+    turn(t.role === 'you' ? 'you' : transcript.model, t.text, t.role === 'you')
+
+  renderModels()
+  renderConversations()
+}
+
+async function refreshHistory() {
+  try {
+    conversations = (await request('ai.history')).conversations
+    renderConversations()
+  } catch {
+    // History is a convenience; failing to read it should not take the panel
+    // down with it.
+  }
+}
+
 async function refreshModels() {
   const status = await request('wallet.status')
   if (!status.unlocked) {
@@ -677,6 +739,8 @@ async function refreshModels() {
     ai.list.replaceChildren()
     return
   }
+
+  void refreshHistory()
 
   ai.note.textContent = 'Loading…'
   try {
@@ -697,7 +761,9 @@ async function startConversation(model) {
   if (streaming) return
 
   openModel = model
+  viewing = null
   renderModels()
+  renderConversations()
 
   ai.empty.hidden = true
   ai.head.hidden = false
@@ -730,6 +796,7 @@ ai.composer.addEventListener('submit', async (evt) => {
   ai.prompt.value = ''
   ai.prompt.disabled = true
   ai.send.disabled = true
+  document.getElementById('ai-cancel').hidden = false
   turn('you', prompt, true)
 
   // Created empty and filled by the progress messages, so tokens appear as
@@ -745,11 +812,32 @@ ai.composer.addEventListener('submit', async (evt) => {
   } finally {
     streaming?.item.classList.remove('is-streaming')
     streaming = null
+    document.getElementById('ai-cancel').hidden = true
     ai.prompt.disabled = false
     ai.send.disabled = false
     ai.prompt.focus()
     void refreshModels()
   }
+})
+
+document.getElementById('ai-cancel').addEventListener('click', async () => {
+  await request('ai.cancel').catch(() => {})
+})
+
+document.getElementById('ai-forget').addEventListener('click', async () => {
+  const id = viewing
+  if (!id) {
+    toast('Only a saved conversation can be deleted', 'error')
+    return
+  }
+
+  await request('ai.forget', { conversation: id })
+  viewing = null
+  ai.head.hidden = true
+  ai.messages.hidden = true
+  ai.empty.hidden = false
+  await refreshHistory()
+  toast('Deleted')
 })
 
 /**

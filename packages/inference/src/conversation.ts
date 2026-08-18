@@ -363,11 +363,28 @@ export class Conversation {
     return { jobId, text }
   }
 
+  /**
+   * Stops waiting for the answer in flight.
+   *
+   * Stops *waiting* — it does not stop the job. That was submitted and paid for
+   * the moment it went on chain, and no message exists to recall it. What this
+   * gives back is the interface, not the fee, and the error says so.
+   */
+  cancel(): boolean {
+    if (!this.#pending) return false
+
+    this.#pending.reject(
+      new ConversationError('stopped waiting. The job was already submitted and paid for.')
+    )
+    this.#pending = null
+    return true
+  }
+
   close(): void {
+    this.cancel()
     this.#socket?.close()
     this.#socket = null
     this.#sessionKey = null
     this.#sessionId = null
-    this.#pending = null
   }
 }

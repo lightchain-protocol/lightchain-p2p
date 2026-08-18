@@ -370,6 +370,22 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.ai-past-title {
+  padding: var(--lc-space-md) var(--lc-space-md) var(--lc-space-xs);
+  border-top: 1px solid var(--lc-rule);
+}
+
+.conversation-list {
+  flex: 0 1 auto;
+  max-height: 45%;
+}
+
+.model-meta.is-preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ai-note {
   margin: 0;
   padding: var(--lc-space-md);

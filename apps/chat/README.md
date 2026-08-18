@@ -42,11 +42,13 @@ order. That claim is reproducible rather than asserted — see
 
 Being precise about this, because "chat" reasonably suggests otherwise:
 
-**Inference works, and is thin.** Pick a model in the Models section, ask, and
-the answer arrives — on mainnet, paid for out of a prepaid balance you deposit
-in Wallet. What is missing above that is everything a chat client normally has:
-no history, no conversation list, nothing survives a restart, one session at a
-time, and no way to stop an answer once it starts.
+**Inference works.** Pick a model in the Models section, ask, and the answer
+arrives — on mainnet, paid for out of a prepaid balance you deposit in Wallet.
+Transcripts survive a restart, encrypted under a key only your wallet can
+derive, and earlier conversations are listed beside the models.
+
+Still thin above that: one session at a time, no way to continue an old
+conversation without paying for a new session, and no search.
 
 **There are no payments, and the wallet is not yet the identity.** It exists,
 holds an address and reads balances, but nothing spends from it. The proposal

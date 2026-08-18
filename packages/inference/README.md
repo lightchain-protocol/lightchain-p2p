@@ -63,6 +63,32 @@ conversation cannot start, and says so rather than failing later.
   plausible id for a model nobody has — which the chain reports as
   `ModelDisabled` on a hash appearing nowhere. That one cost a transaction.
 
+## History
+
+Transcripts live in an append-only log, encrypted under a key **derived from
+the wallet** rather than stored: a signature over a fixed string, deterministic
+for one account and unobtainable without it.
+
+That makes the transcript protected by the password rather than by file
+permissions, and means a locked wallet cannot read its own history. Restoring a
+different phrase leaves the old transcripts closed, which is right — they were
+never that identity's to read.
+
+Room messages were already encrypted at rest, so plaintext transcripts beside
+them would have been the weakest thing in the directory, and prompts are usually
+more revealing than chat: people tell a model things they would not say to a
+person. Verified rather than asserted — after a real conversation, neither the
+prompts, the model name nor the record structure appears in any file on disk.
+
+Deleting is a **tombstone**, because a log cannot forget its middle. The entry
+leaves the list and the bytes stay in the log; the encryption is what actually
+protects them. Reusing an id after deleting it starts a genuinely new
+conversation rather than resurrecting the old turns.
+
+Stopping an answer stops _waiting_, not the job. That was submitted and paid for
+the moment it went on chain and no message exists to recall it, so the error
+says so rather than implying a free retry.
+
 ## Under Bare
 
 The worker is the data plane, so this has to run there, and two things differ.

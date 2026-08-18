@@ -27,6 +27,7 @@ import {
   decodeUint256,
   depositAndAuthorize,
   encodeCall,
+  keccak256,
   lightchainErrors,
   prepaidBalance,
   resolveAddresses,
@@ -35,7 +36,7 @@ import {
   toHex
 } from '@lcai-p2p/chain'
 import { Wallet } from '@lcai-p2p/wallet'
-import { Api, Conversation } from '@lcai-p2p/inference'
+import { Api, Conversation, History } from '@lcai-p2p/inference'
 
 /**
  * The data plane.
@@ -241,6 +242,49 @@ let settings = readSettings()
 let api = null
 let apiFor = null
 let conversation = null
+let conversationId = null
+let history = null
+let historyFor = null
+
+/**
+ * The transcript log, encrypted under a key only this wallet can derive.
+ *
+ * The key is a signature over a fixed string rather than anything stored: it is
+ * deterministic for one account and unobtainable without it, so history belongs
+ * to an identity and a locked wallet cannot read its own. Restoring a different
+ * phrase leaves the old transcripts closed rather than lost — which is the
+ * honest behaviour, since they were never that identity's to read.
+ */
+const HISTORY_KEY_MESSAGE = 'lightchain-hub: transcript encryption key, v1'
+
+async function transcripts() {
+  const account = wallet.account()
+  if (history && historyFor === account.address) return history
+
+  const key = keccak256(toBytes(account.signMessage(HISTORY_KEY_MESSAGE)))
+  const core = chatStore.get({ name: `history:${account.address}`, encryptionKey: b4a.from(key) })
+  await core.ready()
+
+  history = new History({
+    async append(record) {
+      await core.append(b4a.from(JSON.stringify(record)))
+    },
+    async read() {
+      const out = []
+      for (let i = 0; i < core.length; i++) {
+        try {
+          out.push(JSON.parse(b4a.toString(await core.get(i))))
+        } catch {
+          // A block that will not parse is skipped rather than allowed to
+          // wedge the whole transcript list.
+        }
+      }
+      return out
+    }
+  })
+  historyFor = account.address
+  return history
+}
 
 async function inference() {
   const account = wallet.account()
@@ -259,8 +303,11 @@ async function inference() {
 function forgetInference() {
   conversation?.close()
   conversation = null
+  conversationId = null
   api = null
   apiFor = null
+  history = null
+  historyFor = null
 }
 
 /** A model's fee, from the chain, by id rather than by name. */
@@ -588,20 +635,50 @@ async function handle(req) {
       // awaited in silence.
       await conversation.start((progress) => send({ t: 'ai.progress', ...progress }))
 
-      return { sessionId: conversation.sessionId, worker: conversation.worker, model: model.name }
+      conversationId = `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+      await (await transcripts()).opened(conversationId, model.name)
+
+      return {
+        sessionId: conversation.sessionId,
+        worker: conversation.worker,
+        model: model.name,
+        conversation: conversationId
+      }
     }
 
     case 'ai.ask': {
       if (!conversation?.open) throw new Error('no conversation is open')
-      const answer = await conversation.ask(String(req.prompt ?? ''), (progress) =>
+      const prompt = String(req.prompt ?? '')
+      const log = await transcripts()
+      const model = conversation.model.name
+
+      // Written before the answer, so a question that is never answered is
+      // still in the transcript rather than vanishing with the failure.
+      await log.said(conversationId, model, 'you', prompt)
+
+      const answer = await conversation.ask(prompt, (progress) =>
         send({ t: 'ai.progress', ...progress })
       )
+
+      await log.said(conversationId, model, 'model', answer.text, answer.jobId)
       return { jobId: answer.jobId, text: answer.text }
+    }
+
+    case 'ai.cancel':
+      return { stopped: conversation?.cancel() ?? false }
+
+    case 'ai.history':
+      return { conversations: await (await transcripts()).transcripts() }
+
+    case 'ai.forget': {
+      await (await transcripts()).deleted(String(req.conversation ?? ''))
+      return { ok: true }
     }
 
     case 'ai.stop': {
       conversation?.close()
       conversation = null
+      conversationId = null
       return { ok: true }
     }
 
