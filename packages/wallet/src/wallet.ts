@@ -207,6 +207,35 @@ export class Wallet {
     return encryptKeystore(derivePrivateKey(phrase, index), password)
   }
 
+  /**
+   * Reseals the vault under a new password.
+   *
+   * The phrase does not change, so neither does the address, nor anything
+   * derived from the key — transcripts and the room registry are sealed with a
+   * signature rather than with the password, and stay readable. That is the
+   * point of deriving them that way: a password should be changeable without
+   * abandoning everything it happened to be protecting.
+   *
+   * The new vault is opened before the old one is replaced. A vault that will
+   * not open is otherwise discovered at the next unlock, by which time the
+   * password that would have opened it is the one just discarded.
+   */
+  changePassword(current: string, next: string): WalletStatus {
+    const vault = this.#store.read()
+    if (!vault) throw new WalletError('there is no wallet')
+
+    const phrase = open(vault, current)
+    if (next === current) throw new WalletError('that is the password it already has')
+
+    const resealed = seal(phrase, next)
+    if (open(resealed, next) !== phrase) {
+      throw new WalletError('the new vault did not reopen to the same phrase; nothing was changed')
+    }
+
+    this.#store.write(resealed)
+    return this.status()
+  }
+
   /** Removes the vault. The password is required so it cannot be wiped in passing. */
   remove(password: string): WalletStatus {
     const vault = this.#store.read()

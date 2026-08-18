@@ -81,6 +81,21 @@ moment it is created. An unlocked wallet holds a **derived `Account` and not the
 phrase** — it can sign, which is what unlocked is for, but it cannot hand over
 the thing that opens every account forever.
 
+## Changing the password
+
+`changePassword` reseals the vault and moves nothing else. The phrase is what
+the wallet **is**; the password only guards the copy kept on this machine.
+
+That distinction is load-bearing rather than philosophical. Transcripts and the
+room registry are sealed with keys derived from the account's _signature_, not
+from the password, so they stay readable across a change — which is why they
+were derived that way. A password nobody can change without abandoning their
+conversations is a password nobody changes.
+
+The new vault is opened before the old one is replaced. A vault that will not
+open is otherwise discovered at the next unlock, by which time the password that
+would have opened it is the one just discarded.
+
 Three deliberate refusals:
 
 - **`create` will not overwrite an existing vault.** Deciding to destroy the

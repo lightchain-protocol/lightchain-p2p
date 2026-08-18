@@ -822,6 +822,19 @@ async function handle(req) {
     case 'wallet.reveal':
       return { phrase: wallet.revealPhrase(String(req.password ?? '')) }
 
+    /**
+     * Reseals under a new password. Nothing else moves.
+     *
+     * The transcript log and the room registry are sealed with keys derived
+     * from the account's signature rather than from the password, so both stay
+     * readable — which is why they were derived that way.
+     */
+    case 'wallet.changePassword':
+      return {
+        ...wallet.changePassword(String(req.current ?? ''), String(req.next ?? '')),
+        network
+      }
+
     case 'wallet.unlock': {
       const status = wallet.unlock(String(req.password ?? ''))
       useWalletInRooms()

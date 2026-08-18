@@ -247,6 +247,45 @@
             </form>
             <ol class="phrase" id="reveal-phrase" hidden></ol>
 
+            <h3 class="settings-heading">Change your password</h3>
+            <p class="settings-note">
+              Reseals the wallet on this machine. Your recovery phrase, your address and your saved
+              conversations are unaffected — the phrase is what your wallet is, and the password
+              only guards the copy kept here.
+            </p>
+            <form class="wallet-form" id="password-form">
+              <label class="field">
+                <span class="field-label">Current password</span>
+                <input
+                  class="input"
+                  id="password-current"
+                  type="password"
+                  autocomplete="current-password"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">New password</span>
+                <input
+                  class="input"
+                  id="password-next"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="At least 8 characters"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">Confirm new password</span>
+                <input
+                  class="input"
+                  id="password-confirm"
+                  type="password"
+                  autocomplete="new-password"
+                />
+              </label>
+              <p class="dialog-error" id="password-error" hidden></p>
+              <button class="button" type="submit" id="password-btn">Change password</button>
+            </form>
+
             <h3 class="settings-heading">Remove this wallet</h3>
             <p class="settings-note">
               Deletes the encrypted vault from this machine. Without your recovery phrase written

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { mnemonicToAccount } from 'viem/accounts'
-import { Wallet, WalletError, decrypt, isValidPhrase, memoryVaultStore } from './index.js'
+import {
+  Wallet,
+  WalletError,
+  decrypt,
+  deriveKey,
+  isValidPhrase,
+  memoryVaultStore
+} from './index.js'
 
 /**
  * scrypt is half a second per call by design, so these share a wallet where
@@ -128,6 +135,62 @@ describe('backing up later', () => {
     expect(wallet.status().exists).toBe(true)
 
     expect(wallet.remove(PASSWORD)).toMatchObject({ exists: false, unlocked: false })
+  })
+})
+
+describe('changing the password', () => {
+  it('keeps the phrase, the address, and everything derived from the key', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    const created = wallet.create(PASSWORD)
+    const address = created.status.address
+    const derived = deriveKey(wallet.account(), 'transcripts')
+
+    wallet.changePassword(PASSWORD, 'a different password entirely')
+
+    // The password guards the vault; it does not define the identity. Anything
+    // sealed under a key derived from the account stays readable.
+    expect(wallet.status().address).toBe(address)
+    expect(wallet.revealPhrase('a different password entirely')).toBe(created.phrase)
+    expect(deriveKey(wallet.account(), 'transcripts')).toEqual(derived)
+  })
+
+  it('will not open under the old password afterwards', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    wallet.create(PASSWORD)
+    wallet.changePassword(PASSWORD, 'the new one')
+
+    wallet.lock()
+    expect(() => wallet.unlock(PASSWORD)).toThrow(/wrong password/)
+    expect(wallet.unlock('the new one').unlocked).toBe(true)
+  })
+
+  it('refuses the wrong current password, and changes nothing', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    wallet.create(PASSWORD)
+
+    expect(() => wallet.changePassword('not it', 'something new')).toThrow(/wrong password/)
+    expect(wallet.revealPhrase(PASSWORD)).toBeTruthy()
+  })
+
+  it('refuses a new password too short to be worth the scrypt', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    wallet.create(PASSWORD)
+
+    expect(() => wallet.changePassword(PASSWORD, 'short')).toThrow(/at least 8 characters/)
+    // And the old one still works, because nothing was written.
+    expect(wallet.revealPhrase(PASSWORD)).toBeTruthy()
+  })
+
+  it('refuses to change a password to itself', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    wallet.create(PASSWORD)
+    expect(() => wallet.changePassword(PASSWORD, PASSWORD)).toThrow(/already has/)
+  })
+
+  it('has nothing to change when there is no wallet', () => {
+    expect(() => new Wallet(memoryVaultStore()).changePassword(PASSWORD, 'other')).toThrow(
+      /no wallet/
+    )
   })
 })
 

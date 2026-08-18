@@ -1329,6 +1329,40 @@ document.getElementById('reveal-form').addEventListener('submit', async (evt) =>
   }
 })
 
+document.getElementById('password-form').addEventListener('submit', async (evt) => {
+  evt.preventDefault()
+
+  const error = document.getElementById('password-error')
+  const button = document.getElementById('password-btn')
+  const current = document.getElementById('password-current')
+  const next = document.getElementById('password-next')
+  const confirm = document.getElementById('password-confirm')
+  error.hidden = true
+
+  if (next.value !== confirm.value) {
+    error.textContent = 'Those two passwords are not the same.'
+    error.hidden = false
+    return
+  }
+
+  button.disabled = true
+  // Half a second of scrypt each way, so this is not instant and should not
+  // look like nothing happened.
+  button.textContent = 'Changing…'
+
+  try {
+    await request('wallet.changePassword', { current: current.value, next: next.value })
+    toast('Password changed')
+  } catch (err) {
+    error.textContent = err.message
+    error.hidden = false
+  } finally {
+    for (const field of [current, next, confirm]) field.value = ''
+    button.disabled = false
+    button.textContent = 'Change password'
+  }
+})
+
 document.getElementById('remove-form').addEventListener('submit', async (evt) => {
   evt.preventDefault()
   const error = document.getElementById('remove-error')
