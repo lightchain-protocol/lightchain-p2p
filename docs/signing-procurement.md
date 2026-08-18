@@ -119,19 +119,26 @@ which points at an arbitrary script, so the path exists but is **custom work we
 would write**. Budget for it, or take the OV route where the upstream action
 works unmodified.
 
-### The Publisher CN is permanent
+### The Publisher CN is permanent, and currently a guess
 
-MSIX package identity binds to the certificate subject. `build/AppxManifest.xml`
-carries:
+MSIX package identity binds to the certificate subject.
+`apps/chat/build/AppxManifest.xml` now carries:
 
 ```xml
-<Identity Name="..." Version="..." Publisher="CN=Your Organisation" />
-<PublisherDisplayName>Your Organisation</PublisherDisplayName>
+<Identity Name="Lightchain.Hub" Version="1.0.0.0" Publisher="CN=Lightchain" />
+<PublisherDisplayName>Lightchain</PublisherDisplayName>
 ```
 
-`Publisher` **must equal the certificate CN exactly**. Change the certificate
-later and existing installs will not upgrade — Windows treats it as a different
-application. Decide the legal entity name once, before the first signed release.
+Those replaced the template's `HelloPear` / `CN=My Publisher`, which would have
+been considerably worse to ship. But **`CN=Lightchain` is a placeholder until
+the certificate exists**: it must equal the certificate subject exactly, and
+that will be the legal entity name the CA validates, which may not be this.
+
+Whatever it ends up as is then fixed. Change the certificate later and existing
+installs do not upgrade — Windows treats the result as a different application.
+So the one thing to settle before buying anything is **which legal entity name
+goes on the certificate**, because it also becomes the Apple seller name in
+section 1 and should match.
 
 ---
 
@@ -154,18 +161,22 @@ Listed so the Apple enrolment above is understood to cover both.
 
 ---
 
-## 5. The gap nobody should discover at release
+## 5. The gap nobody should discover at release — closed
 
 **`bare-build` cannot notarize.** Its `--sign` family stops at `codesign` and
 `signtool`; there is no `notarytool` support anywhere in it. Notarization for the
-Pear Electron chat client is handled by Electron Forge's `osxNotarize` using a
-pre-stored keychain profile, but **the supervisor is a `bare-build` binary and
-has no such path**.
+Pear Electron chat client is handled by Electron Forge's `osxNotarize`, but the
+supervisor is a `bare-build` binary and had no such path — so it would have been
+blocked by Gatekeeper on every Mac that did not build it, reported as _damaged_
+rather than as unsigned, which sends people looking in the wrong place.
 
-An unnotarized binary downloaded from a website is blocked by Gatekeeper on
-macOS, so the supervisor needs a notarization step we write ourselves —
-`xcrun notarytool submit` plus stapling after `bare-build` signs. That is
-engineering work, not procurement, and it is currently unscheduled.
+`scripts/notarize-macos.mjs` now does it: `xcrun notarytool submit --wait`, then
+stapling where there is somewhere to staple to. It runs in `build-matrix.yml`
+after signing and skips itself when no credentials are configured. A lone
+executable cannot carry a ticket — only bundles and disk images can — so it is
+notarized without stapling and needs the network the first time it runs.
+
+Untested against real credentials, for the obvious reason.
 
 `bare-build` signing flags, for reference: `--sign`, `--identity`,
 `--application-identity`, `--installer-identity`, `--provisioning-profile`,
@@ -176,32 +187,30 @@ engineering work, not procurement, and it is currently unscheduled.
 
 ## 6. CI secrets to create once certificates exist
 
-Repository secrets consumed by `holepunchto/actions/make-pear-app`. Left column
-is the secret name to create; right is the action input it maps to.
+**This repository does not use `holepunchto/actions/make-pear-app`.** An earlier
+version of this page listed that action's inputs, which would have had somebody
+create eight correctly-spelled secrets that nothing reads. `build-matrix.yml`
+builds directly and consumes these:
 
-| Secret                    | Action input               |
-| ------------------------- | -------------------------- |
-| `CERTIFICATE_P12`         | `macos_certificate_base64` |
-| `CERTIFICATE_PASSWORD`    | `macos_p12_password`       |
-| `MAC_CODESIGN_IDENTITY`   | `macos_codesign_identity`  |
-| `MACOS_API_KEY_BASE64`    | `macos_api_key_base64`     |
-| `MACOS_API_KEY_ID`        | `macos_api_key_id`         |
-| `MACOS_API_ISSUER`        | `macos_api_issuer`         |
-| `WINDOWS_CERT_PFX_BASE64` | `windows_cert_pfx_base64`  |
-| `WINDOWS_CERT_PASSWORD`   | `windows_cert_password`    |
+| Secret                  | Used by                                      | Absent means                               |
+| ----------------------- | -------------------------------------------- | ------------------------------------------ |
+| `WINDOWS_CERT_SHA1`     | `scripts/sign-windows.mjs`, for the binaries | binaries unsigned                          |
+| `WINDOWS_SIGN_HOOK`     | the MSIX maker, for Azure Artifact Signing   | installer unsigned                         |
+| `MAC_CODESIGN_IDENTITY` | Electron Forge `osxSign`                     | the app bundle unsigned                    |
+| `NOTARY_PROFILE`        | Forge `osxNotarize`, and the notarize script | nothing notarized                          |
+| `NOTARY_APPLE_ID`       | the notarize script, if not using a profile  | — with `NOTARY_PASSWORD`, `NOTARY_TEAM_ID` |
 
 The identity string looks like `Developer ID Application: Your Org (TEAMID)`.
-The keychain profile name is hardcoded to `notary` by the action, so it does not
-need a secret.
 
-### One thing to verify against the live action
+`node scripts/check-signing.mjs` reports which of these are present and what
+each absence costs. It runs as the first job of every release build, so the log
+opens with what the build will and will not sign rather than leaving it to be
+discovered on a download page. `--require` makes it refuse instead.
 
-The mirror disagrees with itself on the accepted value for
-`windows_signing_method`: `action.yml` compares against `cert_sha1` / `cert_pfx`,
-while the README, docs and template workflow all use `windows_cert_sha1` /
-`windows_cert_pfx`. Confirm which the published `@v1` action accepts before
-relying on it, because the wrong literal will silently skip signing rather than
-fail.
+Windows needs **either** `WINDOWS_CERT_SHA1` or `WINDOWS_SIGN_HOOK`, not both:
+the thumbprint is the OV-certificate route, and the hook is what Azure Artifact
+Signing needs, because it signs through a dlib rather than from a certificate
+store.
 
 ---
 

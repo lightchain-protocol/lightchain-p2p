@@ -13,6 +13,22 @@ on:
     tags: ['v*']
 
 jobs:
+  # Announced before anything is built. Every signing step below skips itself
+  # when its secret is absent, which is right — but it means an unsigned
+  # artifact is indistinguishable from a signed one until somebody downloads it.
+  signing:
+    name: what this build will sign
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - env:
+          WINDOWS_CERT_SHA1: ${{ secrets.WINDOWS_CERT_SHA1 }}
+          WINDOWS_SIGN_HOOK: ${{ secrets.WINDOWS_SIGN_HOOK }}
+          MAC_CODESIGN_IDENTITY: ${{ secrets.MAC_CODESIGN_IDENTITY }}
+          NOTARY_PROFILE: ${{ secrets.NOTARY_PROFILE }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+        run: node scripts/check-signing.mjs
+
   build:
     name: ${{ matrix.app.name }} ${{ matrix.target.host }}
     runs-on: ${{ matrix.target.runner }}

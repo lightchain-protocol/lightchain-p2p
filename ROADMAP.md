@@ -269,10 +269,12 @@ locally.
 3. **Custody**: signing certificates and the release multisig are different key
    sets protecting different things, and both need rules for who holds them and
    what happens when that person leaves.
-4. **Windows installer**: MSIX only, or a conventional `.exe` alongside it.
-5. **Linux artifact**: AppImage only, or Snap and Flatpak knowing they cannot
-   receive peer-to-peer updates.
-6. **CODEOWNERS still contains placeholders** (`@track-a`, `@track-b`). Branch
+4. **Windows installer** and **Linux artifact** now have a proposal with
+   reasoning, in [ADR 0005](docs/decisions/0005-distribution-channels.md): MSIX
+   plus a signed `.exe`, and AppImage alone. Both turn on one criterion — an
+   installation that cannot receive peer-to-peer updates stops receiving fixes,
+   invisibly. Needs a decision, not more research.
+5. **CODEOWNERS still contains placeholders** (`@track-a`, `@track-b`). Branch
    protection cannot be enabled until they are real handles.
 
 Mobile is decided: deferred, see [ADR 0001](docs/decisions/0001-defer-mobile.md).
