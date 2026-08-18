@@ -493,6 +493,29 @@ body {
 
 /* --- Settings ------------------------------------------------------------- */
 
+/* Always visible, because it is the number that decides whether the next thing
+   you try will work. Tabular figures so it does not jitter as it updates. */
+.titlebar-balance {
+  padding: 2px 8px;
+  border: 0;
+  border-radius: var(--lc-radius-md);
+  background: transparent;
+  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-xs);
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-balance:hover {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+}
+
+.titlebar-balance.is-empty {
+  color: var(--lc-danger, #ff8080);
+}
+
 .icon-button {
   display: grid;
   place-items: center;

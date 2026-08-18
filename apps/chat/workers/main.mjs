@@ -25,6 +25,7 @@ import {
   logsWorker,
   parseContainerState,
   pullImage,
+  register as registerWorker,
   resolveConfig,
   runWorker,
   selectKeystore,
@@ -1085,6 +1086,7 @@ async function handle(req) {
      * that decision was made.
      */
     case 'worker.pull':
+    case 'worker.register':
     case 'worker.start':
     case 'worker.stop': {
       const { config, problem } = workerConfig()
@@ -1093,6 +1095,7 @@ async function handle(req) {
       if (busyWith) throw new Error(`already ${busyWith}`)
       busyWith = {
         'worker.pull': 'pulling',
+        'worker.register': 'registering',
         'worker.start': 'starting',
         'worker.stop': 'stopping'
       }[req.t]
@@ -1104,7 +1107,13 @@ async function handle(req) {
             ? pullImage(config)
             : req.t === 'worker.stop'
               ? stopWorker(config)
-              : runWorker(config, keystoreFor(config))
+              : // Registering is not a key ceremony. It opens a keystore already
+                // on disk and sends a transaction, which is the same shape as
+                // starting — unlike import-key, which reads a private key from
+                // stdin so it never reaches argv, the environment or a log.
+                req.t === 'worker.register'
+                ? registerWorker(config, keystoreFor(config))
+                : runWorker(config, keystoreFor(config))
 
         let streamed = false
         const res = await runAsync('docker', command.argv, {

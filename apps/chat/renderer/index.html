@@ -15,6 +15,13 @@
          and the content is inset to clear them. -->
     <header class="titlebar" id="titlebar">
       <span class="wordmark">Lightchain</span>
+      <button
+        class="titlebar-balance"
+        type="button"
+        id="titlebar-balance"
+        title="Your wallet"
+        hidden
+      ></button>
       <span class="titlebar-status" id="status">starting</span>
       <button class="button button-primary button-sm" id="update-btn" hidden>Apply update</button>
       <button
@@ -482,6 +489,9 @@
               </div>
               <div class="wallet-head-actions">
                 <button class="button button-sm" type="button" id="worker-pull">Pull image</button>
+                <button class="button button-sm" type="button" id="worker-register">
+                  Register
+                </button>
                 <button class="button button-sm" type="button" id="worker-start">Start</button>
                 <button class="button button-sm" type="button" id="worker-stop">Stop</button>
                 <button class="button button-sm" type="button" id="worker-refresh">Refresh</button>
@@ -507,9 +517,11 @@
             </section>
 
             <p class="worker-footnote">
-              Read-only. Installing, registering and starting stay in
-              <code>lcai-supervisor</code>: the private key is read from stdin and nowhere else, and
-              a pull runs for minutes with no way to report progress here yet.
+              Importing a key stays in <code>lcai-supervisor</code>:
+              <code>cat key.txt | lcai-supervisor import-key</code>. It is read from stdin and
+              nowhere else, so it never reaches a command line, an environment variable or a log —
+              routing it through here to save a terminal would undo that. Registering afterwards
+              stakes LCAI from the address the keystore names.
             </p>
           </div>
         </div>

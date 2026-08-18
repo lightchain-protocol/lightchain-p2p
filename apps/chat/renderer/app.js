@@ -651,13 +651,14 @@ function setWorkerBusy(doing) {
   workerBusy.hidden = doing === null
   workerBusy.textContent = doing === null ? '' : `${doing}…`
 
-  for (const id of ['worker-pull', 'worker-start', 'worker-stop']) {
+  for (const id of ['worker-pull', 'worker-register', 'worker-start', 'worker-stop']) {
     document.getElementById(id).disabled = doing !== null
   }
 }
 
 for (const [id, action, label] of [
   ['worker-pull', 'worker.pull', 'Pulling the image'],
+  ['worker-register', 'worker.register', 'Registering the worker'],
   ['worker-start', 'worker.start', 'Starting the worker'],
   ['worker-stop', 'worker.stop', 'Stopping the worker']
 ]) {
@@ -676,6 +677,73 @@ for (const [id, action, label] of [
     }
   })
 }
+
+// --- The balance, everywhere ------------------------------------------------
+
+/**
+ * Both numbers, in the title bar.
+ *
+ * They mean different things and both decide whether the next thing you try
+ * will work: the wallet is what can be deposited or sent, and the prepaid
+ * balance is what inference is actually drawn from. Keeping them in the Wallet
+ * section meant finding out you were empty by being refused.
+ */
+const balanceButton = document.getElementById('titlebar-balance')
+
+/**
+ * An amount at a glance.
+ *
+ * Truncated to four places rather than rounded, so a balance never reads as
+ * more than it is — and never as `0.399999999948343464`, which is accurate,
+ * unreadable, and the reason this exists separately from the exact figure the
+ * Wallet section shows.
+ */
+function compactLcai(wei) {
+  const value = BigInt(wei)
+  const whole = value / 10n ** 18n
+  const places = (value % 10n ** 18n).toString().padStart(18, '0').slice(0, 4).replace(/0+$/, '')
+  return places === '' ? `${whole}` : `${whole}.${places}`
+}
+
+async function refreshTitlebarBalance() {
+  try {
+    const status = await request('wallet.status')
+    if (!status.unlocked) {
+      balanceButton.hidden = true
+      return
+    }
+
+    const [balances, ai] = await Promise.all([
+      request('wallet.balances'),
+      request('ai.status').catch(() => null)
+    ])
+
+    const native = balances.native === null ? null : compactLcai(balances.native)
+    const prepaid = ai ? compactLcai(ai.balance) : null
+
+    balanceButton.hidden = false
+    balanceButton.textContent =
+      prepaid === null ? `${native} LCAI` : `${native} LCAI · ${prepaid} prepaid`
+    balanceButton.title = `${native} LCAI in the wallet on ${status.network}${
+      prepaid === null ? '' : `, and ${prepaid} deposited for inference`
+    }. Click to open the wallet.`
+
+    // Red when there is not enough prepaid for even the cheapest job, which is
+    // the state that turns into a refusal a minute later.
+    balanceButton.classList.toggle('is-empty', ai !== null && BigInt(ai.balance) === 0n)
+  } catch {
+    balanceButton.hidden = true
+  }
+}
+
+balanceButton.addEventListener('click', () => {
+  showSection('wallet')
+  void refreshWallet()
+})
+
+// Slow, because it is a courtesy rather than a live feed, and every refresh is
+// two chain reads. Anything that changes a balance refreshes it directly.
+setInterval(() => void refreshTitlebarBalance(), 60_000)
 
 // --- Asking a model in a room -----------------------------------------------
 
@@ -976,6 +1044,8 @@ ai.composer.addEventListener('submit', async (evt) => {
     ai.send.disabled = false
     ai.prompt.focus()
     void refreshModels()
+    // A job has just been paid for out of the prepaid balance.
+    void refreshTitlebarBalance()
   }
 })
 
@@ -1301,6 +1371,9 @@ function showStep(id) {
 }
 
 function finishOnboarding() {
+  // The wallet has just opened, so there is a balance to show for the first
+  // time. Locking hides it again, through the same path.
+  void refreshTitlebarBalance()
   pendingPhrase = null
   onboarding.root.hidden = true
 }
@@ -1542,6 +1615,10 @@ async function refreshBalances() {
   el.walletNative.textContent = '…'
   el.walletPrepaid.textContent = '…'
   el.walletBalanceNote.textContent = ''
+
+  // Anything that reads the balance here has a reason to, so the title bar is
+  // brought along rather than left a minute stale.
+  void refreshTitlebarBalance()
 
   try {
     const balances = await request('wallet.balances')
