@@ -87,6 +87,10 @@ const el = {
 const dash = {
   sub: document.getElementById('dash-sub'),
   network: document.getElementById('dash-network'),
+  heroValue: document.getElementById('hero-value'),
+  heroNote: document.getElementById('hero-note'),
+  heroChips: document.getElementById('hero-chips'),
+  heroHide: document.getElementById('hero-hide'),
   locked: document.getElementById('dash-locked'),
   refresh: document.getElementById('dash-refresh'),
   stats: document.getElementById('dash-stats'),
@@ -357,63 +361,168 @@ function count(n) {
   return n.toLocaleString()
 }
 
-function stat(label, value, note, tone) {
+/**
+ * One metric.
+ *
+ * `change` is a signed count against last month and gets a pill; `note` is
+ * plain context and does not. A dash rather than a nought when the value is
+ * absent, because "not known" and "measured nothing" are different facts.
+ */
+function stat(label, value, { note, change, series } = {}) {
   const item = el2('li', 'stat')
   item.append(el2('span', 'stat-label', label))
 
   const row = el2('div', 'stat-row')
   const unknown = value === null || value === undefined
   row.append(el2('span', 'stat-value' + (unknown ? ' is-unknown' : ''), unknown ? '—' : value))
-  if (note) {
-    const hint = el2('span', 'stat-note', note)
-    if (tone) hint.dataset.tone = tone
-    row.append(hint)
+
+  if (!unknown && change !== null && change !== undefined && change !== 0) {
+    const pill = el2('span', 'delta', `${change > 0 ? '+' : '−'}${Math.abs(change)}`)
+    pill.dataset.tone = change > 0 ? 'up' : 'down'
+    pill.title = 'Against last month'
+    row.append(pill)
   }
+  if (note) row.append(el2('span', 'stat-note', note))
 
   item.append(row)
+  if (series && series.some((n) => n > 0)) item.append(sparkline(series))
   return item
 }
+
+/** Twelve months of shape under a number, with no axis and no labels. */
+function sparkline(values) {
+  const width = 160
+  const height = 34
+  const peak = Math.max(1, ...values)
+  const step = values.length > 1 ? width / (values.length - 1) : width
+  const points = values.map((value, i) => [i * step, height - (value / peak) * (height - 3) - 1.5])
+
+  const line = points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`)
+
+  const box = el2('div', 'spark')
+  const chart = svg('svg', {
+    viewBox: `0 0 ${width} ${height}`,
+    preserveAspectRatio: 'none',
+    'aria-hidden': 'true'
+  })
+  chart.append(
+    svg('path', { class: 'spark-area', d: `${line.join('')}L${width} ${height}L0 ${height}Z` }),
+    svg('path', { class: 'spark-line', d: line.join('') })
+  )
+  box.append(chart)
+  return box
+}
+
+/** Balances hidden, for screen shares and shoulders. Not remembered on purpose. */
+let hidden = false
+
+/** The last summary, so hiding the balances does not need another chain read. */
+let lastSummary = null
 
 async function refreshDashboard() {
   let summary
   try {
     summary = await request('dashboard.read', { months: dashMonths })
   } catch (err) {
-    dash.stats.replaceChildren(stat('Dashboard', null, err.message))
+    dash.stats.replaceChildren(stat('Dashboard', null, { note: err.message }))
     return
   }
 
+  lastSummary = summary
   dash.network.textContent = summary.network
   dash.locked.hidden = !summary.address || summary.unlocked
 
   renderAccount({ address: summary.address, unlocked: summary.unlocked, network: summary.network })
+  renderHero(summary)
 
   const inference = summary.inference
+  const asked = inference?.series.map((m) => m.asked) ?? []
+  const jobs = inference?.series.map((m) => m.jobs) ?? []
+
   dash.stats.replaceChildren(
-    stat('LCAI on chain', summary.balances ? formatLcai(summary.balances.native) : null),
-    stat(
-      'Prepaid for inference',
-      summary.balances?.prepaid == null ? null : formatLcai(summary.balances.prepaid)
-    ),
-    stat('Questions asked', inference ? count(inference.asked) : null),
-    stat(
-      'Paid for on chain',
-      inference ? count(inference.jobs) : null,
-      inference && inference.asked > 0
-        ? `${Math.round((inference.jobs / inference.asked) * 100)}% of asks`
-        : undefined
-    ),
-    stat(
-      'Rooms',
-      count(summary.rooms.total),
-      summary.rooms.total > 0 ? `${count(summary.rooms.messages)} messages` : undefined
-    )
+    stat('Questions asked', inference ? count(inference.asked) : null, {
+      change: inference?.change?.asked,
+      note: inference
+        ? `in ${count(inference.conversations)} conversation${inference.conversations === 1 ? '' : 's'}`
+        : undefined,
+      series: asked
+    }),
+    stat('Answers returned', inference ? count(inference.answered) : null, {
+      note:
+        inference && inference.asked > inference.answered
+          ? `${count(inference.asked - inference.answered)} unanswered`
+          : undefined
+    }),
+    stat('Paid for on chain', inference ? count(inference.jobs) : null, {
+      change: inference?.change?.jobs,
+      note:
+        inference && inference.asked > 0
+          ? `${Math.round((inference.jobs / inference.asked) * 100)}% of asks`
+          : undefined,
+      series: jobs
+    }),
+    stat('Rooms', count(summary.rooms.total), {
+      note: summary.rooms.total > 0 ? `${count(summary.rooms.messages)} messages` : undefined
+    })
   )
 
   renderChart(inference)
   renderFeed(summary.recent)
   renderModelUse(inference)
 }
+
+/**
+ * Everything the wallet controls, and where it currently sits.
+ *
+ * The total is shown above the split because depositing and withdrawing move
+ * LCAI between the two halves without changing it, and a screen that only
+ * showed the halves would make a deposit look like spending.
+ */
+function renderHero(summary) {
+  dash.heroChips.replaceChildren()
+
+  const balances = summary.balances
+  if (!balances) {
+    dash.heroValue.textContent = '—'
+    dash.heroNote.textContent = summary.address
+      ? 'The chain could not be read.'
+      : 'No wallet on this machine yet.'
+    return
+  }
+
+  const native = BigInt(balances.native)
+  const prepaid = balances.prepaid === null ? null : BigInt(balances.prepaid)
+
+  dash.heroValue.textContent = hidden
+    ? '••••••'
+    : `${formatLcai((native + (prepaid ?? 0n)).toString())} LCAI`
+  dash.heroNote.textContent =
+    prepaid === null
+      ? 'The prepaid balance could not be read, so this is the wallet alone.'
+      : `On ${summary.network}. Depositing and withdrawing move LCAI between these two, not out of them.`
+
+  for (const [label, value] of [
+    ['In your wallet', native],
+    ['Prepaid for inference', prepaid]
+  ]) {
+    if (value === null) continue
+    const chip = el2('li', 'chip')
+    chip.append(
+      el2('span', null, label),
+      el2('span', 'chip-value', hidden ? '••••' : formatLcai(value.toString()))
+    )
+    dash.heroChips.append(chip)
+  }
+}
+
+dash.heroHide.addEventListener('click', () => {
+  hidden = !hidden
+  dash.heroHide.querySelector('use').setAttribute('href', hidden ? '#i-eye-off' : '#i-eye')
+  const label = hidden ? 'Show balances' : 'Hide balances'
+  dash.heroHide.title = label
+  dash.heroHide.setAttribute('aria-label', label)
+  if (lastSummary) renderHero(lastSummary)
+})
 
 /** The last series drawn, so a resize can redraw it without asking again. */
 let lastInference = null
@@ -1220,39 +1329,102 @@ function toWei(amount) {
   return BigInt(whole + fraction.padEnd(18, '0'))
 }
 
-document.getElementById('fund-form').addEventListener('submit', async (evt) => {
-  evt.preventDefault()
+// --- Moving funds -----------------------------------------------------------
 
-  const error = document.getElementById('fund-error')
-  const button = document.getElementById('fund-btn')
-  const input = document.getElementById('fund-amount')
-  error.hidden = true
+/**
+ * Deposit and withdraw, which are the same gesture in opposite directions.
+ *
+ * One dialog rather than two forms: the amount parsing is the part that must be
+ * right, and two copies of it is one copy that will eventually be wrong.
+ */
+const move = {
+  dialog: document.getElementById('move-dialog'),
+  form: document.getElementById('move-form'),
+  title: document.getElementById('move-title'),
+  body: document.getElementById('move-body'),
+  amount: document.getElementById('move-amount'),
+  available: document.getElementById('move-available'),
+  error: document.getElementById('move-error'),
+  submit: document.getElementById('move-submit')
+}
+
+const MOVES = {
+  deposit: {
+    title: 'Deposit for inference',
+    body: 'Moves LCAI from your wallet into the job registry, and authorises the network delegate to spend it on jobs you ask for. It stays yours until a job spends it.',
+    endpoint: 'ai.fund',
+    verb: 'Deposit',
+    running: 'Depositing…',
+    from: 'native'
+  },
+  withdraw: {
+    title: 'Withdraw to your wallet',
+    body: 'Brings prepaid LCAI back out of the job registry. Anything already committed to a job in flight cannot be withdrawn until it settles.',
+    endpoint: 'ai.withdraw',
+    verb: 'Withdraw',
+    running: 'Withdrawing…',
+    from: 'prepaid'
+  }
+}
+
+let moving = 'deposit'
+
+function openMove(direction) {
+  moving = direction
+  const spec = MOVES[direction]
+
+  move.title.textContent = spec.title
+  move.body.textContent = spec.body
+  move.submit.textContent = spec.verb
+  move.amount.value = ''
+  move.error.hidden = true
+
+  // What can actually be moved, so the amount is chosen against a number rather
+  // than guessed and refused by the chain.
+  const held = lastSummary?.balances?.[spec.from]
+  move.available.textContent =
+    held == null ? '' : `${formatLcai(held)} LCAI available to ${spec.verb.toLowerCase()}.`
+
+  move.dialog.showModal()
+  move.amount.focus()
+}
+
+for (const button of document.querySelectorAll('[data-move]')) {
+  button.addEventListener('click', () => openMove(button.dataset.move))
+}
+
+move.form.addEventListener('submit', async (evt) => {
+  evt.preventDefault()
+  const spec = MOVES[moving]
+  move.error.hidden = true
 
   let amount
   try {
-    amount = toWei(input.value)
-    if (amount === 0n) throw new Error('A deposit of nothing would be refused')
+    amount = toWei(move.amount.value)
+    if (amount === 0n) throw new Error(`A ${spec.verb.toLowerCase()} of nothing would be refused`)
   } catch (err) {
-    error.textContent = err.message
-    error.hidden = false
+    move.error.textContent = err.message
+    move.error.hidden = false
     return
   }
 
-  button.disabled = true
-  button.textContent = 'Depositing…'
+  move.submit.disabled = true
+  move.submit.textContent = spec.running
 
   try {
-    const sent = await request('ai.fund', { amount: amount.toString() })
-    toast(`Deposited in block ${sent.block}`)
-    input.value = ''
+    const sent = await request(spec.endpoint, { amount: amount.toString() })
+    toast(`${spec.verb} confirmed in block ${sent.block}`)
+    move.dialog.close()
     void refreshBalances()
+    void refreshTitlebarBalance()
+    void refreshDashboard()
     void refreshModels()
   } catch (err) {
-    error.textContent = err.message
-    error.hidden = false
+    move.error.textContent = err.message
+    move.error.hidden = false
   } finally {
-    button.disabled = false
-    button.textContent = 'Deposit'
+    move.submit.disabled = false
+    move.submit.textContent = spec.verb
   }
 })
 

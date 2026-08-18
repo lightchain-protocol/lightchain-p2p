@@ -36,14 +36,25 @@ export interface Palette {
   readonly danger: string
 }
 
-/** Brand constants that do not vary between light and dark. */
+/**
+ * Brand constants that do not vary between light and dark.
+ *
+ * `logoFrom` and `logoTo` are the gradient in the official logomark, taken from
+ * the brand pack rather than matched by eye. They are deliberately not the same
+ * as `violet` and `magenta`: the mark is more saturated than anything the
+ * interface should use for text or a button, where the softer pair is what the
+ * contrast tests hold. The mark is a picture and gets its own colours; the
+ * chrome around it does not.
+ */
 export const BRAND = {
   violet: '#5b4bff',
   magenta: '#dd00ac',
   primary: '#693ee0',
   primaryStrong: '#8c71f6',
   border: '#8c52ff',
-  faint: '#cac0ff'
+  faint: '#cac0ff',
+  logoFrom: '#3005fa',
+  logoTo: '#ff12fb'
 } as const
 
 export const DARK: Palette = {
@@ -99,14 +110,21 @@ export const RADIUS = {
 } as const
 
 export const TYPE = {
-  /** Body and interface text. */
+  /**
+   * Body and interface text.
+   *
+   * A step up from the 12–14px that desktop applications inherited from an era
+   * of smaller screens. On a modern display at a normal viewing distance that
+   * range is legible rather than comfortable, and an app someone sits in front
+   * of all day should be the second thing.
+   */
   scale: {
-    xs: 12,
-    sm: 13,
-    md: 14,
-    lg: 16,
-    xl: 20,
-    xxl: 28
+    xs: 13,
+    sm: 14,
+    md: 15,
+    lg: 18,
+    xl: 22,
+    xxl: 30
   },
   weight: {
     regular: 400,
@@ -133,9 +151,11 @@ export const TYPE = {
  */
 export const CONTROL = {
   /** Toolbar and inline actions. */
-  sm: 26,
+  sm: 28,
   /** The default: form fields and their buttons. */
-  md: 32
+  md: 36,
+  /** Icons, sized with the text rather than independently of it. */
+  icon: 17
 } as const
 
 export type Theme = 'dark' | 'light'
@@ -167,6 +187,8 @@ export function cssVariables(theme: Theme): string {
     `--lc-danger: ${p.danger};`,
     `--lc-brand-violet: ${BRAND.violet};`,
     `--lc-brand-magenta: ${BRAND.magenta};`,
+    `--lc-logo-from: ${BRAND.logoFrom};`,
+    `--lc-logo-to: ${BRAND.logoTo};`,
     ...Object.entries(SPACE).map(([k, v]) => `--lc-space-${k}: ${v}px;`),
     ...Object.entries(RADIUS).map(([k, v]) => `--lc-radius-${k}: ${v}px;`),
     ...Object.entries(TYPE.scale).map(([k, v]) => `--lc-text-${k}: ${v}px;`),

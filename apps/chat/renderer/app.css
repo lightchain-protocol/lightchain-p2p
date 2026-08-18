@@ -378,21 +378,64 @@ body {
 /* --- Icons ---------------------------------------------------------------- */
 
 /* Defined once in a sprite and referenced by `<use>`. Stroked rather than
-   filled so one definition works at any weight of text it sits beside. */
+   filled so one definition works at any weight of text it sits beside.
+
+   Taken out of the layout by size rather than by `display: none`. A gradient is
+   a paint server, and one inside a subtree the engine has been told not to
+   render resolves to nothing — the shape referencing it comes out invisible
+   with no error anywhere, which is exactly how the logomark disappeared. */
 .sprite {
-  display: none;
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
 
 .icon,
 .nav-icon {
-  width: 15px;
-  height: 15px;
+  width: var(--lc-control-icon);
+  height: var(--lc-control-icon);
   flex: 0 0 auto;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.3;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* The logomark is artwork, not an icon: it carries its own gradient and must
+   not inherit the stroke that makes the line icons work. */
+.logo {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  stroke: none;
+}
+
+/* Gradient stops belong here rather than on the elements, because `var()` only
+   resolves in a CSS declaration. As an SVG attribute it is an invalid colour
+   and the gradient silently paints nothing. */
+.logo-from {
+  stop-color: var(--lc-logo-from);
+}
+
+.logo-to {
+  stop-color: var(--lc-logo-to);
+}
+
+.spark-from {
+  stop-color: var(--lc-brand);
+  stop-opacity: 0.38;
+}
+
+.spark-to {
+  stop-color: var(--lc-brand);
+  stop-opacity: 0;
+}
+
+.sidebar-logo {
+  width: 20px;
+  height: 20px;
 }
 
 .nav-item {
@@ -568,6 +611,156 @@ body {
   font-size: var(--lc-text-sm);
   color: var(--lc-fg-muted);
   background: var(--lc-bg-elevated);
+}
+
+/* --- Hero balance --------------------------------------------------------- */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-lg);
+  padding: var(--lc-space-xl);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-lg);
+  background:
+    radial-gradient(
+      120% 140% at 0% 0%,
+      color-mix(in srgb, var(--lc-brand-violet) 14%, transparent),
+      transparent 60%
+    ),
+    var(--lc-bg-elevated);
+}
+
+.hero-row {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--lc-space-lg);
+}
+
+.hero-main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.hero-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+.hero-value {
+  margin: 6px 0 0;
+  font-size: 38px;
+  font-weight: 600;
+  line-height: var(--lc-leading-tight);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.hero-note {
+  margin: 6px 0 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  flex: 0 0 auto;
+}
+
+.hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lc-space-sm);
+  margin: 0;
+  padding: var(--lc-space-lg) 0 0;
+  border-top: 1px solid var(--lc-rule);
+  list-style: none;
+}
+
+/* Where the total actually sits. Two chips rather than two more stat cards,
+   because they are parts of the number above rather than facts beside it. */
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--lc-space-sm);
+  padding: 6px var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-pill);
+  font-size: var(--lc-text-xs);
+  white-space: nowrap;
+  color: var(--lc-fg-dim);
+  background: var(--lc-bg);
+}
+
+.chip-value {
+  font-size: var(--lc-text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--lc-fg);
+}
+
+/* --- Change pills --------------------------------------------------------- */
+
+/* A signed count against last month. Green and red alone would leave a
+   colourblind reader with two identical grey pills, so the sign carries it. */
+.delta {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--lc-radius-sm);
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--lc-fg-dim);
+  background: var(--lc-bg-elevated-2);
+}
+
+.delta[data-tone='up'] {
+  color: var(--lc-success);
+  background: color-mix(in srgb, var(--lc-success) 16%, transparent);
+}
+
+.delta[data-tone='down'] {
+  color: var(--lc-danger);
+  background: color-mix(in srgb, var(--lc-danger) 16%, transparent);
+}
+
+/* --- Sparklines ----------------------------------------------------------- */
+
+/* The shape of the last twelve months under the number it belongs to. No axis
+   and no labels: it answers "which way" and the card above answers "how much". */
+.spark {
+  margin-top: var(--lc-space-sm);
+  height: 34px;
+}
+
+.spark svg {
+  display: block;
+  width: 100%;
+  height: 34px;
+}
+
+.spark-line {
+  fill: none;
+  stroke: var(--lc-brand);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.spark-area {
+  fill: url(#spark-fill);
+  stroke: none;
 }
 
 .pill {

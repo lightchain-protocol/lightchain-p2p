@@ -18,6 +18,14 @@ Balances read while the wallet is locked, because they are public. Transcripts d
 not, because the key that opens them comes from the wallet, and the panel says so
 instead of showing an empty chart.
 
+At the top is everything the wallet controls, split into what is in the wallet
+and what is prepaid for inference. **Deposit and withdraw** move LCAI between
+those two without changing the total, which is why the total is above the split
+rather than beside it — a deposit is not spending. Both go through one dialog:
+two forms differing only in which endpoint they call is two copies of the amount
+parsing, and one of them will eventually be wrong. There is an eye to hide the
+figures, for screen shares.
+
 **Dark and light**, from the same tokens, remembered across restarts. The
 preference is kept in the worker's settings rather than in `localStorage`: the
 renderer is loaded from a `file://` URL and so has no origin to store anything
@@ -152,7 +160,20 @@ apart in a way nobody can see the cause of.
 
 Icons are defined once in an SVG sprite at the top of `index.html` and referenced
 with `<use href="#i-name">`. An icon pasted into the markup twice is one that
-gets corrected once.
+gets corrected once. The logomark lives there too, taken from the brand pack
+rather than redrawn, and it keeps its own gradient tokens: the mark is more
+saturated than anything the interface should use for text or a button, where the
+softer pair is what the contrast tests hold.
+
+**Two traps in that sprite**, both of which fail silently:
+
+- Hide it with `position: absolute; width: 0` and not `display: none`. A
+  gradient is a paint server, and one inside a subtree the engine has been told
+  not to render resolves to nothing — the shape referencing it comes out
+  invisible with no error anywhere.
+- Set gradient stops in the stylesheet, not on the element. `var()` is a CSS
+  value function and an SVG presentation attribute is not CSS, so
+  `stop-color="var(--x)"` parses as an invalid colour and paints nothing.
 
 The activity chart is SVG built in script, sized to the container's real pixel
 width rather than drawn into a fixed `viewBox` and scaled to fit. A scaled

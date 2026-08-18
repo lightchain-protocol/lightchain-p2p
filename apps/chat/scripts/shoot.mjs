@@ -87,6 +87,16 @@ const settle = (ms = 700) => new Promise((r) => setTimeout(r, ms))
 mkdirSync(outdir, { recursive: true })
 const page = await Page.attach(port)
 
+// A fixed viewport, because the window is whatever size it was left at and two
+// runs at different sizes produce screenshots that cannot be compared — which
+// is the only thing this script is for.
+await page.send('Emulation.setDeviceMetricsOverride', {
+  width: 1280,
+  height: 860,
+  deviceScaleFactor: 1,
+  mobile: false
+})
+
 // A page target exists before the document is parsed, so getElementById can
 // still return null here for a moment after the window appears.
 await page.until(`document.readyState === 'complete'`, 'the document')
@@ -113,6 +123,16 @@ if (locked && password) {
   await page.until(`document.getElementById('onboarding').hidden`, 'the wallet to unlock')
 }
 await settle(1500)
+
+// The sidebar remembers whether it was collapsed, and this script collapses it
+// further down. Left alone, every run after the first opens collapsed and the
+// main pass captures a layout nobody asked for.
+await page.eval(`
+  if (document.getElementById('sidebar').classList.contains('is-collapsed')) {
+    document.getElementById('collapse-btn').click()
+  }
+`)
+await settle(400)
 
 // An empty room shows none of the message design. Open the first one and put a
 // short exchange in it, including two turns in a row, which is the case

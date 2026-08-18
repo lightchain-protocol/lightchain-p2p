@@ -46,7 +46,8 @@ import {
   resolveAddresses,
   sendTransaction,
   toBytes,
-  toHex
+  toHex,
+  withdrawBalance
 } from '@lcai-p2p/chain'
 import { Wallet, deriveKey, openJson, sealJson } from '@lcai-p2p/wallet'
 import { Api, Conversation, History, isAnswerVerified } from '@lcai-p2p/inference'
@@ -95,6 +96,8 @@ import { Api, Conversation, History, isAnswerVerified } from '@lcai-p2p/inferenc
  *     { id, t: 'settings.read' }
  *     { id, t: 'settings.write', values }
  *     { id, t: 'dashboard.read', months }   → the whole summary in one reply
+ *     { id, t: 'ai.fund',     amount }      → wallet into the job registry
+ *     { id, t: 'ai.withdraw', amount }      → and back out again
  *
  * Passwords cross this seam, and so does the recovery phrase — but only when
  * the user asked to see it, and never a derived private key. Otherwise the
@@ -734,12 +737,22 @@ function summariseInference(conversations, months) {
     byModel.set(conversation.model, use)
   }
 
+  // This month against the one before it. Reported as counts rather than a
+  // percentage: going from one question to three is not "200% growth" in any
+  // sense worth printing, and at these volumes a percentage is noise dressed as
+  // a measurement.
+  const current = series.at(-1)
+  const previous = series.at(-2)
+
   return {
     conversations: conversations.length,
     asked,
     answered,
     jobs,
     series,
+    change: previous
+      ? { asked: current.asked - previous.asked, jobs: current.jobs - previous.jobs }
+      : null,
     models: [...byModel.entries()]
       .map(([name, use]) => ({ name, ...use }))
       .sort((a, b) => b.conversations - a.conversations)
@@ -1038,6 +1051,27 @@ async function handle(req) {
       })
       const receipt = await sent.wait()
       if (!receipt.status) throw new Error(`the deposit reverted (${sent.hash})`)
+
+      return { hash: sent.hash, block: receipt.blockNumber.toString() }
+    }
+
+    /**
+     * Brings prepaid LCAI back to the wallet.
+     *
+     * The counterpart to `ai.fund`, and the reason the Wallet panel could claim
+     * you can withdraw at any time: it was true of the contract and there was no
+     * control anywhere that did it.
+     */
+    case 'ai.withdraw': {
+      const account = wallet.account()
+      const { jobRegistry } = await resolveAddresses(rpc)
+
+      const sent = await sendTransaction(rpc, account, {
+        to: jobRegistry,
+        data: withdrawBalance(BigInt(req.amount ?? 0))
+      })
+      const receipt = await sent.wait()
+      if (!receipt.status) throw new Error(`the withdrawal reverted (${sent.hash})`)
 
       return { hash: sent.hash, block: receipt.blockNumber.toString() }
     }

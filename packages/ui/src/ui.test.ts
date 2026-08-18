@@ -8,6 +8,7 @@ import {
   DARK,
   LIGHT,
   SPACE,
+  TYPE,
   contrastRatio,
   conventions,
   cssVariables,
@@ -114,8 +115,21 @@ describe('brand consistency', () => {
   // A control shorter than this is a small target for a mouse and a bad one for
   // a trackpad, and the label inside stops having room to breathe.
   it('keeps controls big enough to hit', () => {
-    for (const value of Object.values(CONTROL)) expect(value).toBeGreaterThanOrEqual(24)
+    for (const value of [CONTROL.sm, CONTROL.md]) expect(value).toBeGreaterThanOrEqual(24)
     expect(CONTROL.sm).toBeLessThan(CONTROL.md)
+  })
+
+  // An icon smaller than the text it labels reads as a bullet point.
+  it('sizes icons against the body text rather than independently', () => {
+    expect(CONTROL.icon).toBeGreaterThanOrEqual(TYPE.scale.md)
+    expect(CONTROL.icon).toBeLessThan(TYPE.scale.lg + TYPE.scale.xs)
+  })
+
+  // The mark's gradient comes from the brand pack and the interface's does not.
+  // Collapsing them would quietly redraw the logo in whatever the buttons use.
+  it('keeps the logo gradient distinct from the interface brand colours', () => {
+    expect(BRAND.logoFrom).not.toBe(BRAND.violet)
+    expect(BRAND.logoTo).not.toBe(BRAND.magenta)
   })
 })
 
