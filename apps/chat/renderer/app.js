@@ -558,13 +558,21 @@ function renderContainer(status) {
     note.className = 'check-detail'
     note.textContent = 'No worker is configured on this machine.'
 
-    // The message from the config layer explains the requirement but not which
-    // variable carries it, which is the only thing the reader can act on.
+    // The message from the config layer explains the requirement but not where
+    // to satisfy it. It used to name environment variables, which was true
+    // before there was anywhere in the app to set them and is now just sending
+    // people to a terminal for something two clicks away.
     const why = document.createElement('p')
     why.className = 'check-remedy'
-    why.textContent = `${status.problem} Set WORKER_PASSWORD, and KEYS_DIR if the keystore is not in ~/lightchain-worker/keys, then reopen this panel.`
+    why.textContent = status.problem
 
-    el.workerContainer.append(note, why)
+    const open = document.createElement('button')
+    open.className = 'button button-sm'
+    open.type = 'button'
+    open.textContent = 'Open worker settings'
+    open.addEventListener('click', () => void openSettings('worker'))
+
+    el.workerContainer.append(note, why, open)
     return
   }
 
@@ -1086,7 +1094,11 @@ const settings = {
   tabs: [...document.querySelectorAll('[data-settings]')]
 }
 
+/** Which page is showing, so that saving something does not navigate away from it. */
+let settingsPage = 'general'
+
 function showSettingsPage(name) {
+  settingsPage = name
   for (const tab of settings.tabs) tab.classList.toggle('is-active', tab.dataset.settings === name)
   for (const page of settings.pages) page.hidden = page.id !== `settings-${name}`
 }
@@ -1106,9 +1118,15 @@ function facts(target, pairs) {
   }
 }
 
-async function openSettings() {
+/**
+ * @param {string} [page]
+ *   Defaults to whatever was last showing. Several callers reopen this purely
+ *   to reload the values after a save, and sending them back to General each
+ *   time would navigate away from the thing they just edited.
+ */
+async function openSettings(page = settingsPage) {
   settings.root.hidden = false
-  showSettingsPage('general')
+  showSettingsPage(page)
 
   const state = await request('settings.read')
 

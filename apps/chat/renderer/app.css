@@ -811,13 +811,21 @@ select.input {
 .worker-head {
   display: flex;
   align-items: flex-start;
-  gap: var(--lc-space-lg);
+  /* Wraps rather than squeezing. Four buttons take most of a reading-width
+     column, which left the subtitle breaking after three words. */
+  flex-wrap: wrap;
+  gap: var(--lc-space-md) var(--lc-space-lg);
   margin-bottom: var(--lc-space-xl);
 }
 
-.worker-head .button {
-  margin-left: auto;
+.worker-head > div:first-child {
+  flex: 1 1 30ch;
+  min-width: 0;
+}
+
+.worker-head .wallet-head-actions {
   flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .worker-title {
