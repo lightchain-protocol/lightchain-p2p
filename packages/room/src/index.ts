@@ -13,3 +13,4 @@ export {
   type RoomState,
   type SwarmLike
 } from './host.js'
+export { Presence, TYPING_REFRESH, TYPING_TTL, type PresenceState } from './presence.js'

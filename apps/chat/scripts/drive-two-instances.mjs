@@ -99,14 +99,77 @@ class Renderer {
 }
 
 const step = (n, text) => console.log(`${String(n).padStart(2)}. ${text}`)
-const connected = `document.getElementById('status').textContent === 'connected'`
+const connected = `document.getElementById('status')?.textContent === 'connected'`
 
 const a = await Renderer.attach('A', portA)
 const b = await Renderer.attach('B', portB)
 
+// A page target exists before the document is parsed, so every getElementById
+// below can still return null for a moment after the window appears.
+const loaded = `document.readyState === 'complete'`
+await a.until(loaded, 'A to finish loading')
+await b.until(loaded, 'B to finish loading')
+
 await a.until(connected, 'A to connect to its worker')
 await b.until(connected, 'B to connect to its worker')
 step(1, 'both renderers report the worker connected')
+
+/**
+ * Gets past the wallet, which now gates everything.
+ *
+ * Rooms are sealed under a key derived from the wallet, so a locked instance
+ * has no rooms to drive. The phrase is generated on the machine and thrown
+ * away with the storage directory afterwards — this is a scratch identity for
+ * one run, not something to fund.
+ */
+const PASSWORD = 'two instances driving themselves'
+
+async function setUpWallet(r) {
+  await r.until(
+    `!document.getElementById('onboarding').hidden || document.getElementById('status').textContent !== 'connected'`,
+    `${r.name} to decide whether it has a wallet`,
+    10_000
+  )
+  if (await r.eval(`return document.getElementById('onboarding').hidden`)) return
+
+  if (await r.eval(`return !document.getElementById('step-unlock').hidden`)) {
+    await r.eval(`
+      document.getElementById('onboard-unlock-password').value = ${JSON.stringify(PASSWORD)}
+      document.getElementById('onboard-unlock-form').requestSubmit()
+    `)
+  } else {
+    await r.eval(`document.getElementById('choose-create').click()`)
+    await r.until(`!document.getElementById('step-password').hidden`, 'the password step')
+    await r.eval(`
+      document.getElementById('onboard-password').value = ${JSON.stringify(PASSWORD)}
+      document.getElementById('onboard-confirm').value = ${JSON.stringify(PASSWORD)}
+      document.getElementById('onboard-password-form').requestSubmit()
+    `)
+    await r.until(`!document.getElementById('step-phrase').hidden`, 'the recovery phrase')
+
+    // The confirmation asks for three of the twelve words back. Reading them
+    // off the screen is what a person does; there is no test hook for it.
+    const words = await r.eval(
+      `return [...document.querySelectorAll('#phrase-words li')].map((n) => n.textContent.replace(/^\\d+/, '').trim())`
+    )
+    await r.eval(`document.getElementById('phrase-continue').click()`)
+    await r.until(`!document.getElementById('step-confirm').hidden`, 'the confirmation')
+
+    await r.eval(`
+      const words = ${JSON.stringify(words)}
+      for (const input of document.querySelectorAll('#confirm-fields input')) {
+        input.value = words[Number(input.dataset.position)]
+      }
+      document.getElementById('confirm-form').requestSubmit()
+    `)
+  }
+
+  await r.until(`document.getElementById('onboarding').hidden`, `${r.name} to finish setting up`)
+}
+
+await setUpWallet(a)
+await setUpWallet(b)
+step(2, 'both have a wallet, so their rooms can be opened at all')
 
 const roomCount = `return document.querySelectorAll('.nav-item-name').length`
 const [heldByA, heldByB] = await Promise.all([a.eval(roomCount), b.eval(roomCount)])
@@ -119,7 +182,7 @@ const roomKey = await a.until(
   `(() => { const k = document.getElementById('room-key').textContent; return /^[0-9a-f]{64}$/.test(k) ? k : null })()`,
   'A to create a room'
 )
-step(2, `A created room ${roomKey.slice(0, 12)}…`)
+step(3, `A created room ${roomKey.slice(0, 12)}…`)
 
 await a.eval(`document.getElementById('invite-btn').click()`)
 const invite = await a.until(
@@ -130,7 +193,7 @@ await a.eval(`document.getElementById('invite-dialog').close()`)
 
 // The property invites exist for: a capability, not the room key.
 if (invite.includes(roomKey)) throw new Error('the invite contains the room key')
-step(3, `A made an invite of ${invite.length} characters, carrying no room key`)
+step(4, `A made an invite of ${invite.length} characters, carrying no room key`)
 
 await b.eval(`
   document.getElementById('join-btn').click()
@@ -146,7 +209,7 @@ await b.until(
 // Straight to writer: nothing had to be sent back the other way.
 const role = await b.eval(`return document.getElementById('room-role').textContent`)
 if (role !== 'writer') throw new Error(`B should arrive able to write, got "${role}"`)
-step(4, 'B joined with that one string and arrived as a writer')
+step(5, 'B joined with that one string and arrived as a writer')
 
 async function say(from, to, text) {
   await from.eval(`
@@ -161,10 +224,38 @@ async function say(from, to, text) {
 
 const stamp = new Date().toISOString()
 await say(b, a, `hello from B at ${stamp}`)
-step(5, "A received B's message without being asked to refresh")
+step(6, "A received B's message without being asked to refresh")
 
 await say(a, b, `and back from A at ${stamp}`)
-step(6, "B received A's reply")
+step(7, "B received A's reply")
+
+// Naming reaches the other side, and both agree on it.
+await a.eval(`
+  document.getElementById('rename-btn').click()
+  document.getElementById('rename-input').value = 'Two machines'
+  document.getElementById('rename-form').requestSubmit()
+`)
+await b.until(
+  `document.getElementById('room-title').textContent === 'Two machines'`,
+  'B to see the name A gave the room'
+)
+step(8, "B sees the name A gave the room, and it came out of the room's own history")
+
+// Typing is deliberately not asserted here. The presence channel works between
+// two peers on its own — see packages/room/src/presence.test.ts — and does not
+// establish over a real pairing, for reasons not yet understood. Asserting it
+// would either fail every run or, worse, be quietly deleted until it passed.
+
+// An invite carries a lightchain:// link and a scannable code.
+await a.eval(`document.getElementById('invite-btn').click()`)
+const link = await a.until(
+  `(() => { const v = document.getElementById('invite-value').textContent; return v.startsWith('lightchain://') ? v : null })()`,
+  'A to produce a link'
+)
+const squares = await a.eval(`return document.querySelectorAll('#invite-qr .qr-fg').length`)
+await a.eval(`document.getElementById('invite-dialog').close()`)
+if (squares === 0) throw new Error('the invite produced no QR code')
+step(9, `A produced ${link.slice(0, 24)}… and a QR code of ${squares} runs`)
 
 const read = `return [...document.querySelectorAll('.message-text')].map((n) => n.textContent)`
 const [seenByA, seenByB] = await Promise.all([a.eval(read), b.eval(read)])
@@ -175,7 +266,7 @@ console.log('B sees:', JSON.stringify(seenByB, null, 1))
 if (JSON.stringify(seenByA) !== JSON.stringify(seenByB)) {
   throw new Error('the two clients disagree on the order of the conversation')
 }
-step(7, 'both clients render the same history in the same order')
+step(10, 'both clients render the same history in the same order')
 
 console.log('\nPASS')
 

@@ -276,6 +276,12 @@ function onChatMessage(msg) {
     return
   }
 
+  if (msg.t === 'presence') {
+    presence.set(msg.key, { peers: msg.peers, typing: msg.typing })
+    if (msg.key === activeKey) renderTyping()
+    return
+  }
+
   if (msg.t === 'ai.progress') {
     onAiProgress(msg)
     return
@@ -977,10 +983,103 @@ function renderRoom() {
 }
 
 function select(key) {
+  // Leaving a room mid-sentence should not leave the indicator on behind you.
+  if (activeKey && activeKey !== key) stopTyping()
   activeKey = key
   renderRooms()
   renderRoom()
+  renderTyping()
+  void refreshPresence(key)
   if (rooms.get(key)?.writable) el.composerInput.focus()
+}
+
+// --- Typing -----------------------------------------------------------------
+
+/**
+ * Who is around and who is typing, per room.
+ *
+ * A plain Map with no persistence, mirroring a channel that stores nothing.
+ * Reload the window and it is empty until peers say otherwise, which is correct
+ * — nothing here is a fact about the past.
+ */
+const presence = new Map()
+
+const typingEl = document.getElementById('typing')
+const typingText = document.getElementById('typing-text')
+const peersEl = document.getElementById('room-peers')
+
+function renderTyping() {
+  const state = presence.get(activeKey)
+  const typing = state?.typing ?? 0
+  const peers = state?.peers ?? 0
+
+  // Connections, not members. Someone in the room who is offline is not here,
+  // and a blind peer holding the room is a connection rather than a person, so
+  // this says "connected" — which is the thing it actually knows.
+  peersEl.hidden = peers === 0
+  peersEl.textContent = peers === 1 ? '1 connected' : `${peers} connected`
+
+  typingEl.hidden = typing === 0
+  // No names. A peer can claim any identity over this channel, and a name on
+  // screen that anyone can forge is worse than no name at all. A count cannot
+  // be forged: the channel is per-connection, so one peer is one vote.
+  typingText.textContent = typing === 1 ? 'Someone is typing' : `${typing} people are typing`
+}
+
+/**
+ * Asks who is here, because presence is only pushed when it changes.
+ *
+ * A window opened after everyone stopped typing would otherwise show an empty
+ * room until the next keystroke anywhere in it.
+ */
+async function refreshPresence(key) {
+  if (!key) return
+  const state = await request('room.presence', { room: key }).catch(() => null)
+  if (!state) return
+  presence.set(key, state)
+  if (key === activeKey) renderTyping()
+}
+
+/**
+ * Tells the room this peer is typing, and stops saying so when they stop.
+ *
+ * Renewed on a timer because the signal expires at the other end — a peer that
+ * vanishes mid-word must not leave the indicator on forever. Stopped on submit,
+ * on blur, and after a pause, so it does not persist past the actual typing.
+ */
+let typingUntil = 0
+let typingTimer = null
+
+function iAmTyping(typing) {
+  const key = activeKey
+  if (!key) return
+
+  if (!typing) {
+    typingUntil = 0
+    void request('room.typing', { room: key, typing: false }).catch(() => {})
+    return
+  }
+
+  typingUntil = Date.now() + 4_000
+  // Re-sent at an interval rather than on every keystroke: the worker call is
+  // cheap but not free, and the remote's expiry is measured in seconds.
+  if (typingTimer) return
+  void request('room.typing', { room: key, typing: true }).catch(() => {})
+  typingTimer = setInterval(() => {
+    if (Date.now() < typingUntil) {
+      void request('room.typing', { room: key, typing: true }).catch(() => {})
+      return
+    }
+    clearInterval(typingTimer)
+    typingTimer = null
+    void request('room.typing', { room: key, typing: false }).catch(() => {})
+  }, 2_000)
+}
+
+function stopTyping() {
+  if (typingTimer) clearInterval(typingTimer)
+  typingTimer = null
+  iAmTyping(false)
 }
 
 // --- Naming a room ----------------------------------------------------------
@@ -1250,6 +1349,7 @@ async function submitMessage() {
   // invites a second Enter and a duplicate message.
   el.composerInput.value = ''
   resize()
+  stopTyping()
 
   try {
     const room = await request('room.send', { room: activeKey, text })
@@ -1296,7 +1396,14 @@ function resize() {
   el.composerInput.style.height = `${el.composerInput.scrollHeight}px`
 }
 
-el.composerInput.addEventListener('input', resize)
+el.composerInput.addEventListener('input', () => {
+  resize()
+  // An empty box is not typing. Clearing it back to nothing should stop the
+  // indicator rather than keep it alive on the last keystroke.
+  iAmTyping(el.composerInput.value !== '')
+})
+
+el.composerInput.addEventListener('blur', stopTyping)
 
 // --- Worker ----------------------------------------------------------------
 

@@ -129,6 +129,47 @@ declare module 'blind-pairing' {
   }
 }
 
+declare module 'protomux' {
+  export interface ProtomuxMessage<T> {
+    send(value: T): void
+  }
+
+  export interface ProtomuxChannel {
+    addMessage<T>(opts: { encoding: unknown; onmessage: (value: T) => void }): ProtomuxMessage<T>
+    open(handshake?: unknown): void
+    close(): void
+  }
+
+  export default class Protomux {
+    /** Reuses the multiplexer already on a stream, rather than making a second. */
+    static from(stream: unknown): Protomux
+    /** True when a channel with this protocol and id is already open on the stream. */
+    opened(opts: { protocol: string; id?: Uint8Array }): boolean
+    /**
+     * Null when the stream is destroyed or a unique channel is already open —
+     * **not** when the remote cannot speak the protocol. A channel to a peer
+     * that never opens its side simply stays quiet, so absence of a reply is
+     * how an older peer is recognised, and there is nothing to handle here.
+     */
+    createChannel(opts: {
+      protocol: string
+      id?: Uint8Array
+      onopen?: () => void
+      onclose?: () => void
+    }): ProtomuxChannel | null
+  }
+}
+
+declare module 'compact-encoding' {
+  const c: {
+    readonly bool: unknown
+    readonly string: unknown
+    readonly uint: unknown
+    readonly json: unknown
+  }
+  export default c
+}
+
 declare module 'b4a' {
   const b4a: {
     from(value: string | ArrayLike<number> | ArrayBuffer, encoding?: string): Buffer

@@ -615,6 +615,9 @@ const rooms = await RoomHost.open({
       }
     : undefined,
   onChange: (room) => send({ t: 'room', room }),
+  // Pushed rather than polled, and never stored. This is the one thing the
+  // worker reports that has no record anywhere behind it.
+  onPresence: (key, state) => send({ t: 'presence', key, ...state }),
   // Reading who wrote a message needs no wallet, only a curve — so rooms are
   // attributed whether or not this peer has one of its own.
   verify: {
@@ -1407,6 +1410,28 @@ async function handle(req) {
     /** Names the room for everyone in it, not just on this machine. */
     case 'room.rename':
       return rooms.rename(req.room, String(req.name ?? ''))
+
+    /**
+     * Typing, over a channel that stores nothing.
+     *
+     * Not a room entry, and it must never become one: entries are signed and
+     * replicated to every member forever, and a signal that changes several
+     * times a sentence would bury the conversation it belongs to in noise that
+     * can never be pruned.
+     */
+    case 'room.typing':
+      rooms.setTyping(req.room, req.typing === true)
+      return { ok: true }
+
+    /**
+     * Who is on the other end right now.
+     *
+     * Asked when a room is opened, because presence is only pushed when it
+     * changes — a renderer that relied on the push alone would show nobody
+     * until the next keystroke anywhere in the room.
+     */
+    case 'room.presence':
+      return rooms.presenceOf(req.room)
 
     /**
      * An invite, and the same invite as something clickable.

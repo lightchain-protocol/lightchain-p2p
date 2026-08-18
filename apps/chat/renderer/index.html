@@ -689,6 +689,7 @@
                   <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
                   Encrypted
                 </button>
+                <span class="badge badge-peers" id="room-peers" hidden></span>
                 <span class="badge" id="room-role"></span>
                 <button class="button button-sm" type="button" id="rename-btn">Rename</button>
                 <button class="button button-sm" type="button" id="invite-btn">
@@ -701,6 +702,11 @@
             <!-- Announced to screen readers as messages arrive, since they
                  appear without the user having done anything. -->
             <ol class="messages" id="messages" aria-live="polite"></ol>
+
+            <p class="typing" id="typing" hidden>
+              <span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span id="typing-text"></span>
+            </p>
 
             <div class="notice" id="readonly-notice" hidden>
               <p class="notice-body">

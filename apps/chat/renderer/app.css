@@ -2094,6 +2094,11 @@ body {
   color: var(--lc-warning);
 }
 
+.badge-peers {
+  color: var(--lc-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* A claim about the room, so it is a control rather than a label: it opens the
    panel that says what the claim is made of. A padlock nobody can interrogate
    is decoration. */
@@ -2258,6 +2263,53 @@ body {
   margin: auto;
   font-size: var(--lc-text-sm);
   color: var(--lc-fg-dim);
+}
+
+/* --- Typing --------------------------------------------------------------- */
+
+.typing {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  margin: 0;
+  padding: 0 var(--lc-space-lg) var(--lc-space-sm);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+  flex: 0 0 auto;
+}
+
+.typing-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.typing-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-fg-dim);
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+
+.typing-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing-bounce {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
 }
 
 /* --- Composer ------------------------------------------------------------- */

@@ -5,6 +5,7 @@ import Autobase from 'autobase'
 import BlindPairing from 'blind-pairing'
 import type Corestore from 'corestore'
 import { roomName, verifyAuthor, type ChatMessage, type ModelAnswer } from '@lcai-p2p/protocol'
+import { Presence, type PresenceState } from './presence.js'
 import { Room, RoomError, type Identity } from './room.js'
 
 /**
@@ -142,6 +143,8 @@ export interface RoomHostOptions {
    * unattributed, which is what a peer without a wallet should do.
    */
   readonly verify?: AuthorChecks
+  /** Called when the peers or typers in a room change. Nothing is persisted. */
+  readonly onPresence?: (key: string, state: PresenceState) => void
 }
 
 /** A room that could not be reopened, and why. */
@@ -153,6 +156,8 @@ export interface FailedRoom {
 interface Entry {
   readonly room: Room
   readonly namespace: string
+  /** Typing and peer count. Nothing here is written anywhere. */
+  readonly presence: Presence
   discovery: DiscoveryLike | null
   unsubscribe: (() => void) | null
   timer: ReturnType<typeof setTimeout> | null
@@ -214,8 +219,10 @@ export class RoomHost {
   readonly #pairTimeout: number
   readonly #verify: AuthorChecks | null
   readonly #availability: RoomAvailability | null
+  readonly #onPresence: ((key: string, state: PresenceState) => void) | null
   #identity: Identity | null = null
   #pairing: BlindPairing | null = null
+  #reattach: ReturnType<typeof setInterval> | null = null
   /** Room key to the member serving its invite. */
   readonly #members = new Map<string, { close(): Promise<void> }>()
   readonly #rooms = new Map<string, Entry>()
@@ -245,6 +252,7 @@ export class RoomHost {
     this.#onChange = opts.onChange ?? null
     this.#verify = opts.verify ?? null
     this.#availability = opts.availability ?? null
+    this.#onPresence = opts.onPresence ?? null
     this.#settle = opts.settle ?? 50
     this.#announceTimeout = opts.announceTimeout ?? 10_000
     this.#rediscoverAfter = opts.rediscoverAfter ?? REDISCOVER_AFTER
@@ -255,8 +263,16 @@ export class RoomHost {
     const host = new RoomHost(opts)
 
     opts.swarm.on('connection', (socket) => {
-      for (const { room } of host.#rooms.values()) room.replicate(socket)
+      for (const entry of host.#rooms.values()) {
+        entry.room.replicate(socket)
+        entry.presence?.attach(socket)
+      }
     })
+
+    // Retrying the attach was tried and removed: over a real pairing the remote
+    // rejected the channel every time — 57 opens, 57 closes, no handshake — so
+    // a retry loop only churned channels. See presence.ts for what is and is
+    // not established about this.
 
     for (const record of opts.registry?.read() ?? []) {
       try {
@@ -486,6 +502,23 @@ export class RoomHost {
     return this.#stateOf(room)
   }
 
+  /**
+   * Says whether this peer is typing in a room.
+   *
+   * Goes over the presence channel, which stores nothing anywhere. Calling it
+   * on every keystroke is fine — repeats of the current state send no bytes.
+   */
+  setTyping(key: string, typing: boolean): void {
+    const entry = this.#rooms.get(key)
+    if (!entry) return
+    entry.presence.setTyping(typing)
+    if (typing) entry.presence.refresh()
+  }
+
+  presenceOf(key: string): PresenceState {
+    return this.#rooms.get(key)?.presence.state ?? { peers: 0, typing: 0 }
+  }
+
   /** Names a room, for everyone in it. */
   async rename(key: string, name: string): Promise<RoomState> {
     const room = this.#require(key)
@@ -519,6 +552,7 @@ export class RoomHost {
 
     this.#rooms.delete(key)
     entry.unsubscribe?.()
+    entry.presence.close()
     if (entry.timer) clearTimeout(entry.timer)
     for (const timer of entry.rediscover) clearTimeout(timer)
     this.#swarm.leave(entry.room.discoveryKey)
@@ -548,6 +582,8 @@ export class RoomHost {
   }
 
   async close(): Promise<void> {
+    if (this.#reattach) clearInterval(this.#reattach)
+    this.#reattach = null
     for (const member of this.#members.values()) await member.close().catch(() => undefined)
     this.#members.clear()
     await this.#pairing?.close().catch(() => undefined)
@@ -557,6 +593,7 @@ export class RoomHost {
     this.#rooms.clear()
     for (const entry of entries) {
       entry.unsubscribe?.()
+      entry.presence.close()
       if (entry.timer) clearTimeout(entry.timer)
       for (const timer of entry.rediscover) clearTimeout(timer)
       await entry.room.close().catch(() => undefined)
@@ -651,17 +688,25 @@ export class RoomHost {
     const entry: Entry = {
       room,
       namespace: record.namespace,
+      presence: new Presence({
+        topic: room.discoveryKey,
+        onChange: (state) => this.#onPresence?.(room.key, state)
+      }),
       discovery: null,
       unsubscribe: null,
       timer: null,
       rediscover: []
     }
     entry.unsubscribe = room.onUpdate(() => this.#schedule(room.key))
+    entry.presence.start()
     this.#rooms.set(room.key, entry)
 
     // Connections made before this room existed are not covered by the handler
     // installed in `open`.
-    for (const socket of this.#swarm.connections) room.replicate(socket)
+    for (const socket of this.#swarm.connections) {
+      room.replicate(socket)
+      entry.presence.attach(socket)
+    }
     entry.discovery = this.#swarm.join(room.discoveryKey, { server: true, client: true })
 
     for (const delay of this.#rediscoverAfter) {
