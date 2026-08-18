@@ -167,6 +167,11 @@ function short(key) {
   return `${key.slice(0, 6)}…${key.slice(-4)}`
 }
 
+/** An Ethereum address, shortened the way every wallet shortens one. */
+function shortAddress(address) {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`
+}
+
 function time(at) {
   return new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
@@ -239,7 +244,25 @@ function renderRoom() {
 
     const author = document.createElement('span')
     author.className = 'message-author'
-    author.textContent = message.from === room.writerKey ? 'you' : short(message.from)
+    // The wallet address when the message proves one, because that is an
+    // identity that means something outside this room. The writer key is a
+    // fallback for messages written before signing existed.
+    author.textContent =
+      message.from === room.writerKey
+        ? 'you'
+        : message.verified
+          ? shortAddress(message.author)
+          : short(message.from)
+
+    if (message.verified === false) {
+      // Not hidden: somebody is in the room saying this, and pretending
+      // otherwise would be its own kind of lie.
+      const warning = document.createElement('span')
+      warning.className = 'message-warning'
+      warning.textContent = 'unverified author'
+      warning.title = `This message claims to be from ${message.author} but the signature does not match.`
+      meta.append(warning)
+    }
 
     const stamp = document.createElement('span')
     // The author's own clock, which they could have set to anything. Shown

@@ -4,8 +4,8 @@ import z32 from 'z32'
 import Autobase from 'autobase'
 import BlindPairing from 'blind-pairing'
 import type Corestore from 'corestore'
-import type { ChatMessage } from '@lcai-p2p/protocol'
-import { Room, RoomError } from './room.js'
+import { verifyAuthor, type ChatMessage } from '@lcai-p2p/protocol'
+import { Room, RoomError, type Identity } from './room.js'
 
 /**
  * Every room a client is in, over one store and one swarm.
@@ -40,6 +40,24 @@ export interface RoomRegistry {
   write(records: readonly RoomRecord[]): void
 }
 
+/**
+ * A message with this peer's judgement of who wrote it.
+ *
+ * `verified` is a local conclusion, not something that travels — it is absent
+ * on the wire and absent here when no author was claimed. Kept separate from
+ * `ChatMessage` so nothing can accidentally append a claim of its own
+ * verification.
+ */
+export interface AttributedMessage extends ChatMessage {
+  readonly verified?: boolean
+}
+
+/** What a host needs to check an author claim, if it is to check them at all. */
+export interface AuthorChecks {
+  recover(preimage: string, signature: string): string
+  hashText(text: string): string
+}
+
 /** Everything a view needs to render one room. */
 export interface RoomState {
   readonly key: string
@@ -50,7 +68,7 @@ export interface RoomState {
    */
   readonly writerKey: string
   readonly writable: boolean
-  readonly messages: readonly ChatMessage[]
+  readonly messages: readonly AttributedMessage[]
 }
 
 /** The part of a Hyperswarm topic session a host uses. */
@@ -86,6 +104,11 @@ export interface RoomHostOptions {
   readonly announceTimeout?: number
   /** Delays, in milliseconds, at which to look the topic up again. */
   readonly rediscoverAfter?: readonly number[]
+  /**
+   * How to check who wrote a message. Omit and messages are passed through
+   * unattributed, which is what a peer without a wallet should do.
+   */
+  readonly verify?: AuthorChecks
 }
 
 /** A room that could not be reopened, and why. */
@@ -156,6 +179,8 @@ export class RoomHost {
   readonly #announceTimeout: number
   readonly #rediscoverAfter: readonly number[]
   readonly #pairTimeout: number
+  readonly #verify: AuthorChecks | null
+  #identity: Identity | null = null
   #pairing: BlindPairing | null = null
   /** Room key to the member serving its invite. */
   readonly #members = new Map<string, { close(): Promise<void> }>()
@@ -175,6 +200,7 @@ export class RoomHost {
     this.#swarm = opts.swarm
     this.#registry = opts.registry ?? null
     this.#onChange = opts.onChange ?? null
+    this.#verify = opts.verify ?? null
     this.#settle = opts.settle ?? 50
     this.#announceTimeout = opts.announceTimeout ?? 10_000
     this.#rediscoverAfter = opts.rediscoverAfter ?? REDISCOVER_AFTER
@@ -456,12 +482,44 @@ export class RoomHost {
     return entry.room
   }
 
+  /**
+   * Attaches a wallet to every room, present and future.
+   *
+   * Rooms opened later pick it up too, which is what makes locking and
+   * unlocking the wallet mid-session behave: one call, and everything this peer
+   * writes is signed or stops being signed.
+   */
+  useIdentity(identity: Identity | null): void {
+    this.#identity = identity
+    for (const entry of this.#rooms.values()) entry.room.useIdentity(identity)
+  }
+
   async #stateOf(room: Room): Promise<RoomState> {
+    const messages = await room.messages()
+
     return {
       key: room.key,
       writerKey: room.writerKey,
       writable: room.writable,
-      messages: await room.messages()
+      messages: this.#verify ? messages.map((m) => this.#attribute(room.key, m)) : messages
+    }
+  }
+
+  /**
+   * Decides who wrote a message, and says so on the message itself.
+   *
+   * A failed signature does not hide the message — someone is in the room
+   * saying it, and pretending otherwise would be its own kind of lie. It is
+   * marked as disputed, which the interface can render as loudly as it likes.
+   */
+  #attribute(roomKey: string, message: ChatMessage): AttributedMessage {
+    if (!this.#verify) return message
+
+    try {
+      const author = verifyAuthor(roomKey, message, this.#verify.recover, this.#verify.hashText)
+      return author === null ? message : { ...message, verified: true }
+    } catch {
+      return { ...message, verified: false }
     }
   }
 
@@ -472,6 +530,8 @@ export class RoomHost {
       namespace: record.namespace,
       encryptionKey: record.encryptionKey
     })
+
+    room.useIdentity(this.#identity)
 
     // A create only learns its key here, and a duplicate record would otherwise
     // open the same room twice over one namespace, which deadlocks.

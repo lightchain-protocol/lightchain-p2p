@@ -1,4 +1,4 @@
-export { Room, RoomError, type RoomOptions } from './room.js'
+export { Room, RoomError, type Identity, type RoomOptions } from './room.js'
 export {
   RoomHost,
   memoryRegistry,
@@ -7,6 +7,8 @@ export {
   type RoomHostOptions,
   type RoomRecord,
   type RoomRegistry,
+  type AttributedMessage,
+  type AuthorChecks,
   type RoomState,
   type SwarmLike
 } from './host.js'

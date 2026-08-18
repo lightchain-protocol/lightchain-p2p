@@ -5,6 +5,7 @@ import type Corestore from 'corestore'
 import type { HypercoreLike } from 'corestore'
 import {
   MESSAGE_VERSION,
+  authorPreimage,
   isValidEntry,
   orderMessages,
   parseEntry,
@@ -69,6 +70,19 @@ export interface RoomOptions {
    * rather than separately.
    */
   readonly encryptionKey?: string
+}
+
+/**
+ * A wallet, reduced to what a room needs from one.
+ *
+ * An interface rather than the `Wallet` class, so this package keeps no
+ * dependency on a curve or on the wallet's storage. Reading a room needs
+ * neither.
+ */
+export interface Identity {
+  readonly address: string
+  sign(preimage: string): string
+  hashText(text: string): string
 }
 
 export class Room {
@@ -167,6 +181,20 @@ export class Room {
     return this.#base.writable
   }
 
+  /**
+   * Signs outgoing messages with the wallet, when one is attached.
+   *
+   * Optional, because a room works without a wallet and messages written before
+   * this existed have no author. Attaching one means every message this peer
+   * writes from now on carries a provable identity; it does nothing
+   * retroactively, and it cannot.
+   */
+  #identity: Identity | null = null
+
+  useIdentity(identity: Identity | null): void {
+    this.#identity = identity
+  }
+
   async send(text: string): Promise<ChatMessage> {
     if (!this.writable) {
       throw new RoomError(
@@ -183,8 +211,18 @@ export class Room {
       text
     }
 
-    await this.#base.append(message)
-    return message
+    const signed = this.#identity
+      ? {
+          ...message,
+          author: this.#identity.address,
+          sig: this.#identity.sign(
+            authorPreimage(this.key, message, (t) => this.#identity!.hashText(t))
+          )
+        }
+      : message
+
+    await this.#base.append(signed)
+    return signed
   }
 
   /** Grants write access to another peer, by their `writerKey`. */

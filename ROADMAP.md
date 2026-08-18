@@ -88,9 +88,15 @@ staked 50,000 LCAI each. Testnet lists ten but only some have a worker running.
 The **wallet** underpins that, and the app opens on it: twelve BIP-39 words
 generated on the machine, shown once to write down and confirmed back before the
 app continues, sealed under a password with scrypt and AES-256-GCM, with
-accounts derived at the path every other Ethereum wallet uses. What remains is
-joining it to identity, so the key that pays is also the key that signs in a
-room.
+accounts derived at the path every other Ethereum wallet uses.
+
+It is also **the identity**. Messages carry the author's address and an EIP-191
+signature bound to the room, so the key that pays is the key that signs, and two
+instances in one room now show each other as `0xD140…7aBe` rather than as an
+Autobase writer key. Both fields are optional: an entry without them is older or
+from a peer with no wallet, and is shown unattributed rather than rejected. One
+whose signature does not hold is shown **and marked**, because somebody is in
+the room saying it.
 
 The one thing that has been settled is whether it _can_ be built on Bare, which
 was not obvious: the workers speak ECDH P-256 and libsodium has no P-256, while

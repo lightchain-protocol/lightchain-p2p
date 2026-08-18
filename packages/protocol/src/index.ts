@@ -12,6 +12,8 @@ export {
   MAX_TEXT_LENGTH,
   MESSAGE_VERSION,
   MessageError,
+  authorPreimage,
+  verifyAuthor,
   compareMessages,
   isValidEntry,
   orderMessages,

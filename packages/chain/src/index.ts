@@ -16,6 +16,7 @@ export {
   AccountError,
   fromPrivateKey,
   hashDigestForSigning,
+  hashMessageForSigning,
   recoverAddress,
   toAddress,
   type Account,

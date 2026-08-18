@@ -59,6 +59,22 @@ export function hashDigestForSigning(digest: Uint8Array): Uint8Array {
 }
 
 /**
+ * EIP-191 over text, which is what {@link Account.signMessage} signs.
+ *
+ * The length in the prefix is the **byte** length, not the character count, so
+ * a message with any non-ASCII in it hashes differently than a naive
+ * implementation expects. Recovering from a `signMessage` signature means
+ * hashing with this and not with {@link hashDigestForSigning}: the two differ
+ * whenever the text is not exactly 32 bytes long, which is nearly always.
+ */
+export function hashMessageForSigning(message: string): Uint8Array {
+  const body = new TextEncoder().encode(message)
+  return keccak256(
+    concat(new TextEncoder().encode(`\x19Ethereum Signed Message:\n${body.length}`), body)
+  )
+}
+
+/**
  * Who signed something.
  *
  * The recovery byte is 27 or 28 by Ethereum convention and 0 or 1 as

@@ -26,6 +26,7 @@
     "@lcai-p2p/typescript-config": "workspace:*",
     "@lcai-p2p/vitest-config": "workspace:*",
     "eslint": "^10.8.1",
+    "viem": "^2.40.4",
     "vitest": "^4.1.10"
   }
 }

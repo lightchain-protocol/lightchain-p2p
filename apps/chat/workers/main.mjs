@@ -27,8 +27,10 @@ import {
   decodeUint256,
   depositAndAuthorize,
   encodeCall,
+  hashMessageForSigning,
   keccak256,
   lightchainErrors,
+  recoverAddress,
   prepaidBalance,
   resolveAddresses,
   sendTransaction,
@@ -356,8 +358,38 @@ const rooms = await RoomHost.open({
   store: chatStore,
   swarm,
   registry,
-  onChange: (room) => send({ t: 'room', room })
+  onChange: (room) => send({ t: 'room', room }),
+  // Reading who wrote a message needs no wallet, only a curve — so rooms are
+  // attributed whether or not this peer has one of its own.
+  verify: {
+    // Hashed as text, because that is what signMessage signs. Using the
+    // 32-byte-digest form here instead would reject every honest message.
+    recover: (preimage, signature) => recoverAddress(hashMessageForSigning(preimage), signature),
+    hashText: (text) => toHex(keccak256(new TextEncoder().encode(text)))
+  }
 })
+
+/**
+ * Ties the wallet to the rooms, in both directions.
+ *
+ * Unlocking makes everything this peer writes provably theirs; locking stops
+ * it. Neither touches what is already written, which cannot be changed and
+ * should not appear to have been.
+ */
+function useWalletInRooms() {
+  const { unlocked } = wallet.status()
+  if (!unlocked) {
+    rooms.useIdentity(null)
+    return
+  }
+
+  const account = wallet.account()
+  rooms.useIdentity({
+    address: account.address,
+    sign: (preimage) => account.signMessage(preimage),
+    hashText: (text) => toHex(keccak256(new TextEncoder().encode(text)))
+  })
+}
 
 for (const { key, reason } of rooms.failed) {
   console.error(`could not reopen room ${key.slice(0, 8)}: ${reason}`)
@@ -500,31 +532,38 @@ async function handle(req) {
     // reach afterwards — seeing it again costs the password.
     case 'wallet.create': {
       const { status, phrase } = wallet.create(String(req.password ?? ''))
+      useWalletInRooms()
       return { ...status, network, phrase }
     }
 
-    case 'wallet.import':
-      return {
-        ...wallet.importPhrase(String(req.phrase ?? ''), String(req.password ?? '')),
-        network
-      }
+    case 'wallet.import': {
+      const status = wallet.importPhrase(String(req.phrase ?? ''), String(req.password ?? ''))
+      useWalletInRooms()
+      return { ...status, network }
+    }
 
     case 'wallet.reveal':
       return { phrase: wallet.revealPhrase(String(req.password ?? '')) }
 
-    case 'wallet.unlock':
-      return { ...wallet.unlock(String(req.password ?? '')), network }
+    case 'wallet.unlock': {
+      const status = wallet.unlock(String(req.password ?? ''))
+      useWalletInRooms()
+      return { ...status, network }
+    }
 
     case 'wallet.lock':
       // Locking has to end the conversation too. The session was opened by this
       // address and is paid for by it, and leaving it live would be a locked
       // wallet still spending.
       forgetInference()
-      return { ...wallet.lock(), network }
+      const locked = wallet.lock()
+      useWalletInRooms()
+      return { ...locked, network }
 
     case 'wallet.remove': {
       const status = wallet.remove(String(req.password ?? ''))
       forgetInference()
+      useWalletInRooms()
       return { ...status, network }
     }
 
