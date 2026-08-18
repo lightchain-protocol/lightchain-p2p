@@ -21,26 +21,35 @@
     "os": {
       "bare": "bare-os",
       "default": "os"
+    },
+    "#fetch": {
+      "types": "./runtime/fetch.d.ts",
+      "bare": "./runtime/bare.js",
+      "default": "./runtime/node.js"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "runtime"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:bare": "node scripts/check-bare.mjs && bare scripts/check-bare.mjs"
   },
   "devDependencies": {
     "@lcai-p2p/eslint-config": "workspace:*",
     "@lcai-p2p/typescript-config": "workspace:*",
     "@lcai-p2p/vitest-config": "workspace:*",
+    "bare-runtime": "1.29.4",
     "eslint": "^10.8.1",
     "vitest": "^4.1.10"
   },
   "dependencies": {
     "@lcai-p2p/preflight": "workspace:*",
+    "bare-fetch": "^3.2.0",
     "bare-os": "^3.9.0",
     "bare-subprocess": "^6.1.0"
   }

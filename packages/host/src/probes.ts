@@ -1,4 +1,5 @@
 import os from 'os'
+import fetch from '#fetch'
 import type { Probes } from '@lcai-p2p/preflight'
 import {
   parseAppleChip,
@@ -96,10 +97,19 @@ export async function probeCast() {
 
 export async function probeOllama(port = 11434) {
   try {
-    const res = await fetch(`http://127.0.0.1:${port}/api/tags`, {
-      signal: AbortSignal.timeout(5000)
-    })
-    if (!res.ok) return { reachable: false }
+    // Raced rather than aborted: Bare has no AbortController either, and a
+    // probe that answers is worth more than a socket closed a little sooner.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const res = await Promise.race([
+      fetch(`http://127.0.0.1:${port}/api/tags`),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), 5000)
+        timer.unref?.()
+      })
+    ])
+    clearTimeout(timer)
+
+    if (!res || !res.ok) return { reachable: false }
     return parseOllamaTags(await res.json())
   } catch {
     return { reachable: false }

@@ -50,8 +50,10 @@ The lifecycle is complete: `doctor`, `pull`, `import-key`, `keygen`, `register`,
 
 Two things remain. **Contract address resolution** — `AI_CONFIG_ADDRESS` and
 `JOB_REGISTRY_ADDRESS` are supplied by hand where the toolkit reads them from the
-registry with `aiConfig()` and `jobRegistry()`. And **better keystore password
-storage**: the private key is stdin-only and never stored, but the password is
+registry with `aiConfig()` and `jobRegistry()`. This is now known to be a single
+`eth_call` that works under Bare, see
+[ADR 0004](docs/decisions/0004-chain-access-from-bare.md). And **better keystore
+password storage**: the private key is stdin-only and never stored, but the password is
 still an environment variable matching the toolkit's convention. The worker must
 survive unattended restarts so it has to be retrievable without a human, and Bare
 has no OS keychain binding today. A protected file or platform keychain would be
@@ -79,6 +81,14 @@ submission through `JobRegistry`, the relay and gateway clients, and settlement.
 Routing is decided for now — the hub will use the same foundation-operated
 relay and dispatcher the web client uses, since direct client-to-worker routing
 is Advancement 5 and gated on verifiable randomness.
+
+Chain access is spiked, see [ADR 0004](docs/decisions/0004-chain-access-from-bare.md).
+**viem does not run under Bare** — it pins a noble version that imports
+`node:crypto` — but keccak256, recoverable secp256k1 signing and JSON-RPC
+`eth_call` all work on the v2 line, verified against the live testnet. The
+recommendation is a minimal client rather than a bundler or moving chain access
+into the Electron main process, which would break the one-core-five-platforms
+architecture.
 
 Invites now use `blind-pairing` as the proposal specifies: one string that
 carries no room key, and the joiner arrives able to write. What remains is
