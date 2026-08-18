@@ -5,10 +5,21 @@ import FramedStream from 'framed-stream'
 import goodbye from 'graceful-goodbye'
 import path from 'bare-path'
 import fs from 'bare-fs'
+import os from 'bare-os'
+import process from 'bare-process'
 import b4a from 'b4a'
 import { persistent } from 'bare-storage'
 import { isBareKit } from 'which-runtime'
 import { RoomHost } from '@lcai-p2p/room'
+import { probeAll, runAsync } from '@lcai-p2p/host'
+import { runChecks, summarize } from '@lcai-p2p/preflight'
+import {
+  inspectWorker,
+  isHealthy,
+  logsWorker,
+  parseContainerState,
+  resolveConfig
+} from '@lcai-p2p/worker'
 
 /**
  * The data plane.
@@ -39,6 +50,9 @@ import { RoomHost } from '@lcai-p2p/room'
  *     { id, t: 'room.send',    room, text }
  *     { id, t: 'room.invite',  room, writerKey }
  *     { id, t: 'room.leave',   room }
+ *     { id, t: 'worker.doctor' }
+ *     { id, t: 'worker.status' }
+ *     { id, t: 'worker.logs' }
  *
  * Worker to renderer:
  *
@@ -122,8 +136,83 @@ for (const { key, reason } of rooms.failed) {
   console.error(`could not reopen room ${key.slice(0, 8)}: ${reason}`)
 }
 
+/**
+ * The worker's configuration, or why there isn't one.
+ *
+ * Read from the same environment variables as the existing toolkit so an
+ * operator's current setup keeps working. `resolveConfig` refuses without a
+ * keystore password, which is correct — but it is not a reason to hide the
+ * panel, because `doctor` needs no configuration at all and is the part an
+ * operator wants before anything is installed.
+ */
+function workerConfig() {
+  try {
+    const env = process.env
+    return {
+      config: resolveConfig({
+        network: env.NETWORK === 'testnet' ? 'testnet' : 'mainnet',
+        keysDir: env.KEYS_DIR || path.join(os.homedir(), 'lightchain-worker', 'keys'),
+        keystorePassword: env.WORKER_PASSWORD || '',
+        aiConfigAddress: env.AI_CONFIG_ADDRESS || undefined,
+        jobRegistryAddress: env.JOB_REGISTRY_ADDRESS || undefined,
+        supportedModels: env.SUPPORTED_MODELS ? env.SUPPORTED_MODELS.split(',') : undefined,
+        ollamaUrl: env.OLLAMA_URL || undefined,
+        containerName: env.CONTAINER_NAME || undefined,
+        platform: os.platform()
+      }),
+      problem: null
+    }
+  } catch (err) {
+    return { config: null, problem: err.message }
+  }
+}
+
 async function handle(req) {
   switch (req.t) {
+    // --- Worker -----------------------------------------------------------
+    //
+    // Read-only. Everything that changes the worker's state — pull, start,
+    // register, key import — stays in the supervisor CLI for now: the private
+    // key is stdin-only by design, and a pull holds the connection open for
+    // minutes with no way yet to report progress here.
+
+    case 'worker.doctor': {
+      const results = runChecks(await probeAll())
+      return { results, totals: summarize(results) }
+    }
+
+    case 'worker.status': {
+      const { config, problem } = workerConfig()
+      if (!config) return { configured: false, problem }
+
+      const res = await runAsync('docker', inspectWorker(config).argv, { timeout: 15_000 })
+      const state = parseContainerState(res.ok ? res.stdout : null)
+
+      // Named fields rather than the whole config: it carries the keystore
+      // password, and the renderer has no business holding that.
+      return {
+        configured: true,
+        network: config.network,
+        chainId: config.chainId,
+        containerName: config.containerName,
+        models: config.supportedModels,
+        ollamaUrl: config.ollamaUrl,
+        runnable: Boolean(config.aiConfigAddress && config.jobRegistryAddress),
+        healthy: isHealthy(state),
+        state
+      }
+    }
+
+    case 'worker.logs': {
+      const { config, problem } = workerConfig()
+      if (!config) return { configured: false, problem }
+
+      const res = await runAsync('docker', logsWorker(config, { tail: 200 }).argv, {
+        timeout: 20_000
+      })
+      return { configured: true, text: (res.stdout || res.stderr || '').trimEnd() }
+    }
+
     // The window can be reloaded while the worker keeps running, and `ready` is
     // only pushed once at boot. Without a way to ask, a reloaded renderer shows
     // an empty room list over a worker that is still in every room.

@@ -1,0 +1,47 @@
+{
+  "name": "@lcai-p2p/host",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "//imports": "Bare honours this map; Node only consults imports for #-prefixed specifiers, so it ignores these and uses its own builtins. One source, both runtimes.",
+  "imports": {
+    "child_process": {
+      "bare": "bare-subprocess",
+      "default": "child_process"
+    },
+    "os": {
+      "bare": "bare-os",
+      "default": "os"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@lcai-p2p/eslint-config": "workspace:*",
+    "@lcai-p2p/typescript-config": "workspace:*",
+    "@lcai-p2p/vitest-config": "workspace:*",
+    "eslint": "^10.8.1",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@lcai-p2p/preflight": "workspace:*",
+    "bare-os": "^3.9.0",
+    "bare-subprocess": "^6.1.0"
+  }
+}

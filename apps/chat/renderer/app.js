@@ -44,6 +44,11 @@ const el = {
   composer: document.getElementById('composer'),
   composerInput: document.getElementById('composer-input'),
   sendBtn: document.getElementById('send-btn'),
+  workerRefresh: document.getElementById('worker-refresh'),
+  workerChecks: document.getElementById('worker-checks'),
+  workerSummary: document.getElementById('worker-summary'),
+  workerContainer: document.getElementById('worker-container'),
+  workerLogs: document.getElementById('worker-logs'),
   joinDialog: document.getElementById('join-dialog'),
   joinForm: document.getElementById('join-form'),
   joinInput: document.getElementById('join-input'),
@@ -80,7 +85,12 @@ function showSection(name) {
 }
 
 for (const button of el.sections) {
-  button.addEventListener('click', () => showSection(button.dataset.section))
+  button.addEventListener('click', () => {
+    showSection(button.dataset.section)
+    // Probing the host costs a few subprocesses, so it happens when the panel
+    // is opened rather than on every launch.
+    if (button.dataset.section === 'worker') void refreshWorker()
+  })
 }
 
 // --- Talking to the worker -------------------------------------------------
@@ -383,6 +393,121 @@ function resize() {
 }
 
 el.composerInput.addEventListener('input', resize)
+
+// --- Worker ----------------------------------------------------------------
+
+function line(term, value) {
+  const dt = document.createElement('dt')
+  dt.textContent = term
+  const dd = document.createElement('dd')
+  dd.textContent = value
+  return [dt, dd]
+}
+
+function renderChecks({ results, totals }) {
+  el.workerChecks.replaceChildren()
+
+  for (const result of results) {
+    const item = document.createElement('li')
+    item.className = 'check'
+
+    const status = document.createElement('span')
+    status.className = 'check-status'
+    status.dataset.status = result.status
+    status.textContent = result.status === 'pass' ? 'ok' : result.status
+
+    const body = document.createElement('div')
+    const detail = document.createElement('p')
+    detail.className = 'check-detail'
+    detail.textContent = `${result.title}: ${result.detail}`
+    body.append(detail)
+
+    // A failure without the command that fixes it is just bad news.
+    if (result.remedy) {
+      const remedy = document.createElement('p')
+      remedy.className = 'check-remedy'
+      remedy.textContent = result.remedy
+      body.append(remedy)
+    }
+
+    item.append(status, body)
+    el.workerChecks.append(item)
+  }
+
+  el.workerSummary.textContent = totals.ready
+    ? `${totals.passed} passed, ${totals.warned} warnings. This host can run a worker.`
+    : `${totals.passed} passed, ${totals.warned} warnings, ${totals.failed} failed. Resolve the failures above.`
+}
+
+function renderContainer(status) {
+  el.workerContainer.replaceChildren()
+
+  if (!status.configured) {
+    const note = document.createElement('p')
+    note.className = 'check-detail'
+    note.textContent = 'No worker is configured on this machine.'
+
+    // The message from the config layer explains the requirement but not which
+    // variable carries it, which is the only thing the reader can act on.
+    const why = document.createElement('p')
+    why.className = 'check-remedy'
+    why.textContent = `${status.problem} Set WORKER_PASSWORD, and KEYS_DIR if the keystore is not in ~/lightchain-worker/keys, then reopen this panel.`
+
+    el.workerContainer.append(note, why)
+    return
+  }
+
+  const facts = document.createElement('dl')
+  facts.className = 'facts'
+  facts.append(
+    ...line('Container', status.containerName),
+    ...line('Network', `${status.network} (chain ${status.chainId})`),
+    ...line('Models', status.models.join(', ')),
+    ...line('Ollama', status.ollamaUrl),
+    ...line('State', `${status.state.health} — ${status.state.detail}`)
+  )
+  if (status.state.startedAt) facts.append(...line('Started', status.state.startedAt))
+  el.workerContainer.append(facts)
+
+  if (status.state.remedy) {
+    const remedy = document.createElement('p')
+    remedy.className = 'check-remedy'
+    remedy.textContent = status.state.remedy
+    el.workerContainer.append(remedy)
+  }
+}
+
+let refreshing = false
+
+async function refreshWorker() {
+  if (refreshing) return
+  refreshing = true
+  el.workerRefresh.disabled = true
+  el.workerSummary.textContent = 'Checking the host…'
+
+  try {
+    // In parallel, because the host probes are the slow part and the container
+    // query should not queue behind them.
+    const [checks, status, logs] = await Promise.all([
+      request('worker.doctor'),
+      request('worker.status'),
+      request('worker.logs')
+    ])
+
+    renderChecks(checks)
+    renderContainer(status)
+    el.workerLogs.textContent = logs.configured
+      ? logs.text || 'No output. The container may never have started.'
+      : 'Not configured.'
+  } catch (err) {
+    el.workerSummary.textContent = `Could not read the host: ${err.message}`
+  } finally {
+    refreshing = false
+    el.workerRefresh.disabled = false
+  }
+}
+
+el.workerRefresh.addEventListener('click', () => void refreshWorker())
 
 // --- Updates ---------------------------------------------------------------
 

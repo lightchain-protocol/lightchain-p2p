@@ -16,11 +16,16 @@
     "make": "npm run build && electron-forge make"
   },
   "dependencies": {
+    "@lcai-p2p/host": "workspace:*",
+    "@lcai-p2p/preflight": "workspace:*",
     "@lcai-p2p/room": "workspace:*",
     "@lcai-p2p/ui": "workspace:*",
+    "@lcai-p2p/worker": "workspace:*",
     "b4a": "^1.8.1",
     "bare-fs": "^4.8.0",
+    "bare-os": "^3.9.0",
     "bare-path": "^3.1.1",
+    "bare-process": "^4.5.0",
     "bare-storage": "^1.1.0",
     "corestore": "^7.12.0",
     "framed-stream": "^1.0.1",

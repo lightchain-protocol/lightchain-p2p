@@ -279,6 +279,154 @@ body {
   color: var(--lc-fg);
 }
 
+/* --- Worker --------------------------------------------------------------- */
+
+.worker {
+  width: 100%;
+  max-width: 78ch;
+  margin: 0 auto;
+  padding: var(--lc-space-xxl);
+  overflow-y: auto;
+}
+
+.worker-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lc-space-lg);
+  margin-bottom: var(--lc-space-xl);
+}
+
+.worker-head .button {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.worker-title {
+  margin: 0;
+  font-size: var(--lc-text-xxl);
+  font-weight: 600;
+}
+
+.worker-sub {
+  margin: var(--lc-space-xs) 0 0;
+  color: var(--lc-fg-muted);
+}
+
+.worker-block {
+  padding-top: var(--lc-space-lg);
+  margin-bottom: var(--lc-space-xl);
+  border-top: 1px solid var(--lc-rule);
+}
+
+.worker-heading {
+  margin: 0 0 var(--lc-space-md);
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lc-fg-dim);
+}
+
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check {
+  display: grid;
+  grid-template-columns: 5rem 1fr;
+  gap: var(--lc-space-md);
+  align-items: baseline;
+}
+
+.check-status {
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lc-success);
+}
+
+.check-status[data-status='warn'] {
+  color: var(--lc-warning);
+}
+
+.check-status[data-status='fail'] {
+  color: var(--lc-danger);
+}
+
+.check-detail {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  user-select: text;
+}
+
+/* The remedy is the reason a failed check is useful rather than annoying. */
+.check-remedy {
+  margin: var(--lc-space-xs) 0 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+  user-select: text;
+}
+
+.worker-summary {
+  margin: var(--lc-space-lg) 0 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: minmax(0, 9rem) 1fr;
+  gap: var(--lc-space-sm) var(--lc-space-lg);
+  margin: 0;
+}
+
+.facts dt {
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+}
+
+.facts dd {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  user-select: text;
+}
+
+.logs {
+  margin: 0;
+  max-height: 24vh;
+  overflow: auto;
+  padding: var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated);
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-size: var(--lc-text-xs);
+  line-height: 1.5;
+  color: var(--lc-fg-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.worker-footnote {
+  margin: 0;
+  padding-top: var(--lc-space-lg);
+  border-top: 1px solid var(--lc-rule);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+}
+
+.worker-footnote code {
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.92em;
+}
+
 /* --- Empty state ---------------------------------------------------------- */
 
 .empty {

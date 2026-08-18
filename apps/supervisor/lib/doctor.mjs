@@ -1,5 +1,5 @@
 import { runChecks, summarize } from '@lcai-p2p/preflight'
-import { probeAll } from './probes.mjs'
+import { probeAll } from '@lcai-p2p/host'
 
 const MARK = { pass: '  ok  ', warn: ' warn ', fail: ' FAIL ' }
 

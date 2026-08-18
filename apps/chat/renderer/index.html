@@ -139,29 +139,36 @@
 
         <!-- Worker ---------------------------------------------------------->
         <div class="panel" id="panel-worker" hidden>
-          <div class="unbuilt">
-            <p class="unbuilt-status" data-tone="near">Built, but not here</p>
-            <h1 class="unbuilt-title">Run a worker from the hub</h1>
-            <p class="unbuilt-body">
-              A user who also runs a worker should not need a second tool. The supervisor already
-              does the whole job — this panel would drive it instead of a terminal.
+          <div class="worker">
+            <header class="worker-head">
+              <div>
+                <h1 class="worker-title">Worker</h1>
+                <p class="worker-sub">Whether this machine can run one, and what it is doing.</p>
+              </div>
+              <button class="button button-sm" type="button" id="worker-refresh">Refresh</button>
+            </header>
+
+            <section class="worker-block">
+              <h2 class="worker-heading">Host readiness</h2>
+              <ul class="checks" id="worker-checks"></ul>
+              <p class="worker-summary" id="worker-summary"></p>
+            </section>
+
+            <section class="worker-block">
+              <h2 class="worker-heading">Container</h2>
+              <div id="worker-container"></div>
+            </section>
+
+            <section class="worker-block">
+              <h2 class="worker-heading">Recent output</h2>
+              <pre class="logs" id="worker-logs"></pre>
+            </section>
+
+            <p class="worker-footnote">
+              Read-only. Installing, registering and starting stay in
+              <code>lcai-supervisor</code>: the private key is read from stdin and nowhere else, and
+              a pull runs for minutes with no way to report progress here yet.
             </p>
-
-            <dl class="ledger">
-              <dt>Already built</dt>
-              <dd>
-                <code>apps/supervisor</code>, a single native binary with the full lifecycle:
-                <code>doctor</code>, <code>pull</code>, <code>import-key</code>,
-                <code>keygen</code>, <code>register</code>, <code>start</code>, <code>status</code>,
-                <code>stop</code>, <code>logs</code>. It replaces a nine-phase manual onboarding.
-              </dd>
-
-              <dt>Still missing</dt>
-              <dd>
-                This panel. It is the cheapest of the three unbuilt sections, because the work
-                underneath is finished and tested rather than hypothetical.
-              </dd>
-            </dl>
           </div>
         </div>
 

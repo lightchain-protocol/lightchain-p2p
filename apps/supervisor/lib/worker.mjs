@@ -1,4 +1,4 @@
-import { spawnSync } from 'bare-subprocess'
+import { run } from '@lcai-p2p/host'
 import os from 'bare-os'
 import path from 'bare-path'
 // Bare has no global `process`; it is a module.
@@ -31,11 +31,8 @@ import {
 function execute(command, { quiet = false } = {}) {
   if (!quiet) console.log(`$ ${command.display}`)
 
-  const res = spawnSync('docker', command.argv, { stdio: ['ignore', 'pipe', 'pipe'] })
-  const stdout = res.stdout ? res.stdout.toString() : ''
-  const stderr = res.stderr ? res.stderr.toString() : ''
-
-  return { ok: !res.error && res.status === 0, status: res.status, stdout, stderr }
+  // Docker pulls and container starts outrun the default timeout.
+  return run('docker', command.argv, { timeout: 0 })
 }
 
 /**
