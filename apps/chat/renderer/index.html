@@ -17,7 +17,293 @@
       <span class="wordmark">Lightchain</span>
       <span class="titlebar-status" id="status">starting</span>
       <button class="button button-primary button-sm" id="update-btn" hidden>Apply update</button>
+      <button
+        class="icon-button"
+        type="button"
+        id="settings-btn"
+        title="Settings"
+        aria-label="Settings"
+      >
+        <svg
+          viewBox="0 0 16 16"
+          width="15"
+          height="15"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.3"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <circle cx="8" cy="8" r="2.3" />
+          <path
+            d="M8 1.5v1.6M8 12.9v1.6M14.5 8h-1.6M3.1 8H1.5M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1M12.6 12.6l-1.1-1.1M4.5 4.5L3.4 3.4"
+          />
+        </svg>
+      </button>
     </header>
+
+    <!-- First run. Covers everything: the wallet is the identity, so there is
+         nothing meaningful to do before one exists. -->
+    <div class="onboarding" id="onboarding" hidden>
+      <div class="onboarding-card">
+        <!-- 1. Choose -->
+        <section class="step" id="step-choose">
+          <h1 class="step-title">Set up your wallet</h1>
+          <p class="step-body">
+            One key is your identity here. It signs your messages, joins rooms and pays for
+            inference. It is generated on this machine and never leaves it.
+          </p>
+          <div class="step-actions">
+            <button class="button button-primary" type="button" id="choose-create">
+              Create a new wallet
+            </button>
+            <button class="button" type="button" id="choose-import">
+              I already have a recovery phrase
+            </button>
+          </div>
+        </section>
+
+        <!-- 2. Password -->
+        <section class="step" id="step-password" hidden>
+          <h1 class="step-title">Choose a password</h1>
+          <p class="step-body">
+            This encrypts your wallet on this machine. It is not your recovery phrase, and it does
+            not leave here.
+          </p>
+          <form class="wallet-form" id="onboard-password-form">
+            <label class="field">
+              <span class="field-label">Password</span>
+              <input
+                class="input"
+                id="onboard-password"
+                type="password"
+                autocomplete="new-password"
+                placeholder="At least 8 characters"
+              />
+            </label>
+            <label class="field">
+              <span class="field-label">Confirm password</span>
+              <input
+                class="input"
+                id="onboard-confirm"
+                type="password"
+                autocomplete="new-password"
+                placeholder="Type it again"
+              />
+            </label>
+            <p class="dialog-error" id="onboard-password-error" hidden></p>
+            <div class="step-actions">
+              <button class="button" type="button" data-back="step-choose">Back</button>
+              <button class="button button-primary" type="submit" id="onboard-password-btn">
+                Continue
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- 3. Show the phrase -->
+        <section class="step" id="step-phrase" hidden>
+          <h1 class="step-title">Write these twelve words down</h1>
+          <p class="step-body">
+            This is the only way to recover your wallet. Anyone who has it has your wallet, and
+            nobody can restore it for you — not us, not anyone.
+          </p>
+          <ol class="phrase" id="phrase-words"></ol>
+          <div class="step-actions">
+            <button class="button" type="button" id="phrase-copy">Copy</button>
+            <button class="button button-primary" type="button" id="phrase-continue">
+              I have written it down
+            </button>
+          </div>
+        </section>
+
+        <!-- 4. Prove it -->
+        <section class="step" id="step-confirm" hidden>
+          <h1 class="step-title">Check your backup</h1>
+          <p class="step-body" id="confirm-prompt"></p>
+          <form class="wallet-form" id="confirm-form">
+            <div class="confirm-fields" id="confirm-fields"></div>
+            <p class="dialog-error" id="confirm-error" hidden></p>
+            <div class="step-actions">
+              <button class="button" type="button" id="confirm-back">Show me again</button>
+              <button class="button button-primary" type="submit">Confirm</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Import -->
+        <section class="step" id="step-import" hidden>
+          <h1 class="step-title">Restore from a recovery phrase</h1>
+          <p class="step-body">Twelve words, in order. Capitals and extra spaces do not matter.</p>
+          <form class="wallet-form" id="import-form">
+            <label class="field">
+              <span class="field-label">Recovery phrase</span>
+              <textarea
+                class="input phrase-input"
+                id="import-phrase"
+                rows="3"
+                spellcheck="false"
+                autocomplete="off"
+                placeholder="word word word…"
+              ></textarea>
+            </label>
+            <label class="field">
+              <span class="field-label">Password for this machine</span>
+              <input
+                class="input"
+                id="import-password"
+                type="password"
+                autocomplete="new-password"
+                placeholder="At least 8 characters"
+              />
+            </label>
+            <p class="dialog-error" id="import-error" hidden></p>
+            <div class="step-actions">
+              <button class="button" type="button" data-back="step-choose">Back</button>
+              <button class="button button-primary" type="submit" id="import-btn">Restore</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Unlock, when a wallet exists but the app was restarted -->
+        <section class="step" id="step-unlock" hidden>
+          <h1 class="step-title">Welcome back</h1>
+          <p class="step-body">Unlock your wallet to continue.</p>
+          <form class="wallet-form" id="onboard-unlock-form">
+            <label class="field">
+              <span class="field-label">Password</span>
+              <input
+                class="input"
+                id="onboard-unlock-password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Password"
+              />
+            </label>
+            <p class="dialog-error" id="onboard-unlock-error" hidden></p>
+            <button class="button button-primary" type="submit" id="onboard-unlock-btn">
+              Unlock
+            </button>
+          </form>
+        </section>
+      </div>
+    </div>
+
+    <!-- Settings. One panel for the whole app: a section shows what is
+         happening, this is where everything is configured. -->
+    <div class="settings" id="settings" hidden>
+      <div class="settings-frame">
+        <nav class="settings-nav" aria-label="Settings">
+          <h2 class="sidebar-title">Settings</h2>
+          <button class="nav-item is-active" type="button" data-settings="general">General</button>
+          <button class="nav-item" type="button" data-settings="wallet">Wallet</button>
+          <button class="nav-item" type="button" data-settings="worker">Worker</button>
+          <button class="nav-item" type="button" data-settings="advanced">Advanced</button>
+          <button class="button button-block" type="button" id="settings-close">Done</button>
+        </nav>
+
+        <div class="settings-body">
+          <section class="settings-page" id="settings-general">
+            <h3 class="settings-heading">Network</h3>
+            <p class="settings-note">
+              Which chain balances are read from and transactions are signed for. Changing it does
+              not move anything — a wallet has the same address on both.
+            </p>
+            <label class="field">
+              <span class="field-label">Network</span>
+              <select class="input" id="set-network">
+                <option value="mainnet">Mainnet</option>
+                <option value="testnet">Testnet</option>
+              </select>
+            </label>
+            <dl class="facts" id="network-facts"></dl>
+          </section>
+
+          <section class="settings-page" id="settings-wallet" hidden>
+            <h3 class="settings-heading">Recovery phrase</h3>
+            <p class="settings-note">
+              Twelve words that restore this wallet anywhere. Seeing them costs your password, and
+              anyone who has them has the wallet.
+            </p>
+            <form class="wallet-form" id="reveal-form">
+              <label class="field">
+                <span class="field-label">Password</span>
+                <input
+                  class="input"
+                  id="reveal-password"
+                  type="password"
+                  autocomplete="current-password"
+                />
+              </label>
+              <p class="dialog-error" id="reveal-error" hidden></p>
+              <button class="button" type="submit" id="reveal-btn">Show recovery phrase</button>
+            </form>
+            <ol class="phrase" id="reveal-phrase" hidden></ol>
+
+            <h3 class="settings-heading">Remove this wallet</h3>
+            <p class="settings-note">
+              Deletes the encrypted vault from this machine. Without your recovery phrase written
+              down, this cannot be undone by anyone.
+            </p>
+            <form class="wallet-form" id="remove-form">
+              <label class="field">
+                <span class="field-label">Password</span>
+                <input
+                  class="input"
+                  id="remove-password"
+                  type="password"
+                  autocomplete="current-password"
+                />
+              </label>
+              <p class="dialog-error" id="remove-error" hidden></p>
+              <button class="button" type="submit" id="remove-btn">Remove wallet</button>
+            </form>
+          </section>
+
+          <section class="settings-page" id="settings-worker" hidden>
+            <h3 class="settings-heading">Worker</h3>
+            <p class="settings-note">
+              Used by the Worker section to talk to a running worker. Anything left blank falls back
+              to the environment variables the toolkit already uses, so an existing shell setup
+              keeps working.
+            </p>
+            <form class="wallet-form" id="worker-settings-form">
+              <label class="field">
+                <span class="field-label">Keystore password</span>
+                <input class="input" id="set-worker-password" type="password" autocomplete="off" />
+              </label>
+              <label class="field">
+                <span class="field-label">Keys directory</span>
+                <input class="input" id="set-keys-dir" type="text" spellcheck="false" />
+              </label>
+              <label class="field">
+                <span class="field-label">Container name</span>
+                <input class="input" id="set-container" type="text" spellcheck="false" />
+              </label>
+              <label class="field">
+                <span class="field-label">Supported models, comma separated and untagged</span>
+                <input class="input" id="set-models" type="text" spellcheck="false" />
+              </label>
+              <label class="field">
+                <span class="field-label">Ollama URL</span>
+                <input class="input" id="set-ollama" type="text" spellcheck="false" />
+              </label>
+              <p class="dialog-error" id="worker-settings-error" hidden></p>
+              <button class="button button-primary" type="submit">Save</button>
+            </form>
+          </section>
+
+          <section class="settings-page" id="settings-advanced" hidden>
+            <h3 class="settings-heading">Storage</h3>
+            <p class="settings-note">
+              Where rooms, the wallet vault and these settings live on this machine. Anyone who can
+              read this directory can read your rooms.
+            </p>
+            <dl class="facts" id="storage-facts"></dl>
+          </section>
+        </div>
+      </div>
+    </div>
 
     <main class="shell">
       <nav class="sidebar" aria-label="Primary">

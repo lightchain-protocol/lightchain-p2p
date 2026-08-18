@@ -15,10 +15,23 @@ Conversation, end to end and over a real network:
 - Rooms and write access survive a restart.
 - Over-the-air updates, from the Pear runtime.
 
+The app opens on **wallet setup**, not on chat. Twelve words are generated on
+this machine, shown once to write down, and three of them asked back before the
+app will continue — a phrase nobody copied correctly is a wallet nobody can
+recover, and that is the last moment when finding out is free. The phrase is
+standard BIP-39 at `m/44'/60'/0'/0/0`, so it restores in MetaMask or a Ledger.
+Details in [`packages/wallet`](../../packages/wallet).
+
 And the Worker section, read-only: host readiness checks with remedies, and
 container state when a worker is configured. Installing, registering and
 starting stay in `lcai-supervisor`, because the private key is stdin-only by
 design and a pull runs for minutes with no way to report progress here yet.
+
+Configuration lives in **one settings panel** behind the gear, not scattered
+across the sections that use it: a section shows what is happening, settings is
+where things are changed. Values written there are layered over the environment
+variables the toolkit already reads, so an operator's existing shell setup keeps
+working and the CLI and the app agree.
 
 Verified between two separate application instances on the public DHT: create,
 join, grant, exchange, and both sides rendering the same history in the same
@@ -34,9 +47,11 @@ no responses, no inference of any kind. The hub is specified to do this — see
 [Advancement 4](../../docs/proposals/lightchain-on-pear.md) — and none of it is
 built. What exists is the conversation half: people talking to each other.
 
-**There are no payments and no wallet.** The proposal makes the wallet the root
-identity, so the key that pays is the key that signs. Today a peer is identified
-only by its Autobase writer key.
+**There are no payments, and the wallet is not yet the identity.** It exists,
+holds an address and reads balances, but nothing spends from it. The proposal
+makes the wallet the root identity, so the key that pays is the key that signs;
+today a peer in a room is still identified only by its Autobase writer key, and
+the two have not been joined up.
 
 **Encryption stops at this machine.** Rooms are encrypted, so the peers
 replicating them cannot read them — but the key is stored in

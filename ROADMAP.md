@@ -19,7 +19,7 @@ with the longest lead times are procurement and infrastructure rather than code.
 | `packages/room`             | 20    | Multi-writer rooms on Autobase, and the host that keeps several of them.                      |
 | `packages/preflight`        | 19    | Host readiness with actionable remedies.                                                      |
 | `packages/chain`            | 65    | Reads Lightchain and signs for it, every byte checked against viem.                           |
-| `packages/wallet`           | 26    | Keystore V3 with scrypt, verified against Foundry in both directions.                         |
+| `packages/wallet`           | 48    | BIP-39 phrase, BIP-32 accounts, matched to viem. Keystore V3 export checked against Foundry.  |
 | `packages/inference-crypto` | 15    | ECDH P-256 and AES-256-GCM as the deployed workers speak it, under Bare.                      |
 | `packages/safety`           | 10    | Refusal-list decision logic.                                                                  |
 | `packages/drive`            | 9     | Publish a model, resolve it, range-read weights. Survives the publisher going offline.        |
@@ -27,7 +27,7 @@ with the longest lead times are procurement and infrastructure rather than code.
 | `packages/testkit`          | 6     | Two-machine harness with a negative control.                                                  |
 | `packages/blind`            | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server. |
 
-**292 tests.** CI green on every push. The six-platform build matrix compiles a
+**314 tests.** CI green on every push. The six-platform build matrix compiles a
 standalone supervisor binary for Windows, macOS and Linux on x64 and arm64, and
 every runner executes the binary it produced.
 
@@ -70,10 +70,14 @@ a restart. Verified between two application instances on the public DHT.
 network, no responses, no inference. This is the part most readers assume
 "Lightchain chat" means, and none of it is built.
 
-The **wallet** now does: a key is generated on the machine, encrypted under a
-password with scrypt at geth's standard parameters, and its balances read from
+The **wallet** now does, and the app opens on it: twelve BIP-39 words generated
+on the machine, shown once to write down and confirmed back before the app
+continues, sealed under a password with scrypt and AES-256-GCM, with accounts
+derived at the path every other Ethereum wallet uses. Balances are read from
 chain. What is missing above it is the flow — `depositAndAuthorize`, session
-creation, and the delegate that submits jobs against a prepaid balance.
+creation, and the delegate that submits jobs against a prepaid balance — and
+joining it to identity, so the key that pays is also the key that signs in a
+room.
 
 The one thing that has been settled is whether it _can_ be built on Bare, which
 was not obvious: the workers speak ECDH P-256 and libsodium has no P-256, while

@@ -58,13 +58,17 @@ import { Wallet } from '@lcai-p2p/wallet'
  *     { id, t: 'worker.status' }
  *     { id, t: 'worker.logs' }
  *     { id, t: 'wallet.status' }
- *     { id, t: 'wallet.create',  password }
+ *     { id, t: 'wallet.create',  password }     → also returns the phrase, once
+ *     { id, t: 'wallet.import',  phrase, password }
+ *     { id, t: 'wallet.reveal',  password }
  *     { id, t: 'wallet.unlock',  password }
  *     { id, t: 'wallet.lock' }
+ *     { id, t: 'wallet.remove',  password }
  *     { id, t: 'wallet.balances' }
  *
- * A password crosses this seam and a private key never does. The renderer is
- * told an address and a lock state, which is everything it can act on.
+ * Passwords cross this seam, and so does the recovery phrase — but only when
+ * the user asked to see it, and never a derived private key. Otherwise the
+ * renderer is told an address and a lock state, which is all it can act on.
  *
  * Worker to renderer:
  *
@@ -158,38 +162,74 @@ const registry = {
 }
 
 /**
- * The wallet's keystore, next to the chat storage.
+ * The wallet's vault, next to the chat storage.
  *
- * Encrypted, so unlike `rooms.json` this one is not a plaintext secret — but it
- * is still the only copy of a key that may hold funds, and it is written `0600`
- * where that means anything.
+ * Encrypted, so unlike `rooms.json` this is not a plaintext secret — but it
+ * holds the recovery phrase for every account the user will ever derive, so it
+ * is written `0600` where that means anything. The phrase written on paper is
+ * the actual backup; this file is convenience.
  */
-const walletFile = path.join(chatDir, 'wallet.json')
+const vaultFile = path.join(chatDir, 'vault.json')
 
 const wallet = new Wallet({
   read() {
     try {
-      return JSON.parse(fs.readFileSync(walletFile, 'utf8'))
+      return JSON.parse(fs.readFileSync(vaultFile, 'utf8'))
     } catch {
       return null
     }
   },
-  write(keystore) {
+  write(vault) {
     fs.mkdirSync(chatDir, { recursive: true })
-    fs.writeFileSync(walletFile, JSON.stringify(keystore, null, 2), { mode: 0o600 })
+    fs.writeFileSync(vaultFile, JSON.stringify(vault, null, 2), { mode: 0o600 })
   },
   clear() {
     try {
-      fs.unlinkSync(walletFile)
+      fs.unlinkSync(vaultFile)
     } catch {
       // Already gone is the outcome we wanted.
     }
   }
 })
 
-/** Which chain the wallet reads. Same names and profiles as the worker uses. */
-const network = process.env.NETWORK === 'testnet' ? 'testnet' : 'mainnet'
-const rpc = new Rpc({ url: NETWORKS[network].rpcUrl })
+/**
+ * Settings, in one file rather than scattered across sections.
+ *
+ * Layered over the environment: a value set here wins, and anything unset falls
+ * back to the variables the worker toolkit already uses, so an operator's
+ * existing shell setup keeps working and the CLI and the app agree.
+ */
+const settingsFile = path.join(chatDir, 'settings.json')
+
+function readSettings() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(settingsFile, 'utf8'))
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeSettings(next) {
+  fs.mkdirSync(chatDir, { recursive: true })
+  // Holds the keystore password when one is set, so it is not world-readable.
+  fs.writeFileSync(settingsFile, JSON.stringify(next, null, 2), { mode: 0o600 })
+}
+
+let settings = readSettings()
+
+/** A setting, then the environment, then nothing. */
+function setting(key, envName) {
+  const value = settings[key]
+  if (typeof value === 'string' && value !== '') return value
+  const fromEnv = process.env[envName]
+  return typeof fromEnv === 'string' && fromEnv !== '' ? fromEnv : undefined
+}
+
+const networkOf = () => (setting('network', 'NETWORK') === 'testnet' ? 'testnet' : 'mainnet')
+
+let network = networkOf()
+let rpc = new Rpc({ url: NETWORKS[network].rpcUrl })
 
 const rooms = await RoomHost.open({
   store: chatStore,
@@ -211,20 +251,22 @@ for (const { key, reason } of rooms.failed) {
  * panel, because `doctor` needs no configuration at all and is the part an
  * operator wants before anything is installed.
  */
-function workerConfig() {
+function workerConfig(overrides = {}) {
   try {
-    const env = process.env
+    const models = setting('supportedModels', 'SUPPORTED_MODELS')
     return {
       config: resolveConfig({
-        network: env.NETWORK === 'testnet' ? 'testnet' : 'mainnet',
-        keysDir: env.KEYS_DIR || path.join(os.homedir(), 'lightchain-worker', 'keys'),
-        keystorePassword: env.WORKER_PASSWORD || '',
-        aiConfigAddress: env.AI_CONFIG_ADDRESS || undefined,
-        jobRegistryAddress: env.JOB_REGISTRY_ADDRESS || undefined,
-        supportedModels: env.SUPPORTED_MODELS ? env.SUPPORTED_MODELS.split(',') : undefined,
-        ollamaUrl: env.OLLAMA_URL || undefined,
-        containerName: env.CONTAINER_NAME || undefined,
-        platform: os.platform()
+        network: networkOf(),
+        keysDir:
+          setting('keysDir', 'KEYS_DIR') ?? path.join(os.homedir(), 'lightchain-worker', 'keys'),
+        keystorePassword: setting('workerPassword', 'WORKER_PASSWORD') ?? '',
+        aiConfigAddress: setting('aiConfigAddress', 'AI_CONFIG_ADDRESS'),
+        jobRegistryAddress: setting('jobRegistryAddress', 'JOB_REGISTRY_ADDRESS'),
+        supportedModels: models ? models.split(',').map((m) => m.trim()) : undefined,
+        ollamaUrl: setting('ollamaUrl', 'OLLAMA_URL'),
+        containerName: setting('containerName', 'CONTAINER_NAME'),
+        platform: os.platform(),
+        ...overrides
       }),
       problem: null
     }
@@ -275,17 +317,85 @@ async function handle(req) {
     // rest run scrypt at roughly half a second, which is the cost that makes a
     // stolen keystore expensive to attack rather than a delay to apologise for.
 
+    // --- Settings ---------------------------------------------------------
+
+    case 'settings.read': {
+      const net = networkOf()
+
+      // resolveConfig refuses without a keystore password, which is exactly the
+      // state someone is in when they first open this panel and most need to
+      // see the defaults. So it is asked with a placeholder password purely to
+      // learn them, rather than restating them here where they would drift.
+      const { config } = workerConfig()
+      const shown = config ?? workerConfig({ keystorePassword: 'unset' }).config
+
+      return {
+        // The password is never sent back, only whether one is set. Round
+        // tripping a secret through a view to redisplay it is how they leak.
+        values: { ...settings, workerPassword: undefined },
+        workerPasswordSet: Boolean(setting('workerPassword', 'WORKER_PASSWORD')),
+        effective: {
+          network: net,
+          keysDir: shown.keysDir,
+          containerName: shown.containerName,
+          supportedModels: shown.supportedModels,
+          ollamaUrl: shown.ollamaUrl,
+          rpcUrl: NETWORKS[net].rpcUrl,
+          chainId: NETWORKS[net].chainId
+        },
+        storage: chatDir
+      }
+    }
+
+    case 'settings.write': {
+      const patch = req.values && typeof req.values === 'object' ? req.values : {}
+      // Undefined clears a value back to the environment or the default,
+      // which is what an emptied field should mean.
+      const next = { ...settings }
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === null || value === '') delete next[key]
+        else next[key] = value
+      }
+
+      writeSettings(next)
+      settings = next
+
+      // The chain client is bound to a network, so changing it has to rebuild
+      // the client rather than leave it pointing at the old chain.
+      network = networkOf()
+      rpc = new Rpc({ url: NETWORKS[network].rpcUrl })
+
+      return { ok: true }
+    }
+
     case 'wallet.status':
       return { ...wallet.status(), network }
 
-    case 'wallet.create':
-      return { ...wallet.create(String(req.password ?? '')), network }
+    // The one reply that carries a secret. The phrase has to reach a screen so
+    // it can be written down, and it is not stored anywhere the renderer can
+    // reach afterwards — seeing it again costs the password.
+    case 'wallet.create': {
+      const { status, phrase } = wallet.create(String(req.password ?? ''))
+      return { ...status, network, phrase }
+    }
+
+    case 'wallet.import':
+      return {
+        ...wallet.importPhrase(String(req.phrase ?? ''), String(req.password ?? '')),
+        network
+      }
+
+    case 'wallet.reveal':
+      return { phrase: wallet.revealPhrase(String(req.password ?? '')) }
 
     case 'wallet.unlock':
       return { ...wallet.unlock(String(req.password ?? '')), network }
 
     case 'wallet.lock':
       return { ...wallet.lock(), network }
+
+    case 'wallet.remove':
+      return { ...wallet.remove(String(req.password ?? '')), network }
 
     case 'wallet.balances': {
       const { address } = wallet.status()

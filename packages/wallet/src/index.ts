@@ -1,18 +1,25 @@
+export { KeystoreError, addressOf, decrypt, encrypt, type KeystoreV3 } from './keystore.js'
+
 export {
-  KeystoreError,
+  ACCOUNT_PATH,
   SCRYPT_N,
   SCRYPT_P,
   SCRYPT_R,
-  addressOf,
-  decrypt,
-  encrypt,
-  type KeystoreV3
-} from './keystore.js'
+  VaultError,
+  derivePrivateKey,
+  generatePhrase,
+  isValidPhrase,
+  normalise,
+  open,
+  seal,
+  type Vault
+} from './vault.js'
 
 export {
   Wallet,
   WalletError,
-  memoryStore,
-  type KeystoreStore,
+  memoryVaultStore,
+  type CreatedWallet,
+  type VaultStore,
   type WalletStatus
 } from './wallet.js'

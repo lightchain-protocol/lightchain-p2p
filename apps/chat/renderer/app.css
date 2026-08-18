@@ -279,6 +279,179 @@ body {
   color: var(--lc-fg);
 }
 
+/* --- Settings ------------------------------------------------------------- */
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--lc-radius-md);
+  color: var(--lc-fg-muted);
+  background: transparent;
+  cursor: default;
+}
+
+.icon-button:hover {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+}
+
+.icon-button:focus-visible {
+  outline: 2px solid var(--lc-brand);
+  outline-offset: 2px;
+}
+
+.settings {
+  position: fixed;
+  inset: 38px 0 0;
+  z-index: 20;
+  background: var(--lc-bg);
+}
+
+.settings-frame {
+  display: flex;
+  height: 100%;
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 200px;
+  padding: var(--lc-space-md);
+  border-right: 1px solid var(--lc-rule);
+  background: var(--lc-bg-elevated);
+  flex: 0 0 auto;
+}
+
+.settings-nav .button-block {
+  margin-top: auto;
+}
+
+.settings-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  padding: var(--lc-space-xxl);
+}
+
+.settings-page {
+  max-width: 60ch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-lg);
+}
+
+.settings-heading {
+  margin: 0;
+  font-size: var(--lc-text-lg);
+  font-weight: 600;
+}
+
+/* Not the first heading, which already sits under the panel's own padding. */
+.settings-heading + * + * + .settings-heading,
+.settings-page > form + .settings-heading,
+.settings-page > ol + .settings-heading {
+  margin-top: var(--lc-space-xl);
+  padding-top: var(--lc-space-xl);
+  border-top: 1px solid var(--lc-rule);
+}
+
+.settings-note {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+select.input {
+  appearance: none;
+  font-family: inherit;
+}
+
+/* --- First run ------------------------------------------------------------ */
+
+.onboarding {
+  position: fixed;
+  inset: 38px 0 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: var(--lc-space-xl);
+  overflow-y: auto;
+  background: var(--lc-bg);
+}
+
+.onboarding-card {
+  width: 100%;
+  max-width: 54ch;
+}
+
+.step-title {
+  margin: 0 0 var(--lc-space-md);
+  font-size: var(--lc-text-xxl);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.step-body {
+  margin: 0 0 var(--lc-space-xl);
+  color: var(--lc-fg-muted);
+}
+
+.step-actions {
+  display: flex;
+  gap: var(--lc-space-sm);
+  align-items: center;
+}
+
+/* The words. Numbered, because order is the whole thing, and in a grid so a
+   person can check them against paper without losing their place. */
+.phrase {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--lc-space-sm);
+  margin: 0 0 var(--lc-space-xl);
+  padding: var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated);
+  list-style: none;
+  counter-reset: word;
+}
+
+.phrase li {
+  counter-increment: word;
+  display: flex;
+  gap: var(--lc-space-sm);
+  align-items: baseline;
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-size: var(--lc-text-sm);
+  user-select: text;
+}
+
+.phrase li::before {
+  content: counter(word);
+  min-width: 1.4em;
+  text-align: right;
+  color: var(--lc-fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.confirm-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--lc-space-md);
+}
+
+.phrase-input {
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  resize: vertical;
+  line-height: 1.6;
+}
+
 /* --- Wallet --------------------------------------------------------------- */
 
 .wallet {
