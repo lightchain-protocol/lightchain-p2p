@@ -17,7 +17,7 @@ const RPC = 'https://rpc.testnet.lightchain.ai'
 const EXPLORER = 'https://testnet.lightscan.app/tx/'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const keyFile = path.join(here, '..', '.tmp', 'testnet-key.json')
+const keyFile = path.join(here, '..', '.tmp', 'dev-key.json')
 
 if (!fs.existsSync(keyFile)) {
   console.error('No dev key. Run: node packages/chain/scripts/dev-key.mjs')

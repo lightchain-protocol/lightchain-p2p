@@ -70,11 +70,33 @@ export const bareScripts = {
   }
 }
 
+/**
+ * Runtime adapters: the small per-runtime files behind a `#` import.
+ *
+ * They exist precisely to touch globals that only one runtime has, so the
+ * globals list here is the union rather than what any single runtime provides.
+ */
+export const runtimeAdapters = {
+  files: ['runtime/**/*.js'],
+  languageOptions: {
+    globals: {
+      Buffer: 'readonly',
+      TextDecoder: 'readonly',
+      TextEncoder: 'readonly',
+      WebSocket: 'readonly',
+      console: 'readonly',
+      globalThis: 'readonly',
+      process: 'readonly'
+    }
+  }
+}
+
 export default tseslint.config(
   { ignores: ['**/dist/**', '**/out/**', '**/.turbo/**', '**/node_modules/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
   pearBoundary,
-  bareScripts
+  bareScripts,
+  runtimeAdapters
 )

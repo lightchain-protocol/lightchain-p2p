@@ -15,6 +15,14 @@ export interface NetworkProfile {
   readonly beaconApiUrl: string
   readonly workerGatewayUrl: string
   readonly image: string
+  /**
+   * Where a consumer asks for inference, as distinct from `workerGatewayUrl`,
+   * which is where workers report for duty. Easy to confuse, and confusing them
+   * produces authentication failures that look like a bad token.
+   */
+  readonly consumerApiUrl: string
+  /** Where answers stream back from. */
+  readonly relayUrl: string
 }
 
 /** Genesis predeploy. Identical on both networks. */
@@ -27,7 +35,9 @@ export const NETWORKS: Readonly<Record<NetworkName, NetworkProfile>> = {
     chainId: 9200,
     beaconApiUrl: 'https://beacon.mainnet.lightchain.ai',
     workerGatewayUrl: 'https://worker-gateway.mainnet.lightchain.ai',
-    image: 'us-central1-docker.pkg.dev/lightchain/lightchain-mainnet-public-docker/worker:latest'
+    image: 'us-central1-docker.pkg.dev/lightchain/lightchain-mainnet-public-docker/worker:latest',
+    consumerApiUrl: 'https://chat-api.mainnet.lightchain.ai',
+    relayUrl: 'wss://relay.mainnet.lightchain.ai/ws'
   },
   testnet: {
     name: 'testnet',
@@ -35,7 +45,9 @@ export const NETWORKS: Readonly<Record<NetworkName, NetworkProfile>> = {
     chainId: 8200,
     beaconApiUrl: 'https://beacon.testnet.lightchain.ai',
     workerGatewayUrl: 'https://worker-gateway.testnet.lightchain.ai',
-    image: 'us-central1-docker.pkg.dev/lightchain/lightchain-testnet-public-docker/worker:latest'
+    image: 'us-central1-docker.pkg.dev/lightchain/lightchain-testnet-public-docker/worker:latest',
+    consumerApiUrl: 'https://chat-api.testnet.lightchain.ai',
+    relayUrl: 'wss://relay.testnet.lightchain.ai/ws'
   }
 }
 

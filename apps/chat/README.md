@@ -42,10 +42,11 @@ order. That claim is reproducible rather than asserted — see
 
 Being precise about this, because "chat" reasonably suggests otherwise:
 
-**There is no AI.** No model picker, no prompt dispatch to the worker network,
-no responses, no inference of any kind. The hub is specified to do this — see
-[Advancement 4](../../docs/proposals/lightchain-on-pear.md) — and none of it is
-built. What exists is the conversation half: people talking to each other.
+**Inference works, and is thin.** Pick a model in the Models section, ask, and
+the answer arrives — on mainnet, paid for out of a prepaid balance you deposit
+in Wallet. What is missing above that is everything a chat client normally has:
+no history, no conversation list, nothing survives a restart, one session at a
+time, and no way to stop an answer once it starts.
 
 **There are no payments, and the wallet is not yet the identity.** It exists,
 holds an address and reads balances, but nothing spends from it. The proposal

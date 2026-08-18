@@ -18,7 +18,8 @@ with the longest lead times are procurement and infrastructure rather than code.
 | `packages/ui`               | 28    | Design tokens and platform conventions, held to WCAG contrast in tests.                       |
 | `packages/room`             | 20    | Multi-writer rooms on Autobase, and the host that keeps several of them.                      |
 | `packages/preflight`        | 19    | Host readiness with actionable remedies.                                                      |
-| `packages/chain`            | 95    | Reads Lightchain and signs for it, every byte checked against viem.                           |
+| `packages/chain`            | 96    | Reads Lightchain and signs for it, every byte checked against viem.                           |
+| `packages/inference`        | 19    | The session handshake, the prompt and the relay. Runs under Bare.                             |
 | `packages/wallet`           | 48    | BIP-39 phrase, BIP-32 accounts, matched to viem. Keystore V3 export checked against Foundry.  |
 | `packages/inference-crypto` | 15    | ECDH P-256 and AES-256-GCM as the deployed workers speak it, under Bare.                      |
 | `packages/safety`           | 10    | Refusal-list decision logic.                                                                  |
@@ -27,7 +28,7 @@ with the longest lead times are procurement and infrastructure rather than code.
 | `packages/testkit`          | 6     | Two-machine harness with a negative control.                                                  |
 | `packages/blind`            | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server. |
 
-**344 tests.** CI green on every push. The six-platform build matrix compiles a
+**364 tests.** CI green on every push. The six-platform build matrix compiles a
 standalone supervisor binary for Windows, macOS and Linux on x64 and arm64, and
 every runner executes the binary it produced.
 
@@ -66,27 +67,23 @@ better.
 and receive messages live, and keep both the history and the write access across
 a restart. Verified between two application instances on the public DHT.
 
-**The AI half now runs, outside the app.** A wallet generated on this machine
-asked the live testnet a question and got an answer back, paid for at the listed
-fee. `node packages/chain/scripts/ask.mjs` does the whole thing:
+**The AI half works, in the app, on mainnet.** Pick a model, ask a question,
+watch the answer arrive. Job 2702 answered from the interface, paid for out of a
+prepaid balance deposited through the Wallet section:
 
-```
-── ask: Reply with exactly: the hub works
-   blob 0x01285b68…   job 1279
-── the answer
-   the hub works
-── what it cost
-   the job cost 0.02 LCAI, taken by the delegate
-```
+> A Merkle tree is a data structure used in cryptography to efficiently verify
+> the integrity of large datasets by hashing and combining smaller chunks of
+> data into a single, concise summary.
 
-Sign in with a plain EIP-191 signature, draw a worker by sortition, seal a
-session key to that worker and to the disputer, submit an encrypted prompt as a
-blob, and decrypt the response off the relay. The consumer API carries the
-prompt and pays from the prepaid balance, and cannot read a word of it.
+Sign in with a plain EIP-191 signature, get a worker, seal a session key to it
+and to the disputer, submit an encrypted prompt as a blob, and decrypt the reply
+off the relay. The consumer API carries the prompt and pays from the prepaid
+balance, and cannot read a word of it. It runs in the Bare worker, where a
+WebSocket is a duplex stream and `fetch` has to be imported —
+[`packages/inference`](packages/inference) has the details.
 
-**No part of this is in the interface yet.** There is no model picker, no prompt
-box wired to any of it, nothing in the Bare worker — it exists as a script that
-proves the path is real and the client can walk it.
+Mainnet offers **one** model, `llama3-8b`, at 0.02 LCAI a job, with 11 workers
+staked 50,000 LCAI each. Testnet lists ten but only some have a worker running.
 
 The **wallet** underpins that, and the app opens on it: twelve BIP-39 words
 generated on the machine, shown once to write down and confirmed back before the

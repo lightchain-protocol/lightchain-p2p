@@ -32,7 +32,7 @@ const DEPOSIT = 10n ** 17n / 2n // 0.05 LCAI, enough for two jobs at the live fe
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const { privateKey } = JSON.parse(
-  fs.readFileSync(path.join(here, '..', '.tmp', 'testnet-key.json'), 'utf8')
+  fs.readFileSync(path.join(here, '..', '.tmp', 'dev-key.json'), 'utf8')
 )
 const account = fromPrivateKey(privateKey)
 

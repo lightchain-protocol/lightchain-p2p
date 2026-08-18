@@ -208,7 +208,16 @@ export function setDelegateAllowance(delegate: string, allowance: bigint): strin
 }
 
 export interface SessionRequest {
-  readonly model: string
+  /**
+   * The 32-byte model id, **not** a name.
+   *
+   * Deliberately not accepting a name as well. The two are interchangeable to
+   * look at — both are strings — and hashing one that is already a hash
+   * produces a valid-looking id for a model that does not exist, which the
+   * chain reports as `ModelDisabled` on an id nobody recognises. Call
+   * `modelId(name)` at the point where a name is what you actually have.
+   */
+  readonly modelId: string
   readonly worker: string
   /** The session key sealed for the worker, from `@lcai-p2p/inference-crypto`. */
   readonly encWorkerKey: Uint8Array
@@ -227,11 +236,17 @@ export interface SessionRequest {
  * `UnexpectedETH`.
  */
 export function createSession(request: SessionRequest): string {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(request.modelId)) {
+    throw new Error(
+      `modelId must be 32 bytes of hex, got ${JSON.stringify(request.modelId)}. If you have a name, hash it with modelId() first.`
+    )
+  }
+
   return encodeCall(
     'createSession(bytes32,address,bytes,bytes,bytes,uint256)',
     ['bytes32', 'address', 'bytes', 'bytes', 'bytes', 'uint256'],
     [
-      modelId(request.model),
+      request.modelId,
       request.worker,
       request.encWorkerKey,
       request.encDisputerKey,

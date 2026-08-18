@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url'
 import { fromPrivateKey, toHex } from '@lcai-p2p/chain'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const file = path.join(here, '..', '.tmp', 'testnet-key.json')
+const file = path.join(here, '..', '.tmp', 'dev-key.json')
 
 if (fs.existsSync(file)) {
   console.log(JSON.parse(fs.readFileSync(file, 'utf8')).address)

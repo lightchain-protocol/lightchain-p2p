@@ -21,8 +21,21 @@ import {
   parseContainerState,
   resolveConfig
 } from '@lcai-p2p/worker'
-import { Rpc, prepaidBalance, resolveAddresses } from '@lcai-p2p/chain'
+import {
+  Rpc,
+  WORKER_REGISTRY_ADDRESS,
+  decodeUint256,
+  depositAndAuthorize,
+  encodeCall,
+  lightchainErrors,
+  prepaidBalance,
+  resolveAddresses,
+  sendTransaction,
+  toBytes,
+  toHex
+} from '@lcai-p2p/chain'
 import { Wallet } from '@lcai-p2p/wallet'
+import { Api, Conversation } from '@lcai-p2p/inference'
 
 /**
  * The data plane.
@@ -218,6 +231,67 @@ function writeSettings(next) {
 
 let settings = readSettings()
 
+/**
+ * The consumer API, signed in.
+ *
+ * Held across requests because signing in costs a round trip and a signature,
+ * and dropped whenever the wallet locks or the network changes — a token is
+ * bound to both, and reusing one across either is a confusing 401.
+ */
+let api = null
+let apiFor = null
+let conversation = null
+
+async function inference() {
+  const account = wallet.account()
+  const identity = `${network}:${account.address}`
+
+  if (api && apiFor === identity) return api
+
+  const next = new Api({ url: NETWORKS[network].consumerApiUrl })
+  await next.signIn(account.address, (message) => account.signMessage(message))
+
+  api = next
+  apiFor = identity
+  return api
+}
+
+function forgetInference() {
+  conversation?.close()
+  conversation = null
+  api = null
+  apiFor = null
+}
+
+/** A model's fee, from the chain, by id rather than by name. */
+async function modelFee(aiConfig, id) {
+  return decodeUint256(
+    await rpc.call({
+      to: aiConfig,
+      data: encodeCall('calculateJobFee(bytes32)', ['bytes32'], [id])
+    })
+  )
+}
+
+/**
+ * How many workers are registered and staked for a model.
+ *
+ * Not the same as how many are answering — eligibility is registration plus
+ * stake — but zero here is a definite no, which is worth showing before
+ * someone waits out a draw that cannot succeed.
+ */
+async function eligibleWorkerCount(id) {
+  const raw = await rpc.call({
+    to: WORKER_REGISTRY_ADDRESS,
+    data: encodeCall('getEligibleWorkers(bytes32)', ['bytes32'], [id])
+  })
+
+  const bytes = toBytes(raw)
+  if (bytes.length < 64) return 0
+  const offset = Number(decodeUint256(toHex(bytes.slice(0, 32))))
+  return Number(decodeUint256(toHex(bytes.slice(offset, offset + 32))))
+}
+
 /** A setting, then the environment, then nothing. */
 function setting(key, envName) {
   const value = settings[key]
@@ -229,7 +303,7 @@ function setting(key, envName) {
 const networkOf = () => (setting('network', 'NETWORK') === 'testnet' ? 'testnet' : 'mainnet')
 
 let network = networkOf()
-let rpc = new Rpc({ url: NETWORKS[network].rpcUrl })
+let rpc = new Rpc({ url: NETWORKS[network].rpcUrl, errors: lightchainErrors() })
 
 const rooms = await RoomHost.open({
   store: chatStore,
@@ -361,9 +435,12 @@ async function handle(req) {
       settings = next
 
       // The chain client is bound to a network, so changing it has to rebuild
-      // the client rather than leave it pointing at the old chain.
+      // the client rather than leave it pointing at the old chain. The same
+      // goes for the inference session: its token, its worker and its prepaid
+      // balance all belong to the network it was made on.
       network = networkOf()
-      rpc = new Rpc({ url: NETWORKS[network].rpcUrl })
+      rpc = new Rpc({ url: NETWORKS[network].rpcUrl, errors: lightchainErrors() })
+      forgetInference()
 
       return { ok: true }
     }
@@ -392,10 +469,17 @@ async function handle(req) {
       return { ...wallet.unlock(String(req.password ?? '')), network }
 
     case 'wallet.lock':
+      // Locking has to end the conversation too. The session was opened by this
+      // address and is paid for by it, and leaving it live would be a locked
+      // wallet still spending.
+      forgetInference()
       return { ...wallet.lock(), network }
 
-    case 'wallet.remove':
-      return { ...wallet.remove(String(req.password ?? '')), network }
+    case 'wallet.remove': {
+      const status = wallet.remove(String(req.password ?? ''))
+      forgetInference()
+      return { ...status, network }
+    }
 
     case 'wallet.balances': {
       const { address } = wallet.status()
@@ -420,6 +504,105 @@ async function handle(req) {
         native: native.toString(),
         prepaid: prepaid === null ? null : prepaid.toString()
       }
+    }
+
+    // --- Inference ----------------------------------------------------------
+    //
+    // The wallet must be unlocked: signing in proves control of the address,
+    // and the delegate spends against that address's prepaid balance.
+
+    case 'ai.models': {
+      const models = await (await inference()).models()
+      const addresses = await resolveAddresses(rpc).catch(() => null)
+
+      // Priced from the chain rather than from the service, so what is shown
+      // is what the contract will take.
+      const priced = await Promise.all(
+        models.map(async (model) => ({
+          ...model,
+          fee: addresses
+            ? await modelFee(addresses.aiConfig, model.id)
+                .then((f) => f.toString())
+                .catch(() => null)
+            : null,
+          workers: await eligibleWorkerCount(model.id).catch(() => null)
+        }))
+      )
+
+      return { models: priced, network }
+    }
+
+    case 'ai.status': {
+      const api = await inference()
+      const balance = await api.balance()
+      return {
+        network,
+        balance: balance.balance.toString(),
+        delegate: balance.delegate,
+        delegateAuthorized: balance.delegateAuthorized,
+        conversation: conversation
+          ? {
+              model: conversation.model.name,
+              sessionId: conversation.sessionId,
+              worker: conversation.worker
+            }
+          : null
+      }
+    }
+
+    /** Deposits and authorises in one transaction, which is what the service asks for. */
+    case 'ai.fund': {
+      const account = wallet.account()
+      const api = await inference()
+      const { delegate } = await api.balance()
+      const { jobRegistry } = await resolveAddresses(rpc)
+
+      const sent = await sendTransaction(rpc, account, {
+        to: jobRegistry,
+        value: BigInt(req.amount ?? 0),
+        data: depositAndAuthorize(delegate)
+      })
+      const receipt = await sent.wait()
+      if (!receipt.status) throw new Error(`the deposit reverted (${sent.hash})`)
+
+      return { hash: sent.hash, block: receipt.blockNumber.toString() }
+    }
+
+    case 'ai.start': {
+      const api = await inference()
+      const models = await api.models()
+      const model = models.find((m) => m.id === req.modelId || m.name === req.model)
+      if (!model) throw new Error(`no model called ${req.model ?? req.modelId}`)
+
+      conversation?.close()
+      conversation = new Conversation({
+        api,
+        relayUrl: NETWORKS[network].relayUrl,
+        model,
+        // Deployments without sortition expect the caller to send the
+        // createSession transaction, so the wallet has to come along.
+        chain: { rpc, account: wallet.account() }
+      })
+
+      // A draw takes most of a minute, so progress is pushed rather than
+      // awaited in silence.
+      await conversation.start((progress) => send({ t: 'ai.progress', ...progress }))
+
+      return { sessionId: conversation.sessionId, worker: conversation.worker, model: model.name }
+    }
+
+    case 'ai.ask': {
+      if (!conversation?.open) throw new Error('no conversation is open')
+      const answer = await conversation.ask(String(req.prompt ?? ''), (progress) =>
+        send({ t: 'ai.progress', ...progress })
+      )
+      return { jobId: answer.jobId, text: answer.text }
+    }
+
+    case 'ai.stop': {
+      conversation?.close()
+      conversation = null
+      return { ok: true }
     }
 
     case 'worker.logs': {

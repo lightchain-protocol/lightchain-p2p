@@ -1,0 +1,58 @@
+{
+  "name": "@lcai-p2p/inference",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "//imports": "Bare honours this map; Node only consults imports for #-prefixed specifiers. One source, both runtimes.",
+  "imports": {
+    "#fetch": {
+      "types": "./runtime/fetch.d.ts",
+      "bare": "./runtime/fetch-bare.js",
+      "default": "./runtime/fetch-node.js"
+    },
+    "#socket": {
+      "types": "./runtime/socket.d.ts",
+      "bare": "./runtime/socket-bare.js",
+      "default": "./runtime/socket-node.js"
+    },
+    "fs": {
+      "bare": "bare-fs",
+      "default": "fs"
+    },
+    "process": {
+      "bare": "bare-process",
+      "default": "process"
+    }
+  },
+  "files": [
+    "dist",
+    "runtime"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "check:bare": "bare scripts/check-bare.mjs"
+  },
+  "dependencies": {
+    "@lcai-p2p/chain": "workspace:*",
+    "@lcai-p2p/inference-crypto": "workspace:*",
+    "bare-fetch": "^1.2.4",
+    "bare-fs": "^4.4.1",
+    "bare-process": "^4.2.5",
+    "bare-ws": "^3.0.0"
+  },
+  "devDependencies": {
+    "@lcai-p2p/eslint-config": "workspace:*",
+    "@lcai-p2p/typescript-config": "workspace:*"
+  }
+}

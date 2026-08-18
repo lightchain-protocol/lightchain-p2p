@@ -147,7 +147,9 @@ describe('call data', () => {
     )
 
     const session = {
-      model: 'llama3-8b',
+      // A hashed id, not a name: passing a name would hash it twice and
+      // produce a valid-looking id for a model that does not exist.
+      modelId: modelId('llama3-8b'),
       worker: OTHER,
       encWorkerKey: new Uint8Array(113).fill(0xaa),
       encDisputerKey: new Uint8Array(113).fill(0xbb),
@@ -160,7 +162,7 @@ describe('call data', () => {
         abi,
         functionName: 'createSession',
         args: [
-          modelId(session.model) as `0x${string}`,
+          session.modelId as `0x${string}`,
           session.worker as `0x${string}`,
           toHex(session.encWorkerKey) as `0x${string}`,
           toHex(session.encDisputerKey) as `0x${string}`,
@@ -169,6 +171,22 @@ describe('call data', () => {
         ]
       })
     )
+  })
+
+  it('refuses a model name where an id belongs', () => {
+    // The mistake this guards against cost a paid transaction: a name hashed
+    // twice reaches the chain as an id for a model nobody has, and the revert
+    // reads ModelDisabled on a hash that appears nowhere.
+    expect(() =>
+      createSession({
+        modelId: 'llama3-8b',
+        worker: OTHER,
+        encWorkerKey: new Uint8Array(113),
+        encDisputerKey: new Uint8Array(113),
+        dispatcherSignature: new Uint8Array(65),
+        expiry: 1n
+      })
+    ).toThrow(/must be 32 bytes of hex/)
   })
 
   it('rejects arguments of the wrong shape rather than encoding something plausible', () => {

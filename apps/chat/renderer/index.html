@@ -394,29 +394,46 @@
 
         <!-- Models ---------------------------------------------------------->
         <div class="panel" id="panel-models" hidden>
-          <div class="unbuilt">
-            <p class="unbuilt-status">Not built</p>
-            <h1 class="unbuilt-title">Any published model</h1>
-            <p class="unbuilt-body">
-              An open field over every model published to the network, rather than an approved list.
-              Picking one here would bind it to a session and dispatch prompts to whichever worker
-              serves it.
-            </p>
+          <div class="ai">
+            <aside class="ai-models">
+              <header class="ai-models-head">
+                <h2 class="sidebar-title">Models</h2>
+                <button class="button button-sm" type="button" id="ai-refresh">Refresh</button>
+              </header>
+              <ul class="model-list" id="model-list"></ul>
+              <p class="ai-note" id="ai-note"></p>
+            </aside>
 
-            <dl class="ledger">
-              <dt>Already built</dt>
-              <dd>
-                <code>packages/drive</code> publishes a model, resolves it by key and range-reads
-                the weights — and keeps serving after the publisher goes offline.
-              </dd>
+            <section class="ai-thread">
+              <header class="ai-head" id="ai-head" hidden>
+                <div>
+                  <h1 class="ai-title" id="ai-model">—</h1>
+                  <p class="ai-sub" id="ai-session">no session</p>
+                </div>
+                <button class="button button-sm" type="button" id="ai-end">End session</button>
+              </header>
 
-              <dt>Still missing</dt>
-              <dd>
-                Discovery. Knowing <em>which</em> models exist is the on-chain half of Advancement 1
-                and lives in the contracts repository, not here. Then the picker itself, and
-                dispatch.
-              </dd>
-            </dl>
+              <div class="ai-empty" id="ai-empty">
+                <h1 class="ai-empty-title">Ask a model</h1>
+                <p class="ai-empty-body">
+                  Pick a model to open a session. Drawing a worker takes up to a minute, and happens
+                  once — every question after it is immediate.
+                </p>
+              </div>
+
+              <div class="messages" id="ai-messages" hidden></div>
+
+              <form class="composer" id="ai-composer" hidden>
+                <input
+                  class="composer-input"
+                  id="ai-prompt"
+                  type="text"
+                  placeholder="Ask something"
+                  autocomplete="off"
+                />
+                <button class="button button-primary" type="submit" id="ai-send">Send</button>
+              </form>
+            </section>
           </div>
         </div>
 
@@ -553,11 +570,28 @@
 
               <p class="wallet-note" id="wallet-balance-note"></p>
 
-              <p class="wallet-footnote">
-                Deposits and sessions are not built yet. The key here signs, and
-                <code>packages/chain</code> can already reach the contracts — what is missing is the
-                flow between them.
-              </p>
+              <section class="wallet-fund">
+                <h2 class="settings-heading">Add funds for inference</h2>
+                <p class="settings-note" id="fund-note">
+                  Moves LCAI into the job registry and lets the network's delegate spend it on your
+                  behalf. You can withdraw whatever is left at any time.
+                </p>
+                <form class="wallet-form wallet-fund-form" id="fund-form">
+                  <label class="field">
+                    <span class="field-label">Amount in LCAI</span>
+                    <input
+                      class="input"
+                      id="fund-amount"
+                      type="text"
+                      inputmode="decimal"
+                      placeholder="0.1"
+                      autocomplete="off"
+                    />
+                  </label>
+                  <button class="button button-primary" type="submit" id="fund-btn">Deposit</button>
+                </form>
+                <p class="dialog-error" id="fund-error" hidden></p>
+              </section>
             </section>
           </div>
         </div>

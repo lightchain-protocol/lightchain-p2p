@@ -32,7 +32,7 @@ const PROMPT = process.env.PROMPT ?? 'In one short sentence: what is a Merkle tr
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const { privateKey } = JSON.parse(
-  fs.readFileSync(path.join(here, '..', '.tmp', 'testnet-key.json'), 'utf8')
+  fs.readFileSync(path.join(here, '..', '.tmp', 'dev-key.json'), 'utf8')
 )
 const account = fromPrivateKey(privateKey)
 

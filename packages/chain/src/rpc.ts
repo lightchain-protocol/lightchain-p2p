@@ -51,6 +51,13 @@ export interface FeeEstimate {
   readonly maxFeePerGas: bigint
 }
 
+export interface Log {
+  readonly address: string
+  /** `[eventSignatureHash, ...indexedArguments]`. */
+  readonly topics: readonly string[]
+  readonly data: string
+}
+
 export interface Receipt {
   readonly transactionHash: string
   readonly blockNumber: bigint
@@ -59,6 +66,11 @@ export interface Receipt {
   /** False when the transaction reverted. It was still mined, and still paid. */
   readonly status: boolean
   readonly contractAddress: string | null
+  /**
+   * What the contract emitted. Often the only place a value the contract
+   * assigned — an id it minted, say — is reported back to the caller.
+   */
+  readonly logs: readonly Log[]
 }
 
 export interface WaitOptions {
@@ -73,6 +85,7 @@ interface RawReceipt {
   readonly effectiveGasPrice?: string
   readonly status: string
   readonly contractAddress?: string | null
+  readonly logs?: readonly Log[]
 }
 
 export class Rpc {
@@ -217,7 +230,8 @@ export class Rpc {
       // "Mined" and "did what you asked" are different. A reverted transaction
       // still gets a receipt, and still costs the gas it burned.
       status: fromQuantity(raw.status) === 1n,
-      contractAddress: raw.contractAddress ?? null
+      contractAddress: raw.contractAddress ?? null,
+      logs: raw.logs ?? []
     }
   }
 

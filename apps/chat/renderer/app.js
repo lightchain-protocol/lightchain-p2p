@@ -107,6 +107,7 @@ for (const button of el.sections) {
     // round trip, so both happen when the panel is opened rather than at launch.
     if (button.dataset.section === 'worker') void refreshWorker()
     if (button.dataset.section === 'wallet') void refreshWallet()
+    if (button.dataset.section === 'models') void refreshModels()
   })
 }
 
@@ -140,6 +141,11 @@ function onChatMessage(msg) {
     rooms.set(msg.room.key, msg.room)
     renderRooms()
     if (msg.room.key === activeKey) renderRoom()
+    return
+  }
+
+  if (msg.t === 'ai.progress') {
+    onAiProgress(msg)
     return
   }
 
@@ -528,6 +534,265 @@ async function refreshWorker() {
 }
 
 el.workerRefresh.addEventListener('click', () => void refreshWorker())
+
+// --- Funding ----------------------------------------------------------------
+
+/**
+ * LCAI to wei, without floating point.
+ *
+ * `0.1 * 1e18` is not 100000000000000000, and a rounding error here is a
+ * transaction for the wrong amount.
+ */
+function toWei(amount) {
+  const text = amount.trim()
+  if (!/^\d*\.?\d*$/.test(text) || text === '' || text === '.') {
+    throw new Error('Enter an amount like 0.1')
+  }
+
+  const [whole = '0', fraction = ''] = text.split('.')
+  if (fraction.length > 18) throw new Error('LCAI has 18 decimal places, no more')
+  return BigInt(whole + fraction.padEnd(18, '0'))
+}
+
+document.getElementById('fund-form').addEventListener('submit', async (evt) => {
+  evt.preventDefault()
+
+  const error = document.getElementById('fund-error')
+  const button = document.getElementById('fund-btn')
+  const input = document.getElementById('fund-amount')
+  error.hidden = true
+
+  let amount
+  try {
+    amount = toWei(input.value)
+    if (amount === 0n) throw new Error('A deposit of nothing would be refused')
+  } catch (err) {
+    error.textContent = err.message
+    error.hidden = false
+    return
+  }
+
+  button.disabled = true
+  button.textContent = 'Depositing…'
+
+  try {
+    const sent = await request('ai.fund', { amount: amount.toString() })
+    toast(`Deposited in block ${sent.block}`)
+    input.value = ''
+    void refreshBalances()
+    void refreshModels()
+  } catch (err) {
+    error.textContent = err.message
+    error.hidden = false
+  } finally {
+    button.disabled = false
+    button.textContent = 'Deposit'
+  }
+})
+
+// --- Asking a model ---------------------------------------------------------
+
+const ai = {
+  list: document.getElementById('model-list'),
+  note: document.getElementById('ai-note'),
+  head: document.getElementById('ai-head'),
+  model: document.getElementById('ai-model'),
+  session: document.getElementById('ai-session'),
+  empty: document.getElementById('ai-empty'),
+  messages: document.getElementById('ai-messages'),
+  composer: document.getElementById('ai-composer'),
+  prompt: document.getElementById('ai-prompt'),
+  send: document.getElementById('ai-send')
+}
+
+let models = []
+let openModel = null
+/** The assistant's turn while it is still being written into. */
+let streaming = null
+
+function lcai(wei) {
+  const s = BigInt(wei).toString().padStart(19, '0')
+  const whole = s.slice(0, -18)
+  const fraction = s.slice(-18).replace(/0+$/, '')
+  return fraction === '' ? whole : `${whole}.${fraction}`
+}
+
+function turn(who, text, own) {
+  const item = document.createElement('article')
+  item.className = 'message' + (own ? ' is-own' : '')
+
+  const meta = document.createElement('div')
+  meta.className = 'message-meta'
+  const author = document.createElement('span')
+  author.className = 'message-author'
+  author.textContent = who
+  meta.append(author)
+
+  const body = document.createElement('p')
+  body.className = 'message-text'
+  body.textContent = text
+
+  item.append(meta, body)
+  ai.messages.append(item)
+  ai.messages.scrollTop = ai.messages.scrollHeight
+  return { item, body }
+}
+
+function renderModels() {
+  ai.list.replaceChildren()
+
+  for (const model of models) {
+    const item = document.createElement('li')
+    const button = document.createElement('button')
+    button.className = 'model' + (openModel?.id === model.id ? ' is-active' : '')
+    button.type = 'button'
+
+    const name = document.createElement('span')
+    name.className = 'model-name'
+    name.textContent = model.name
+
+    const meta = document.createElement('span')
+    meta.className = 'model-meta'
+    const price = model.fee === null ? 'unpriced' : `${lcai(model.fee)} LCAI`
+    // Zero eligible workers is a definite no, and worth showing before someone
+    // waits out a draw that cannot succeed.
+    meta.textContent =
+      model.workers === null
+        ? price
+        : `${price} · ${model.workers} worker${model.workers === 1 ? '' : 's'}`
+
+    button.append(name, meta)
+    button.disabled = model.workers === 0 || model.fee === null
+    button.addEventListener('click', () => void startConversation(model))
+
+    item.append(button)
+    ai.list.append(item)
+  }
+}
+
+async function refreshModels() {
+  const status = await request('wallet.status')
+  if (!status.unlocked) {
+    ai.note.textContent = 'Unlock your wallet to reach the network.'
+    ai.list.replaceChildren()
+    return
+  }
+
+  ai.note.textContent = 'Loading…'
+  try {
+    const reply = await request('ai.models')
+    models = reply.models
+    renderModels()
+
+    const funds = await request('ai.status')
+    ai.note.textContent = funds.delegateAuthorized
+      ? `${lcai(funds.balance)} LCAI available on ${funds.network}`
+      : `Add funds in Wallet before asking — nothing can be submitted yet.`
+  } catch (err) {
+    ai.note.textContent = err.message
+  }
+}
+
+async function startConversation(model) {
+  if (streaming) return
+
+  openModel = model
+  renderModels()
+
+  ai.empty.hidden = true
+  ai.head.hidden = false
+  ai.messages.hidden = false
+  ai.composer.hidden = false
+  ai.messages.replaceChildren()
+  ai.model.textContent = model.name
+  ai.session.textContent = 'drawing a worker, which can take a minute…'
+  ai.prompt.disabled = true
+  ai.send.disabled = true
+
+  try {
+    const session = await request('ai.start', { modelId: model.id })
+    ai.session.textContent = `session ${session.sessionId} · worker ${short(session.worker)}`
+    ai.prompt.disabled = false
+    ai.send.disabled = false
+    ai.prompt.focus()
+  } catch (err) {
+    ai.session.textContent = err.message
+    openModel = null
+    renderModels()
+  }
+}
+
+ai.composer.addEventListener('submit', async (evt) => {
+  evt.preventDefault()
+  const prompt = ai.prompt.value.trim()
+  if (prompt === '' || streaming) return
+
+  ai.prompt.value = ''
+  ai.prompt.disabled = true
+  ai.send.disabled = true
+  turn('you', prompt, true)
+
+  // Created empty and filled by the progress messages, so tokens appear as
+  // they arrive rather than in one lump at the end.
+  streaming = turn(openModel.name, '', false)
+  streaming.item.classList.add('is-streaming')
+
+  try {
+    await request('ai.ask', { prompt })
+  } catch (err) {
+    streaming.body.textContent = streaming.body.textContent || err.message
+    streaming.item.classList.add('is-error')
+  } finally {
+    streaming?.item.classList.remove('is-streaming')
+    streaming = null
+    ai.prompt.disabled = false
+    ai.send.disabled = false
+    ai.prompt.focus()
+    void refreshModels()
+  }
+})
+
+/**
+ * Progress pushed by the worker, rather than awaited.
+ *
+ * A draw takes most of a minute and an answer streams, so both report as they
+ * go — an interface that only spoke at the end would look broken for the whole
+ * of the interesting part.
+ */
+function onAiProgress(progress) {
+  if (progress.phase === 'token' && streaming) {
+    streaming.body.textContent += progress.text
+    ai.messages.scrollTop = ai.messages.scrollHeight
+    return
+  }
+
+  const said = {
+    drawing: 'drawing a worker, which can take a minute…',
+    opening: 'sealing a session key…',
+    submitting: 'encrypting and submitting…',
+    waiting: 'waiting for the worker…'
+  }[progress.phase]
+
+  if (said) ai.session.textContent = said
+  else if (progress.phase === 'ready') {
+    ai.session.textContent = `session ${progress.sessionId} · worker ${short(progress.worker)}`
+  } else if (progress.phase === 'done') {
+    ai.session.textContent = `job ${progress.jobId} answered`
+  }
+}
+
+document.getElementById('ai-refresh').addEventListener('click', () => void refreshModels())
+
+document.getElementById('ai-end').addEventListener('click', async () => {
+  await request('ai.stop').catch(() => {})
+  openModel = null
+  streaming = null
+  ai.head.hidden = true
+  ai.messages.hidden = true
+  ai.composer.hidden = true
+  ai.empty.hidden = false
+  renderModels()
+})
 
 // --- Settings --------------------------------------------------------------
 

@@ -18,6 +18,7 @@
   "dependencies": {
     "@lcai-p2p/chain": "workspace:*",
     "@lcai-p2p/host": "workspace:*",
+    "@lcai-p2p/inference": "workspace:*",
     "@lcai-p2p/preflight": "workspace:*",
     "@lcai-p2p/room": "workspace:*",
     "@lcai-p2p/ui": "workspace:*",
