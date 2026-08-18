@@ -26,7 +26,6 @@ const el = {
   themeBtn: document.getElementById('theme-btn'),
   roomsBadge: document.getElementById('rooms-badge'),
   accountBtn: document.getElementById('account-btn'),
-  accountAvatar: document.getElementById('account-avatar'),
   accountName: document.getElementById('account-name'),
   accountRole: document.getElementById('account-role'),
   status: document.getElementById('status'),
@@ -174,7 +173,6 @@ el.accountBtn.addEventListener('click', () => {
 /** The wallet, where an account would be in any other application. */
 function renderAccount(status) {
   const address = status?.address ?? null
-  el.accountAvatar.textContent = address ? address.slice(2, 3) : '?'
   el.accountName.textContent = address ? shortAddress(address) : 'No wallet'
   el.accountRole.textContent = address
     ? status.unlocked

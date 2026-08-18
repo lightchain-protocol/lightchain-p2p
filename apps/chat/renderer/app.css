@@ -304,20 +304,13 @@ body {
   background: var(--lc-bg-elevated-2);
 }
 
-/* The first character of the address, which is all an identicon would honestly
-   convey at this size and is at least not mistakable for a photograph. */
-.avatar {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  border-radius: var(--lc-radius-pill);
-  font-size: var(--lc-text-xs);
-  font-weight: 600;
-  color: #ffffff;
-  background: linear-gradient(135deg, var(--lc-brand-violet), var(--lc-brand-magenta));
-  text-transform: uppercase;
+/* The mark sits with the account rather than at the top of the sidebar, where
+   it was the third Lightchain logo on one screen. A letter cut from the address
+   said nothing an identicon would have said better, and nothing at all next to
+   the address it was cut from. */
+.account-logo {
+  width: 26px;
+  height: 26px;
 }
 
 .account-text {
@@ -431,11 +424,6 @@ body {
 .spark-to {
   stop-color: var(--lc-brand);
   stop-opacity: 0;
-}
-
-.sidebar-logo {
-  width: 20px;
-  height: 20px;
 }
 
 .nav-item {
