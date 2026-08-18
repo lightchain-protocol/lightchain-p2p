@@ -259,6 +259,9 @@ importers:
       '@lcai-p2p/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@lcai-p2p/inference-crypto':
+        specifier: workspace:*
+        version: link:../inference-crypto
       '@lcai-p2p/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config

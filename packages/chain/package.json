@@ -47,7 +47,8 @@
     "bare-runtime": "1.29.4",
     "eslint": "^10.8.1",
     "viem": "^2.55.18",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "@lcai-p2p/inference-crypto": "workspace:*"
   },
   "dependencies": {
     "@noble/curves": "^2.3.0",

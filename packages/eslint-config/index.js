@@ -55,7 +55,17 @@ export const bareScripts = {
       Bare: 'readonly',
       Buffer: 'readonly',
       console: 'readonly',
-      process: 'readonly'
+      process: 'readonly',
+      // Present in both Node and Bare, the latter once the runtime polyfills
+      // are imported — which the scripts that use them do.
+      AbortSignal: 'readonly',
+      TextDecoder: 'readonly',
+      TextEncoder: 'readonly',
+      URL: 'readonly',
+      WebSocket: 'readonly',
+      clearTimeout: 'readonly',
+      fetch: 'readonly',
+      setTimeout: 'readonly'
     }
   }
 }

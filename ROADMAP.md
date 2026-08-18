@@ -66,16 +66,32 @@ better.
 and receive messages live, and keep both the history and the write access across
 a restart. Verified between two application instances on the public DHT.
 
-**The AI half does not exist.** No model picker, no prompt dispatch to the worker
-network, no responses, no inference. This is the part most readers assume
-"Lightchain chat" means, and none of it is built.
+**The AI half now runs, outside the app.** A wallet generated on this machine
+asked the live testnet a question and got an answer back, paid for at the listed
+fee. `node packages/chain/scripts/ask.mjs` does the whole thing:
 
-The **wallet** now does, and the app opens on it: twelve BIP-39 words generated
-on the machine, shown once to write down and confirmed back before the app
-continues, sealed under a password with scrypt and AES-256-GCM, with accounts
-derived at the path every other Ethereum wallet uses. Balances are read from
-chain. What is missing above it is the flow — `depositAndAuthorize`, session
-creation, and the delegate that submits jobs against a prepaid balance — and
+```
+── ask: Reply with exactly: the hub works
+   blob 0x01285b68…   job 1279
+── the answer
+   the hub works
+── what it cost
+   the job cost 0.02 LCAI, taken by the delegate
+```
+
+Sign in with a plain EIP-191 signature, draw a worker by sortition, seal a
+session key to that worker and to the disputer, submit an encrypted prompt as a
+blob, and decrypt the response off the relay. The consumer API carries the
+prompt and pays from the prepaid balance, and cannot read a word of it.
+
+**No part of this is in the interface yet.** There is no model picker, no prompt
+box wired to any of it, nothing in the Bare worker — it exists as a script that
+proves the path is real and the client can walk it.
+
+The **wallet** underpins that, and the app opens on it: twelve BIP-39 words
+generated on the machine, shown once to write down and confirmed back before the
+app continues, sealed under a password with scrypt and AES-256-GCM, with
+accounts derived at the path every other Ethereum wallet uses. What remains is
 joining it to identity, so the key that pays is also the key that signs in a
 room.
 
@@ -114,10 +130,19 @@ contracts are **not** at the mainnet addresses, only `llama3-8b` is configured
 there at 0.02 LCAI a job, and **withdrawing does not revoke a delegate's
 allowance** — a later deposit is spendable by it without further approval.
 
-The foot of the payment path therefore works. What remains above it is
-`createSession`, which needs a dispatcher signature and a worker assignment, and
-`submitJob`, which needs an EIP-4844 blob carrying the encrypted prompt. Neither
-is reachable without the foundation's dispatcher.
+That deposit turned out to be the key to everything above it. The consumer API
+at `chat-api.testnet.lightchain.ai` is **public** — it authenticates any wallet
+with a SIWE signature — and it asked for exactly one thing before it would work:
+authorise its delegate on `JobRegistry`. Having done that, it creates sessions
+on chain on our behalf, submits the blob, and takes the fee from the prepaid
+balance. Inference was never gated on foundation credentials, only on that
+authorisation.
+
+Two things about the live service that the mirrored source no longer describes:
+worker selection has moved to **sortition** (`/api/sessions/sortition/request`,
+which takes 20–45 seconds and times out where no worker is running that model),
+and the older `/api/sessions/select` path now rejects the very token the service
+issues. Ten models are configured, from 0.005 to 0.2 LCAI a job.
 
 Invites use `blind-pairing` as the proposal specifies: one string that carries
 no room key, and the joiner arrives able to write. Rooms are encrypted, so a
@@ -221,10 +246,10 @@ Mobile is decided: deferred, see [ADR 0001](docs/decisions/0001-defer-mobile.md)
    test into a property of the system, and is what lets a room outlive every
    participant being offline.
 3. **Verify from a second machine.**
-4. **Get a dispatcher signature.** Deposits work and jobs cannot be submitted
-   without one, so this is now the binding constraint on inference rather than
-   anything in this repository. It is a conversation with whoever operates the
-   dispatcher, not a build task.
+4. **Put inference in the app.** The path is proven end to end in a script and
+   absent from the interface. It needs to move into the Bare worker — the
+   session handshake, the relay socket, the prompt box and a model picker — and
+   that is now ordinary work with nothing unknown left in it.
 5. **Build the inference path in `apps/chat`**: model picker, dispatch to the
    worker network, responses, and settlement. This is the bulk of Advancement 4,
    and with `packages/chain` in place the wallet is the next piece of it.

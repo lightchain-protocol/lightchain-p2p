@@ -73,6 +73,36 @@ Three things that only running it revealed:
   deposit is immediately spendable by that delegate, with no further approval.
   Revoking is a separate call, and the UI will have to say so.
 
+## Asking the network a question
+
+`node scripts/ask.mjs` goes from a key on this machine to decrypted tokens:
+
+```
+── ask: Reply with exactly: the hub works
+   session 774 created on chain by their delegate
+   blob 0x01285b68…   job 1279
+── the answer
+   the hub works
+── what it cost
+   the job cost 0.02 LCAI, taken by the delegate
+```
+
+Sign in to `chat-api.testnet.lightchain.ai` with an EIP-191 signature, draw a
+worker by sortition, seal a session key to that worker and to the disputer with
+[`@lcai-p2p/inference-crypto`](../inference-crypto), submit the encrypted prompt
+as a blob, and decrypt the reply off the relay socket. The service carries the
+prompt and pays from the prepaid balance and cannot read any of it.
+
+**The deposit is what unlocks this.** The API is public and authenticates any
+wallet, then refuses everything until its delegate is authorised on
+`JobRegistry` — `depositAndAuthorize` is the whole gate. After that it creates
+sessions on chain for you and bills the prepaid balance at the listed fee.
+
+Two things the mirrored source no longer describes: selection has moved to
+sortition, which takes 20–45 seconds and times out where nobody is running that
+model, and the older `/api/sessions/select` rejects the token the service itself
+issues.
+
 ## Reverts that read as English
 
 Solidity replaced revert strings with four-byte selectors, so a failure arrives
