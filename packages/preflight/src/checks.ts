@@ -33,6 +33,27 @@ export interface Probes {
   readonly disk?: { readonly freeBytes: number }
   readonly memory?: { readonly totalBytes: number }
   readonly cast?: { readonly present: boolean; readonly version?: string }
+  readonly stake?: StakeProbe
+}
+
+/**
+ * Whether the worker's own address can afford to register.
+ *
+ * The one requirement that is neither hardware nor software, and the one the
+ * tooling is silent about: registering stakes the minimum as `msg.value`, so an
+ * underfunded address fails at the transaction with nothing that says how much
+ * was needed. Every other check here can be satisfied while this one is not.
+ */
+export interface StakeProbe {
+  /** From the keystore, since that is the address that will register. */
+  readonly address?: string
+  /** Wei. `AIConfig.getMinWorkerStake()`, which governance can change. */
+  readonly minimum?: bigint
+  readonly balance?: bigint
+  /** Set when the chain could not be read at all. */
+  readonly unreachable?: boolean
+  /** Already registered, in which case the stake is posted and this is moot. */
+  readonly registered?: boolean
 }
 
 export interface DockerProbe {
@@ -251,6 +272,59 @@ function checkCast(probe: { present: boolean; version?: string } | undefined): C
   return pass(id, title, `available${probe.version ? `, version ${probe.version}` : ''}`)
 }
 
+/** Wei to a readable amount. Whole numbers stay whole; the rest keep four places. */
+function lcai(wei: bigint): string {
+  const whole = wei / 10n ** 18n
+  const fraction = (wei % 10n ** 18n).toString().padStart(18, '0').slice(0, 4).replace(/0+$/, '')
+  return fraction === '' ? `${whole}` : `${whole}.${fraction}`
+}
+
+function checkStake(probe: StakeProbe | undefined): CheckResult[] {
+  const id = 'stake'
+  const title = 'Stake'
+
+  // Only meaningful once there is a keystore. Before that the operator has no
+  // address to fund, and saying so twice helps nobody.
+  if (!probe?.address) return []
+
+  if (probe.registered) {
+    return [pass(id, title, `${probe.address} is registered and its stake is posted`)]
+  }
+
+  if (probe.unreachable || probe.minimum === undefined || probe.balance === undefined) {
+    return [
+      warn(
+        id,
+        title,
+        'could not read the chain, so the stake requirement is unknown',
+        'Check the network setting and that the RPC is reachable. Registering without enough to stake fails at the transaction.'
+      )
+    ]
+  }
+
+  // Gas is paid from the same balance, because LCAI is the native token — so a
+  // wallet holding exactly the minimum cannot register.
+  if (probe.balance <= probe.minimum) {
+    const short = probe.minimum - probe.balance
+    return [
+      fail(
+        id,
+        title,
+        `${probe.address} holds ${lcai(probe.balance)} LCAI, and registering stakes ${lcai(probe.minimum)} LCAI`,
+        `Send at least ${lcai(short + 10n ** 18n)} more LCAI to that address. The stake is the transaction's value and gas comes out of the same balance, so holding exactly ${lcai(probe.minimum)} LCAI is not enough.`
+      )
+    ]
+  }
+
+  return [
+    pass(
+      id,
+      title,
+      `${probe.address} holds ${lcai(probe.balance)} LCAI; registering will stake ${lcai(probe.minimum)} LCAI`
+    )
+  ]
+}
+
 export function runChecks(
   probes: Probes,
   requirements: Requirements = DEFAULT_REQUIREMENTS
@@ -261,7 +335,8 @@ export function runChecks(
     checkGpu(probes.gpu, requirements),
     checkMemory(probes.memory, requirements),
     checkDisk(probes.disk, requirements),
-    checkCast(probes.cast)
+    checkCast(probes.cast),
+    ...checkStake(probes.stake)
   ]
 }
 

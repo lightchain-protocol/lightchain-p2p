@@ -33,6 +33,7 @@ import {
 import {
   Rpc,
   WORKER_REGISTRY_ADDRESS,
+  decodeBool,
   decodeUint256,
   depositAndAuthorize,
   encodeCall,
@@ -450,6 +451,54 @@ async function modelFee(aiConfig, id) {
 let busyWith = null
 
 /**
+ * Whether the worker's own address can afford to register.
+ *
+ * Registering stakes `AIConfig.getMinWorkerStake()` as the transaction's value,
+ * and LCAI is the native token, so the same balance pays the gas. Nothing else
+ * in the tooling mentions this: the supervisor shells out to the Go binary,
+ * which queries the minimum and sends it, and an underfunded address fails at
+ * the transaction with an error that never names the amount.
+ *
+ * Reported rather than enforced. This cannot stop anybody registering, and it
+ * should not — it can only make sure the requirement is seen first.
+ */
+async function stakeProbe(config) {
+  let address
+  try {
+    address = selectKeystore(fs.readdirSync(path.join(config.keysDir, 'eth-keystore'))).address
+  } catch {
+    // No keystore yet, so there is no address to fund and nothing useful to
+    // say. The container section already explains what is missing.
+    return {}
+  }
+
+  const account = `0x${address}`
+
+  try {
+    const registry = WORKER_REGISTRY_ADDRESS
+    const registered = decodeBool(
+      await rpc.call({
+        to: registry,
+        data: encodeCall('isWorkerRegistered(address)', ['address'], [account])
+      })
+    )
+    if (registered) return { address: account, registered: true }
+
+    const { aiConfig } = await resolveAddresses(rpc)
+    const [minimum, balance] = await Promise.all([
+      rpc
+        .call({ to: aiConfig, data: encodeCall('getMinWorkerStake()') })
+        .then((raw) => decodeUint256(raw)),
+      rpc.balanceOf(account)
+    ])
+
+    return { address: account, minimum, balance }
+  } catch {
+    return { address: account, unreachable: true }
+  }
+}
+
+/**
  * Which keystore the container should open.
  *
  * The same selection the supervisor makes: the directory may hold several, and
@@ -646,7 +695,17 @@ async function handle(req) {
     // minutes with no way yet to report progress here.
 
     case 'worker.doctor': {
-      const results = runChecks(await probeAll())
+      // The stake needs a resolved config to know where the keystore is, and
+      // there may not be one. A host with no worker configured still deserves
+      // its hardware checked.
+      const { config } = workerConfig({ keystorePassword: 'unset' })
+
+      const [probes, stake] = await Promise.all([
+        probeAll(),
+        config ? stakeProbe(config) : Promise.resolve(undefined)
+      ])
+
+      const results = runChecks({ ...probes, stake })
       return { results, totals: summarize(results) }
     }
 
