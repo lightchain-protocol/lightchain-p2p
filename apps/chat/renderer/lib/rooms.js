@@ -3,7 +3,6 @@ import {
   copy,
   el,
   el2,
-  formatLcai,
   resizeComposer,
   setStatus,
   short,
@@ -15,12 +14,13 @@ import {
 } from './dom.js'
 import { bridge, request } from './ipc.js'
 import { renderText } from './format.js'
-import { addressedToModel, ensureModels, listModels } from './models.js'
+import { addressedToModel, ensureModels } from './models.js'
 import { myAddress, openPay } from './wallet.js'
 import { closeEmojiPicker, emojiPicker, reactionBar } from './reactions.js'
 import { memberList, nameSelfControl } from './members.js'
 import { announcement, bodyFor } from './notify-body.js'
 import { clearQr, drawQr } from './qr.js'
+import { chooseMention, closeMentions, mentionState, moveMention, offerModels } from './mentions.js'
 import {
   connectAnswering,
   discardPreviews,
@@ -1314,17 +1314,16 @@ acceptDrops(el.composer, { onFiles: takeFiles })
 el.composerInput.addEventListener('keydown', (evt) => {
   // The picker owns these keys while it is open, or Enter sends "@lla" as a
   // message instead of completing it.
-  if (!mentions.hidden && mentionMatches.length > 0) {
+  const picker = mentionState()
+  if (picker.open) {
     if (evt.key === 'ArrowDown' || evt.key === 'ArrowUp') {
       evt.preventDefault()
-      const step = evt.key === 'ArrowDown' ? 1 : -1
-      mentionAt = (mentionAt + step + mentionMatches.length) % mentionMatches.length
-      renderMentions()
+      moveMention(evt.key === 'ArrowDown' ? 1 : -1)
       return
     }
     if (evt.key === 'Enter' || evt.key === 'Tab') {
       evt.preventDefault()
-      chooseMention(mentionAt)
+      chooseMention(picker.index)
       return
     }
     if (evt.key === 'Escape') {
@@ -1354,90 +1353,6 @@ el.composerInput.addEventListener('blur', () => {
   // is delivered.
   setTimeout(closeMentions, 150)
 })
-
-// --- Addressing a model -----------------------------------------------------
-
-/**
- * A picker for `@model`, which is otherwise a feature nobody can find.
- *
- * The ask itself works by typing the name, and did before this existed — but a
- * capability whose only affordance is knowing the exact name of something is a
- * capability that does not exist for anybody who was not told.
- */
-const mentions = document.getElementById('mentions')
-let mentionMatches = []
-let mentionAt = -1
-
-/** The `@word` being typed at the caret, if the message starts with one. */
-function mentionPrefix() {
-  const value = el.composerInput.value
-  // Only at the start: a model is addressed, not mentioned in passing, and the
-  // worker takes the whole remainder as the prompt.
-  const match = /^@(\S*)$/.exec(value)
-  return match ? match[1] : null
-}
-
-async function offerModels() {
-  const prefix = mentionPrefix()
-  if (prefix === null) return closeMentions()
-
-  try {
-    await ensureModels()
-  } catch {
-    return closeMentions()
-  }
-
-  mentionMatches = listModels().filter((m) => m.name.toLowerCase().startsWith(prefix.toLowerCase()))
-  if (mentionMatches.length === 0) return closeMentions()
-
-  mentionAt = 0
-  renderMentions()
-}
-
-function renderMentions() {
-  mentions.replaceChildren()
-
-  mentionMatches.forEach((model, i) => {
-    const item = el2('li', 'mention' + (i === mentionAt ? ' is-active' : ''))
-    item.setAttribute('role', 'option')
-    item.setAttribute('aria-selected', String(i === mentionAt))
-
-    item.append(el2('span', 'mention-name', `@${model.name}`))
-    // The price is the reason this is not a plain mention: addressing a model
-    // spends money, and the amount belongs next to the choice.
-    item.append(
-      el2(
-        'span',
-        'mention-meta',
-        model.fee === null ? 'price unknown' : `${formatLcai(model.fee)} LCAI a question`
-      )
-    )
-
-    item.addEventListener('mousedown', (evt) => {
-      // mousedown, not click: the input blurs first otherwise.
-      evt.preventDefault()
-      chooseMention(i)
-    })
-    mentions.append(item)
-  })
-
-  mentions.hidden = false
-}
-
-function chooseMention(index) {
-  const model = mentionMatches[index]
-  if (!model) return
-  el.composerInput.value = `@${model.name} `
-  closeMentions()
-  el.composerInput.focus()
-  resizeComposer()
-}
-
-function closeMentions() {
-  mentions.hidden = true
-  mentionMatches = []
-  mentionAt = -1
-}
 
 // --- Deep links -------------------------------------------------------------
 
