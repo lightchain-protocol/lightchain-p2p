@@ -4,6 +4,7 @@ import {
   el,
   el2,
   formatLcai,
+  resizeComposer,
   setStatus,
   short,
   shortAddress,
@@ -29,12 +30,29 @@ import {
   settlePreviews
 } from './answering.js'
 
-// A preview needs to know whether its room is the one on screen and how to
-// redraw it, and both of those live here. Passed in rather than imported, so
-// the two modules do not import each other.
+import {
+  connectDrafts,
+  forgetDraft,
+  keepDraft,
+  loadDrafts,
+  loadDraftsFor,
+  restoreDraft,
+  stashDraft
+} from './drafts.js'
+
+export { loadDrafts }
+
+// Both of these need a little of the room surface — which room is open, how to
+// redraw it, whether a message is being edited. Passed in rather than imported,
+// so none of these modules import each other.
 connectAnswering({
   isActive: (key) => key === activeKey,
   redraw: () => renderRoom()
+})
+
+connectDrafts({
+  isActive: (key) => key === activeKey,
+  isEditing: () => editing !== null
 })
 import { acceptDrops, attachButton, attachmentView, pendingAttachment } from './attachments.js'
 
@@ -679,7 +697,7 @@ function startEdit(message) {
   editing = message.id
   el.composerInput.value = message.text
   renderTray()
-  resize()
+  resizeComposer()
   el.composerInput.focus()
 }
 
@@ -704,115 +722,6 @@ function clearComposerExtras() {
   replyingTo = null
   editing = null
   renderTray()
-}
-
-// --- Drafts -------------------------------------------------------------------
-
-/**
- * What was typed in each room and not sent.
- *
- * Before this existed the composer was one box shared by every room, so a
- * half-written line followed you into the next one and Enter sent it there. The
- * text belongs to the room it was written for, which is the whole of the fix;
- * that it also survives a restart is a consequence rather than the point.
- *
- * Mirrored here rather than read per switch, because switching rooms should not
- * wait on a round trip to decide what to put in a box.
- */
-const drafts = new Map()
-
-/** Coalesces a burst of typing into one write, like the presence indicator. */
-let draftWrite = null
-const DRAFT_DEBOUNCE_MS = 400
-
-/**
- * Reads the stored drafts, once they can be read at all.
- *
- * They live in a store sealed under the account, so this fails while the wallet
- * is locked — which is the state the app boots in. Rather than wiring an unlock
- * callback through a module that already imports this one, the load is retried
- * whenever a room is opened and remembered once it succeeds.
- */
-let loaded = false
-
-export async function loadDrafts() {
-  if (loaded) return
-
-  const stored = (await request('local.drafts'))?.drafts ?? {}
-  for (const [room, text] of Object.entries(stored)) {
-    if (typeof text === 'string') drafts.set(room, text)
-  }
-  loaded = true
-}
-
-/**
- * Fills the composer once the drafts arrive, if the room is still open.
- *
- * Only into an empty box. A draft landing a moment after somebody started
- * typing would replace what they are writing with what they wrote before.
- */
-function loadDraftsFor(key) {
-  if (loaded) return
-
-  void loadDrafts()
-    .then(() => {
-      if (activeKey !== key || el.composerInput.value !== '') return
-      restoreDraft(key)
-    })
-    .catch(() => {
-      // Locked, most likely. Tried again the next time a room is opened.
-    })
-}
-
-/**
- * Remembers what is in the composer for `key`.
- *
- * Nothing is remembered while a message is being edited: that text is a copy of
- * something already sent, and storing it would restore it later as though it
- * had been typed fresh.
- */
-function keepDraft(key, { now = false } = {}) {
-  if (!key || editing !== null) return
-
-  const text = el.composerInput.value
-  if (text.trim() === '') drafts.delete(key)
-  else drafts.set(key, text)
-
-  if (draftWrite) clearTimeout(draftWrite)
-  const write = () => {
-    draftWrite = null
-    void request('local.draft', { room: key, text }).catch(() => {
-      // Kept in the Map regardless, so the draft still survives a room switch
-      // even when it will not survive a restart.
-    })
-  }
-
-  if (now) write()
-  else draftWrite = setTimeout(write, DRAFT_DEBOUNCE_MS)
-}
-
-/** Puts a room's unsent text back in the composer, or empties it. */
-function restoreDraft(key) {
-  el.composerInput.value = drafts.get(key) ?? ''
-  resize()
-}
-
-/**
- * After sending, there is nothing unsent left to keep.
- *
- * The pending write is cancelled first. Typing schedules one for a moment
- * later, and Enter arrives well inside that window, so a write left in flight
- * lands after this one and puts the sent message back as a draft.
- */
-function forgetDraft(key) {
-  if (draftWrite) {
-    clearTimeout(draftWrite)
-    draftWrite = null
-  }
-  if (!key) return
-
-  drafts.delete(key)
-  void request('local.draft', { room: key, text: '' }).catch(() => {})
 }
 
 /**
@@ -1287,7 +1196,7 @@ async function submitMessage() {
     const target = editing
     el.composerInput.value = ''
     stopEditing()
-    resize()
+    resizeComposer()
     try {
       const room = await request('room.edit', { room: activeKey, target, text })
       rooms.set(room.key, room)
@@ -1296,7 +1205,7 @@ async function submitMessage() {
     } catch (err) {
       el.composerInput.value = text
       startEdit({ id: target, text })
-      resize()
+      resizeComposer()
       toast(err.message, 'error')
     }
     return
@@ -1311,7 +1220,7 @@ async function submitMessage() {
   el.composerInput.value = ''
   clearPending()
   stopReplying()
-  resize()
+  resizeComposer()
   stopTyping()
   forgetDraft(from)
 
@@ -1345,11 +1254,10 @@ async function submitMessage() {
       el.composerInput.value = text
       if (carried) showPending(carried)
       if (answering) startReply({ id: answering })
-      resize()
+      resizeComposer()
       keepDraft(from, { now: true })
     } else {
-      drafts.set(from, text)
-      void request('local.draft', { room: from, text }).catch(() => {})
+      stashDraft(from, text)
     }
 
     toast(err.message, 'error')
@@ -1426,13 +1334,8 @@ el.composerInput.addEventListener('keydown', (evt) => {
   void submitMessage()
 })
 
-function resize() {
-  el.composerInput.style.height = 'auto'
-  el.composerInput.style.height = `${el.composerInput.scrollHeight}px`
-}
-
 el.composerInput.addEventListener('input', () => {
-  resize()
+  resizeComposer()
   // An empty box is not typing. Clearing it back to nothing should stop the
   // indicator rather than keep it alive on the last keystroke.
   iAmTyping(el.composerInput.value !== '')
@@ -1522,7 +1425,7 @@ function chooseMention(index) {
   el.composerInput.value = `@${model.name} `
   closeMentions()
   el.composerInput.focus()
-  resize()
+  resizeComposer()
 }
 
 function closeMentions() {

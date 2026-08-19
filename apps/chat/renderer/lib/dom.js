@@ -104,6 +104,18 @@ export function atBottom() {
   return el.messages.scrollHeight - el.messages.scrollTop - el.messages.clientHeight < 40
 }
 
+/**
+ * Grows the composer to fit what is in it.
+ *
+ * Height is cleared before it is measured, because `scrollHeight` on an element
+ * already tall enough reports the height it was given rather than the height it
+ * needs, and the box would then only ever grow.
+ */
+export function resizeComposer() {
+  el.composerInput.style.height = 'auto'
+  el.composerInput.style.height = `${el.composerInput.scrollHeight}px`
+}
+
 export function el2(tag, className, text) {
   const node = document.createElement(tag)
   if (className) node.className = className
