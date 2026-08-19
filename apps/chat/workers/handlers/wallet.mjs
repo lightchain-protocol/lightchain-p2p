@@ -735,7 +735,8 @@ export function walletHandlers(ctx) {
         value: whole(req.amount, 'amount') ?? 0n,
         maxFeePerGas: feePerGas(req.maxFeePerGas, 'maxFeePerGas'),
         maxPriorityFeePerGas: feePerGas(req.maxPriorityFeePerGas, 'maxPriorityFeePerGas'),
-        nonce: whole(req.nonce, 'nonce')
+        nonce: whole(req.nonce, 'nonce'),
+        chainId: ctx.chainId()
       })
 
       // Written down before the wait, not after it. See recordTransaction.
@@ -778,7 +779,7 @@ export function walletHandlers(ctx) {
     'wallet.speedUp': async (req) => {
       const { entry, sent } = await toReplace(String(req.hash ?? ''), 'speed up')
 
-      const faster = await speedUp(rpc(), wallet.account(), sent)
+      const faster = await speedUp(rpc(), wallet.account(), sent, undefined, ctx.chainId())
       await ledger.record(entry.kind, faster, { replaces: entry.hash })
       ledger.follow(faster)
 
@@ -797,7 +798,7 @@ export function walletHandlers(ctx) {
     'wallet.cancel': async (req) => {
       const { entry, sent } = await toReplace(String(req.hash ?? ''), 'cancel')
 
-      const stopped = await cancel(rpc(), wallet.account(), sent)
+      const stopped = await cancel(rpc(), wallet.account(), sent, undefined, ctx.chainId())
       await ledger.record('cancel', stopped, { replaces: entry.hash })
       ledger.follow(stopped)
 

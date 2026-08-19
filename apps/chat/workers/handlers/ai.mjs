@@ -209,7 +209,8 @@ export function aiHandlers(ctx) {
       const sent = await sendTransaction(rpc(), account, {
         to: jobRegistry,
         value: BigInt(req.amount ?? 0),
-        data: depositAndAuthorize(delegate)
+        data: depositAndAuthorize(delegate),
+        chainId: ctx.chainId()
       })
 
       // Recorded before the wait, not after. The transaction is already
@@ -237,7 +238,8 @@ export function aiHandlers(ctx) {
 
       const sent = await sendTransaction(rpc(), account, {
         to: jobRegistry,
-        data: withdrawBalance(BigInt(req.amount ?? 0))
+        data: withdrawBalance(BigInt(req.amount ?? 0)),
+        chainId: ctx.chainId()
       })
       await recordTransaction(ctx, 'withdraw', sent)
 
@@ -260,7 +262,7 @@ export function aiHandlers(ctx) {
         model,
         // Deployments without sortition expect the caller to send the
         // createSession transaction, so the wallet has to come along.
-        chain: { rpc: rpc(), account: wallet.account() }
+        chain: { rpc: rpc(), account: wallet.account(), chainId: ctx.chainId() }
       })
 
       // A draw takes most of a minute, so progress is pushed rather than
@@ -393,7 +395,7 @@ export function aiHandlers(ctx) {
         api,
         relayUrl: NETWORKS[network()].relayUrl,
         model,
-        chain: { rpc: rpc(), account: wallet.account() }
+        chain: { rpc: rpc(), account: wallet.account(), chainId: ctx.chainId() }
       })
 
       try {

@@ -773,6 +773,16 @@ const ctx = {
   swarm,
   wallet,
   network: () => network,
+  /**
+   * The chain this build expects, from the pinned profile rather than from the
+   * node.
+   *
+   * The chain id is what stops a signed transaction being replayed elsewhere,
+   * so asking the node for it means asking the one party with a reason to lie.
+   * Everything that signs passes this, and `sendTransaction` refuses when the
+   * node disagrees.
+   */
+  chainId: () => BigInt(NETWORKS[network].chainId),
   rpc: () => rpc,
   settings: () => settings,
   forgetInference,

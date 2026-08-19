@@ -103,6 +103,76 @@ const broadcasts = () =>
 /** The last thing put on the wire, which is what any claim about bytes is about. */
 const latest = () => broadcasts()[broadcasts().length - 1] as `0x02${string}`
 
+describe('the chain a transaction is signed for', () => {
+  // The chain id is what stops a signed transaction being replayed on another
+  // chain, so taking it from the node means taking it from the one party with
+  // something to gain by lying. A proxy answering `eth_chainId` with 1 gets a
+  // transaction signed for Ethereum mainnet, by the real key, replayable there
+  // for as long as the nonce is free. The same thing happens by accident with
+  // an RPC URL pointing at the wrong network, which is far more common.
+
+  it('refuses when the node claims a different chain, and signs nothing', async () => {
+    handler = happyNode({ eth_chainId: '0x1' })
+    seen = []
+
+    await expect(
+      sendTransaction(new Rpc({ url }), account, { to: TO, value: 1n, chainId: 9200n })
+    ).rejects.toThrow(/says it is chain 1.*for chain 9200/s)
+
+    // Nothing was put on the wire. A refusal after broadcasting would be no
+    // refusal at all.
+    expect(broadcasts()).toHaveLength(0)
+  })
+
+  it('proceeds when the node agrees', async () => {
+    handler = happyNode()
+    seen = []
+
+    const sent = await sendTransaction(new Rpc({ url }), account, {
+      to: TO,
+      value: 1n,
+      chainId: 8200n
+    })
+
+    expect(parseTransaction(latest()).chainId).toBe(8200)
+    expect(sent.hash).toBe('0xabc')
+  })
+
+  it('carries the expectation into a replacement', async () => {
+    // A speed-up signs a second transaction, so it needs the same guard. It is
+    // also the moment somebody is least likely to be looking.
+    handler = happyNode({ eth_chainId: '0x1', eth_getTransactionReceipt: null })
+    seen = []
+
+    const held = {
+      hash: '0xabc',
+      nonce: 7n,
+      gas: 26_250n,
+      to: TO,
+      value: 1000n,
+      data: '0x',
+      maxFeePerGas: 15n,
+      maxPriorityFeePerGas: 1n,
+      wait: () => Promise.reject(new Error('not used'))
+    }
+
+    await expect(speedUp(new Rpc({ url }), account, held, undefined, 9200n)).rejects.toThrow(
+      /says it is chain 1/
+    )
+    expect(broadcasts()).toHaveLength(0)
+  })
+
+  it('still signs against the node when no expectation is given', async () => {
+    // The old behaviour, kept because it cannot be removed without breaking
+    // every caller at once. It is why the field exists rather than a default.
+    handler = happyNode({ eth_chainId: '0x1' })
+    seen = []
+
+    await sendTransaction(new Rpc({ url }), account, { to: TO })
+    expect(parseTransaction(latest()).chainId).toBe(1)
+  })
+})
+
 describe('sending', () => {
   it('assembles a transaction from what the node reports', async () => {
     handler = happyNode()

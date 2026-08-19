@@ -33,7 +33,18 @@ export interface ConversationOptions {
    * Needed to send the `createSession` transaction where the deployment has no
    * sortition, and to check the signature on every answer.
    */
-  readonly chain?: { readonly rpc: Rpc; readonly account: Account }
+  readonly chain?: {
+    readonly rpc: Rpc
+    readonly account: Account
+    /**
+     * The chain the caller expects, refused if the node says otherwise.
+     *
+     * Passed through to `sendTransaction`, which will not sign against a node
+     * answering for a different chain. Omitting it means trusting whatever the
+     * RPC claims to be, which is the thing the chain id exists to prevent.
+     */
+    readonly chainId?: bigint
+  }
   /**
    * Whether to check that the assigned worker signed each answer. On by
    * default: an unverified answer is one a relay could have written.
@@ -243,7 +254,8 @@ export class Conversation {
           prepared.signature.startsWith('0x') ? prepared.signature : `0x${prepared.signature}`
         ),
         expiry: prepared.expiry
-      })
+      }),
+      ...(this.#chain.chainId === undefined ? {} : { chainId: this.#chain.chainId })
     })
 
     const receipt = await sent.wait()
@@ -481,7 +493,8 @@ export class Conversation {
         BigInt(jobId),
         new Uint8Array(Buffer.from(evidence.ciphertext, 'base64')),
         toBytes(evidence.signature)
-      )
+      ),
+      ...(this.#chain.chainId === undefined ? {} : { chainId: this.#chain.chainId })
     })
 
     const receipt = await sent.wait()

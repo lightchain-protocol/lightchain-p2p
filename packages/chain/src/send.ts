@@ -37,6 +37,22 @@ export interface SendRequest {
    * gap in the sequence, and a gap holds up everything behind it.
    */
   readonly nonce?: bigint
+  /**
+   * The chain this transaction is meant for, refused if the node disagrees.
+   *
+   * The chain id is what stops a signed transaction being replayed on another
+   * chain, and taking it from the node means taking it from the one party with
+   * something to gain by lying. A proxy that answers `eth_chainId` with 1 and
+   * forwards nothing gets a transaction signed for Ethereum mainnet — signed by
+   * the real key, valid, and replayable there for as long as the nonce is free.
+   * The same happens by accident with an RPC URL pointing at the wrong network,
+   * which is far more common and looks identical.
+   *
+   * Optional only because it cannot be made required without breaking every
+   * existing caller at once. Pass it. `NETWORKS` in `@lcai-p2p/worker` has the
+   * pinned values, and this package cannot import that one.
+   */
+  readonly chainId?: bigint
 }
 
 export interface SentTransaction {
@@ -213,6 +229,17 @@ export async function sendTransaction(
   // as thoroughly as a typo, and is harder to notice because nobody typed it.
   checkFees(fees.maxFeePerGas, fees.maxPriorityFeePerGas)
 
+  // Checked after the round trip because it needs the answer, and before
+  // signing because that is the only moment it still matters. Nothing is signed
+  // and nothing is broadcast when this fails.
+  // Compared as bigints because `rpc.chainId()` answers with a number and the
+  // request carries a bigint, and `8200 !== 8200n`.
+  if (request.chainId !== undefined && BigInt(chainId) !== request.chainId) {
+    throw new RpcError(
+      `this node says it is chain ${chainId}, but the transaction is for chain ${request.chainId}. Nothing was signed. Either the RPC URL points at the wrong network, or something between here and the chain is answering for it.`
+    )
+  }
+
   const gas =
     request.gas ??
     ((await rpc.estimateGas({ from: account.address, to: request.to, data, value })) *
@@ -304,7 +331,8 @@ export async function speedUp(
   rpc: Rpc,
   account: Account,
   sent: SentTransaction,
-  bump = REPLACEMENT_BUMP_PERCENT
+  bump = REPLACEMENT_BUMP_PERCENT,
+  chainId?: bigint
 ): Promise<SentTransaction> {
   const fees = await outbid(rpc, sent, bump)
 
@@ -318,6 +346,7 @@ export async function speedUp(
     // outright on a call that has since become unexecutable — and a replacement
     // that differs from what it replaces is not a replacement.
     gas: sent.gas,
+    ...(chainId === undefined ? {} : { chainId }),
     ...fees
   })
 }
@@ -336,7 +365,8 @@ export async function cancel(
   rpc: Rpc,
   account: Account,
   sent: SentTransaction,
-  bump = REPLACEMENT_BUMP_PERCENT
+  bump = REPLACEMENT_BUMP_PERCENT,
+  chainId?: bigint
 ): Promise<SentTransaction> {
   const fees = await outbid(rpc, sent, bump)
 
@@ -355,6 +385,7 @@ export async function cancel(
     // exhaust the limit, which still mines, still spends the nonce, and so
     // still cancels.
     gas: 21_000n,
+    ...(chainId === undefined ? {} : { chainId }),
     ...fees
   })
 }
