@@ -69,10 +69,38 @@ export async function refreshWallet() {
   }
 }
 
+/**
+ * Where a failure goes.
+ *
+ * Every one of these used to be written into whatever text slot was nearest —
+ * a chain that did not answer went into the muted note under the balances,
+ * where it read as a description of them. An alert is never a caption, so the
+ * message now arrives with a border, a tone and a heading that says what
+ * happened.
+ *
+ * The element carrying the id is the alert itself, so `dom.js` still resolves
+ * it and the text lands in the slot beside the icon.
+ */
+function fail(alert, detail) {
+  alert.querySelector('[data-slot="detail"]').textContent = detail
+  alert.hidden = false
+}
+
+const balanceAlert = document.getElementById('wallet-balance-alert')
+const balanceTitle = document.getElementById('wallet-balance-title')
+
+function reportBalances(tone, title, detail) {
+  balanceAlert.dataset.tone = tone
+  balanceTitle.textContent = title
+  el.walletBalanceNote.textContent = detail
+  balanceAlert.hidden = false
+}
+
 async function refreshBalances() {
   el.walletNative.textContent = '…'
   el.walletPrepaid.textContent = '…'
   el.walletBalanceNote.textContent = ''
+  balanceAlert.hidden = true
 
   // Anything that reads the balance here has a reason to, so the title bar is
   // brought along rather than left a minute stale.
@@ -87,13 +115,16 @@ async function refreshBalances() {
     if (balances.prepaid === null) {
       // Distinguish "nothing deposited" from "could not ask", which look the
       // same as a zero and mean very different things.
-      el.walletBalanceNote.textContent =
-        'The prepaid balance could not be read. The contracts may not be reachable on this network.'
+      reportBalances(
+        'warn',
+        'The prepaid balance could not be read',
+        'The contracts may not be reachable on this network. What is in the wallet is still correct.'
+      )
     }
   } catch (err) {
     el.walletNative.textContent = '—'
     el.walletPrepaid.textContent = '—'
-    el.walletBalanceNote.textContent = `Could not reach the chain: ${err.message}`
+    reportBalances('error', 'The chain could not be reached', err.message)
   }
 }
 
@@ -103,13 +134,11 @@ el.walletCreateForm.addEventListener('submit', async (evt) => {
 
   const password = el.walletPassword.value
   if (password !== el.walletConfirm.value) {
-    el.walletCreateError.textContent = 'Those two passwords are not the same.'
-    el.walletCreateError.hidden = false
+    fail(el.walletCreateError, 'Those two passwords are not the same.')
     return
   }
   if (password.length < 8) {
-    el.walletCreateError.textContent = 'Use at least 8 characters.'
-    el.walletCreateError.hidden = false
+    fail(el.walletCreateError, 'Use at least 8 characters.')
     return
   }
 
@@ -123,8 +152,7 @@ el.walletCreateForm.addEventListener('submit', async (evt) => {
     void refreshBalances()
     toast('Wallet created')
   } catch (err) {
-    el.walletCreateError.textContent = err.message
-    el.walletCreateError.hidden = false
+    fail(el.walletCreateError, err.message)
   } finally {
     // Cleared either way: it is a password sitting in a DOM node.
     el.walletPassword.value = ''
@@ -146,8 +174,7 @@ el.walletUnlockForm.addEventListener('submit', async (evt) => {
     showWallet(await request('wallet.unlock', { password }))
     void refreshBalances()
   } catch (err) {
-    el.walletUnlockError.textContent = err.message
-    el.walletUnlockError.hidden = false
+    fail(el.walletUnlockError, err.message)
   } finally {
     el.walletUnlockPassword.value = ''
     el.walletUnlockBtn.disabled = false

@@ -26,8 +26,17 @@
   background: var(--lc-bg-elevated-2);
 }
 
+/**
+ * Nothing deposited, so the next question a model is asked will be refused.
+ *
+ * Warning rather than danger. Nothing has failed: this is the resting state of
+ * every wallet that has not been funded yet, and it now sits permanently in the
+ * sidebar footer rather than passing through a title bar. A red readout that is
+ * simply true on a new machine teaches somebody to read red as decoration,
+ * which is the colour that most needs to keep meaning something.
+ */
 .titlebar-balance.is-empty {
-  color: var(--lc-danger, #ff8080);
+  color: var(--lc-warning);
 }
 
 .icon-button {

@@ -1,4 +1,4 @@
-import { el, toast } from './dom.js'
+import { el, svg, time, toast } from './dom.js'
 import { request } from './ipc.js'
 import { openSettings } from './settings.js'
 
@@ -8,7 +8,18 @@ import { openSettings } from './settings.js'
  *
  * The panel reports rather than diagnoses. A check that fails carries the
  * command that fixes it, because a failure without a remedy is just bad news.
+ *
+ * Everything this file writes is machine-generated — a probe's observation, a
+ * container name, docker's own words — so all of it is set with textContent.
+ * None of it is ever assigned as markup.
  */
+
+const verdict = document.getElementById('worker-verdict')
+const verdictDetail = document.getElementById('worker-verdict-detail')
+const checkedAt = document.getElementById('worker-checked')
+const containerState = document.getElementById('worker-state')
+const logScroll = document.getElementById('worker-log')
+const workerBusy = document.getElementById('worker-busy')
 
 function line(term, value) {
   const dt = document.createElement('dt')
@@ -18,66 +29,141 @@ function line(term, value) {
   return [dt, dd]
 }
 
+/** `1 warning`, `2 warnings`. */
+function plural(count, noun) {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`
+}
+
+/**
+ * The answer, above the evidence for it.
+ *
+ * `state` is null while the host is being read: the border stays neutral rather
+ * than claiming a verdict the probes have not returned yet.
+ */
+function setVerdict(state, headline, detail = '') {
+  if (state) verdict.dataset.state = state
+  else delete verdict.dataset.state
+  el.workerSummary.textContent = headline
+  verdictDetail.textContent = detail
+}
+
+/**
+ * A block of prose about something that happened, in the one place a surface
+ * puts one. An error interrupts a screen reader; guidance waits its turn.
+ */
+function alertNode(tone, title, body) {
+  const node = document.createElement('div')
+  node.className = 'alert'
+  node.dataset.tone = tone
+  if (tone === 'error') node.setAttribute('role', 'alert')
+
+  const icon = svg('svg', { class: 'icon', 'aria-hidden': 'true', focusable: 'false' })
+  icon.append(svg('use', { href: tone === 'error' ? '#i-alert' : '#i-info' }))
+
+  const text = document.createElement('div')
+  text.className = 'alert-body'
+  if (title) {
+    const strong = document.createElement('strong')
+    strong.className = 'alert-title'
+    strong.textContent = title
+    text.append(strong)
+  }
+  const paragraph = document.createElement('p')
+  paragraph.textContent = body
+  text.append(paragraph)
+
+  node.append(icon, text)
+  return node
+}
+
+const STATUS_WORD = { pass: 'Pass', warn: 'Warn', fail: 'Fail' }
+
 function renderChecks({ results, totals }) {
   el.workerChecks.replaceChildren()
 
   for (const result of results) {
-    const item = document.createElement('li')
-    item.className = 'check'
+    const row = document.createElement('div')
+    row.className = 'status-row'
 
     const status = document.createElement('span')
-    status.className = 'check-status'
-    status.dataset.status = result.status
-    status.textContent = result.status === 'pass' ? 'ok' : result.status
+    status.className = 'status-state'
+    status.dataset.state = result.status === 'pass' ? 'ok' : result.status
+    status.textContent = STATUS_WORD[result.status] ?? result.status
 
-    const body = document.createElement('div')
-    const detail = document.createElement('p')
-    detail.className = 'check-detail'
+    const detail = document.createElement('span')
+    detail.className = 'status-line'
     detail.textContent = `${result.title}: ${result.detail}`
-    body.append(detail)
 
-    // A failure without the command that fixes it is just bad news.
+    row.append(status, detail)
+
+    // A failure without the command that fixes it is just bad news. It belongs
+    // under the check it answers, not in a paragraph of its own further down.
     if (result.remedy) {
       const remedy = document.createElement('p')
-      remedy.className = 'check-remedy'
+      remedy.className = 'status-remedy'
       remedy.textContent = result.remedy
-      body.append(remedy)
+      row.append(remedy)
     }
 
-    item.append(status, body)
-    el.workerChecks.append(item)
+    el.workerChecks.append(row)
   }
 
-  el.workerSummary.textContent = totals.ready
-    ? `${totals.passed} passed, ${totals.warned} warnings. This host can run a worker.`
-    : `${totals.passed} passed, ${totals.warned} warnings, ${totals.failed} failed. Resolve the failures above.`
+  // Always all three counts, in the same order, so two runs can be compared
+  // rather than read.
+  const counts = `${totals.failed} failed, ${plural(totals.warned, 'warning')}, ${totals.passed} passed.`
+
+  setVerdict(
+    totals.ready ? (totals.warned > 0 ? 'warn' : 'ok') : 'fail',
+    totals.ready ? 'This host can run a worker' : 'This host cannot run a worker',
+    totals.ready ? counts : `${counts} Each failure below says what to do.`
+  )
+
+  checkedAt.textContent = `Checked ${time(Date.now())}`
+}
+
+/** Docker's container health as a word, and how much alarm it deserves. */
+const HEALTH = {
+  running: { label: 'Running', tone: 'ok' },
+  'restart-loop': { label: 'Restart loop', tone: 'danger' },
+  'exited-error': { label: 'Exited with an error', tone: 'danger' },
+  stopped: { label: 'Stopped', tone: 'warn' },
+  absent: { label: 'No container' }
+}
+
+/** Docker stamps a start time to the nanosecond. Nobody reads that. */
+function when(stamp) {
+  const at = new Date(stamp)
+  return Number.isNaN(at.getTime()) ? stamp : at.toLocaleString()
 }
 
 function renderContainer(status) {
   el.workerContainer.replaceChildren()
 
   if (!status.configured) {
-    const note = document.createElement('p')
-    note.className = 'check-detail'
-    note.textContent = 'No worker is configured on this machine.'
+    containerState.hidden = true
 
     // The message from the config layer explains the requirement but not where
     // to satisfy it. It used to name environment variables, which was true
     // before there was anywhere in the app to set them and is now just sending
     // people to a terminal for something two clicks away.
-    const why = document.createElement('p')
-    why.className = 'check-remedy'
-    why.textContent = status.problem
+    const note = alertNode('info', 'No worker is configured on this machine', status.problem)
 
     const open = document.createElement('button')
     open.className = 'button button-sm'
     open.type = 'button'
     open.textContent = 'Open worker settings'
     open.addEventListener('click', () => void openSettings('worker'))
+    note.querySelector('.alert-body').append(open)
 
-    el.workerContainer.append(note, why, open)
+    el.workerContainer.append(note)
     return
   }
+
+  const health = HEALTH[status.state.health] ?? { label: status.state.health }
+  containerState.hidden = false
+  containerState.textContent = health.label
+  if (health.tone) containerState.dataset.tone = health.tone
+  else delete containerState.dataset.tone
 
   const facts = document.createElement('dl')
   facts.className = 'facts'
@@ -86,16 +172,15 @@ function renderContainer(status) {
     ...line('Network', `${status.network} (chain ${status.chainId})`),
     ...line('Models', status.models.join(', ')),
     ...line('Ollama', status.ollamaUrl),
-    ...line('State', `${status.state.health} — ${status.state.detail}`)
+    // The health word is already in the chip above; this is what was observed.
+    ...line('State', status.state.detail)
   )
-  if (status.state.startedAt) facts.append(...line('Started', status.state.startedAt))
+  if (status.state.startedAt) facts.append(...line('Started', when(status.state.startedAt)))
   el.workerContainer.append(facts)
 
   if (status.state.remedy) {
-    const remedy = document.createElement('p')
-    remedy.className = 'check-remedy'
-    remedy.textContent = status.state.remedy
-    el.workerContainer.append(remedy)
+    const failing = health.tone === 'danger'
+    el.workerContainer.append(alertNode(failing ? 'error' : 'info', null, status.state.remedy))
   }
 }
 
@@ -112,7 +197,7 @@ export async function refreshWorker({ logs = true } = {}) {
   if (refreshing) return
   refreshing = true
   el.workerRefresh.disabled = true
-  el.workerSummary.textContent = 'Checking the host…'
+  setVerdict(null, 'Checking the host…')
 
   try {
     // In parallel, because the host probes are the slow part and the container
@@ -130,9 +215,14 @@ export async function refreshWorker({ logs = true } = {}) {
       el.workerLogs.textContent = containerLogs.configured
         ? containerLogs.text || 'No output. The container may never have started.'
         : 'Not configured.'
+      // `docker logs --tail` returns the end of the log, so show the end of it.
+      logScroll.scrollTop = logScroll.scrollHeight
     }
   } catch (err) {
-    el.workerSummary.textContent = `Could not read the host: ${err.message}`
+    // The verdict is the answer to "can this host run a worker", and when the
+    // probes themselves fail the honest answer is that nobody knows. It goes
+    // here rather than in a fourth place for text.
+    setVerdict('fail', 'Could not read the host', err.message)
   } finally {
     refreshing = false
     el.workerRefresh.disabled = false
@@ -146,23 +236,30 @@ el.workerRefresh.addEventListener('click', () => void refreshWorker())
  *
  * A pull is minutes long and noisy, and the noise is the only evidence it is
  * progressing — a spinner four minutes in looks exactly like a spinner that is
- * stuck.
+ * stuck. The chip beside the log heading says which action the output belongs
+ * to, since the output alone rarely does.
  */
-const workerBusy = document.getElementById('worker-busy')
-
 export function setWorkerBusy({ doing }) {
   workerBusy.hidden = doing === null
-  workerBusy.textContent = doing === null ? '' : `${doing}…`
+  workerBusy.textContent = doing === null ? '' : `${doing[0].toUpperCase()}${doing.slice(1)}…`
 
   for (const id of ['worker-pull', 'worker-register', 'worker-start', 'worker-stop']) {
     document.getElementById(id).disabled = doing !== null
   }
 }
 
+/** Within this of the bottom counts as watching the tail. */
+const AT_TAIL = 24
+
 /** Docker's own words, as the worker forwards them line by line. */
 export function appendWorkerOutput({ text }) {
+  // Following the tail is what somebody watching a pull wants, and yanking the
+  // pane back down is exactly what somebody who scrolled up to read an error
+  // does not. So the pane follows only while it is already at the bottom.
+  const following = logScroll.scrollHeight - logScroll.scrollTop - logScroll.clientHeight < AT_TAIL
+
   el.workerLogs.textContent += text
-  el.workerLogs.scrollTop = el.workerLogs.scrollHeight
+  if (following) logScroll.scrollTop = logScroll.scrollHeight
 }
 
 for (const [id, action, label] of [
@@ -181,7 +278,7 @@ for (const [id, action, label] of [
     } catch (err) {
       // Left in the log rather than only in a toast: docker's reason is usually
       // several lines and worth reading.
-      el.workerLogs.textContent += `\n${err.message}`
+      appendWorkerOutput({ text: `\n${err.message}` })
       toast(err.message.split('\n')[0], 'error')
     }
   })

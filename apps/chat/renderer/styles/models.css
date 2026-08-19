@@ -2,22 +2,49 @@
  * models and inference.
  *
  * Split out of app.css so this surface can be worked on without touching every
- * other one. app.css keeps what is genuinely shared.
+ * other one. app.css keeps what is genuinely shared, and kit.css keeps the
+ * pieces more than one surface needs — the page head, the cards, the alert and
+ * the chip below all come from there rather than being invented again here.
  */
 
-/* --- Asking a model ------------------------------------------------------- */
+/* --- The two columns ------------------------------------------------------ */
 
+/**
+ * A list of models and the thread opened against one of them.
+ *
+ * Both bounds matter. The list was a fixed 260px, which is too narrow for a
+ * price and a worker count on one line and too wide once the window is docked
+ * to half a screen. The thread had no bound at all, so on a wide window the
+ * composer and the header ran the width of the display while the bubbles
+ * stopped at 68ch, and the two stopped looking like parts of one conversation.
+ *
+ * `flex: 1 1 auto` is not decoration: `.panel` is a flex row, so without it
+ * this box is sized to its contents and the thread is cut off at whatever width
+ * the widest model name happens to give it.
+ */
 .ai {
-  display: flex;
-  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(26ch, 34ch) minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
 }
+
+/* Narrow, the list gives up its comfort before the thread does: a thread too
+   narrow to read an answer in is worse than a truncated model name. */
+@media (max-width: 1000px) {
+  .ai {
+    grid-template-columns: minmax(0, 22ch) minmax(0, 1fr);
+  }
+}
+
+/* --- The model list ------------------------------------------------------- */
 
 .ai-models {
   display: flex;
   flex-direction: column;
-  width: 260px;
-  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 0;
   border-right: 1px solid var(--lc-rule);
   background: var(--lc-bg-elevated);
 }
@@ -28,19 +55,23 @@
   justify-content: space-between;
   gap: var(--lc-space-sm);
   padding: var(--lc-space-md) var(--lc-space-md) var(--lc-space-sm);
+  flex: 0 0 auto;
 }
 
-/* The heading carries a bottom margin for when it stands alone above a list.
-   In a row beside a button that margin lifts it off the shared centre line. */
-.ai-models-head .sidebar-title {
-  margin: 0;
+/* One scroller for both lists. Two of them stacked meant the earlier
+   conversations moved under the pointer while the models above them did not,
+   and neither could be scrolled to the end when the column was short. */
+.ai-models-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: var(--lc-space-sm);
 }
 
 .model-list {
-  flex: 1 1 auto;
-  overflow-y: auto;
   margin: 0;
-  padding: 0 var(--lc-space-sm) var(--lc-space-sm);
+  padding: 0 var(--lc-space-sm);
   list-style: none;
 }
 
@@ -61,10 +92,12 @@
 }
 
 .model.is-active {
-  background: var(--lc-bg-selected, var(--lc-bg-elevated-2));
+  background: var(--lc-bg-elevated-2);
   box-shadow: inset 2px 0 0 var(--lc-brand);
 }
 
+/* Dimmed, but never only dimmed: a model that cannot be asked carries a chip
+   saying which of the two reasons it is. */
 .model:disabled {
   opacity: 0.45;
 }
@@ -73,6 +106,17 @@
   display: block;
   font-size: var(--lc-text-sm);
   font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* Price on the left, availability on the right. Run together as
+   "0.02 LCAI · 0 workers" the fact that stops the job read as part of the
+   price, which is the one thing on the row nobody re-reads. */
+.model-line {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  margin-top: 2px;
 }
 
 .model-meta {
@@ -83,14 +127,27 @@
   font-variant-numeric: tabular-nums;
 }
 
-.ai-past-title {
-  padding: var(--lc-space-md) var(--lc-space-md) var(--lc-space-xs);
-  border-top: 1px solid var(--lc-rule);
+.model-line .model-meta {
+  margin-top: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.conversation-list {
-  flex: 0 1 auto;
-  max-height: 45%;
+.model-line .chip,
+.model-avail {
+  margin-left: auto;
+}
+
+/* The count only earns a chip when it is zero. A tone on every row would make
+   the rows that are fine as loud as the ones that are not. */
+.model-avail {
+  flex: 0 0 auto;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .model-meta.is-preview {
@@ -99,66 +156,213 @@
   white-space: nowrap;
 }
 
-.ai-note {
-  margin: 0;
-  padding: var(--lc-space-md);
-  border-top: 1px solid var(--lc-rule);
+/* A list that is being fetched says so in the list. It is a row rather than a
+   shared text slot, because a shared text slot is where the errors went. */
+.model-waiting {
+  padding: var(--lc-space-sm) var(--lc-space-md);
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-muted);
+  color: var(--lc-fg-dim);
 }
+
+.ai-past-title {
+  margin: var(--lc-space-md) 0 var(--lc-space-xs);
+  padding: var(--lc-space-md) var(--lc-space-md) 0;
+  border-top: 1px solid var(--lc-rule);
+}
+
+.ai-models-alert {
+  flex: 0 0 auto;
+  margin: var(--lc-space-sm);
+  padding: var(--lc-space-md);
+}
+
+/* With an alert showing, the lists stop claiming the leftover space. The two
+   cases where one appears are a list that is short and a list that is empty,
+   and an alert pinned to the bottom of an empty column reads as a footnote
+   about the window rather than as the reason the column is empty. */
+.ai-models:has(.ai-models-alert:not([hidden])) .ai-models-scroll {
+  flex: 0 1 auto;
+}
+
+/* --- The thread ----------------------------------------------------------- */
 
 .ai-thread {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
 }
 
+/* One measure for the header, the conversation and the composer, so a wide
+   window widens the margins rather than the line length. */
+.ai-head,
+.ai-thread .messages,
+.ai-foot {
+  width: 100%;
+  max-width: 104ch;
+  margin-inline: auto;
+}
+
+/* `.page-head` supplies the row; this supplies the band it sits in. */
 .ai-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--lc-space-md);
-  padding: var(--lc-space-md) var(--lc-space-lg);
+  flex: 0 0 auto;
+  padding: var(--lc-space-lg) var(--lc-space-xl) var(--lc-space-md);
   border-bottom: 1px solid var(--lc-rule);
 }
 
 .ai-title {
-  margin: 0;
-  font-size: var(--lc-text-md);
-  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
-.ai-sub {
-  margin: 2px 0 0;
-  font-size: var(--lc-text-xs);
-  color: var(--lc-fg-muted);
+/* A session id and a worker key. They wrap rather than push the actions off the
+   row, and their digits line up between one refresh and the next. */
+.ai-session {
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
-.ai-empty {
-  flex: 1 1 auto;
+/**
+ * The thread before it has a first turn.
+ *
+ * One box holding the state and whatever is blocking it, because two boxes each
+ * carrying `margin: auto` down an empty column end up a third of a screen apart
+ * and read as two unrelated things.
+ */
+.ai-body {
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  text-align: center;
+  justify-content: center;
+  gap: var(--lc-space-lg);
+  flex: 1 1 auto;
+  min-height: 0;
   padding: var(--lc-space-xxl);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.ai-empty-title {
+/* The shared empty state brings its own centring, which this box has already
+   done for it. */
+.ai-body > .empty {
+  margin: 0;
+  padding: 0;
+}
+
+/* --- A session with nothing in it yet ------------------------------------- */
+
+/**
+ * The state the panel is in for most of the first minute.
+ *
+ * A draw takes up to a minute, and until this existed the thread was an empty
+ * message list for the whole of it: a large blank area, with the only sign of
+ * life a few words of grey in the subtitle.
+ */
+.ai-state {
+  flex: 0 0 auto;
+}
+
+/* Not `.empty-title`: the model's name is already a page title directly above,
+   and two headings at that size read as two pages rather than one. */
+.ai-phase {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--lc-space-sm);
   margin: 0 0 var(--lc-space-sm);
-  font-size: var(--lc-text-xxl);
+  font-size: var(--lc-text-lg);
   font-weight: 600;
   line-height: var(--lc-leading-tight);
 }
 
-.ai-empty-body {
-  margin: 0;
-  max-width: 46ch;
-  color: var(--lc-fg-muted);
+/* Something moving, because a minute of a static sentence is indistinguishable
+   from a minute of a hung window. */
+.ai-dots {
+  display: inline-flex;
+  gap: 3px;
 }
+
+.ai-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-fg-dim);
+  animation: ai-dot 1.2s ease-in-out infinite;
+}
+
+.ai-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.ai-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes ai-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+/* --- Failures ------------------------------------------------------------- */
+
+/**
+ * The kit's alert carries a title and a sentence; these are the sentence and
+ * the way out of it.
+ *
+ * Surface-scoped rather than added to the kit, because no second surface needs
+ * them yet — and a component invented in one surface is one the next surface
+ * will invent differently.
+ */
+.ai-alert-text {
+  margin: var(--lc-space-xs) 0 0;
+  color: var(--lc-fg-muted);
+  overflow-wrap: anywhere;
+}
+
+.ai-alert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lc-space-sm);
+  margin-top: var(--lc-space-md);
+}
+
+/* The tone belongs to the alert's own icon. An icon inside a control in the
+   alert takes the control's colour, or Try again draws in danger red and reads
+   as a second warning rather than as the way out of the first. */
+.alert[data-tone] .ai-alert-actions .icon {
+  color: inherit;
+  margin-top: 0;
+}
+
+/* A session that never opened has no conversation to sit above, so this takes
+   the place the conversation would have had. */
+.ai-thread-alert {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 56ch;
+}
+
+/* --- The composer --------------------------------------------------------- */
+
+.ai-foot {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+
+/* Above the composer rather than at the foot of the model list: the sentence is
+   about whether this box can send, and it was in the other column. Inset by the
+   composer's own padding so the two read as one control. */
+.ai-composer-alert {
+  margin: var(--lc-space-md) var(--lc-space-lg) 0;
+}
+
+/* --- Turns ---------------------------------------------------------------- */
 
 /* The assistant's turn while tokens are still arriving. */
 .message.is-streaming .message-text::after {

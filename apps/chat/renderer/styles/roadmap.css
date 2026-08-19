@@ -5,40 +5,165 @@
  * other one. app.css keeps what is genuinely shared.
  */
 
-/* --- Sections that do not exist yet --------------------------------------- */
+/* --- Things that do not exist yet ----------------------------------------- */
 
+/**
+ * One entry on the roadmap.
+ *
+ * These were one-per-panel placeholders once, each filling a section on its
+ * own. They are now items in a reading page, so the measure and the scrolling
+ * come from `.page` and what is left here is the entry itself.
+ *
+ * Separated by a rule rather than boxed. Ten cards down a reading column reads
+ * as a board of tickets, which is the impression this page most has to avoid —
+ * a card implies a unit of work somebody has taken on, and several of these
+ * are the opposite of that.
+ */
 .unbuilt {
-  margin: auto;
-  max-width: 62ch;
-  padding: var(--lc-space-xxl);
-  overflow-y: auto;
+  /* Padded and pulled back out again so the jumped-to state has somewhere to
+     sit without indenting the text away from the rest of the page. */
+  margin: 0 calc(var(--lc-space-md) * -1);
+  padding: var(--lc-space-lg) var(--lc-space-md);
+  border-radius: var(--lc-radius-md);
+  scroll-margin-top: var(--lc-space-lg);
 }
 
+.unbuilt + .unbuilt {
+  border-top: 1px solid color-mix(in srgb, var(--lc-rule) 55%, transparent);
+}
+
+/**
+ * Where a nav entry has just landed.
+ *
+ * Arriving part-way down a page of similar-looking entries, having clicked
+ * something in the sidebar, leaves no way to tell which one was meant. Held
+ * for a moment by script rather than faded by an animation: the reduced-motion
+ * rule in app.css collapses every animation to nothing, and this has to be a
+ * mark that survives that, not a flourish that disappears with it.
+ */
+.unbuilt.is-targeted {
+  background: color-mix(in srgb, var(--lc-brand) 10%, transparent);
+  box-shadow: inset 2px 0 0 var(--lc-brand);
+}
+
+/**
+ * What kind of not-built this one is.
+ *
+ * The distinctions are the whole point of the page: not started, built but
+ * unoperated, and deliberately declined are three different things, and a
+ * reader who cannot tell them apart has been told nothing. Quiet by default
+ * because "not started" is not a problem — it is the ordinary state of work
+ * nobody has begun.
+ *
+ * Inside the heading rather than above it, which is why it is a span. Ten
+ * entries is a page somebody navigates heading by heading, and a status in the
+ * paragraph before the heading is one that jumping to the heading skips.
+ */
 .unbuilt-status {
-  margin: 0 0 var(--lc-space-md);
+  display: block;
+  margin: 0 0 var(--lc-space-xs);
   font-size: var(--lc-text-xs);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: var(--lc-fg-dim);
+}
+
+/* Something outside the work is holding it up: a machine, a certificate or a
+   decision. */
+.unbuilt-status[data-tone='waiting'] {
   color: var(--lc-warning);
 }
 
-/* The supervisor case is different in kind from the others: the work exists
-   and only the interface is absent. */
-.unbuilt-status[data-tone='near'] {
-  color: var(--lc-success);
+/* Settled, with a written reason. Not a warning — nothing is wrong with a
+   question that has been answered — and deliberately not the success colour,
+   which beside "decided against" would read as shipped. */
+.unbuilt-status[data-tone='decided'] {
+  color: var(--lc-brand);
 }
 
 .unbuilt-title {
-  margin: 0 0 var(--lc-space-md);
-  font-size: var(--lc-text-xxl);
+  margin: 0 0 var(--lc-space-sm);
+  font-size: var(--lc-text-lg);
   font-weight: 600;
-  line-height: 1.25;
+  line-height: var(--lc-leading-tight);
+  text-wrap: balance;
 }
 
 .unbuilt-body {
-  margin: 0 0 var(--lc-space-xl);
+  margin: 0 0 var(--lc-space-md);
   color: var(--lc-fg-muted);
+  text-wrap: pretty;
+}
+
+/* An entry whose last word is its prose owes no gap to the rule below it. */
+.unbuilt-body:last-child {
+  margin-bottom: 0;
+}
+
+.unbuilt-list {
+  margin-top: var(--lc-space-xl);
+}
+
+/**
+ * The key to the statuses, above the entries that use them.
+ *
+ * The labels are the same element as on an entry, so the two cannot drift
+ * apart: a legend that describes a colour the page has since changed is worse
+ * than no legend.
+ */
+.unbuilt-legend {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--lc-space-sm) var(--lc-space-lg);
+  margin: 0;
+}
+
+.unbuilt-legend dd {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+  text-wrap: pretty;
+}
+
+/* Two columns need room for the longest label and a sentence beside it. Below
+   that the label goes above its line rather than squeezing it to four words a
+   row. */
+@media (max-width: 1000px) {
+  .unbuilt-legend {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .unbuilt-legend dd {
+    margin-bottom: var(--lc-space-md);
+  }
+
+  .unbuilt-legend dd:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.unbuilt-footnote {
+  margin: var(--lc-space-xl) 0 0;
+  padding-top: var(--lc-space-lg);
+  border-top: 1px solid var(--lc-rule);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+  text-wrap: pretty;
+}
+
+/* A path or a package name is a string to be copied or typed exactly, and it
+   is the one thing on this page worth setting apart from the sentence around
+   it. Nothing here links out: the references are files in the repository, and
+   the main process refuses any scheme that is not http or https, so a link to
+   one could only be a control that does nothing. */
+.unbuilt code,
+.unbuilt-footnote code {
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.92em;
+  color: var(--lc-fg);
+  user-select: text;
 }
 
 .ledger {

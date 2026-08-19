@@ -14,6 +14,9 @@ import { renderAccount } from './wallet.js'
 const dash = {
   sub: document.getElementById('dash-sub'),
   network: document.getElementById('dash-network'),
+  error: document.getElementById('dash-error'),
+  errorTitle: document.getElementById('dash-error-title'),
+  errorDetail: document.getElementById('dash-error-detail'),
   heroValue: document.getElementById('hero-value'),
   heroNote: document.getElementById('hero-note'),
   heroChips: document.getElementById('hero-chips'),
@@ -109,25 +112,24 @@ function sparkline(values) {
   return box
 }
 
-export async function refreshDashboard() {
-  let summary
-  try {
-    summary = await request('dashboard.read', { months: dashMonths })
-  } catch (err) {
-    dash.stats.replaceChildren(stat('Dashboard', null, { note: err.message }))
-    return
-  }
+/**
+ * Where a failed read goes.
+ *
+ * It used to go into a stat card: a chain error was passed as the `note` of a
+ * metric labelled "Dashboard", so it rendered in dim grey under a heading, at
+ * caption size, in the slot that otherwise says "in 4 conversations". An error
+ * is not a measurement and it is not a caption.
+ */
+function showError(title, detail) {
+  dash.errorTitle.textContent = title
+  dash.errorDetail.textContent = detail
+  dash.error.hidden = false
+}
 
-  latest = summary
-  dash.network.textContent = summary.network
-  dash.locked.hidden = !summary.address || summary.unlocked
-
-  renderAccount({ address: summary.address, unlocked: summary.unlocked, network: summary.network })
-  renderHero(summary)
-
-  const inference = summary.inference
-  const asked = inference?.series.map((m) => m.asked) ?? []
-  const jobs = inference?.series.map((m) => m.jobs) ?? []
+/** The four counts, or four dashes when there is nothing to count them from. */
+function renderStats(summary) {
+  const inference = summary?.inference ?? null
+  const rooms = summary?.rooms ?? null
 
   dash.stats.replaceChildren(
     stat('Questions asked', inference ? count(inference.asked) : null, {
@@ -135,7 +137,7 @@ export async function refreshDashboard() {
       note: inference
         ? `in ${count(inference.conversations)} conversation${inference.conversations === 1 ? '' : 's'}`
         : undefined,
-      series: asked
+      series: inference?.series.map((m) => m.asked) ?? []
     }),
     stat('Answers returned', inference ? count(inference.answered) : null, {
       note:
@@ -149,13 +151,34 @@ export async function refreshDashboard() {
         inference && inference.asked > 0
           ? `${Math.round((inference.jobs / inference.asked) * 100)}% of asks`
           : undefined,
-      series: jobs
+      series: inference?.series.map((m) => m.jobs) ?? []
     }),
-    stat('Rooms', count(summary.rooms.total), {
-      note: summary.rooms.total > 0 ? `${count(summary.rooms.messages)} messages` : undefined
+    stat('Rooms', rooms ? count(rooms.total) : null, {
+      note: rooms && rooms.total > 0 ? `${count(rooms.messages)} messages` : undefined
     })
   )
+}
 
+export async function refreshDashboard() {
+  let summary
+  try {
+    summary = await request('dashboard.read', { months: dashMonths })
+  } catch (err) {
+    showError('The dashboard could not be read', err.message)
+    renderStats(null)
+    return
+  }
+
+  dash.error.hidden = true
+  latest = summary
+  dash.network.textContent = summary.network
+  dash.locked.hidden = !summary.address || summary.unlocked
+
+  renderAccount({ address: summary.address, unlocked: summary.unlocked, network: summary.network })
+  renderHero(summary)
+  renderStats(summary)
+
+  const inference = summary.inference
   renderChart(inference)
   renderFeed(summary.recent)
   renderModelUse(inference)
@@ -174,9 +197,18 @@ function renderHero(summary) {
   const balances = summary.balances
   if (!balances) {
     dash.heroValue.textContent = '—'
-    dash.heroNote.textContent = summary.address
-      ? 'The chain could not be read.'
-      : 'No wallet on this machine yet.'
+    if (summary.address) {
+      // Not knowing the balance is a failure of the chain, not a description of
+      // the figure above. It went in the note under the number, in the same
+      // grey as "On lightchain-testnet", and read as one.
+      dash.heroNote.textContent = ''
+      showError(
+        'The chain could not be read',
+        'Your balance is unknown until it answers. Refresh to try again.'
+      )
+    } else {
+      dash.heroNote.textContent = 'No wallet on this machine yet.'
+    }
     return
   }
 
@@ -341,24 +373,44 @@ function renderChart(inference) {
   }
 }
 
+/** An icon from the sprite, for a chip that carries a state. */
+function mark(id) {
+  const node = svg('svg', { class: 'icon', 'aria-hidden': 'true' })
+  node.append(svg('use', { href: `#${id}` }))
+  return node
+}
+
 function renderFeed(recent) {
   dash.feed.replaceChildren()
 
   if (!recent || recent.length === 0) {
-    dash.feed.append(el2('li', 'dash-empty', 'Nothing has happened here yet.'))
+    dash.feed.append(
+      el2(
+        'li',
+        'dash-empty',
+        'Nothing has happened here yet. Join a room or ask a model something, and it will show up here.'
+      )
+    )
     return
   }
 
   for (const entry of recent) {
     const item = el2('li', 'feed-item')
 
+    // Facts about the entry, so chips. The kind and the name are neutral; only
+    // "this reached the chain" is a state worth a colour, and it gets a mark
+    // beside it so the colour is not carrying it alone.
     const tags = el2('div', 'feed-tags')
-    const kind = el2('span', 'tag', entry.kind === 'room' ? 'Room' : 'Model')
-    if (entry.kind === 'room') kind.dataset.tone = 'room'
-    tags.append(kind, el2('span', 'tag', entry.label))
+    const name = el2('span', 'chip')
+    name.append(el2('span', 'feed-tag-name', entry.label))
+    tags.append(el2('span', 'chip', entry.kind === 'room' ? 'Room' : 'Model'), name)
     if (entry.proven) {
-      const proven = el2('span', 'tag', entry.kind === 'room' ? 'Signed' : 'On chain')
-      proven.dataset.tone = 'proven'
+      const proven = el2('span', 'chip')
+      proven.dataset.tone = 'ok'
+      proven.append(
+        mark('i-check'),
+        el2('span', null, entry.kind === 'room' ? 'Signed' : 'On chain')
+      )
       tags.append(proven)
     }
 
@@ -387,7 +439,9 @@ function renderModelUse(inference) {
       el2(
         'li',
         'dash-empty',
-        inference ? 'No model has been asked anything yet.' : 'Unlock your wallet to read this.'
+        inference
+          ? 'No model has been asked anything yet. Open Models and ask something.'
+          : 'Unlock your wallet to read this.'
       )
     )
     return

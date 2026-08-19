@@ -696,31 +696,43 @@ function discardPreviews(key) {
 }
 
 /**
- * Reply, react, edit and withdraw, on the message they apply to.
+ * Reply, react, ask again, edit and withdraw, on the message they apply to.
  *
  * Editing and withdrawing are offered only on messages this peer can prove it
  * wrote. The room refuses the rest when it reads them, so showing the controls
  * anyway would offer an action that silently does nothing.
+ *
+ * Withdrawing is last because it is the only one that cannot be pressed again
+ * to undo, which is the same reason Leave sits in the header's overflow.
  */
 function messageActions(message, room) {
   const actions = el2('div', 'message-actions', '')
   const mine = message.from === room.writerKey
 
-  const act = (label, icon, run) => {
-    const button = el2('button', 'message-action', '')
+  // From the sprite, like every other icon in the window. These were four
+  // characters from four corners of Unicode — an arrow, a smiling face, a
+  // pencil and a multiplication sign — and Windows drew two of them through
+  // the emoji font, in colour, at a size nothing else on the row used.
+  const icon = (name) => {
+    const mark = svg('svg', { class: 'icon', 'aria-hidden': 'true' })
+    mark.append(svg('use', { href: `#${name}` }))
+    return mark
+  }
+
+  const act = (label, name, run, className = 'message-action') => {
+    const button = el2('button', className, '')
     button.type = 'button'
     button.title = label
+    // The button is a glyph, so this is the whole of its name.
     button.setAttribute('aria-label', label)
-    button.append(icon)
+    button.append(icon(name))
     button.addEventListener('click', run)
     return button
   }
 
-  const glyph = (text) => el2('span', 'message-action-glyph', text)
-
   actions.append(
-    act('Reply', glyph('\u21a9'), () => startReply(message)),
-    act('React', glyph('\u263a'), (evt) => {
+    act('Reply', 'i-reply', () => startReply(message)),
+    act('React', 'i-react', (evt) => {
       const picker = emojiPicker({
         anchor: evt.currentTarget,
         onPick: (emoji) =>
@@ -732,29 +744,34 @@ function messageActions(message, room) {
     })
   )
 
-  if (mine && message.deletedAt === undefined) {
-    actions.append(
-      act('Edit', glyph('\u270e'), () => startEdit(message)),
-      act('Withdraw', glyph('\u2715'), () => {
-        if (!confirmWithdraw()) return
-        void request('room.deleteMessage', { room: room.key, target: message.id }).catch((err) =>
-          toast(err.message, 'error')
-        )
-      })
-    )
-  }
-
   // Only on an answer, and only while it is still showing. Asking again on a
   // withdrawn one would spend money to replace something this room has already
   // agreed to stop showing.
   if (message.answer && message.deletedAt === undefined) {
     actions.append(
-      act('Ask again', glyph('\u21bb'), () => {
+      act('Ask again', 'i-again', () => {
         if (!confirmRegenerate(message.answer.model)) return
         void runAsk(room.key, message.answer.model, () =>
           request('room.regenerate', { key: room.key, target: message.id })
         )
       })
+    )
+  }
+
+  if (mine && message.deletedAt === undefined) {
+    actions.append(
+      act('Edit', 'i-edit', () => startEdit(message)),
+      act(
+        'Withdraw',
+        'i-withdraw',
+        () => {
+          if (!confirmWithdraw()) return
+          void request('room.deleteMessage', { room: room.key, target: message.id }).catch((err) =>
+            toast(err.message, 'error')
+          )
+        },
+        'message-action message-action-danger'
+      )
     )
   }
 
@@ -1067,9 +1084,14 @@ document.getElementById('rename-form').addEventListener('submit', async (evt) =>
 /**
  * Says what is actually true rather than showing a padlock and hoping.
  *
- * Every claim here is a property of how the room was opened: the Autobase is
- * encrypted, the key is separate from the room key, and messages carry a wallet
- * signature this peer checked itself.
+ * Almost all of that page is static, and deliberately: the primitives it names
+ * are properties of how every room is opened, they do not vary per room, and
+ * prose assembled in JavaScript is prose nobody reviews. It lives in
+ * partials/dialog-secure.html.
+ *
+ * Two things here are not static. The verdict is the answer to the question the
+ * lock was clicked to ask, and the signature line is the only claim on the page
+ * this machine has to measure rather than assert.
  */
 document.getElementById('room-secure').addEventListener('click', () => {
   const room = activeKey ? rooms.get(activeKey) : null
@@ -1078,27 +1100,46 @@ document.getElementById('room-secure').addEventListener('click', () => {
   const signed = room.messages.filter((m) => m.verified === true).length
   const unsigned = room.messages.filter((m) => m.verified === undefined && !m.event).length
   const disputed = room.messages.filter((m) => m.verified === false).length
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 
-  const facts = document.getElementById('secure-facts')
-  facts.replaceChildren()
-  for (const [term, detail] of [
-    ['At rest', 'Encrypted on disk. The blocks in this directory are unreadable without the key.'],
-    ['In flight', 'Encrypted end to end between members. Relays and blind peers carry ciphertext.'],
-    [
-      'The key',
-      'Held only by members. It never travels with the room key, and is not on any server.'
-    ],
-    [
-      'Authorship',
-      disputed > 0
-        ? `${disputed} message${disputed === 1 ? '' : 's'} claim an author whose signature does not match. Treat them as unattributed.`
-        : `${signed} message${signed === 1 ? '' : 's'} carry a wallet signature this machine checked.${unsigned > 0 ? ` ${unsigned} predate signing and are shown unattributed.` : ''}`
-    ]
-  ]) {
-    facts.append(el2('dt', null, term), el2('dd', null, detail))
+  const dialog = document.getElementById('secure-dialog')
+
+  // A room whose authorship does not check out is still an encrypted room.
+  // Saying both in the same breath is the version that is true.
+  document.getElementById('secure-verdict').dataset.state = disputed > 0 ? 'warn' : 'ok'
+  document.getElementById('secure-verdict-headline').textContent =
+    disputed > 0 ? 'Encrypted, but authorship is disputed' : 'Encrypted at rest and in flight'
+  document.getElementById('secure-verdict-detail').textContent =
+    disputed > 0
+      ? `${plural(disputed, 'message')} signed by somebody else`
+      : `${plural(signed, 'signature')} checked on this machine`
+
+  const live = document.getElementById('secure-signatures')
+  live.dataset.state = disputed > 0 ? 'warn' : 'ok'
+  live.textContent =
+    disputed > 0
+      ? `${plural(disputed, 'message')} claim an author whose signature does not match. Treat them as unattributed.`
+      : `${plural(signed, 'message')} carry a wallet signature this machine checked.${unsigned > 0 ? ` ${unsigned} predate signing and are shown unattributed.` : ''}`
+
+  // One delegated listener for every specification link, attached the first
+  // time the dialog opens. The flag lives on the element rather than in a
+  // module variable so that opening the dialog twice does not open every link
+  // twice.
+  if (dialog.dataset.specsWired !== 'yes') {
+    dialog.dataset.specsWired = 'yes'
+    dialog.addEventListener('click', (evt) => {
+      const ref = evt.target.closest?.('[data-spec]')
+      if (!ref) return
+      // Not an anchor: an href would navigate this window away from the
+      // application. The main process opens it, and refuses anything that is
+      // not http or https.
+      void bridge.openExternal(ref.dataset.spec).then((ok) => {
+        if (!ok) toast('That link could not be opened', 'error')
+      })
+    })
   }
 
-  document.getElementById('secure-dialog').showModal()
+  dialog.showModal()
 })
 
 // --- Actions ---------------------------------------------------------------
@@ -1293,9 +1334,29 @@ membersBtn?.addEventListener('click', () => {
   renderMembers()
 })
 
+// --- The overflow ------------------------------------------------------------
+
+const roomMenu = document.getElementById('room-menu')
+const roomMore = document.getElementById('room-more')
+
+/**
+ * Keeps the trigger's state in step with the menu it opens.
+ *
+ * Read back from the popover rather than tracked beside it, because the
+ * popover closes on its own as well: Escape and a click anywhere outside both
+ * put it away without going through the button, and a flag maintained here
+ * would be wrong from then on.
+ */
+roomMenu?.addEventListener('toggle', (evt) => {
+  roomMore?.setAttribute('aria-expanded', String(evt.newState === 'open'))
+})
+
 el.leaveBtn.addEventListener('click', async () => {
   const key = activeKey
   if (!key) return
+  // Before the room goes, not after: a popover left open over a conversation
+  // that has been replaced is a menu standing on nothing.
+  if (roomMenu?.matches(':popover-open')) roomMenu.hidePopover()
   try {
     await request('room.leave', { room: key })
     rooms.delete(key)

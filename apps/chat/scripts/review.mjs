@@ -132,6 +132,24 @@ note(
   unlabelled.length ? unlabelled.slice(0, 4).join(', ') : 'all labelled'
 )
 
+// index.html is assembled from partials, and a partial that does not close what
+// it opens takes the next one inside it. That happened: the wallet panel was
+// truncated and swallowed the roadmap panel, which then lived inside a subtree
+// hidden unless a wallet was unlocked. Every panel should be a sibling.
+const misnested = await evaluate(`(() => {
+  const bad = []
+  for (const panel of document.querySelectorAll('.panel')) {
+    const inside = panel.parentElement?.closest('.panel')
+    if (inside) bad.push(panel.id + ' inside ' + inside.id)
+  }
+  return bad
+})()`)
+note(
+  misnested.length === 0,
+  'no panel is nested inside another',
+  misnested.length ? misnested.join(', ') : 'all siblings'
+)
+
 // --- Every surface, in both themes --------------------------------------------
 
 fs.mkdirSync(outdir, { recursive: true })
@@ -140,14 +158,27 @@ for (const theme of THEMES) {
   await evaluate(`(document.documentElement.dataset.theme = '${theme}', true)`)
 
   for (const surface of SURFACES) {
+    // Asked whether it is on screen, not whether its own hidden attribute is
+    // clear. Those are different questions, and the difference mattered: a
+    // panel was once nested inside another panel's hidden subtree, so it
+    // reported itself visible while rendering nothing at all. An element with
+    // no layout box has no offsetParent, whatever its own attributes say.
     const shown = await evaluate(`(async () => {
       const { showSection } = await import('./lib/dom.js')
-      try { showSection('${surface}') } catch { return false }
-      return !document.getElementById('panel-${surface}')?.hidden
+      try { showSection('${surface}') } catch { return 'threw' }
+
+      const panel = document.getElementById('panel-${surface}')
+      if (!panel) return 'no panel'
+      if (panel.hidden) return 'stayed hidden'
+      if (panel.offsetParent === null) return 'hidden by an ancestor'
+
+      const box = panel.getBoundingClientRect()
+      if (box.width < 1 || box.height < 1) return 'has no size'
+      return 'shown'
     })()`)
 
-    if (!shown) {
-      note(false, `${surface} opens`, 'no such section, or its panel stayed hidden')
+    if (shown !== 'shown') {
+      note(false, `${surface} opens`, shown)
       continue
     }
 

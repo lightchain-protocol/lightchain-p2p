@@ -1,237 +1,82 @@
 /**
- * dashboard, hero balance, sparklines, charts, activity.
+ * Dashboard.
  *
- * Split out of app.css so this surface can be worked on without touching every
- * other one. app.css keeps what is genuinely shared.
+ * A console page. It was a 1180px grid centred in whatever window it was given,
+ * with three card treatments inside it — plain cards, stat tiles and the
+ * activity feed — that differed by a few pixels and by nothing else.
+ *
+ * All three are now `.kit-card`. What is left here is the arrangement and the
+ * things only this surface draws: the balance strip, the metric row, the
+ * sparklines, the bar chart and its legend, the feed and the model bars.
+ *
+ * The order is the answer first: the balance, then the four counts, then the
+ * evidence in two panes that scroll while the page does not.
  */
 
-/* --- Dashboard ------------------------------------------------------------ */
+/* --- The page ------------------------------------------------------------- */
 
-.dash {
-  display: flex;
-  flex-direction: column;
-  gap: var(--lc-space-lg);
-  width: 100%;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: var(--lc-space-xl) var(--lc-space-lg) var(--lc-space-xl) var(--lc-space-xl);
-  overflow-y: auto;
-}
-
-.dash-head {
-  display: flex;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: var(--lc-space-md) var(--lc-space-lg);
-}
-
-.dash-head-main {
-  flex: 1 1 28ch;
-  min-width: 0;
-}
-
-.dash-head-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--lc-space-sm);
-  margin-left: auto;
+/* The head, the alerts, the balance and the metric row keep their height; the
+   body absorbs what is left and its panes scroll. Without this the fixed rows
+   compress under a short window and their contents spill instead. */
+.dash > .page-head,
+.dash > .alert,
+.dash > .kit-card {
   flex: 0 0 auto;
 }
 
-.dash-title {
-  margin: 0;
-  font-size: var(--lc-text-xxl);
-  font-weight: 600;
-  line-height: var(--lc-leading-tight);
-}
-
-.dash-sub {
-  margin: var(--lc-space-xs) 0 0;
-  font-size: var(--lc-text-sm);
-  color: var(--lc-fg-muted);
-}
-
-.dash-locked {
-  margin: 0;
-  padding: var(--lc-space-md);
-  border: 1px solid var(--lc-rule);
-  border-left: 2px solid var(--lc-warning);
-  border-radius: var(--lc-radius-md);
-  font-size: var(--lc-text-sm);
-  color: var(--lc-fg-muted);
-  background: var(--lc-bg-elevated);
-}
-
-/* --- Hero balance --------------------------------------------------------- */
-
-.hero {
-  display: flex;
-  flex-direction: column;
-  gap: var(--lc-space-lg);
-  padding: var(--lc-space-xl);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-lg);
-  background:
-    radial-gradient(
-      120% 140% at 0% 0%,
-      color-mix(in srgb, var(--lc-brand-violet) 14%, transparent),
-      transparent 60%
-    ),
-    var(--lc-bg-elevated);
-}
-
-.hero-row {
-  display: flex;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: var(--lc-space-lg);
-}
-
-.hero-main {
-  min-width: 0;
+/* A scrolling pane fills its card. Left to size itself it stops at its content,
+   and a card with four feed entries in it shows a short inset well floating in
+   an otherwise empty box. */
+.dash .kit-card-scroll {
   flex: 1 1 auto;
 }
 
-.hero-label {
+/* `.console-body-split` starts its items rather than stretching them, which is
+   right for cards that hug their content and wrong for a column whose panes
+   have to scroll. The column asks for the whole row back and shares it out. */
+.dash-column {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  font-size: var(--lc-text-sm);
-  color: var(--lc-fg-muted);
+  flex-direction: column;
+  align-self: stretch;
+  gap: var(--lc-space-lg);
+  min-height: 0;
 }
 
-.hero-value {
-  margin: 6px 0 0;
-  font-size: 38px;
-  font-weight: 600;
-  line-height: var(--lc-leading-tight);
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
+/**
+ * The cards that share the leftover height, in equal parts.
+ *
+ * From a zero basis rather than from their contents: sized from contents, a
+ * feed with twenty entries in it claimed the whole column and left the model
+ * bars a twenty-four pixel slot. How much room a pane gets should not depend on
+ * how much has happened to be in it.
+ */
+.dash-fill {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
-.hero-note {
-  margin: 6px 0 0;
+/* Right of a card title: when a figure was measured, or what it covers. */
+.dash-stamp {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+  white-space: nowrap;
+}
+
+.dash-note {
+  margin: 0 0 var(--lc-space-lg);
   font-size: var(--lc-text-sm);
   color: var(--lc-fg-dim);
+  text-wrap: pretty;
 }
 
-.hero-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--lc-space-sm);
-  flex: 0 0 auto;
-}
-
-.hero-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--lc-space-sm);
-  margin: 0;
-  padding: var(--lc-space-lg) 0 0;
-  border-top: 1px solid var(--lc-rule);
-  list-style: none;
-}
-
-/* Where the total actually sits. Two chips rather than two more stat cards,
-   because they are parts of the number above rather than facts beside it. */
-.chip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--lc-space-sm);
-  padding: 6px var(--lc-space-md);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-pill);
-  font-size: var(--lc-text-xs);
-  white-space: nowrap;
-  color: var(--lc-fg-dim);
-  background: var(--lc-bg);
-}
-
-.chip-value {
-  font-size: var(--lc-text-sm);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--lc-fg);
-}
-
-/* --- Change pills --------------------------------------------------------- */
-
-/* A signed count against last month. Green and red alone would leave a
-   colourblind reader with two identical grey pills, so the sign carries it. */
-.delta {
-  display: inline-flex;
-  align-items: center;
-  height: 20px;
-  padding: 0 7px;
-  border-radius: var(--lc-radius-sm);
-  font-size: var(--lc-text-xs);
-  font-weight: 600;
-  line-height: 1;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-  color: var(--lc-fg-dim);
-  background: var(--lc-bg-elevated-2);
-}
-
-.delta[data-tone='up'] {
-  color: var(--lc-success);
-  background: color-mix(in srgb, var(--lc-success) 16%, transparent);
-}
-
-.delta[data-tone='down'] {
-  color: var(--lc-danger);
-  background: color-mix(in srgb, var(--lc-danger) 16%, transparent);
-}
-
-/* --- Sparklines ----------------------------------------------------------- */
-
-/* The shape of the last twelve months under the number it belongs to. No axis
-   and no labels: it answers "which way" and the card above answers "how much". */
-.spark {
-  margin-top: var(--lc-space-sm);
-  height: 34px;
-}
-
-.spark svg {
-  display: block;
-  width: 100%;
-  height: 34px;
-}
-
-.spark-line {
-  fill: none;
-  stroke: var(--lc-brand);
-  stroke-width: 1.5;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-
-.spark-area {
-  fill: url(#spark-fill);
-  stroke: none;
-}
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  height: var(--lc-control-md);
-  padding: 0 var(--lc-space-md);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-pill);
-  font-size: var(--lc-text-xs);
-  font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
-  color: var(--lc-fg-muted);
-  background: var(--lc-bg-elevated);
-}
+/* --- The range ------------------------------------------------------------ */
 
 /* One control with several states, rather than three buttons that happen to be
-   adjacent. The shared border makes the choice look exclusive, which it is. */
+   adjacent. The shared border makes the choice look exclusive, which it is.
+   Sized to the small control so it lines up with the button beside it. */
 .segmented {
   display: inline-flex;
-  height: var(--lc-control-md);
+  height: var(--lc-control-sm);
   padding: 2px;
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
@@ -239,10 +84,10 @@
 }
 
 .segment {
-  padding: 0 var(--lc-space-md);
+  padding: 0 var(--lc-space-sm);
   appearance: none;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--lc-radius-sm);
   font: inherit;
   font-size: var(--lc-text-xs);
   font-weight: 500;
@@ -263,47 +108,113 @@
   background: var(--lc-bg-elevated-2);
 }
 
-/* --- Cards ---------------------------------------------------------------- */
+.segment:focus-visible {
+  outline: 2px solid var(--lc-brand);
+  outline-offset: 2px;
+}
 
-.card {
+/* --- The balance ---------------------------------------------------------- */
+
+/**
+ * The answer, above the evidence.
+ *
+ * One figure across the width, its two halves beside it as facts, and the two
+ * moves on the right. It used to carry a violet wash that nothing else in the
+ * application had; the weight now comes from where it sits and from the size of
+ * the number, which is how every financial product that is trusted does it.
+ */
+.dash-balance {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--lc-space-lg) var(--lc-space-xl);
+}
+
+/**
+ * Asks for a narrow column and then takes whatever is left over.
+ *
+ * A wrapping flex line does not shrink its items — it fills the line and puts
+ * the rest on the next one — so at its natural width the note under the figure
+ * claimed half the card and pushed the two buttons onto a row of their own. A
+ * short basis keeps all three on one line and lets the note take the second
+ * line instead, which is the part that can afford one.
+ */
+.dash-balance-main {
+  flex: 1 1 24ch;
   min-width: 0;
-  padding: var(--lc-space-lg);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-lg);
-  background: var(--lc-bg-elevated);
 }
 
-.card-head {
+.dash-balance-label {
   display: flex;
-  align-items: flex-start;
-  gap: var(--lc-space-md);
-  margin-bottom: var(--lc-space-lg);
-}
-
-.card-title {
+  align-items: center;
+  gap: var(--lc-space-xs);
   margin: 0;
-  font-size: var(--lc-text-md);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+/* Square, because it holds an icon and no label. */
+.dash-balance-hide {
+  width: var(--lc-control-sm);
+  padding: 0;
+}
+
+.dash-balance-value {
+  margin: var(--lc-space-xs) 0 0;
+  font-size: var(--lc-text-xxl);
   font-weight: 600;
+  line-height: var(--lc-leading-tight);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  user-select: text;
 }
 
-.card-note {
-  margin: 2px 0 0;
-  font-size: var(--lc-text-xs);
+.dash-balance-note {
+  margin: var(--lc-space-xs) 0 0;
+  font-size: var(--lc-text-sm);
   color: var(--lc-fg-dim);
+  text-wrap: pretty;
 }
 
-/* --- Stat cards ----------------------------------------------------------- */
+/* Where the total actually sits. Chips rather than two more stat cards, because
+   they are parts of the number beside them rather than facts of their own. */
+.dash-splits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lc-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 
-/* `auto-fit` rather than a fixed count: the row reflows to four or three across
-   in a narrow window instead of squeezing five columns until the numbers wrap.
-   Separate cards rather than one divided strip, because a strip whose last row
-   is half full leaves a gap that reads as a rendering fault. */
+.dash-splits .chip {
+  align-items: baseline;
+  gap: var(--lc-space-sm);
+}
+
+.chip-value {
+  font-size: var(--lc-text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--lc-fg);
+  user-select: text;
+}
+
+.dash-balance-actions {
+  display: flex;
+  gap: var(--lc-space-sm);
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+/* --- The metric row ------------------------------------------------------- */
+
+/* Four counts read across, in one card. Four bordered tiles put a rule between
+   figures that exist to be compared with each other. */
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
-  gap: var(--lc-space-md);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--lc-space-lg);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -314,10 +225,6 @@
   flex-direction: column;
   gap: var(--lc-space-xs);
   min-width: 0;
-  padding: var(--lc-space-md) var(--lc-space-lg);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-lg);
-  background: var(--lc-bg-elevated);
 }
 
 .stat-label {
@@ -339,6 +246,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  user-select: text;
 }
 
 /* Absent is not zero. A dash says the app does not know; a nought would claim
@@ -354,29 +262,61 @@
   color: var(--lc-fg-dim);
 }
 
-.stat-note[data-tone='up'] {
+/* A signed count against last month. Green and red alone would leave a
+   colourblind reader with two identical grey pills, so the sign carries it. */
+.delta {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--lc-space-sm);
+  border-radius: var(--lc-radius-sm);
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  line-height: var(--lc-leading-relaxed);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--lc-fg-dim);
+  background: var(--lc-bg-elevated-2);
+}
+
+.delta[data-tone='up'] {
   color: var(--lc-success);
+  background: color-mix(in srgb, var(--lc-success) 16%, transparent);
 }
 
-.stat-note[data-tone='down'] {
+.delta[data-tone='down'] {
   color: var(--lc-danger);
+  background: color-mix(in srgb, var(--lc-danger) 16%, transparent);
 }
 
-/* --- Dashboard grid ------------------------------------------------------- */
+/* --- Sparklines ----------------------------------------------------------- */
 
-.dash-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
-  gap: var(--lc-space-lg);
+/* The shape of the range under the number it belongs to. No axis and no labels:
+   it answers "which way" and the figure above answers "how much". */
+.spark {
+  margin-top: var(--lc-space-xs);
+  height: var(--lc-space-xxl);
 }
 
-@media (max-width: 1080px) {
-  .dash-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.spark svg {
+  display: block;
+  width: 100%;
+  height: var(--lc-space-xxl);
 }
 
-/* --- Chart ---------------------------------------------------------------- */
+.spark-line {
+  fill: none;
+  stroke: var(--lc-brand);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.spark-area {
+  fill: url(#spark-fill);
+  stroke: none;
+}
+
+/* --- The chart ------------------------------------------------------------ */
 
 /* Drawn as SVG with the geometry in attributes. The content security policy
    forbids inline styles, and an SVG needs no exception to it. */
@@ -391,6 +331,8 @@
   display: block;
 }
 
+/* The data is the hero and the stage is muted: gridlines are dashed and drawn
+   in the rule colour, which is a fifth of the weight of the bars. */
 .chart-grid {
   stroke: var(--lc-rule);
   stroke-dasharray: 3 4;
@@ -398,7 +340,7 @@
 
 .chart-axis {
   fill: var(--lc-fg-dim);
-  font-size: 10px;
+  font-size: var(--lc-text-xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -412,7 +354,7 @@
 
 .chart-empty {
   fill: var(--lc-fg-dim);
-  font-size: 11px;
+  font-size: var(--lc-text-xs);
 }
 
 .legend {
@@ -435,16 +377,16 @@
 .legend-key {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--lc-space-xs);
   font-size: var(--lc-text-xs);
   color: var(--lc-fg-dim);
 }
 
 .legend-swatch {
-  width: 9px;
-  height: 9px;
+  width: var(--lc-space-sm);
+  height: var(--lc-space-sm);
   flex: 0 0 auto;
-  border-radius: 2px;
+  border-radius: var(--lc-radius-sm);
   background: var(--lc-brand-violet);
 }
 
@@ -462,7 +404,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* --- Activity feed -------------------------------------------------------- */
+/* --- The activity feed ---------------------------------------------------- */
 
 .feed {
   display: flex;
@@ -477,7 +419,7 @@
 .feed-item {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--lc-space-xs);
   min-width: 0;
   padding-bottom: var(--lc-space-md);
   border-bottom: 1px solid var(--lc-rule);
@@ -491,36 +433,22 @@
 .feed-tags {
   display: flex;
   align-items: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: var(--lc-space-xs);
   min-width: 0;
 }
 
-.tag {
-  display: inline-flex;
-  align-items: center;
-  height: 18px;
-  padding: 0 7px;
-  border-radius: var(--lc-radius-sm);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  line-height: 1;
-  white-space: nowrap;
-  color: var(--lc-brand-ink);
-  background: var(--lc-bg-elevated-2);
+/* A room name or a model name can be long enough to push the state chip off the
+   row, and the state is the part that is scanned. */
+.feed-tags .chip {
+  min-width: 0;
+}
+
+.feed-tag-name {
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.tag[data-tone='proven'] {
-  color: var(--lc-success);
-  background: color-mix(in srgb, var(--lc-success) 16%, transparent);
-}
-
-.tag[data-tone='room'] {
-  color: var(--lc-brand);
-  background: color-mix(in srgb, var(--lc-brand) 16%, transparent);
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .feed-text {
@@ -541,7 +469,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* --- Distribution bars ---------------------------------------------------- */
+/* --- Model use ------------------------------------------------------------ */
 
 .bars {
   display: flex;
@@ -556,7 +484,7 @@
   display: flex;
   align-items: baseline;
   gap: var(--lc-space-sm);
-  margin-bottom: 6px;
+  margin-bottom: var(--lc-space-xs);
   font-size: var(--lc-text-sm);
 }
 
@@ -577,7 +505,7 @@
 
 .bar-track {
   display: flex;
-  height: 8px;
+  height: var(--lc-space-sm);
   border-radius: var(--lc-radius-pill);
   background: var(--lc-bg-elevated-2);
   overflow: hidden;
@@ -588,12 +516,30 @@
   transition: width 220ms ease-out;
 }
 
-.bar-fill[data-series='jobs'] {
-  background: var(--lc-brand-magenta);
-}
+/* --- Nothing to show ------------------------------------------------------ */
 
+/* An empty pane says what would be here and how to get it. The full-panel empty
+   state in app.css is set at heading size and would be the loudest thing on the
+   page for the smallest reason. */
 .dash-empty {
   margin: 0;
   font-size: var(--lc-text-sm);
   color: var(--lc-fg-dim);
+  text-wrap: pretty;
+}
+
+/* --- One column ----------------------------------------------------------- */
+
+/* Below the kit's breakpoint the page scrolls again, so there is no leftover
+   height for a pane to claim and both scrolling cards would grow to their full
+   contents. Capped instead, and the metric row folds to two across before its
+   figures start truncating. */
+@media (max-width: 1100px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dash .kit-card-scroll {
+    max-height: 24em;
+  }
 }

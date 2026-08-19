@@ -15,16 +15,35 @@
   min-height: 0;
 }
 
+/**
+ * Identity on the left, actions on the right.
+ *
+ * The header is also the container the actions measure themselves against,
+ * because the width they have is not the window's: collapsing the sidebar
+ * changes one and not the other, and a media query would drop the labels at
+ * the wrong moment in both directions.
+ */
 .room-head {
   display: flex;
   align-items: center;
-  gap: var(--lc-space-md);
+  gap: var(--lc-space-md) var(--lc-space-lg);
   padding: var(--lc-space-md) var(--lc-space-lg);
   border-bottom: 1px solid var(--lc-rule);
   flex: 0 0 auto;
+  container-type: inline-size;
 }
 
 .room-head-main {
+  min-width: 0;
+}
+
+/* The name, whether the room is encrypted, and what it knows about who is in
+   it — read as one line, because they are one subject. */
+.room-identity {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--lc-space-xs) var(--lc-space-sm);
   min-width: 0;
 }
 
@@ -32,6 +51,49 @@
   margin: 0;
   font-size: var(--lc-text-lg);
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Not a chip: it is the one thing in this group that answers back. Green, and
+   the same tinted pill the `ok` chip wears, so it reads as a state that
+   happens to be pressable rather than as a fifth button in the row. */
+.room-secure {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--lc-control-sm);
+  height: var(--lc-control-sm);
+  padding: 0;
+  border: 0;
+  border-radius: var(--lc-radius-pill);
+  color: var(--lc-success);
+  background: color-mix(in srgb, var(--lc-success) 15%, transparent);
+  cursor: default;
+  transition: background-color 120ms ease-out;
+}
+
+.room-secure:hover {
+  background: color-mix(in srgb, var(--lc-success) 28%, transparent);
+}
+
+.room-secure:focus-visible {
+  outline: 2px solid var(--lc-brand);
+  outline-offset: 2px;
+}
+
+/* A count that changes under the reader must not shift the words beside it. */
+.room-peers {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The role the room gave this peer, as a fact rather than a control. Read-only
+   is the one worth noticing, so it takes the warning tone the kit's chips use
+   for the same job. */
+.chip[data-role='reader'] {
+  background: color-mix(in srgb, var(--lc-warning) 16%, transparent);
+  color: var(--lc-warning);
 }
 
 .room-head-actions {
@@ -40,6 +102,143 @@
   gap: var(--lc-space-sm);
   margin-left: auto;
   flex: 0 0 auto;
+}
+
+/* --- Room actions --------------------------------------------------------- */
+
+/**
+ * Variants on the shared button rather than a second family of them.
+ *
+ * Both live here rather than in the kit because only this header needs them so
+ * far. A component earns a place in the kit when a second surface wants it.
+ */
+
+/* Quieter than the buttons beside it, for something offered rather than
+   suggested. The border arrives on hover, so the control is discoverable
+   without being a fourth thing competing for the eye at rest. */
+.room-quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--lc-fg-muted);
+}
+
+.room-quiet:hover:not(:disabled) {
+  color: var(--lc-fg);
+}
+
+.room-square {
+  width: var(--lc-control-sm);
+  padding: 0;
+}
+
+/* On, and saying so. A toggle that looks identical whichever way it is set is
+   a control you have to press to find out what it did. */
+.room-toggle[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--lc-brand) 60%, transparent);
+  color: var(--lc-brand-ink);
+  background: color-mix(in srgb, var(--lc-brand) 18%, transparent);
+}
+
+/* Icons alone below the width where the labels stop fitting. Wrapping into a
+   second ragged row is the alternative, and it is the thing this header was
+   rebuilt to stop doing. Each button keeps its `aria-label` and its tooltip,
+   so nothing is lost but the ink. */
+@container (max-width: 640px) {
+  .room-action-label {
+    display: none;
+  }
+
+  .room-head-actions .button {
+    width: var(--lc-control-sm);
+    padding: 0;
+  }
+}
+
+/* --- The overflow --------------------------------------------------------- */
+
+/**
+ * Where leaving lives.
+ *
+ * In the top layer, like the reaction picker, because a panel positioned
+ * inside the header would be clipped by nothing today and by the first person
+ * to give the header `overflow: hidden`. Anchor positioning is what ties it
+ * back to its trigger: the two are in different containing blocks, so
+ * `position: absolute` has nothing to resolve against.
+ */
+.room-menu-trigger {
+  anchor-name: --lc-room-menu;
+}
+
+/* The UA stylesheet gives a popover `inset: 0` with automatic margins, a
+   border, a padding and system colours. All of it is replaced — the insets
+   first, or the menu is centred in the window rather than sat under the
+   ellipsis that opened it. */
+.room-menu {
+  position: fixed;
+  position-anchor: --lc-room-menu;
+  position-area: block-end span-inline-start;
+  position-try-fallbacks: flip-block;
+  inset: auto;
+  margin: var(--lc-space-xs) 0;
+  width: max-content;
+  max-width: 34ch;
+  padding: var(--lc-space-xs);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-lg);
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+  box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.6);
+}
+
+/* Declared only for the open state. An author `display` would beat the UA rule
+   that hides a closed popover, and the menu would sit in the header
+   permanently. */
+.room-menu:popover-open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+}
+
+.room-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  width: 100%;
+  height: var(--lc-control-md);
+  padding: 0 var(--lc-space-md);
+  border: 0;
+  border-radius: var(--lc-radius-md);
+  font: inherit;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg);
+  background: transparent;
+  text-align: left;
+  cursor: default;
+}
+
+.room-menu-item:focus-visible {
+  outline: 2px solid var(--lc-brand);
+  outline-offset: -2px;
+}
+
+/* Red on the item rather than on the whole menu, and paired with a word and a
+   sentence underneath: colour is never the only thing saying this one is
+   different. */
+.room-menu-danger {
+  color: var(--lc-danger);
+}
+
+.room-menu-danger:hover {
+  background: color-mix(in srgb, var(--lc-danger) 16%, transparent);
+}
+
+.room-menu-note {
+  margin: 0;
+  padding: 0 var(--lc-space-md) var(--lc-space-xs);
+  font-size: var(--lc-text-xs);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-fg-dim);
+  text-wrap: pretty;
 }
 
 .key {
@@ -56,6 +255,17 @@
   user-select: text;
 }
 
+/* An inline-block is as wide as its contents and no narrower, so the room key
+   kept its full 32ch in a column that had shrunk to half of it, and ran under
+   the actions at a narrow window. A block takes the column's width and
+   ellipsises inside it. */
+.room-key {
+  display: block;
+}
+
+/* The room's own badges became kit chips. This is left because the wallet's
+   network label still reads it, and it predates the kit rather than belonging
+   to this surface. */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -68,39 +278,6 @@
   white-space: nowrap;
   color: var(--lc-brand-ink);
   background: var(--lc-bg-elevated-2);
-}
-
-.badge[data-role='reader'] {
-  color: var(--lc-warning);
-}
-
-.badge-peers {
-  color: var(--lc-fg-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-/* A claim about the room, so it is a control rather than a label: it opens the
-   panel that says what the claim is made of. A padlock nobody can interrogate
-   is decoration. */
-.badge-secure {
-  gap: 5px;
-  border: 0;
-  font: inherit;
-  font-size: var(--lc-text-xs);
-  font-weight: 500;
-  cursor: default;
-  color: var(--lc-success);
-  background: color-mix(in srgb, var(--lc-success) 15%, transparent);
-  transition: background-color 120ms ease-out;
-}
-
-.badge-secure .icon {
-  width: 13px;
-  height: 13px;
-}
-
-.badge-secure:hover {
-  background: color-mix(in srgb, var(--lc-success) 26%, transparent);
 }
 
 /* --- Room events ---------------------------------------------------------- */

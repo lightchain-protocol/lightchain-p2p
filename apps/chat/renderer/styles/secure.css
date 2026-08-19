@@ -1,0 +1,283 @@
+/**
+ * The encryption explanation, behind the lock in the room header.
+ *
+ * This is the one dialog in the application that is a reading page. The other
+ * dialogs ask a question and take an answer in a 52ch box; this one has to
+ * name four sets of primitives, cite a specification for each, and then say
+ * what none of them cover. That does not fit, and squeezing it in is what
+ * produced the four lines of prose this replaced.
+ *
+ * So the dialog is only the frame. Inside it is `.page`, which COMPONENTS.md
+ * names the encryption explanation as a case of, and the page is the scroller.
+ */
+
+/* The closed state comes from the user agent, so the flex layout has to be
+   scoped to `[open]`. Unscoped, `display: flex` beats `display: none` and the
+   dialog is on screen at all times. */
+.secure-dialog[open] {
+  display: flex;
+  /* `.dialog-wide` is 70ch, which is a measure for a paragraph starting at the
+     left edge. These answers start after a label column, so the frame carries
+     the difference and the prose lands back on a readable line length. */
+  width: min(78ch, 94vw);
+  /* Taller than the other dialogs and still short of the viewport, so the page
+     inside is what scrolls rather than the window. */
+  max-height: 86vh;
+  overflow: hidden;
+}
+
+.secure-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-lg);
+  /* The dialog above is already sized to the measure. A second cap here would
+     only put empty gutters inside a box that is exactly as wide as it should
+     be. */
+  max-width: none;
+  /* Without this the flex item refuses to shrink below its content, and the
+     scroll ends up somewhere outside the dialog where there is no scrollbar. */
+  min-height: 0;
+}
+
+.secure-verdict {
+  /* The kit lays a verdict out in one row. At a reading measure the detail is a
+     sentence, not a word, so it takes its own line rather than squeezing the
+     headline it belongs to. */
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.secure-lede {
+  margin: 0;
+  color: var(--lc-fg-muted);
+  text-wrap: pretty;
+}
+
+/* --- One layer ------------------------------------------------------------ */
+
+.secure-layer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+}
+
+.secure-layer-head {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+}
+
+.secure-layer-head .icon {
+  color: var(--lc-brand);
+}
+
+.secure-layer-title {
+  margin: 0;
+  font-size: var(--lc-text-lg);
+  font-weight: 600;
+  line-height: var(--lc-leading-tight);
+}
+
+/* The primitive, right of the title. It is the fact somebody scanning the page
+   for "what is this actually" is looking for, and it belongs beside the name of
+   the layer rather than three lines into the paragraph. */
+.secure-layer-head .chip {
+  margin-left: auto;
+}
+
+/* The same two questions, in the same order, for every layer, aligned down one
+   column so the four cards can be read against each other. Both labels are one
+   word: at two they wrap, and a label wrapping under itself reads as a second
+   entry rather than as a heading. */
+.secure-terms {
+  display: grid;
+  grid-template-columns: minmax(0, 11ch) minmax(0, 1fr);
+  gap: var(--lc-space-md) var(--lc-space-lg);
+  /* The label sits on the first line of its answer rather than in the middle of
+     a four-line paragraph. Baseline rather than a nudge in pixels, because the
+     two are set at different sizes and any fixed offset is wrong at one of
+     them. */
+  align-items: baseline;
+  margin: 0;
+}
+
+.secure-terms dt {
+  color: var(--lc-fg-dim);
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.secure-terms dd {
+  margin: 0;
+  min-width: 0;
+  line-height: var(--lc-leading-normal);
+  text-wrap: pretty;
+}
+
+.secure-terms code {
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+}
+
+/* What the layer does not do, given a rule of its own so it cannot be read as
+   part of the claim above it. Never colour alone: every one of these opens with
+   the words that say what the limit is. */
+.secure-caveat {
+  margin: 0;
+  padding-left: var(--lc-space-md);
+  border-left: 2px solid var(--lc-warning);
+  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
+  text-wrap: pretty;
+}
+
+/* The only line on the page that is not a property of the design. It counts
+   what this machine actually checked, so it is drawn as a measurement. */
+.secure-live {
+  margin: 0;
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated-2);
+  font-size: var(--lc-text-sm);
+  text-wrap: pretty;
+}
+
+.secure-live[data-state='warn'] {
+  color: var(--lc-danger);
+}
+
+/* --- Where to read more --------------------------------------------------- */
+
+.secure-refs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--lc-space-sm);
+  padding-top: var(--lc-space-sm);
+  border-top: 1px solid color-mix(in srgb, var(--lc-rule) 55%, transparent);
+}
+
+.secure-refs-label {
+  color: var(--lc-fg-dim);
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/**
+ * A button, not an anchor.
+ *
+ * An `<a href>` in here would navigate the application window to whatever it
+ * pointed at, replacing the app. These ask the main process to open the URL
+ * instead, and it refuses anything that is not http or https. Being a real
+ * button also means Enter and Space work without a keydown handler, which is
+ * what the equivalent in format.js had to hand-roll around a span.
+ */
+.secure-ref {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lc-space-xs);
+  padding: var(--lc-space-xs) var(--lc-space-sm);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-pill);
+  background: none;
+  color: var(--lc-brand-ink);
+  font: inherit;
+  font-size: var(--lc-text-xs);
+  cursor: pointer;
+}
+
+.secure-ref:hover {
+  border-color: var(--lc-brand);
+  background: color-mix(in srgb, var(--lc-brand) 12%, transparent);
+}
+
+/* Matching `.chip .icon` in the kit, so the pill beside a title and the pill
+   under it are read at the same scale. */
+.secure-ref .icon {
+  width: 13px;
+  height: 13px;
+  color: var(--lc-fg-dim);
+}
+
+/* --- What none of this hides ---------------------------------------------- */
+
+/* Marked out from the four layers above it, but not demoted: same card, same
+   heading size, at the bottom because it is the last thing to read rather than
+   the least important. */
+.secure-exposed {
+  border-color: color-mix(in srgb, var(--lc-warning) 40%, var(--lc-rule));
+}
+
+.secure-exposed .secure-layer-head .icon {
+  color: var(--lc-warning);
+}
+
+.secure-exposed-lede {
+  margin: 0;
+  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-sm);
+  text-wrap: pretty;
+}
+
+.secure-exposures {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.secure-exposures li {
+  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
+  text-wrap: pretty;
+}
+
+/* The thing that is exposed, then why it is. The lead-in is what makes the list
+   scannable without reading four paragraphs, and it is why these need no
+   bullet. */
+.secure-exposures strong {
+  color: var(--lc-fg);
+  font-weight: 600;
+}
+
+/* Pushed to the right the way every other dialog's actions are, and given a
+   rule so it reads as the end of the document rather than as part of the last
+   card. */
+.secure-foot {
+  padding-top: var(--lc-space-sm);
+  border-top: 1px solid var(--lc-rule);
+}
+
+/* --- Narrow windows ------------------------------------------------------- */
+
+/* Below this the label column costs more than it earns: two words of heading
+   over a wrapped sentence, against a sentence that has nowhere left to wrap. */
+@media (max-width: 640px) {
+  .secure-terms {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--lc-space-xs);
+  }
+
+  /* Stacked, one gap would space a label from its own answer exactly as far as
+     from the answer above, and the pairs stop reading as pairs. */
+  .secure-terms dt:not(:first-of-type) {
+    margin-top: var(--lc-space-md);
+  }
+
+  .secure-layer-head {
+    flex-wrap: wrap;
+  }
+
+  .secure-layer-head .chip {
+    margin-left: 0;
+  }
+}

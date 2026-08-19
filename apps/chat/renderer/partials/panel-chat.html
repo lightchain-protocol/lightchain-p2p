@@ -10,32 +10,103 @@
           </div>
 
           <div class="room" id="room" hidden>
+            <!-- Two zones, and the split is the whole point: what is true about
+                 the room on the left, what can be done to it on the right. The
+                 previous row put three status badges and four identical buttons
+                 in one strip, so nothing was ranked and Leave sat beside Members
+                 wearing the same clothes. -->
             <header class="room-head">
               <div class="room-head-main">
-                <h1 class="room-title" id="room-title">Room</h1>
-                <code class="key" id="room-key" title="Room key"></code>
+                <div class="room-identity">
+                  <h1 class="room-title" id="room-title">Room</h1>
+
+                  <!-- Not decoration. Somebody has to be able to tell whether
+                       the thing they are typing into is encrypted, and the only
+                       honest place to say so is beside the conversation. The
+                       word is gone because a padlock already says it; the button
+                       stays, because a padlock nobody can interrogate is a
+                       claim with nothing behind it. -->
+                  <button
+                    class="room-secure"
+                    type="button"
+                    id="room-secure"
+                    title="This room is encrypted — what that means"
+                    aria-label="This room is encrypted — what that means"
+                  >
+                    <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+                  </button>
+
+                  <!-- Facts, so chips rather than buttons. -->
+                  <span class="chip room-peers" id="room-peers" hidden></span>
+                  <span class="chip" id="room-role"></span>
+                </div>
+                <code class="key room-key" id="room-key" title="Room key"></code>
               </div>
+
               <div class="room-head-actions">
-                <!-- Not decoration. Somebody has to be able to tell whether the
-                     thing they are typing into is encrypted, and the only
-                     honest place to say so is beside the conversation. -->
                 <button
-                  class="badge badge-secure"
+                  class="button button-sm room-quiet room-square"
                   type="button"
-                  id="room-secure"
-                  title="How this room is protected"
+                  id="rename-btn"
+                  title="Rename this room"
+                  aria-label="Rename this room"
                 >
-                  <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
-                  Encrypted
+                  <svg class="icon" aria-hidden="true"><use href="#i-rename" /></svg>
                 </button>
-                <span class="badge badge-peers" id="room-peers" hidden></span>
-                <span class="badge" id="room-role"></span>
-                <button class="button button-sm" type="button" id="rename-btn">Rename</button>
-                <button class="button button-sm" type="button" id="invite-btn">
-                  Invite someone
+
+                <!-- A toggle rather than an action: it opens and closes the
+                     roster beside the conversation, and a control that leaves
+                     something on screen has to say that it did. -->
+                <button
+                  class="button button-sm room-toggle"
+                  type="button"
+                  id="members-btn"
+                  aria-expanded="false"
+                  aria-controls="members"
+                  title="Who is in this room"
+                >
+                  <svg class="icon" aria-hidden="true"><use href="#i-members" /></svg>
+                  <span class="room-action-label">Members</span>
                 </button>
-                <button class="button button-sm" type="button" id="members-btn">Members</button>
-                <button class="button button-sm" type="button" id="leave-btn">Leave</button>
+
+                <button
+                  class="button button-sm button-primary"
+                  type="button"
+                  id="invite-btn"
+                  title="Invite someone"
+                  aria-label="Invite someone"
+                >
+                  <svg class="icon" aria-hidden="true"><use href="#i-invite" /></svg>
+                  <span class="room-action-label">Invite someone</span>
+                </button>
+
+                <button
+                  class="button button-sm room-quiet room-square room-menu-trigger"
+                  type="button"
+                  id="room-more"
+                  popovertarget="room-menu"
+                  aria-expanded="false"
+                  title="More room actions"
+                  aria-label="More room actions"
+                >
+                  <svg class="icon" aria-hidden="true"><use href="#i-more" /></svg>
+                </button>
+
+                <!-- Leaving is the one thing here nobody undoes by pressing it
+                     again, so it is a press further away from everything else.
+                     The popover is the platform's: it closes on Escape, on a
+                     click outside, and on its own trigger, none of which is
+                     worth writing again. -->
+                <div class="room-menu" id="room-menu" popover aria-label="More room actions">
+                  <button class="room-menu-item room-menu-danger" type="button" id="leave-btn">
+                    <svg class="icon" aria-hidden="true"><use href="#i-leave" /></svg>
+                    Leave this room
+                  </button>
+                  <p class="room-menu-note">
+                    This machine stops following the room. Nobody in it is told, and every message
+                    already on their disks stays there.
+                  </p>
+                </div>
               </div>
             </header>
 

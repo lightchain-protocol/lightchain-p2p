@@ -1,166 +1,185 @@
 /**
- * worker.
+ * Worker.
  *
- * Split out of app.css so this surface can be worked on without touching every
- * other one. app.css keeps what is genuinely shared.
+ * A console page. It was a reading page — `max-width: 78ch`, centred — holding a
+ * diagnostic checklist, a facts list and a log tail, which is why it had empty
+ * margins on both sides and a scrollbar at the same time. A reading measure is
+ * for paragraphs and there are none here.
+ *
+ * Almost everything below is arrangement. The pieces themselves come from the
+ * kit: `.page-head`, `.verdict`, `.status-row`, `.facts`, `.chip`, `.alert` and
+ * the cards. What is left is how the two columns share the height they are
+ * given, and the terminal treatment for the one thing on the page that is
+ * machine output rather than interface.
  */
 
-/* --- Worker --------------------------------------------------------------- */
+/* --- Columns -------------------------------------------------------------- */
 
-.worker {
-  width: 100%;
-  max-width: 78ch;
-  margin: 0 auto;
-  padding: var(--lc-space-xxl);
-  overflow-y: auto;
-}
-
-.worker-head {
-  display: flex;
-  align-items: flex-start;
-  /* Wraps rather than squeezing. Four buttons take most of a reading-width
-     column, which left the subtitle breaking after three words. */
-  flex-wrap: wrap;
-  gap: var(--lc-space-md) var(--lc-space-lg);
-  margin-bottom: var(--lc-space-xl);
-}
-
-.worker-head > div:first-child {
-  flex: 1 1 30ch;
-  min-width: 0;
-}
-
-.worker-head .wallet-head-actions {
-  flex: 0 0 auto;
-  margin-left: auto;
-}
-
-.worker-title {
-  margin: 0;
-  font-size: var(--lc-text-xxl);
-  font-weight: 600;
-}
-
-.worker-sub {
-  margin: var(--lc-space-xs) 0 0;
-  color: var(--lc-fg-muted);
-}
-
-.worker-block {
-  padding-top: var(--lc-space-lg);
-  margin-bottom: var(--lc-space-xl);
-  border-top: 1px solid var(--lc-rule);
-}
-
-.worker-heading {
-  margin: 0 0 var(--lc-space-md);
-  font-size: var(--lc-text-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--lc-fg-dim);
-}
-
-.checks {
+/**
+ * Each column is a stack in which one card takes the leftover height.
+ *
+ * `.console-body-split` starts its items rather than stretching them, which is
+ * right for a column of cards that hug their content and wrong for one that has
+ * to fill the row so the pane inside it can scroll. So the column asks for the
+ * whole row back and distributes it itself.
+ */
+.worker-column {
   display: flex;
   flex-direction: column;
+  align-self: stretch;
+  gap: var(--lc-space-lg);
+  min-height: 0;
+}
+
+/**
+ * The card that absorbs whatever height the others do not want. One per column:
+ * the checks on the left, the log on the right.
+ *
+ * The basis is zero rather than auto so that what is inside never bids for
+ * space. Sized from its content, a log two hundred lines long asks for two
+ * thousand pixels, the column has six hundred, and flex takes the difference
+ * out of every card in the column — the container facts were squashed to their
+ * own heading and clipped out of existence by a log that had scrolled.
+ */
+.worker-fill {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* A scrolling pane fills its card. Left to size itself it stops at its content,
+   and a card with four lines of log in it shows a short inset well floating in
+   an otherwise empty box. */
+.worker .kit-card-scroll {
+  flex: 1 1 auto;
+}
+
+/* --- Card heads ----------------------------------------------------------- */
+
+/* The icon reads as a label rather than a control at this size, which is the
+   same reason the kit shrinks the one inside a chip. Sized in em so it tracks
+   the label it belongs to instead of the body text. */
+.worker .kit-card-title {
+  display: inline-flex;
+  align-items: center;
   gap: var(--lc-space-sm);
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
-/* Sized to the longest status rather than to a round number. At 5rem the
-   verdict and the sentence it applies to sat far enough apart to read as two
-   columns of unrelated text. */
-.check {
-  display: grid;
-  grid-template-columns: 3.25rem minmax(0, 1fr);
-  gap: var(--lc-space-md);
-  align-items: baseline;
+.worker .kit-card-title .icon {
+  width: 1em;
+  height: 1em;
 }
 
-.check-status {
+/* When the readiness list was last true. The check runs on open and on demand,
+   so without this there is no way to tell a fresh answer from a stale one. */
+.worker-stamp {
   font-size: var(--lc-text-xs);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--lc-success);
-}
-
-.check-status[data-status='warn'] {
-  color: var(--lc-warning);
-}
-
-.check-status[data-status='fail'] {
-  color: var(--lc-danger);
-}
-
-.check-detail {
-  margin: 0;
-  font-size: var(--lc-text-sm);
-  user-select: text;
-}
-
-/* The remedy is the reason a failed check is useful rather than annoying. */
-.check-remedy {
-  margin: var(--lc-space-xs) 0 0;
-  font-size: var(--lc-text-sm);
-  color: var(--lc-fg-muted);
-  user-select: text;
-}
-
-.worker-summary {
-  margin: var(--lc-space-lg) 0 0;
-  font-size: var(--lc-text-sm);
-  color: var(--lc-fg-muted);
-}
-
-.facts {
-  display: grid;
-  grid-template-columns: minmax(0, 7rem) minmax(0, 1fr);
-  gap: var(--lc-space-sm) var(--lc-space-lg);
-  margin: 0;
-}
-
-.facts dt {
-  font-size: var(--lc-text-sm);
   color: var(--lc-fg-dim);
+  white-space: nowrap;
 }
 
-.facts dd {
-  margin: 0;
-  font-size: var(--lc-text-sm);
-  overflow-wrap: anywhere;
+/* --- Checks and facts ----------------------------------------------------- */
+
+/* What a probe observed and what a container is called both get copied into a
+   terminal or an issue. The reset turns selection off for chrome, and these are
+   not chrome. */
+.worker .status-line,
+.worker .status-remedy,
+.worker .facts dd,
+.worker .alert-body {
   user-select: text;
 }
 
-.logs {
+.worker-card-body {
+  padding: var(--lc-space-lg);
+}
+
+/* An alert is a block of prose, so its paragraph and its button need room
+   rather than the tight stack the title alone would give. An alert that is only
+   a remedy has no title above it to be spaced from. */
+.worker .alert-body p {
+  margin: var(--lc-space-xs) 0 0;
+}
+
+.worker .alert-body p:first-child {
+  margin-top: 0;
+}
+
+.worker .alert-body .button {
+  margin-top: var(--lc-space-md);
+}
+
+/* --- The log -------------------------------------------------------------- */
+
+/**
+ * Framed the way every tool that shows a live log frames one: inset against the
+ * card, so the boundary between what the application says and what docker says
+ * is visible without reading either.
+ */
+.worker-log {
+  background: var(--lc-bg);
+}
+
+.worker-log-text {
   margin: 0;
-  max-height: 24vh;
-  overflow: auto;
-  padding: var(--lc-space-md);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-md);
-  background: var(--lc-bg-elevated);
   font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
   font-size: var(--lc-text-xs);
-  line-height: 1.5;
+  line-height: var(--lc-leading-normal);
   color: var(--lc-fg-muted);
+  /* Docker wraps its own progress lines to a terminal width this window does
+     not have, so the text wraps here rather than scrolling sideways. */
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   user-select: text;
 }
 
-.worker-footnote {
+/* --- The key note --------------------------------------------------------- */
+
+/* Subordinate to the checks it sits under: it explains what Register does and
+   why importing a key is deliberately not on this page. */
+.worker-note {
   margin: 0;
-  padding-top: var(--lc-space-lg);
-  border-top: 1px solid var(--lc-rule);
   font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
   color: var(--lc-fg-dim);
+  text-wrap: pretty;
 }
 
-.worker-footnote code {
+.worker-note code {
   font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
   font-size: 0.92em;
+  user-select: text;
+}
+
+/* --- One column ----------------------------------------------------------- */
+
+/**
+ * Below the kit's breakpoint the page scrolls and the columns stack, so there
+ * is no leftover height for a pane to claim — two columns now share the height
+ * one of them used to have. A column that still asked for its share got a third
+ * of a screen and squeezed everything inside it: a checklist showing two rows at
+ * a time, a facts list clipped mid-entry, a log four lines tall. So the cards
+ * take their content height and the page takes the overflow, which is what the
+ * fallback is for.
+ *
+ * The log is the exception. It is two hundred lines of docker output and would
+ * push everything else off the screen, so it keeps a tail worth reading and
+ * scrolls within it.
+ */
+@media (max-width: 1100px) {
+  /* A floor of zero is what lets a pane scroll inside a fixed height, and it is
+     exactly wrong once the page is the thing that scrolls: the grid is then free
+     to size a row shorter than the column standing in it, and the column spills
+     over the card beneath it. Here the content sets the height. */
+  .worker-column {
+    align-self: start;
+    min-height: auto;
+  }
+
+  .worker-fill {
+    flex: 0 0 auto;
+  }
+
+  .worker .worker-log {
+    max-height: 24em;
+  }
 }

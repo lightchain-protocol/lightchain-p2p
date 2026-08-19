@@ -3,51 +3,138 @@
           <div class="ai">
             <aside class="ai-models">
               <header class="ai-models-head">
-                <h2 class="sidebar-title">Models</h2>
-                <button class="button button-sm" type="button" id="ai-refresh">Refresh</button>
+                <h2 class="kit-card-title">Models</h2>
+                <button class="button button-sm" type="button" id="ai-refresh">
+                  <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                  Refresh
+                </button>
               </header>
-              <ul class="model-list" id="model-list"></ul>
 
-              <h2 class="sidebar-title ai-past-title" id="past-title" hidden>Earlier</h2>
-              <ul class="model-list conversation-list" id="conversation-list"></ul>
+              <!-- Both lists share one scroller. Two of them stacked meant the
+                   earlier conversations could be scrolled while the models above
+                   them stayed where they were. -->
+              <div class="ai-models-scroll">
+                <ul class="model-list" id="model-list"></ul>
 
-              <p class="ai-note" id="ai-note"></p>
+                <h2 class="kit-card-title ai-past-title" id="past-title" hidden>Earlier</h2>
+                <ul class="model-list conversation-list" id="conversation-list"></ul>
+              </div>
+
+              <!-- Why the list above is short or empty. An alert rather than a
+                   caption, because the reason is always something to act on. -->
+              <div class="alert ai-models-alert" id="ai-list-alert" role="alert" hidden>
+                <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                <div class="alert-body">
+                  <strong class="alert-title"></strong>
+                  <p class="ai-alert-text"></p>
+                  <div class="ai-alert-actions" hidden>
+                    <button class="button button-sm" type="button">
+                      <svg class="icon" aria-hidden="true"><use href="#i-again" /></svg>
+                      Try again
+                    </button>
+                  </div>
+                </div>
+              </div>
             </aside>
 
             <section class="ai-thread">
-              <header class="ai-head" id="ai-head" hidden>
-                <div>
-                  <h1 class="ai-title" id="ai-model">—</h1>
-                  <p class="ai-sub" id="ai-session">no session</p>
+              <header class="page-head ai-head" id="ai-head" hidden>
+                <div class="page-head-main">
+                  <h1 class="page-title ai-title" id="ai-model">—</h1>
+                  <!-- Session facts only: the phase in flight, the worker, the
+                       session id, the number of turns. Never a failure. -->
+                  <p class="page-sub ai-session" id="ai-session">no session</p>
                 </div>
-                <div class="wallet-head-actions">
-                  <button class="button button-sm" type="button" id="ai-cancel" hidden>Stop</button>
-                  <button class="button button-sm" type="button" id="ai-forget">Delete</button>
-                  <button class="button button-sm" type="button" id="ai-end">End session</button>
+                <div class="page-actions">
+                  <button class="button button-sm" type="button" id="ai-cancel" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-close" /></svg>
+                    Stop
+                  </button>
+                  <button class="button button-sm" type="button" id="ai-end" hidden>
+                    End session
+                  </button>
+                  <button class="button button-sm" type="button" id="ai-close" hidden>Close</button>
+                  <button class="button button-sm" type="button" id="ai-forget" hidden>
+                    Delete
+                  </button>
                 </div>
               </header>
 
-              <div class="ai-empty" id="ai-empty">
-                <h1 class="ai-empty-title">Ask a model</h1>
-                <p class="ai-empty-body">
-                  Pick a model to open a session. Drawing a worker takes up to a minute, and happens
-                  once — every question after it is immediate.
-                </p>
+              <!-- Everything the thread shows before it has a first turn. One
+                   box, so the state and whatever is blocking it are centred
+                   together rather than each taking half the empty column. -->
+              <div class="ai-body" id="ai-body">
+                <div class="empty" id="ai-empty">
+                  <h1 class="empty-title">Ask a model</h1>
+                  <p class="empty-body">
+                    Pick a model on the left to open a session. Drawing a worker takes up to a
+                    minute and happens once — every question after that is immediate.
+                  </p>
+                  <p class="empty-hint">
+                    Each answer is a job: paid from the prepaid balance in your wallet, and signed
+                    by the worker that produced it.
+                  </p>
+                </div>
+
+                <!-- A session with nothing asked in it yet. Also what fills the
+                     minute a draw takes, which used to be an empty message list. -->
+                <div class="empty ai-state" id="ai-state" hidden>
+                  <p class="ai-phase">
+                    <span id="ai-phase-text"></span>
+                    <span class="ai-dots" id="ai-dots" hidden><i></i><i></i><i></i></span>
+                  </p>
+                  <p class="empty-body" id="ai-state-body"></p>
+                  <p class="empty-hint" id="ai-state-hint"></p>
+                </div>
+
+                <!-- The session that never opened, and before a model is picked,
+                     whatever would stop one opening. Both belong where the
+                     conversation would have been, not under the model's name. -->
+                <div class="alert ai-thread-alert" id="ai-thread-alert" role="alert" hidden>
+                  <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                  <div class="alert-body">
+                    <strong class="alert-title"></strong>
+                    <p class="ai-alert-text"></p>
+                    <div class="ai-alert-actions" hidden>
+                      <button class="button button-sm" type="button">
+                        <svg class="icon" aria-hidden="true"><use href="#i-again" /></svg>
+                        Try again
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div class="messages" id="ai-messages" hidden></div>
 
-              <form class="composer" id="ai-composer" hidden>
-                <input
-                  class="composer-input"
-                  id="ai-prompt"
-                  type="text"
-                  placeholder="Ask something"
-                  autocomplete="off"
-                />
-                <button class="button button-primary" type="submit" id="ai-send">Send</button>
-              </form>
+              <div class="ai-foot" id="ai-foot" hidden>
+                <!-- What stops this composer sending, beside the composer rather
+                     than at the foot of the column next to it. No Try again: a
+                     question that failed was usually paid for, so the question
+                     goes back into the field and the choice stays with the
+                     person whose balance it is. -->
+                <div class="alert ai-composer-alert" id="ai-composer-alert" role="alert" hidden>
+                  <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                  <div class="alert-body">
+                    <strong class="alert-title"></strong>
+                    <p class="ai-alert-text"></p>
+                  </div>
+                </div>
+
+                <form class="composer" id="ai-composer">
+                  <input
+                    class="composer-input"
+                    id="ai-prompt"
+                    type="text"
+                    placeholder="Ask something"
+                    autocomplete="off"
+                  />
+                  <button class="button button-primary" type="submit" id="ai-send">
+                    <svg class="icon" aria-hidden="true"><use href="#i-send" /></svg>
+                    Send
+                  </button>
+                </form>
+              </div>
             </section>
           </div>
         </div>
-

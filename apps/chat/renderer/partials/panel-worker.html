@@ -1,47 +1,91 @@
         <!-- Worker ---------------------------------------------------------->
         <div class="panel" id="panel-worker" hidden>
-          <div class="worker">
-            <header class="worker-head">
-              <div>
-                <h1 class="worker-title">Worker</h1>
-                <p class="worker-sub">Whether this machine can run one, and what it is doing.</p>
+          <div class="console worker">
+            <header class="page-head">
+              <div class="page-head-main">
+                <h1 class="page-title">Worker</h1>
+                <p class="page-sub">Whether this machine can run one, and what it is doing.</p>
               </div>
-              <div class="wallet-head-actions">
-                <button class="button button-sm" type="button" id="worker-pull">Pull image</button>
+              <div class="page-actions">
+                <button class="button button-sm" type="button" id="worker-pull">
+                  <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
+                  Pull image
+                </button>
                 <button class="button button-sm" type="button" id="worker-register">
+                  <svg class="icon" aria-hidden="true"><use href="#i-shield" /></svg>
                   Register
                 </button>
-                <button class="button button-sm" type="button" id="worker-start">Start</button>
-                <button class="button button-sm" type="button" id="worker-stop">Stop</button>
-                <button class="button button-sm" type="button" id="worker-refresh">Refresh</button>
+                <button class="button button-sm" type="button" id="worker-start">
+                  <svg class="icon" aria-hidden="true"><use href="#i-play" /></svg>
+                  Start
+                </button>
+                <button class="button button-sm" type="button" id="worker-stop">
+                  <svg class="icon" aria-hidden="true"><use href="#i-stop" /></svg>
+                  Stop
+                </button>
+                <button class="button button-sm" type="button" id="worker-refresh">
+                  <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                  Refresh
+                </button>
               </div>
             </header>
 
-            <p class="worker-summary" id="worker-busy" hidden></p>
+            <!-- The answer, above the evidence. This one sentence is what the page was
+                 opened for, and it used to sit under the list it summarises. -->
+            <div class="verdict" id="worker-verdict" role="status">
+              <span class="verdict-headline" id="worker-summary">Checking the host</span>
+              <span class="verdict-detail" id="worker-verdict-detail"></span>
+            </div>
 
-            <section class="worker-block">
-              <h2 class="worker-heading">Host readiness</h2>
-              <ul class="checks" id="worker-checks"></ul>
-              <p class="worker-summary" id="worker-summary"></p>
-            </section>
+            <div class="console-body console-body-split">
+              <div class="worker-column">
+                <section class="kit-card kit-card-flush worker-fill">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">
+                      <svg class="icon" aria-hidden="true"><use href="#i-cpu" /></svg>
+                      Host readiness
+                    </h2>
+                    <span class="worker-stamp" id="worker-checked"></span>
+                  </header>
+                  <div class="kit-card-scroll" id="worker-checks"></div>
+                </section>
 
-            <section class="worker-block">
-              <h2 class="worker-heading">Container</h2>
-              <div id="worker-container"></div>
-            </section>
+                <p class="worker-note">
+                  Importing a key stays in <code>lcai-supervisor</code>:
+                  <code>cat key.txt | lcai-supervisor import-key</code>. It is read from stdin and
+                  nowhere else, so it never reaches a command line, an environment variable or a
+                  log — routing it through here to save a terminal would undo that. Registering
+                  afterwards stakes LCAI from the address the keystore names.
+                </p>
+              </div>
 
-            <section class="worker-block">
-              <h2 class="worker-heading">Recent output</h2>
-              <pre class="logs" id="worker-logs"></pre>
-            </section>
+              <div class="worker-column">
+                <section class="kit-card kit-card-flush">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">
+                      <svg class="icon" aria-hidden="true"><use href="#i-container" /></svg>
+                      Container
+                    </h2>
+                    <span class="chip" id="worker-state" hidden></span>
+                  </header>
+                  <div class="worker-card-body" id="worker-container"></div>
+                </section>
 
-            <p class="worker-footnote">
-              Importing a key stays in <code>lcai-supervisor</code>:
-              <code>cat key.txt | lcai-supervisor import-key</code>. It is read from stdin and
-              nowhere else, so it never reaches a command line, an environment variable or a log —
-              routing it through here to save a terminal would undo that. Registering afterwards
-              stakes LCAI from the address the keystore names.
-            </p>
+                <!-- Where the scrolling belongs. A log that grows by a line must not move
+                     the heading that says what you are looking at. -->
+                <section class="kit-card kit-card-flush worker-fill">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">
+                      <svg class="icon" aria-hidden="true"><use href="#i-terminal" /></svg>
+                      Recent output
+                    </h2>
+                    <span class="chip" id="worker-busy" hidden></span>
+                  </header>
+                  <div class="kit-card-scroll worker-log" id="worker-log">
+                    <pre class="worker-log-text" id="worker-logs"></pre>
+                  </div>
+                </section>
+              </div>
+            </div>
           </div>
         </div>
-

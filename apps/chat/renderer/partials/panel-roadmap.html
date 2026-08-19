@@ -1,2 +1,322 @@
         <!-- What is next ----------------------------------------------------->
-        <div class="panel" id="panel-roadmap" hidden></div>
+        <!--
+          A reading page, because this is prose. Every item is taken from
+          ROADMAP.md, from the decision records in docs/decisions, or from
+          apps/chat/README.md, and the status on it says which kind of
+          not-built it is. Those kinds are genuinely different and the page is
+          worth nothing if it blurs them.
+
+          No dates and no progress. A date on a page like this becomes a
+          promise the moment somebody reads it, and none of these are held up
+          by anything a date would move.
+        -->
+        <div class="panel" id="panel-roadmap" hidden>
+          <div class="page">
+            <header class="page-head">
+              <div class="page-head-main">
+                <h1 class="page-title">Roadmap</h1>
+                <p class="page-sub">
+                  What is not built yet, and which kind of not-built each one is. Nothing here has
+                  a date.
+                </p>
+              </div>
+            </header>
+
+            <section class="kit-card">
+              <header class="kit-card-head">
+                <h2 class="kit-card-title">What the statuses mean</h2>
+              </header>
+              <dl class="unbuilt-legend">
+                <dt><span class="unbuilt-status">Not started</span></dt>
+                <dd>No code has been written. Nothing outside the work is holding it up.</dd>
+
+                <dt>
+                  <span class="unbuilt-status" data-tone="waiting">Built, nothing runs it</span>
+                </dt>
+                <dd>
+                  The code exists and is tested. Nobody operates it, so the property it provides is
+                  not there.
+                </dd>
+
+                <dt>
+                  <span class="unbuilt-status" data-tone="waiting">Waiting on procurement</span>
+                </dt>
+                <dd>Finished as far as this repository goes. What is missing has to be bought.</dd>
+
+                <dt><span class="unbuilt-status" data-tone="waiting">Not decided</span></dt>
+                <dd>A choice has to be made before any of it is work.</dd>
+
+                <dt>
+                  <span class="unbuilt-status" data-tone="decided">Decided against, for now</span>
+                </dt>
+                <dd>
+                  Looked at, turned down, and written up with the condition that would change the
+                  answer.
+                </dd>
+              </dl>
+            </section>
+
+            <div class="unbuilt-list">
+              <article class="unbuilt" id="roadmap-blind-peers">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status" data-tone="waiting">Built, nothing runs it</span>
+                  Blind peers, so a room outlives everyone leaving
+                </h2>
+                <p class="unbuilt-body">
+                  A room replicates only while somebody holding it is online, so two people who are
+                  never online at the same time exchange nothing. A blind peer closes that: a
+                  machine that holds an encrypted room without being able to read a word of it.
+                </p>
+                <p class="unbuilt-body">
+                  The code is finished. A room is lodged with the blind peers named in Settings as
+                  it opens, and <code>packages/room</code> has a test that shuts down every
+                  participant and reads the room back on a machine that was never given the keys.
+                  It has been done through the running application as well, not only in a test.
+                </p>
+                <dl class="facts">
+                  <dt>Waiting on</dt>
+                  <dd>
+                    A machine. There is no public fleet, and a third-party peer will cache for us
+                    without serving on our behalf.
+                  </dd>
+                  <dt>Recorded in</dt>
+                  <dd><code>docs/availability.md</code>, which has the systemd units.</dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-seeders">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status" data-tone="waiting">Built, nothing runs it</span>
+                  A seeder that stays online
+                </h2>
+                <p class="unbuilt-body">
+                  Updates arrive peer to peer rather than from a download server, which means
+                  somebody has to be holding the release. <code>apps/seeder</code> does exactly
+                  that and is verified holding a real Pear-staged release. Applications are
+                  client-only by default, so until a seeder runs somewhere continuously a release
+                  reaches nobody once the machine that staged it goes offline.
+                </p>
+                <dl class="facts">
+                  <dt>Waiting on</dt>
+                  <dd>A host to run it on, continuously.</dd>
+                  <dt>Recorded in</dt>
+                  <dd><code>ROADMAP.md</code>, under infrastructure to operate.</dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-signing">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status" data-tone="waiting">Waiting on procurement</span>
+                  A signed release you can install
+                </h2>
+                <p class="unbuilt-body">
+                  Nothing is published. Every tag builds a DMG, an MSIX and an AppImage alongside
+                  standalone binaries for six hosts, and every one of them is unsigned, uploaded as
+                  a build artifact and released nowhere. Building from source is the only way to
+                  run this today.
+                </p>
+                <p class="unbuilt-body">
+                  The signing and notarisation steps are written and skip themselves when no
+                  credentials are set, so the workflow will not change when certificates arrive.
+                  Until they do, macOS reports the app as damaged rather than as unsigned, and
+                  Windows warns on every download.
+                </p>
+                <dl class="facts">
+                  <dt>Waiting on</dt>
+                  <dd>
+                    An Apple Developer certificate, whose D-U-N-S number takes up to five business
+                    days to issue and two more before Apple can see it; a Windows certificate; and
+                    a production upgrade link under a multisig quorum. The legal entity name
+                    chosen becomes the Windows Publisher name, and that is permanent once a signed
+                    release ships.
+                  </dd>
+                  <dt>Not decided</dt>
+                  <dd>
+                    Which Windows and Linux artifacts to ship. ADR 0005 proposes an MSIX with a
+                    signed executable beside it, and AppImage alone, on the grounds that an
+                    installation which cannot receive peer-to-peer updates stops receiving fixes
+                    invisibly. It needs a decision rather than more research.
+                  </dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-one-session">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status">Not started</span>
+                  More than one conversation at a time
+                </h2>
+                <p class="unbuilt-body">
+                  The worker holds one conversation, and starting a second closes the first. A
+                  session is expensive to open — a sortition draw takes the better part of a
+                  minute and creates a transaction — so it is made once and reused for every
+                  question after, which is right for one conversation and is the reason there is
+                  only one.
+                </p>
+                <dl class="facts">
+                  <dt>Recorded in</dt>
+                  <dd><code>apps/chat/README.md</code>, under what does not exist yet.</dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-continue-conversation">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status">Not started</span>
+                  Continuing an earlier conversation
+                </h2>
+                <p class="unbuilt-body">
+                  Saved conversations are listed beside the models and can be read, and that is
+                  all they can be. Carrying on with one means paying for a new session, because the
+                  session that produced it was closed and the worker that answered was drawn for
+                  it. Nothing carries the earlier exchange into the new session either, so the
+                  model would not have read it.
+                </p>
+                <dl class="facts">
+                  <dt>Recorded in</dt>
+                  <dd><code>apps/chat/README.md</code>.</dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-conversation-search">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status">Not started</span>
+                  Searching what a model said
+                </h2>
+                <p class="unbuilt-body">
+                  Search covers room messages, across every room this peer holds. It does not cover
+                  conversations with a model: those are kept in a separate transcript log, encrypted
+                  under a key only this wallet can derive, and nothing reads it looking for
+                  anything.
+                </p>
+                <dl class="facts">
+                  <dt>Recorded in</dt>
+                  <dd><code>apps/chat/README.md</code>.</dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-direct-routing">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status" data-tone="waiting">Not decided</span>
+                  Reaching a worker directly
+                </h2>
+                <p class="unbuilt-body">
+                  Every prompt goes through a foundation-operated relay and dispatcher today, the
+                  same path the web client uses. The alternative is for clients to find workers
+                  themselves over HyperDHT, addressed by the worker's registered key: fewer hops on
+                  the critical path, and streaming a token at a time becomes natural rather than
+                  something an intermediary has to relay frame by frame.
+                </p>
+                <p class="unbuilt-body">
+                  It is not scheduled, because it is not decided. Worker selection determines who
+                  earns, so doing it permissionlessly and fairly depends on verifiable
+                  randomness — and the audit in this repository records that selection is
+                  currently a SHA-256 draw carrying a note to upgrade it to a real one. What was
+                  asked for is a design and a testnet prototype returning with measurements, not a
+                  migration.
+                </p>
+                <dl class="facts">
+                  <dt>Waiting on</dt>
+                  <dd>Verifiable randomness on the chain, and a vote. Neither has happened.</dd>
+                  <dt>Recorded in</dt>
+                  <dd>
+                    The proposal, section 9, and <code>docs/proposals/AUDIT.md</code> section 1.2.
+                  </dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-da">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status">Not started</span>
+                  Data availability, <code>packages/da</code>
+                </h2>
+                <p class="unbuilt-body">
+                  The package is named in CODEOWNERS so that ownership is settled before the code
+                  exists, and that is the whole of it: there is no such directory. What it becomes
+                  will have to clear the same bar the other replicating packages clear — a
+                  two-machine test with the publisher offline for part of the run — because an
+                  availability bug does not appear on one machine.
+                </p>
+                <dl class="facts">
+                  <dt>Recorded in</dt>
+                  <dd>
+                    The status table in <code>README.md</code>, and <code>CONTRIBUTING.md</code>
+                    for the testing bar.
+                  </dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-mobile">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status" data-tone="decided">Decided against, for now</span>
+                  iOS and Android
+                </h2>
+                <p class="unbuilt-body">
+                  Deferred on purpose, and written down rather than left to drift. On iOS and
+                  Android the shell is a store binary and the store owns the update channel, so the
+                  one property this whole architecture is built for — publish a fix and have it
+                  reach people directly — does not exist there.
+                </p>
+                <p class="unbuilt-body">
+                  There is no working reference either: the <code>pear-mobile</code> counterpart
+                  the documentation mentions is not in the mirror, and PearPass, the reference
+                  implementation, does not use over-the-air updates on mobile at all. And an open
+                  model catalogue, where anyone can publish and any user can call any model, is a
+                  plausible store rejection that no amount of engineering retires.
+                </p>
+                <p class="unbuilt-body">
+                  What is deferred is delivery, not portability. The Bare worker is the same code a
+                  mobile worklet would run, so choosing this costs nothing structurally.
+                </p>
+                <dl class="facts">
+                  <dt>Recorded in</dt>
+                  <dd>ADR 0001, accepted 17 August 2026.</dd>
+                  <dt>Revisit when</dt>
+                  <dd>
+                    Desktop has shipped a signed release and applied at least one over-the-air
+                    update in the field, and there is usage data showing demand.
+                  </dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-hardware-wallets">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status" data-tone="decided">Decided against, for now</span>
+                  Hardware wallets
+                </h2>
+                <p class="unbuilt-body">
+                  Investigated and turned down, and the transport was never the problem: WebHID
+                  works in this renderer under the sandbox and the content security policy, which
+                  was the part most likely to be impossible.
+                </p>
+                <p class="unbuilt-body">
+                  The reason not to build it is what the device would be asked to do. This
+                  application signs on every message, every rename and every writer grant, and a
+                  hardware wallet is built for a wallet that signs occasionally. Worse, it could
+                  not show what it was signing: a message commits to a hash of its text rather than
+                  to the text, deliberately, so that a newline cannot impersonate the field
+                  separators and claim a different author. The sentence being approved is the one
+                  field the reader cannot see, and no device can invert a hash to recover it.
+                  Shipping this would look like protection and would teach somebody to press
+                  Approve without reading.
+                </p>
+                <dl class="facts">
+                  <dt>Recorded in</dt>
+                  <dd>ADR 0006, 18 August 2026.</dd>
+                  <dt>Revisit when</dt>
+                  <dd>
+                    <code>packages/protocol</code> grows a session key for some other reason. That
+                    is most of the four to six weeks this would take, and it is a wire format that
+                    can never be migrated once it ships.
+                  </dd>
+                </dl>
+              </article>
+            </div>
+
+            <p class="unbuilt-footnote">
+              Taken from <code>ROADMAP.md</code>, the decision records in
+              <code>docs/decisions</code>, and this application's own README. No dates,
+              deliberately: a date on a list like this is read as a promise, and what holds these
+              up is a certificate nobody has bought, a machine nobody is running and a decision
+              nobody has taken.
+            </p>
+          </div>
+        </div>

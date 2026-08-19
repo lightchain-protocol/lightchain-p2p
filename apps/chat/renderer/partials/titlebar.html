@@ -2,27 +2,18 @@
     <!-- Drawn by us on Windows and Linux; on macOS the traffic lights sit here
          and the content is inset to clear them. -->
     <header class="titlebar" id="titlebar">
-      <svg class="logo" aria-hidden="true"><use href="#i-logo" /></svg>
-      <span class="wordmark">Lightchain</span>
+      <div class="titlebar-brand">
+        <svg class="logo" aria-hidden="true"><use href="#i-logo" /></svg>
+        <span class="wordmark">Lightchain</span>
+      </div>
+      <!-- The only control the bar ever carries, and it is hidden until there
+           is something to apply. renderer/lib/ipc.js resolves it by id. -->
       <button
-        class="titlebar-balance"
+        class="button button-primary button-sm titlebar-update"
         type="button"
-        id="titlebar-balance"
-        title="Your wallet"
+        id="update-btn"
         hidden
-      ></button>
-      <span class="titlebar-status" id="status">starting</span>
-      <button class="button button-primary button-sm" id="update-btn" hidden>Apply update</button>
-      <button class="icon-button" type="button" id="theme-btn" title="Theme" aria-label="Theme">
-        <svg class="icon" aria-hidden="true"><use href="#i-sun" /></svg>
-      </button>
-      <button
-        class="icon-button"
-        type="button"
-        id="settings-btn"
-        title="Settings"
-        aria-label="Settings"
       >
-        <svg class="icon" aria-hidden="true"><use href="#i-settings" /></svg>
+        Apply update
       </button>
     </header>
