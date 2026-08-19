@@ -150,12 +150,6 @@
   margin-top: var(--lc-space-xl);
 }
 
-/* Pushes the primary action to the right of a Back button while keeping a
-   lone primary action on the left, where the eye already is. */
-.step-actions-end {
-  justify-content: flex-end;
-}
-
 /* --- Progress ------------------------------------------------------------- */
 
 .step-progress {

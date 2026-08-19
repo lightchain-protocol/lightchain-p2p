@@ -134,9 +134,17 @@ function link(href) {
   node.title = `Open ${href} in your browser`
 
   const open = () => {
-    void bridge.openExternal(href).then((ok) => {
-      if (!ok) toast('That link could not be opened', 'error')
-    })
+    // The reply is now whether a browser actually took it, rather than whether
+    // the link cleared the allowlist, so this says the same thing for a refused
+    // scheme and for a machine with nothing registered to open one.
+    void bridge
+      .openExternal(href)
+      .then((ok) => {
+        if (!ok) toast('That link could not be opened', 'error')
+      })
+      .catch(() => {
+        toast('That link could not be opened', 'error')
+      })
   }
   node.addEventListener('click', open)
   node.addEventListener('keydown', (evt) => {

@@ -71,6 +71,12 @@ jobs:
       - name: Surfaces do not redeclare kit components
         run: node apps/chat/scripts/check-kit.mjs
 
+      # Renames leave the old rule behind, still valid and matching nothing, so
+      # the next person to style that surface finds two plausible rules and no
+      # way to tell which is live. Four had accumulated.
+      - name: No styled class goes unworn
+        run: node apps/chat/scripts/check-css.mjs
+
       # A pear:// link is an update channel rather than a name. Both apps
       # carried the same one, which meant staging either would have pushed it
       # to the other's installs. Nothing else would have caught that: both

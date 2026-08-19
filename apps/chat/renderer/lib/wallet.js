@@ -51,6 +51,17 @@ export function showWallet(status) {
     el.walletLockedAddress.textContent = status.address
     el.walletAddress.textContent = status.address
   }
+
+  // The chip on the locked screen is meant to say which wallet you are about to
+  // open, for anyone who runs more than one. It cannot: the address comes from
+  // the in-memory account, and a locked wallet has none — so every launch drew
+  // a key icon with nothing beside it. Hidden until there is something to put
+  // in it, which today means after unlocking. Showing it properly needs the
+  // address recorded outside the vault's ciphertext, and that is a privacy
+  // decision rather than a fix.
+  const known = typeof status.address === 'string' && status.address !== ''
+  el.walletLockedAddress.closest('.wallet-gate-fact')?.toggleAttribute('hidden', !known)
+
   el.walletNetwork.textContent = status.network ?? ''
 
   renderAccount(status)

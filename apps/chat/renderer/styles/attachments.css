@@ -35,16 +35,6 @@
 
 /* --- Waiting to be sent --------------------------------------------------- */
 
-/* Somewhere to put the chips. Its horizontal padding is the composer's, so the
-   chips line up with the text box under them rather than sitting proud of it. */
-.attachment-tray {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--lc-space-sm);
-  padding: var(--lc-space-sm) var(--lc-space-lg) 0;
-  flex: 0 0 auto;
-}
-
 .attachment-chip {
   display: inline-flex;
   align-items: center;

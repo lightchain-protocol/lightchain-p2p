@@ -166,34 +166,6 @@
   user-select: text;
 }
 
-.ledger {
-  display: grid;
-  grid-template-columns: minmax(0, 9rem) 1fr;
-  gap: var(--lc-space-md) var(--lc-space-lg);
-  margin: 0;
-  padding-top: var(--lc-space-lg);
-  border-top: 1px solid var(--lc-rule);
-}
-
-.ledger dt {
-  font-size: var(--lc-text-sm);
-  font-weight: 600;
-  color: var(--lc-fg-dim);
-}
-
-.ledger dd {
-  margin: 0;
-  font-size: var(--lc-text-sm);
-  color: var(--lc-fg-muted);
-  user-select: text;
-}
-
-.ledger code {
-  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
-  font-size: 0.92em;
-  color: var(--lc-fg);
-}
-
 .dialog-details {
   display: flex;
   flex-direction: column;

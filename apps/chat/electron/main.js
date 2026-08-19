@@ -443,7 +443,7 @@ ipcMain.handle('app:takeDeepLink', () => {
  * anything it is given, and a `file://` or a Windows shortcut from a stranger
  * in a chat room is a way to run a program on this machine.
  */
-ipcMain.handle('app:openExternal', (evt, url) => {
+ipcMain.handle('app:openExternal', async (evt, url) => {
   if (typeof url !== 'string') return false
   let parsed
   try {
@@ -452,8 +452,19 @@ ipcMain.handle('app:openExternal', (evt, url) => {
     return false
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false
-  void shell.openExternal(parsed.href)
-  return true
+
+  // Awaited rather than fired and forgotten. Returning true the moment the
+  // allowlist was satisfied told the window a link had opened when all that had
+  // happened was that it was allowed to, so a machine with no browser
+  // registered for http failed in complete silence. The rejection also went
+  // unhandled here, which in the main process is a crash rather than a warning.
+  try {
+    await shell.openExternal(parsed.href)
+    return true
+  } catch (err) {
+    console.error(`could not open ${parsed.protocol}//${parsed.host}: ${err.message}`)
+    return false
+  }
 })
 
 /**
