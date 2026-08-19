@@ -17,11 +17,16 @@ export {
   SPARKLINE,
   changeOver,
   formatChange,
+  forwardFill,
+  gridAcross,
+  portfolioAcross,
   roundDataCall,
   roundsBackFrom,
   seriesFrom,
   strideFor,
+  type Holding,
   type Point,
+  type Portfolio,
   type Range,
   type Series
 } from './history.js'

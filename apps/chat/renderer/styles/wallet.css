@@ -68,39 +68,6 @@
  * is not spendable, which is the mistake every wallet that merges pending into
  * available makes.
  */
-.wallet-balances {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--lc-space-lg);
-}
-
-.wallet-balance {
-  display: flex;
-  flex-direction: column;
-  gap: var(--lc-space-xs);
-  min-width: 0;
-}
-
-/* Label above value, the same way round as a dashboard stat. The two panels
-   used to disagree about this, which is how they read as two applications. */
-.wallet-balance-label {
-  font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
-}
-
-.wallet-balance-value {
-  font-size: var(--lc-text-xl);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-  user-select: text;
-}
-
-/* The failure sits under the figures it replaced, not in place of them. */
-.wallet-balances + .alert {
-  margin-top: var(--lc-space-lg);
-}
-
 /* --- The address ---------------------------------------------------------- */
 
 /**
@@ -180,25 +147,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--lc-space-sm);
-}
-
-.ledger-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--lc-space-xs);
-  padding: var(--lc-space-sm) 0;
-  border-top: 1px solid var(--lc-rule);
-}
-
-.ledger-row:first-child {
-  border-top: 0;
-}
-
-.ledger-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--lc-space-md);
 }
 
 .ledger-kind {
@@ -482,6 +430,12 @@
   font-weight: 600;
 }
 
+.asset-hero-chain {
+  margin: 0;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-muted);
+}
+
 .asset-hero-balance {
   margin: 0;
   font-size: var(--lc-text-xxl);
@@ -645,26 +599,128 @@
   font-variant-numeric: tabular-nums;
 }
 
+
 /* --- The wallet's own layout ---------------------------------------------
-   Holdings full width above, everything narrower below it in two columns. The
-   table has seven columns compared down the page and half a window is not
-   enough for that; Account and Move funds are lists of short facts and would
-   look stranded across the whole thing. */
+   A grid of cards, each taking the width its subject needs. The portfolio wants
+   a chart across two thirds; the networks want six small tiles beside it; the
+   holdings table has seven columns compared down the page and needs all of it.
+   Two equal columns served none of the three. */
 
 .wallet-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--lc-space-md);
   overflow-y: auto;
 }
 
-.wallet-wide {
-  flex: 0 0 auto;
-}
-
-.wallet-split {
+.wallet-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--lc-space-md);
   align-items: start;
+}
+
+.wallet-portfolio {
+  grid-column: span 2;
+}
+
+.wallet-holdings,
+.wallet-transactions {
+  grid-column: 1 / -1;
+}
+
+/* Narrow enough to sit beside the transactions table, which is the wider of
+   the two and the one that suffers from being squeezed. */
+.wallet-account {
+  grid-column: span 1;
+}
+
+.wallet-transactions {
+  grid-column: span 2;
+}
+
+/* One column below the width where three cards stop being readable. Every card
+   spans everything rather than half-collapsing into an awkward two. */
+@media (max-width: 60rem) {
+  .wallet-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wallet-portfolio,
+  .wallet-account,
+  .wallet-transactions {
+    grid-column: 1 / -1;
+  }
+}
+
+/* --- Networks -------------------------------------------------------------
+   Small tiles rather than rows. This answers "where is my money" at a glance,
+   which is a different question from the holdings table's "what do I hold" —
+   and a chain with nothing on it still earns a tile, because knowing a chain is
+   empty is an answer. */
+
+.networks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--lc-space-sm);
+}
+
+.network {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--lc-space-sm);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-sm);
+}
+
+.network-name {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.network-value {
+  font-size: var(--lc-text-md);
+  font-variant-numeric: tabular-nums;
+}
+
+.network-held {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+/* A chain that could not be reached is not a chain holding nothing, and the
+   two must not look the same. */
+.network[data-state='unreachable'] {
+  border-color: color-mix(in oklab, var(--lc-warning) 40%, var(--lc-rule));
+}
+
+.network[data-state='unreachable'] .network-value {
+  color: var(--lc-warning);
+}
+
+/* --- Transactions ---------------------------------------------------------
+   A table, sharing its grid between the header and the rows so the two cannot
+   drift apart. */
+
+.ledger-head,
+.ledger-entry {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) 10rem 6rem minmax(8rem, 1.2fr) 8rem;
+  align-items: center;
+  gap: var(--lc-space-sm);
+}
+
+.ledger-head {
+  padding: 0 var(--lc-space-xs) var(--lc-space-xs);
+  border-bottom: 1px solid var(--lc-rule);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-muted);
+}
+
+.ledger-col-num {
+  text-align: right;
 }

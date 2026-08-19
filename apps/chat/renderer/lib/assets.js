@@ -168,6 +168,152 @@ function assetRow(asset) {
   return row
 }
 
+/**
+ * Where the money is, one tile per chain.
+ *
+ * A different question from the holdings table. That one answers "what do I
+ * hold"; this answers "where is it", which is what somebody asks before
+ * bridging or before choosing a network to send on. A chain holding nothing
+ * still gets a tile, because knowing it is empty is an answer — and a chain
+ * that could not be reached gets a tile that says so, because an unreachable
+ * chain and an empty one are the two things that must never look alike.
+ */
+function renderNetworks(held) {
+  const holder = document.getElementById('assets-networks')
+  if (!holder) return
+
+  const failed = new Map((held.chains ?? []).map((chain) => [chain.chainId, chain.error]))
+
+  const tiles = (held.chains ?? []).map((chain) => {
+    const mine = (held.assets ?? []).filter((asset) => asset.chainId === chain.chainId)
+    const worth = mine.reduce(
+      (sum, asset) => sum + (asset.usd === null ? 0n : BigInt(asset.usd)),
+      0n
+    )
+    const holding = mine.filter((asset) => BigInt(asset.balance) > 0n).length
+
+    const tile = el2('li', 'network')
+    tile.append(el2('span', 'network-name', chain.name))
+
+    if (failed.get(chain.chainId)) {
+      tile.dataset.state = 'unreachable'
+      tile.append(el2('span', 'network-value', 'unread'))
+      tile.append(el2('span', 'network-held', 'could not be reached'))
+      tile.title = failed.get(chain.chainId)
+      return tile
+    }
+
+    tile.append(el2('span', 'network-value', formatUsd(worth)))
+    tile.append(el2('span', 'network-held', holding === 0 ? 'nothing held' : `${holding} held`))
+    return tile
+  })
+
+  holder.replaceChildren(...tiles)
+}
+
+/** A dollar total, formatted the way the worker formats one. */
+function formatUsd(value) {
+  if (value === 0n) return '$0.00'
+  const whole = value / 10_000n
+  const cents = ((value % 10_000n) / 100n).toString().padStart(2, '0')
+  return `$${whole.toLocaleString('en-US')}.${cents}`
+}
+
+// --- The portfolio line --------------------------------------------------------
+
+let portfolioRange = '1w'
+
+/**
+ * What everything held would have been worth across a window.
+ *
+ * Today's balances at past prices, and the note under it says exactly that.
+ * Nothing in this application has ever recorded what was held last week, so
+ * presenting this as the account's history would be presenting an invention.
+ */
+async function refreshPortfolio() {
+  const holder = document.getElementById('portfolio-chart')
+  const note = document.getElementById('portfolio-note')
+  const change = document.getElementById('portfolio-change')
+  if (!holder) return
+
+  holder.replaceChildren()
+
+  let series
+  try {
+    series = await request('assets.portfolio', { range: portfolioRange })
+  } catch (err) {
+    holder.hidden = true
+    note.textContent = err.message
+    return
+  }
+
+  change.textContent = series.changeText ?? ''
+  change.dataset.way = (series.changeBps ?? 0) >= 0 ? 'up' : 'down'
+
+  const points = series.points ?? []
+  if (points.length < 2) {
+    // Collapsed rather than left reserving space. An empty box the height of a
+    // chart reads as one that failed to load, and this is a wallet holding
+    // nothing rather than a chart that broke.
+    holder.hidden = true
+    note.textContent = series.note ?? 'There is not enough price history to draw this range yet.'
+    return
+  }
+
+  holder.hidden = false
+  drawLine(holder, points)
+
+  note.textContent = series.complete
+    ? 'What you hold now, at the prices of the time. Not a record of what the account was worth.'
+    : `What you hold now, at the prices of the time. ${series.note}`
+}
+
+/** The same line the asset page draws, against a portfolio total. */
+function drawLine(holder, points) {
+  const values = points.map((p) => Number(BigInt(p.usd)))
+  const low = Math.min(...values)
+  const high = Math.max(...values)
+  const span = high - low || 1
+
+  const W = 1000
+  const H = 200
+  const rising = values[values.length - 1] >= values[0]
+
+  const at = (i) => ((i / (values.length - 1)) * W).toFixed(2)
+  const up = (v) => (H - ((v - low) / span) * (H - 24) - 12).toFixed(2)
+  const line = values.map((v, i) => `${i === 0 ? 'M' : 'L'}${at(i)},${up(v)}`).join(' ')
+
+  const chart = svg('svg', {
+    viewBox: `0 0 ${W} ${H}`,
+    preserveAspectRatio: 'none',
+    class: 'chart',
+    role: 'img'
+  })
+
+  const title = svg('title', {})
+  title.textContent = 'What is held now, priced across the chosen range'
+  chart.append(title)
+
+  const area = svg('path', { d: `${line} L${W},${H} L0,${H} Z`, class: 'chart-area' })
+  area.dataset.way = rising ? 'up' : 'down'
+
+  const stroke = svg('path', { d: line, class: 'chart-line' })
+  stroke.dataset.way = rising ? 'up' : 'down'
+
+  chart.append(area, stroke)
+  holder.append(chart)
+}
+
+for (const button of document.querySelectorAll('#portfolio-ranges .asset-range')) {
+  button.addEventListener('click', () => {
+    portfolioRange = button.dataset.range
+    for (const other of document.querySelectorAll('#portfolio-ranges .asset-range')) {
+      other.classList.toggle('is-active', other === button)
+    }
+    void refreshPortfolio()
+  })
+}
+
 export async function refreshAssets({ refresh = false } = {}) {
   if (!list) return
 
@@ -221,6 +367,13 @@ export async function refreshAssets({ refresh = false } = {}) {
   empty.hidden = holdings.length > 0
   document.querySelector('.holdings-head').hidden = holdings.length === 0
   total.textContent = held.totalUsdText ?? '—'
+
+  renderNetworks(held)
+
+  // Started rather than awaited. It reads price history for every held asset,
+  // which is several batched calls, and the balances above should not wait on
+  // a chart to appear.
+  void refreshPortfolio()
 
   const unreachable = (held.chains ?? []).filter((chain) => chain.error)
   if (unreachable.length > 0) {

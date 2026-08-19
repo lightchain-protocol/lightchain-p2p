@@ -157,10 +157,18 @@ if (initial.rows === 0) {
     await evaluate(`(async () => {
       document.querySelector('#assets-list .holding').click()
       await new Promise((r) => setTimeout(r, 3000))
+
+      // Transactions is a tab now, and its history is fetched when that tab is
+      // opened rather than on arrival — scanning a chain costs a round trip and
+      // most visits to this page are to look at the price.
+      document.querySelector('.asset-tab[data-tab="activity"]').click()
+      await new Promise((r) => setTimeout(r, 4000))
+
       return JSON.stringify({
         detailShown: !document.getElementById('asset-detail').hidden,
         paneHidden: document.getElementById('wallet-pane').hidden,
         title: document.getElementById('asset-title').textContent,
+        chain: document.getElementById('asset-chain').textContent,
         balance: document.getElementById('asset-balance').textContent,
         covers: document.getElementById('asset-history-covers').textContent,
         blind: document.getElementById('asset-history-blind').hidden
@@ -169,7 +177,11 @@ if (initial.rows === 0) {
   )
 
   report('a row can be opened', opened.detailShown === true)
-  report('and it names the asset and the chain together', / on /.test(opened.title), opened.title)
+  report(
+    'and it names the asset and the chain together',
+    opened.title !== '—' && / on /.test(opened.chain),
+    `${opened.title} — ${opened.chain}`
+  )
   report('and shows a balance', opened.balance !== '—', opened.balance)
   report(
     'and says what its history covers before listing any',

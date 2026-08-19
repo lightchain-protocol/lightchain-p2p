@@ -214,4 +214,121 @@ export function formatChange(changeBps: number | null): string {
   return `${sign}${(changeBps / 100).toFixed(2)}%`
 }
 
+/**
+ * Evenly spaced moments across a window, ending now.
+ *
+ * Series cannot be added together as they come back. Feeds write when their own
+ * price moves, so ETH's timestamps and USDC's have nothing to do with each
+ * other, and summing them point by point would be adding a price from Tuesday
+ * to one from Thursday and plotting the result. Everything is resampled onto
+ * one grid first, and this is the grid.
+ */
+export function gridAcross(windowMs: number, points: number, now: number): number[] {
+  const count = Math.max(2, points)
+  const step = windowMs / (count - 1)
+
+  return Array.from({ length: count }, (_, i) => Math.round(now - windowMs + i * step))
+}
+
+/**
+ * A series resampled onto a grid, carrying each price forward.
+ *
+ * At every grid point, the value is the last price written **at or before** it.
+ * Forward and not interpolated, because that is what was true: a feed that has
+ * not written since Tuesday is a feed whose last word is Tuesday's, and drawing
+ * a line sloping towards Thursday's price invents a movement nobody observed.
+ *
+ * Grid points before the series begins are null rather than zero. An asset the
+ * feed has no answer for yet is not an asset worth nothing, and the difference
+ * decides whether a portfolio total can honestly be drawn that far back.
+ */
+export function forwardFill(points: readonly Point[], grid: readonly number[]): (bigint | null)[] {
+  if (points.length === 0) return grid.map(() => null)
+
+  // Sorted rather than assumed sorted. `seriesFrom` orders its output, but this
+  // is exported and the cost of being wrong is a line that jumps backwards.
+  const ordered = [...points].sort((a, b) => a.at - b.at)
+
+  const out: (bigint | null)[] = []
+  let at = 0
+  let held: bigint | null = null
+
+  for (const moment of grid) {
+    while (at < ordered.length && ordered[at]!.at <= moment) {
+      held = ordered[at]!.usd
+      at++
+    }
+    out.push(held)
+  }
+
+  return out
+}
+
+/** One asset's contribution to a portfolio: how much is held, and what it was worth. */
+export interface Holding {
+  readonly balance: bigint
+  readonly decimals: number
+  readonly points: readonly Point[]
+}
+
+export interface Portfolio {
+  readonly points: readonly Point[]
+  readonly changeBps: number | null
+  /**
+   * How many holdings had no price at any point on the grid.
+   *
+   * Reported rather than folded in silently. A total that quietly omits an
+   * asset is a total somebody will compare against the holdings list and find
+   * short, with nothing on screen explaining the difference.
+   */
+  readonly unpriced: number
+}
+
+/**
+ * What a set of holdings was worth across a window, at today's balances.
+ *
+ * Not a record of the account's value over time — nothing here has ever
+ * recorded what was held in the past. It is today's holdings priced backwards,
+ * which is a different and still useful thing, and the interface says so.
+ *
+ * A grid point where **nothing** could be priced is dropped rather than plotted
+ * as zero. Early points often fall before the feeds' sampled range, and a line
+ * that starts at zero and leaps up reads as a portfolio that was empty and
+ * suddenly was not.
+ */
+export function portfolioAcross(holdings: readonly Holding[], grid: readonly number[]): Portfolio {
+  const filled = holdings.map((holding) => forwardFill(holding.points, grid))
+  const unpriced = filled.filter((series) => series.every((v) => v === null)).length
+
+  const points: Point[] = []
+
+  grid.forEach((moment, i) => {
+    let total = 0n
+    let priced = false
+
+    holdings.forEach((holding, h) => {
+      // `undefined` as well as null: the grid and every filled series are the
+      // same length by construction, and reading past the end would silently
+      // contribute nothing rather than saying the two had drifted apart.
+      const usd = filled[h]?.[i]
+      if (usd === null || usd === undefined) return
+
+      priced = true
+      total += (holding.balance * usd) / 10n ** BigInt(holding.decimals)
+    })
+
+    if (priced) points.push({ at: moment, usd: total })
+  })
+
+  const first = points[0]
+  const last = points[points.length - 1]
+
+  const changeBps =
+    first && last && first !== last && first.usd > 0n
+      ? Number(((last.usd - first.usd) * 10_000n) / first.usd)
+      : null
+
+  return { points, changeBps, unpriced }
+}
+
 export { PRICE_DECIMALS }

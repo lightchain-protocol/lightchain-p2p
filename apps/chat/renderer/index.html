@@ -1209,7 +1209,8 @@
               <div class="page-head-main">
                 <h1 class="page-title">Welcome back</h1>
                 <p class="page-sub" id="dash-sub">
-                  Your identity, your models, your workers and one balance behind all of them.
+                  Your models, your workers, and what is prepaid to run them. What you hold across
+                  the six networks is on the Wallet.
                 </p>
               </div>
               <div class="page-actions">
@@ -1254,8 +1255,12 @@
                  is the point of showing it above the split. -->
             <section class="kit-card dash-balance">
               <div class="dash-balance-main">
+                <!-- Prepaid, not the wallet's total. This page is the AI and
+                     network side; what is held across six chains belongs on the
+                     Wallet, and two pages showing the same headline figure is
+                     two pages that will one day disagree. -->
                 <p class="dash-balance-label">
-                  <span>Total balance</span>
+                  <span>Prepaid for inference</span>
                   <button
                     class="button button-sm dash-balance-hide"
                     type="button"
@@ -1746,6 +1751,10 @@
                 <use href="#c-generic" id="asset-mark" />
               </svg>
               <h1 class="asset-hero-name" id="asset-title">—</h1>
+              <!-- The chain, under the name. Three of these pages are called
+                   "Ether" and only this line tells them apart, which is the
+                   same ambiguity the holdings rows carry a chain to avoid. -->
+              <p class="asset-hero-chain" id="asset-chain"></p>
               <p class="asset-hero-balance" id="asset-balance">—</p>
               <p class="asset-hero-worth" id="asset-worth">—</p>
 
@@ -1934,28 +1943,39 @@
                 </div>
               </header>
 
-              <!-- Holdings first and full width. It is a table of seven
-                   columns compared down the page, and squeezing it into half
-                   the window makes the comparison it exists for impossible.
-                   Everything else is narrower by nature and sits below. -->
+              <!-- A grid of cards, each with one subject and the width that
+                   subject needs. The portfolio wants a chart, the networks want
+                   six small tiles, and the holdings table has seven columns
+                   compared down the page. Two equal columns served none of
+                   them. -->
               <div class="console-body wallet-body">
-                <div class="wallet-wide">
-                  <section class="kit-card kit-card-flush">
+                <div class="wallet-grid">
+                  <section class="kit-card kit-card-flush wallet-portfolio">
                     <header class="kit-card-head">
-                      <h2 class="kit-card-title">Holdings</h2>
-                      <button class="button button-sm" type="button" id="assets-refresh">
-                        <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
-                        Refresh
-                      </button>
+                      <h2 class="kit-card-title">Portfolio</h2>
+                      <div class="asset-ranges" id="portfolio-ranges">
+                        <button class="asset-range" type="button" data-range="24h">24H</button>
+                        <button class="asset-range is-active" type="button" data-range="1w">
+                          1W
+                        </button>
+                        <button class="asset-range" type="button" data-range="1m">1M</button>
+                        <button class="asset-range" type="button" data-range="1y">1Y</button>
+                        <button class="asset-range" type="button" data-range="all">All</button>
+                      </div>
                     </header>
                     <div class="kit-card-scroll">
-                      <!-- One figure, and a note when it is not the whole
-                           picture. A total presented as complete while a chain
-                           was unreachable is a number somebody would act on. -->
                       <div class="holdings-total">
-                        <span class="holdings-total-label">Everything, in dollars</span>
                         <span class="holdings-total-value" id="assets-total">—</span>
+                        <span class="holdings-total-label" id="portfolio-change"></span>
                       </div>
+
+                      <div class="asset-chart" id="portfolio-chart"></div>
+
+                      <!-- What the line is, and what it is not. It prices what
+                           is held now backwards; nothing here has ever recorded
+                           what was held last week, and implying otherwise would
+                           be inventing a history. -->
+                      <p class="wallet-note" id="portfolio-note"></p>
 
                       <div class="alert" data-tone="warn" role="status" id="assets-partial" hidden>
                         <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
@@ -1964,7 +1984,27 @@
                           <span id="assets-partial-note"></span>
                         </div>
                       </div>
+                    </div>
+                  </section>
 
+                  <section class="kit-card kit-card-flush wallet-networks">
+                    <header class="kit-card-head">
+                      <h2 class="kit-card-title">Networks</h2>
+                    </header>
+                    <div class="kit-card-scroll">
+                      <ul class="networks" id="assets-networks"></ul>
+                    </div>
+                  </section>
+
+                  <section class="kit-card kit-card-flush wallet-holdings">
+                    <header class="kit-card-head">
+                      <h2 class="kit-card-title">Holdings</h2>
+                      <button class="button button-sm" type="button" id="assets-refresh">
+                        <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                        Refresh
+                      </button>
+                    </header>
+                    <div class="kit-card-scroll">
                       <!-- A table, because these are columns being compared
                            down rather than rows read across: which of these is
                            worth most, which moved today. A list of cards makes
@@ -1982,76 +2022,36 @@
                       <p class="wallet-note" id="assets-empty" hidden>
                         Nothing held yet on any of the six networks. Use Receive to get an address.
                       </p>
-
-                      <!-- Prepaid sits apart from the holdings rather than in
-                           them. It is the same money in a different place and
-                           only one of the two can be sent, so adding them would
-                           overstate what is spendable. -->
-                      <div class="wallet-balances">
-                        <div class="wallet-balance">
-                          <span class="wallet-balance-label">Prepaid for inference</span>
-                          <span class="wallet-balance-value" id="wallet-prepaid">—</span>
-                        </div>
-                      </div>
-
-                      <div
-                        class="alert"
-                        data-tone="warn"
-                        role="alert"
-                        id="wallet-balance-alert"
-                        hidden
-                      >
-                        <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
-                        <div class="alert-body">
-                          <strong class="alert-title" id="wallet-balance-title"></strong>
-                          <span id="wallet-balance-note"></span>
-                        </div>
-                      </div>
                     </div>
                   </section>
 
-                </div>
-
-                <div class="wallet-split">
-                  <section class="kit-card kit-card-flush">
+                  <!-- The address and the four things you can do with it. It
+                       was two cards, one of which spent a whole panel on an
+                       address that matters at exactly one moment — receiving,
+                       which shows it with a QR beside it anyway. -->
+                  <section class="kit-card kit-card-flush wallet-account">
                     <header class="kit-card-head">
                       <h2 class="kit-card-title">Account</h2>
+                      <span class="chip" id="wallet-network"></span>
                     </header>
                     <div class="kit-card-scroll">
-                      <dl class="facts">
-                        <dt>Address</dt>
-                        <!-- An address is read and compared by eye against
-                             whatever someone is about to send money to, so it is
-                             shown whole and on one line rather than shortened or
-                             wrapped. -->
-                        <dd class="wallet-address">
-                          <code class="wallet-key" id="wallet-address"></code>
-                          <button
-                            class="button button-sm"
-                            type="button"
-                            id="wallet-copy"
-                            title="Copy address"
-                            aria-label="Copy address"
-                          >
-                            <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
-                          </button>
-                        </dd>
-                        <dt>Network</dt>
-                        <dd><span class="chip" id="wallet-network"></span></dd>
-                      </dl>
-                    </div>
-                  </section>
-
-                  <section class="kit-card kit-card-flush">
-                    <header class="kit-card-head">
-                      <h2 class="kit-card-title">Move funds</h2>
-                    </header>
-                    <div class="kit-card-scroll">
-                      <p class="wallet-note" id="fund-note">
-                        A deposit moves LCAI into the job registry and lets the network's delegate
-                        spend it on your behalf, which is what pays for inference. A withdrawal
-                        brings back whatever is left. Neither leaves this machine's control.
+                      <div class="wallet-address">
+                        <code class="wallet-key" id="wallet-address"></code>
+                        <button
+                          class="button button-sm"
+                          type="button"
+                          id="wallet-copy"
+                          title="Copy address"
+                          aria-label="Copy address"
+                        >
+                          <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
+                        </button>
+                      </div>
+                      <p class="wallet-note">
+                        The same address on all six networks. What decides whether something arrives
+                        is which network it was sent on.
                       </p>
+
                       <div class="wallet-actions">
                         <button class="button button-primary" type="button" id="assets-send-btn">
                           <svg class="icon" aria-hidden="true"><use href="#i-upload" /></svg>
@@ -2061,29 +2061,9 @@
                           <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
                           Receive
                         </button>
-                        <button class="button" type="button" data-move="deposit">
-                          Prepay inference
-                        </button>
-                        <button class="button" type="button" data-move="withdraw">
-                          <svg class="icon" aria-hidden="true"><use href="#i-upload" /></svg>
-                          Withdraw prepaid
-                        </button>
-                      </div>
-
-                      <h3 class="wallet-subheading">Bridge and exchanges</h3>
-                      <p class="wallet-note">
-                        LCAI exists as an ERC-20 on Ethereum and as the native coin on Lightchain.
-                        The bridge moves it between the two. Buying and selling happens on
-                        exchanges, which open in your browser — nothing here takes an order.
-                      </p>
-                      <div class="wallet-actions">
                         <button class="button" type="button" id="bridge-open-btn">
                           <svg class="icon" aria-hidden="true"><use href="#i-routing" /></svg>
                           Bridge
-                        </button>
-                        <button class="button" type="button" data-external="https://bridge.lightchain.ai">
-                          <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
-                          Official bridge
                         </button>
                         <button
                           class="button"
@@ -2091,7 +2071,7 @@
                           data-external="https://www.coingecko.com/en/coins/lightchain-ai#markets"
                         >
                           <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
-                          Where LCAI trades
+                          Buy
                         </button>
                       </div>
                     </div>
@@ -2101,7 +2081,7 @@
                        recorded and reconciled against the chain; none of it was
                        ever shown. A wallet that cannot say what it spent is
                        asking to be trusted rather than read. -->
-                  <section class="kit-card kit-card-flush">
+                  <section class="kit-card kit-card-flush wallet-transactions">
                     <header class="kit-card-head">
                       <h2 class="kit-card-title">Transactions</h2>
                       <button class="button button-sm" type="button" id="wallet-history-refresh">
@@ -2110,11 +2090,18 @@
                       </button>
                     </header>
                     <div class="kit-card-scroll">
+                      <div class="ledger-head" aria-hidden="true" hidden>
+                        <span>What</span>
+                        <span>When</span>
+                        <span>Status</span>
+                        <span>Transaction</span>
+                        <span class="ledger-col-num">Value</span>
+                      </div>
+                      <ul class="ledger-list" id="wallet-history"></ul>
                       <p class="wallet-note" id="wallet-history-empty">
                         Nothing sent from this wallet yet. Deposits, withdrawals and payments for
                         inference all appear here once they are signed.
                       </p>
-                      <ul class="ledger-list" id="wallet-history"></ul>
                     </div>
                   </section>
                 </div>

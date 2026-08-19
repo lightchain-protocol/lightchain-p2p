@@ -21,6 +21,8 @@ import {
   changeOver,
   decimalsCall,
   formatChange,
+  gridAcross,
+  portfolioAcross,
   strideFor,
   formatUsd,
   latestRoundDataCall,
@@ -274,7 +276,10 @@ export function assetHandlers(ctx) {
     return held
   }
 
-  return {
+  // Named rather than returned anonymously, because the portfolio handler asks
+  // the holdings handler for its answer instead of assembling a second, subtly
+  // different one beside it.
+  const handlers = {
     /** The chains this wallet knows, for a picker that does not invent one. */
     'assets.chains': () => ({
       chains: CHAINS.map((chain) => ({
@@ -448,6 +453,79 @@ export function assetHandlers(ctx) {
     },
 
     /**
+     * What everything held would have been worth across a window.
+     *
+     * Today's balances at past prices, and the reply says so. Nothing here has
+     * ever recorded what was held last week, so this is not a record of the
+     * account's value — it is a different and still useful question, and one
+     * the interface has to ask out loud rather than imply.
+     *
+     * Every held asset's series is resampled onto one grid before being summed.
+     * Feeds write when their own price moves, so no two share timestamps, and
+     * adding them as they arrive would put Tuesday's ether beside Thursday's
+     * dollar and plot the total.
+     */
+    'assets.portfolio': async (req) => {
+      const range = RANGES[String(req?.range ?? '1w')]
+      if (!range) throw new Error('that is not a range this chart offers')
+
+      const held = await handlers['assets.list']({})
+      if (!held.address) return { points: [], changeBps: null, unpriced: 0, complete: true }
+
+      // Only what is actually held. A wallet tracks twenty-two assets and holds
+      // two, and fetching history for the other twenty would be twenty batched
+      // calls to draw nothing.
+      const owned = held.assets.filter((asset) => BigInt(asset.balance) > 0n)
+      if (owned.length === 0) {
+        return {
+          range: String(req?.range ?? '1w'),
+          points: [],
+          changeBps: null,
+          changeText: formatChange(null),
+          unpriced: 0,
+          complete: true,
+          note: 'Nothing held yet, so there is nothing to chart.'
+        }
+      }
+
+      const lines = await Promise.all(
+        owned.map(async (asset) => {
+          if (!asset.pricedAs) return []
+          try {
+            return (await historyFor(asset.pricedAs, range)).points
+          } catch {
+            return []
+          }
+        })
+      )
+
+      const grid = gridAcross(range.windowMs, range.count, Date.now())
+      const portfolio = portfolioAcross(
+        owned.map((asset, i) => ({
+          balance: BigInt(asset.balance),
+          decimals: asset.decimals,
+          points: lines[i]
+        })),
+        grid
+      )
+
+      return {
+        range: String(req?.range ?? '1w'),
+        points: portfolio.points.map((p) => ({ at: p.at, usd: p.usd.toString() })),
+        changeBps: portfolio.changeBps,
+        changeText: formatChange(portfolio.changeBps),
+        unpriced: portfolio.unpriced,
+        complete: portfolio.unpriced === 0,
+        // Said plainly, because somebody will compare this against the holdings
+        // total and find it short.
+        note:
+          portfolio.unpriced === 0
+            ? null
+            : `${portfolio.unpriced} of what you hold has no price history, so it is missing from this line.`
+      }
+    },
+
+    /**
      * A price series for one asset, over one of the offered ranges.
      *
      * Read from the feed's own past rounds, so it costs nothing, needs no key
@@ -603,6 +681,8 @@ export function assetHandlers(ctx) {
       }
     }
   }
+
+  return handlers
 
   /**
    * Everything about a send, worked out once.

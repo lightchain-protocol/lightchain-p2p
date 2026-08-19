@@ -68,8 +68,6 @@ export const el = {
   walletNetwork: document.getElementById('wallet-network'),
   walletCopy: document.getElementById('wallet-copy'),
   walletLockBtn: document.getElementById('wallet-lock'),
-  walletPrepaid: document.getElementById('wallet-prepaid'),
-  walletBalanceNote: document.getElementById('wallet-balance-note'),
   joinDialog: document.getElementById('join-dialog'),
   joinForm: document.getElementById('join-form'),
   joinInput: document.getElementById('join-input'),

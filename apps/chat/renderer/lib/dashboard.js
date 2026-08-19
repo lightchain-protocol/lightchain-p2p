@@ -189,11 +189,17 @@ export async function refreshDashboard() {
 }
 
 /**
- * Everything the wallet controls, and where it currently sits.
+ * What is available to spend on inference, and what is standing behind it.
  *
- * The total is shown above the split because depositing and withdrawing move
- * LCAI between the two halves without changing it, and a screen that only
- * showed the halves would make a deposit look like spending.
+ * Prepaid is the headline rather than the total, because this page is the AI
+ * and network side and the Wallet owns what is held across six chains. Two
+ * pages leading with the same figure is two pages that will eventually
+ * disagree — one of them cached, one of them fresh — and nobody will know which
+ * to believe.
+ *
+ * The wallet balance stays as a chip beside it, because a prepaid balance of
+ * zero means something very different depending on whether there is anything
+ * left to top it up with.
  */
 function renderHero(summary) {
   dash.heroChips.replaceChildren()
@@ -219,23 +225,20 @@ function renderHero(summary) {
   const native = BigInt(balances.native)
   const prepaid = balances.prepaid === null ? null : BigInt(balances.prepaid)
 
-  dash.heroValue.textContent = hidden
-    ? '••••••'
-    : `${formatLcai((native + (prepaid ?? 0n)).toString())} LCAI`
+  dash.heroValue.textContent =
+    prepaid === null ? '—' : hidden ? '••••••' : `${formatLcai(prepaid.toString())} LCAI`
+
   dash.heroNote.textContent =
     prepaid === null
-      ? 'The prepaid balance could not be read, so this is the wallet alone.'
-      : `On ${summary.network}. Depositing and withdrawing move LCAI between these two, not out of them.`
+      ? 'The prepaid balance could not be read. Whatever is in the wallet is unaffected.'
+      : `On ${summary.network}. Prepaying moves LCAI from your wallet into the job registry, where the network's delegate can spend it on your behalf.`
 
-  for (const [label, value] of [
-    ['In your wallet', native],
-    ['Prepaid for inference', prepaid]
-  ]) {
+  for (const [label, value] of [['In your wallet', native]]) {
     if (value === null) continue
     const chip = el2('li', 'chip')
     chip.append(
       el2('span', null, label),
-      el2('span', 'chip-value', hidden ? '••••' : formatLcai(value.toString()))
+      el2('span', 'chip-value', hidden ? '••••' : `${formatLcai(value.toString())} LCAI`)
     )
     dash.heroChips.append(chip)
   }

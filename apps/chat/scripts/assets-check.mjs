@@ -150,6 +150,53 @@ report(
   `indicative: ${lcai?.indicative}`
 )
 
+// --- the portfolio line ---------------------------------------------------------
+
+const portfolio = await ask('assets.portfolio', { range: '1w' })
+
+report('a portfolio series comes back', !portfolio?.error, portfolio?.error ?? 'drawn')
+report(
+  'every point is a decimal string, like every other quantity',
+  (portfolio?.points ?? []).every((p) => typeof p.usd === 'string' && /^[0-9]+$/.test(p.usd))
+)
+report(
+  'and every point carries when it was',
+  (portfolio?.points ?? []).every((p) => Number.isFinite(p.at))
+)
+report(
+  'the points run oldest to newest, which is the order a chart draws in',
+  (portfolio?.points ?? []).every((p, i, all) => i === 0 || p.at >= all[i - 1].at)
+)
+report(
+  'it says whether anything held is missing from the line',
+  typeof portfolio?.complete === 'boolean',
+  `complete: ${portfolio?.complete}, unpriced: ${portfolio?.unpriced}`
+)
+// Incomplete must always explain itself. Complete may still have something to
+// say — an empty wallet is complete and worth a sentence — so this only holds
+// the direction that matters.
+report(
+  'anything missing from the line is explained in words',
+  portfolio?.complete === true || typeof portfolio?.note === 'string',
+  portfolio?.note ?? 'nothing to disclaim'
+)
+
+// A wallet holding nothing has nothing to chart, and should say that rather
+// than draw a flat line along zero.
+const holdsSomething = (held?.assets ?? []).some((a) => BigInt(a.balance) > 0n)
+report(
+  holdsSomething
+    ? 'a wallet with holdings draws a line'
+    : 'a wallet holding nothing says so rather than drawing a flat zero',
+  holdsSomething
+    ? (portfolio?.points ?? []).length > 0
+    : /nothing to chart/.test(portfolio?.note ?? ''),
+  `${(portfolio?.points ?? []).length} points`
+)
+
+const badRange = await ask('assets.portfolio', { range: 'forever' })
+report('a range the chart does not offer is refused', Boolean(badRange?.error), badRange?.error)
+
 // --- receiving ---------------------------------------------------------------
 
 const receive = await ask('assets.receive', { chainId: 1 })
@@ -214,6 +261,40 @@ const shown = JSON.parse(
     chains: [...document.getElementById('receive-chain').options].map((o) => o.textContent),
     qr: document.querySelectorAll('#receive-qr svg').length
   })`)
+)
+
+// --- the page itself ------------------------------------------------------------
+
+const surface = JSON.parse(
+  await evaluate(`JSON.stringify({
+    networks: document.querySelectorAll('#assets-networks .network').length,
+    rows: document.querySelectorAll('#assets-list .holding').length,
+    // The two things that moved to the Dashboard. A wallet still offering them
+    // would be two pages owning one decision.
+    prepaid: document.getElementById('wallet-prepaid') !== null,
+    moves: document.querySelectorAll('#panel-wallet [data-move]').length,
+    // And the four that should be here.
+    actions: ['assets-send-btn', 'assets-receive-btn', 'bridge-open-btn']
+      .filter((id) => document.getElementById(id) !== null).length
+  })`)
+)
+
+report(
+  'there is a tile for every chain',
+  surface.networks === chains.length,
+  `${surface.networks} tiles`
+)
+report('and a row for every asset the wallet tracks', surface.rows > 0, `${surface.rows} rows`)
+report(
+  'the prepaid balance has left the wallet for the Dashboard',
+  surface.prepaid === false,
+  'it is the AI side, and two pages owning one figure is two that will disagree'
+)
+report('and so have the buttons that move it', surface.moves === 0, `${surface.moves} left behind`)
+report(
+  'Send, Receive and Bridge are all on the wallet',
+  surface.actions === 3,
+  `${surface.actions} of 3`
 )
 
 report('the receive dialog opens', shown.open === true)

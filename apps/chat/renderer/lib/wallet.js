@@ -115,6 +115,11 @@ async function refreshHistory() {
   list.replaceChildren()
   empty.hidden = entries.length > 0
 
+  // The header belongs to the rows. With none, it is a row of column names
+  // over nothing.
+  const head = document.querySelector('.ledger-head')
+  if (head) head.hidden = entries.length === 0
+
   for (const entry of entries.slice(0, 50)) list.append(ledgerRow(entry))
 }
 
@@ -125,60 +130,60 @@ const KIND_LABEL = {
   cancel: 'Cancelled'
 }
 
+/**
+ * One transaction, as a row of columns rather than a stack of lines.
+ *
+ * Five cells on the same grid the header uses, so the two cannot drift apart.
+ * A ledger is read down — when did this happen, which of these failed, what did
+ * that one cost — and a stack of labelled lines per entry makes every one of
+ * those a scan rather than a glance.
+ */
 function ledgerRow(entry) {
   const item = document.createElement('li')
-  item.className = 'ledger-row'
+  item.className = 'ledger-entry'
 
-  const head = document.createElement('div')
-  head.className = 'ledger-head'
+  const what = el2('span', 'ledger-kind', KIND_LABEL[entry.kind] ?? entry.kind)
 
-  const what = document.createElement('span')
-  what.className = 'ledger-kind'
-  what.textContent = KIND_LABEL[entry.kind] ?? entry.kind
+  const when = el2('span', 'ledger-when', new Date(entry.settledAt ?? entry.at).toLocaleString())
 
-  const amount = document.createElement('span')
-  amount.className = 'ledger-amount'
-  // A cancel moves nothing, so showing its value as zero would read as a
-  // payment of nothing rather than as a transaction that undid one.
-  amount.textContent = entry.kind === 'cancel' ? '—' : formatLcai(entry.value ?? '0')
-
-  head.append(what, amount)
-
-  const meta = document.createElement('div')
-  meta.className = 'ledger-meta'
-
-  const state = document.createElement('span')
-  state.className = 'ledger-status'
+  const state = el2('span', 'ledger-status', entry.status)
   state.dataset.state = entry.status
-  state.textContent = entry.status
   if (entry.status === 'pending') {
     state.title = 'Signed and broadcast. Not yet in a block this client has seen.'
   }
 
-  const when = document.createElement('span')
-  when.className = 'ledger-when'
-  when.textContent = new Date(entry.settledAt ?? entry.at).toLocaleString()
-
-  meta.append(state, when)
-  if (entry.network) meta.append(el2('span', 'ledger-network', entry.network))
-
-  // The hash is what somebody takes to a block explorer, so it is selectable
-  // and copyable rather than shortened into something they have to retype.
+  // The hash is what somebody takes to a block explorer, so it is copyable
+  // rather than shortened into something they have to retype. Truncated only in
+  // what is drawn — the whole thing is what gets copied.
   const hash = document.createElement('button')
   hash.type = 'button'
   hash.className = 'ledger-hash'
-  hash.textContent = entry.hash
-  hash.title = 'Copy this transaction hash'
+  hash.textContent = `${entry.hash.slice(0, 10)}…${entry.hash.slice(-8)}`
+  hash.title = `${entry.hash} — click to copy`
   // `copy` reports the outcome itself. Announcing success here as well both
   // said it twice and said it even when the copy had failed.
   hash.addEventListener('click', () => void copy(entry.hash, 'Transaction hash'))
 
-  item.append(head, meta, hash)
+  // A cancel moves nothing, so showing its value as zero would read as a
+  // payment of nothing rather than as a transaction that undid one.
+  const amount = el2(
+    'span',
+    'ledger-amount ledger-col-num',
+    entry.kind === 'cancel' ? '—' : formatLcai(entry.value ?? '0')
+  )
+
+  item.append(what, when, state, hash, amount)
 
   // Only while it is still pending. Once a transaction is in a block there is
   // no nonce left to race, and offering the buttons anyway would be offering
   // to undo something already done.
-  if (entry.status === 'pending') item.append(stuckActions(entry))
+  if (entry.status === 'pending') {
+    const actions = stuckActions(entry)
+    // Across every column, because it is about the row rather than about one
+    // of its cells.
+    actions.style.gridColumn = '1 / -1'
+    item.append(actions)
+  }
 
   return item
 }
@@ -260,51 +265,16 @@ function fail(alert, detail) {
   alert.hidden = false
 }
 
-const balanceAlert = document.getElementById('wallet-balance-alert')
-const balanceTitle = document.getElementById('wallet-balance-title')
-
-function reportBalances(tone, title, detail) {
-  balanceAlert.dataset.tone = tone
-  balanceTitle.textContent = title
-  el.walletBalanceNote.textContent = detail
-  balanceAlert.hidden = false
-}
-
 /**
- * The prepaid balance, which the holdings list deliberately does not carry.
+ * The balance shown in the title bar and the sidebar.
  *
- * Native LCAI is one of six chains' worth of assets and belongs in that list.
- * Prepaid is not an asset in the same sense — it is LCAI already handed to the
- * job registry, spendable only on inference — so it sits on its own. Adding the
- * two would overstate what can be sent.
+ * The prepaid figure itself lives on the Dashboard now, beside the inference
+ * activity it pays for and the buttons that move it. This page owns what is
+ * held across six chains, which `assets.js` reads separately — so all that is
+ * left here is keeping the chrome in step.
  */
 async function refreshBalances() {
-  el.walletPrepaid.textContent = '…'
-  el.walletBalanceNote.textContent = ''
-  balanceAlert.hidden = true
-
-  // Anything that reads the balance here has a reason to, so the title bar is
-  // brought along rather than left a minute stale.
-  void refreshTitlebarBalance()
-
-  try {
-    const balances = await request('wallet.balances')
-    el.walletPrepaid.textContent =
-      balances.prepaid === null ? 'unknown' : formatLcai(balances.prepaid)
-
-    if (balances.prepaid === null) {
-      // Distinguish "nothing deposited" from "could not ask", which look the
-      // same as a zero and mean very different things.
-      reportBalances(
-        'warn',
-        'The prepaid balance could not be read',
-        'The contracts may not be reachable on this network. What is in the wallet is still correct.'
-      )
-    }
-  } catch (err) {
-    el.walletPrepaid.textContent = '—'
-    reportBalances('error', 'The chain could not be reached', err.message)
-  }
+  await refreshTitlebarBalance()
 }
 
 el.walletCreateForm.addEventListener('submit', async (evt) => {

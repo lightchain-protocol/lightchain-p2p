@@ -240,6 +240,7 @@ export async function openAsset(asset) {
 
   document.getElementById('asset-mark').setAttribute('href', asset.mark ?? '#c-generic')
   document.getElementById('asset-title').textContent = asset.name
+  document.getElementById('asset-chain').textContent = `${asset.symbol} on ${asset.chainName}`
   document.getElementById('asset-balance').textContent =
     `${formatUnits(asset.balance, asset.decimals)} ${asset.symbol}`
   document.getElementById('asset-balance').title =
