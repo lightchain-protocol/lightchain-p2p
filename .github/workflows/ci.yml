@@ -124,6 +124,16 @@ jobs:
             sudo apt-get install -y "$lib" || true
           done
 
+      # Electron refuses to start rather than run unsandboxed, and the helper
+      # arrives from npm without the ownership it needs. `--no-sandbox` is the
+      # usual answer and is the wrong one here: this job includes the suite that
+      # asks what a hostile renderer can reach, and running it in a
+      # configuration no user has would be testing something else.
+      - name: Let Electron keep its sandbox
+        run: |
+          sudo chown root:root node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+
       # Only the five that need nothing but this machine. `surfaces-check` and
       # `inference-check` read balances and model fees from a live chain, and a
       # suite that fails when a testnet is slow is a suite nobody trusts.
