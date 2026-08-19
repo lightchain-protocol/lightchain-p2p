@@ -198,7 +198,7 @@ el.walletCopy.addEventListener('click', () => copy(el.walletAddress.textContent,
  * balance is what inference is actually drawn from. Keeping them in the Wallet
  * section meant finding out you were empty by being refused.
  */
-const balanceButton = document.getElementById('titlebar-balance')
+const balanceButton = document.getElementById('account-balance')
 
 /**
  * An amount at a glance.

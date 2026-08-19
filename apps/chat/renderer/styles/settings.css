@@ -7,61 +7,6 @@
 
 /* --- Settings ------------------------------------------------------------- */
 
-/* Always visible, because it is the number that decides whether the next thing
-   you try will work. Tabular figures so it does not jitter as it updates. */
-.titlebar-balance {
-  padding: 2px 8px;
-  border: 0;
-  border-radius: var(--lc-radius-md);
-  background: transparent;
-  color: var(--lc-fg-muted);
-  font-size: var(--lc-text-xs);
-  font-variant-numeric: tabular-nums;
-  cursor: default;
-  -webkit-app-region: no-drag;
-}
-
-.titlebar-balance:hover {
-  color: var(--lc-fg);
-  background: var(--lc-bg-elevated-2);
-}
-
-/**
- * Nothing deposited, so the next question a model is asked will be refused.
- *
- * Warning rather than danger. Nothing has failed: this is the resting state of
- * every wallet that has not been funded yet, and it now sits permanently in the
- * sidebar footer rather than passing through a title bar. A red readout that is
- * simply true on a new machine teaches somebody to read red as decoration,
- * which is the colour that most needs to keep meaning something.
- */
-.titlebar-balance.is-empty {
-  color: var(--lc-warning);
-}
-
-.icon-button {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--lc-radius-md);
-  color: var(--lc-fg-muted);
-  background: transparent;
-  cursor: default;
-}
-
-.icon-button:hover {
-  color: var(--lc-fg);
-  background: var(--lc-bg-elevated-2);
-}
-
-.icon-button:focus-visible {
-  outline: 2px solid var(--lc-brand);
-  outline-offset: 2px;
-}
-
 .settings {
   position: fixed;
   inset: 38px 0 0;
@@ -152,7 +97,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Two buttons that belong to one form, on one line. `.wallet-form` stacks its
+/* Two buttons that belong to one form, on one line. `.form` stacks its
    children, and a Cancel stranded under its own Save reads as a second form. */
 .settings-actions {
   display: flex;

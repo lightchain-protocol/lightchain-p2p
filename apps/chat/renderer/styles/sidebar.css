@@ -55,7 +55,7 @@
 .sidebar .nav-item:hover,
 .sidebar .icon-button:hover,
 .sidebar .account:hover,
-.sidebar .titlebar-balance:hover {
+.sidebar .account-balance:hover {
   color: var(--lc-fg);
   background: color-mix(in srgb, var(--lc-fg) 8%, transparent);
 }
@@ -420,7 +420,7 @@
  * has to happen in three files at once. Everything here is scoped under
  * `.sidebar` so it outranks the rules left behind there.
  */
-.sidebar .titlebar-balance {
+.sidebar .account-balance {
   display: flex;
   align-items: center;
   width: 100%;
@@ -443,7 +443,7 @@
 
 /* Not enough prepaid for even the cheapest job, which is the state that turns
    into a refusal a minute later. */
-.sidebar .titlebar-balance.is-empty {
+.sidebar .account-balance.is-empty {
   color: var(--lc-danger);
 }
 
@@ -601,7 +601,7 @@
 .sidebar.is-collapsed .sidebar-context,
 .sidebar.is-collapsed .account-text,
 .sidebar.is-collapsed .account-chevron,
-.sidebar.is-collapsed .titlebar-balance,
+.sidebar.is-collapsed .account-balance,
 .sidebar.is-collapsed .version {
   display: none;
 }
@@ -627,4 +627,41 @@
 .sidebar.is-collapsed .sidebar-status {
   left: auto;
   right: var(--lc-space-md);
+}
+
+/* --- The balance -----------------------------------------------------------
+
+   Moved here from settings.css, which styled it because the title bar it used
+   to sit in had no stylesheet of its own. It is in the footer now, beside the
+   account it belongs to. */
+/* Always visible, because it is the number that decides whether the next thing
+   you try will work. Tabular figures so it does not jitter as it updates. */
+.account-balance {
+  padding: 2px 8px;
+  border: 0;
+  border-radius: var(--lc-radius-md);
+  background: transparent;
+  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-xs);
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+  -webkit-app-region: no-drag;
+}
+
+.account-balance:hover {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+}
+
+/**
+ * Nothing deposited, so the next question a model is asked will be refused.
+ *
+ * Warning rather than danger. Nothing has failed: this is the resting state of
+ * every wallet that has not been funded yet, and it now sits permanently in the
+ * sidebar footer rather than passing through a title bar. A red readout that is
+ * simply true on a new machine teaches somebody to read red as decoration,
+ * which is the colour that most needs to keep meaning something.
+ */
+.account-balance.is-empty {
+  color: var(--lc-warning);
 }

@@ -373,6 +373,84 @@
   overflow-wrap: anywhere;
 }
 
+/* --- Controls ------------------------------------------------------------- */
+
+/**
+ * A button that is only an icon.
+ *
+ * Lived in settings.css, and was used by the title bar, the sidebar footer and
+ * the dashboard. That is how a component ends up named for the one surface that
+ * happened to need it first, and it is the same mistake as the
+ * `wallet-head-actions` the contract warns about.
+ *
+ * `cursor: default` rather than `pointer`, matching the rest of the app: this is
+ * a desktop application, and a hand cursor is a web page's idea of a control.
+ */
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: var(--lc-control-sm);
+  height: var(--lc-control-sm);
+  padding: 0;
+  border: 0;
+  border-radius: var(--lc-radius-md);
+  color: var(--lc-fg-muted);
+  background: transparent;
+  cursor: default;
+}
+
+.icon-button:hover {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+}
+
+/* --- Forms ---------------------------------------------------------------- */
+
+/**
+ * A stack of labelled fields.
+ *
+ * Onboarding, Settings, the dialogs and the Wallet all use these. They were
+ * defined in wallet.css and called `wallet-form`, so four surfaces depended on
+ * a fifth surface's stylesheet and the name said the wrong thing on every one
+ * of them.
+ */
+.form {
+  display: flex;
+  flex-direction: column;
+  /* Label-and-field pairs are one thing each, so the gap between pairs has to
+     be clearly larger than the gap inside one. */
+  gap: var(--lc-space-lg);
+  /* Without this a form in a wide panel stretches its fields to the full width
+     and a password box ends up eight inches long. */
+  max-width: 44ch;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  min-width: 0;
+}
+
+.field-label {
+  font-size: var(--lc-text-xs);
+  font-weight: 500;
+  color: var(--lc-fg-muted);
+}
+
+/* Passwords are typed, not pasted from a key. Monospace makes them look like
+   data; this is the one input that should read as prose. */
+.form .input {
+  font-family: inherit;
+  font-size: var(--lc-text-md);
+}
+
+/* A form's submit is an action, not a banner. Stretching it across the column
+   made every secondary button read as the primary one. */
+.form .button {
+  align-self: flex-start;
+}
+
 /* --- Focus ---------------------------------------------------------------- */
 
 /* One rule for everything focusable that the base stylesheet does not already

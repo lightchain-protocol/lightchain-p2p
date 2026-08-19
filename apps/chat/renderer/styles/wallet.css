@@ -184,46 +184,9 @@
 /* Shared with Settings and onboarding, which is why these are not named for
    the wallet's own parts. They predate the kit; when a second surface needs a
    field the kit should take them. */
-.wallet-form {
-  display: flex;
-  flex-direction: column;
-  /* Label-and-field pairs are one thing each, so the gap between pairs has to
-     be clearly larger than the gap inside one. */
-  gap: var(--lc-space-lg);
-  /* Without this a form in a wide panel stretches its fields to the full width
-     and a password box ends up eight inches long. */
-  max-width: 44ch;
-}
-
 /* Settings fields hold keys, paths and URLs rather than passwords, and those
    have real lengths. Here the form takes the reading column it sits in, which
    at least lines its edge up with the paragraph explaining it. */
-.settings-page .wallet-form {
+.settings-page .form {
   max-width: none;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--lc-space-xs);
-  min-width: 0;
-}
-
-.field-label {
-  font-size: var(--lc-text-xs);
-  font-weight: 500;
-  color: var(--lc-fg-muted);
-}
-
-/* Passwords are typed, not pasted from a key. Monospace makes them look like
-   data; this is the one input that should read as prose. */
-.wallet-form .input {
-  font-family: inherit;
-  font-size: var(--lc-text-md);
-}
-
-/* A form's submit is an action, not a banner. Stretching it across the column
-   made every secondary button read as the primary one. */
-.wallet-form .button {
-  align-self: flex-start;
 }
