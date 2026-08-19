@@ -46,11 +46,30 @@ export const ASK = `(t, fields) => new Promise((resolve) => {
 })`
 
 /**
+ * Every password a harness is known to leave behind, newest attempt first.
+ *
+ * One of these scripts exists to prove the Settings form really changes a
+ * password, and another proves a wallet can be restored under a new one. Both
+ * do their job and both leave the instance holding a password the next script
+ * would not guess, so running two suites against one instance failed on the
+ * second — not because anything was broken, but because the first had succeeded.
+ *
+ * Listing them is honest about what these scripts collectively own. The
+ * alternative, making each suite tear its wallet down, would delete the very
+ * state the next one wants to find.
+ */
+const HARNESS_PASSWORDS = [
+  HARNESS_PASSWORD,
+  'a different password entirely',
+  'a different password again'
+]
+
+/**
  * Opens the wallet, making one if the instance has none.
  *
- * Throws with something worth reading when the wallet was made by something
- * else, because the useful next step is to clear the storage directory rather
- * than to guess at a password.
+ * Throws with something worth reading when none of the known passwords fit,
+ * because the useful next step is to clear the storage directory rather than to
+ * keep guessing.
  */
 export async function unlockForHarness(ask) {
   const status = await ask('wallet.status')
@@ -62,12 +81,16 @@ export async function unlockForHarness(ask) {
   }
 
   if (!status.unlocked) {
-    const opened = await ask('wallet.unlock', { password: HARNESS_PASSWORD })
-    if (opened?.error) {
-      throw new Error(
-        `this instance has a wallet the harnesses did not create (${opened.error}). Stop it, delete its storage directory, and start it again.`
-      )
+    let last = null
+    for (const password of HARNESS_PASSWORDS) {
+      const opened = await ask('wallet.unlock', { password })
+      if (!opened?.error) return ask('wallet.status')
+      last = opened.error
     }
+
+    throw new Error(
+      `this instance has a wallet no harness password opens (${last}). Stop it, delete its storage directory, and start it again.`
+    )
   }
 
   return ask('wallet.status')
