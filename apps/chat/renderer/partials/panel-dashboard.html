@@ -1,0 +1,101 @@
+        <!-- Dashboard ------------------------------------------------------->
+        <!-- Every number here is derived from something this machine already
+             holds. Where there is none the card says so, rather than drawing a
+             zero that reads as a measurement. -->
+        <div class="panel" id="panel-dashboard">
+          <div class="dash">
+            <header class="dash-head">
+              <div class="dash-head-main">
+                <h1 class="dash-title">Welcome back</h1>
+                <p class="dash-sub" id="dash-sub">
+                  Your identity, your models, your workers and one balance behind all of them.
+                </p>
+              </div>
+              <div class="dash-head-actions">
+                <span class="pill" id="dash-network">—</span>
+                <div class="segmented" role="group" aria-label="Range">
+                  <button class="segment" type="button" data-months="6">6m</button>
+                  <button class="segment is-active" type="button" data-months="12">12m</button>
+                  <button class="segment" type="button" data-months="24">24m</button>
+                </div>
+                <button class="button button-sm" type="button" id="dash-refresh">Refresh</button>
+              </div>
+            </header>
+
+            <!-- Both halves of what the wallet controls, and the two moves
+                 between them. Depositing and withdrawing shift LCAI between the
+                 wallet and the job registry; neither changes this total, which
+                 is the point of showing it above the split. -->
+            <section class="hero">
+              <div class="hero-row">
+                <div class="hero-main">
+                  <p class="hero-label">
+                    <span>Total balance</span>
+                    <button
+                      class="icon-button icon-button-sm"
+                      type="button"
+                      id="hero-hide"
+                      title="Hide balances"
+                      aria-label="Hide balances"
+                    >
+                      <svg class="icon" aria-hidden="true"><use href="#i-eye" /></svg>
+                    </button>
+                  </p>
+                  <p class="hero-value" id="hero-value">—</p>
+                  <p class="hero-note" id="hero-note"></p>
+                </div>
+                <div class="hero-actions">
+                  <button class="button" type="button" data-move="deposit">
+                    <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
+                    Deposit
+                  </button>
+                  <button class="button" type="button" data-move="withdraw">
+                    <svg class="icon" aria-hidden="true"><use href="#i-upload" /></svg>
+                    Withdraw
+                  </button>
+                </div>
+              </div>
+              <ul class="hero-chips" id="hero-chips"></ul>
+            </section>
+
+            <p class="dash-locked" id="dash-locked" hidden>
+              Balances are public, so they show while locked. Your conversations are not — the key
+              that opens them comes from the wallet, so unlock it to see the rest.
+            </p>
+
+            <ul class="stats" id="dash-stats"></ul>
+
+            <div class="dash-grid">
+              <section class="card">
+                <header class="card-head">
+                  <div>
+                    <h2 class="card-title">Inference activity</h2>
+                    <p class="card-note" id="chart-note">Questions asked and answers returned.</p>
+                  </div>
+                </header>
+                <div class="chart" id="dash-chart"></div>
+                <ul class="legend" id="dash-legend"></ul>
+              </section>
+
+              <section class="card">
+                <header class="card-head">
+                  <h2 class="card-title">Recent activity</h2>
+                </header>
+                <ul class="feed" id="dash-feed"></ul>
+              </section>
+            </div>
+
+            <section class="card">
+              <header class="card-head">
+                <div>
+                  <h2 class="card-title">Models used</h2>
+                  <p class="card-note">
+                    Conversations per model, and how many of their turns reached the chain.
+                  </p>
+                </div>
+              </header>
+              <ul class="bars" id="dash-models"></ul>
+            </section>
+          </div>
+        </div>
+

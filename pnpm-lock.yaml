@@ -129,6 +129,9 @@ importers:
       electron-forge-plugin-universal-prebuilds:
         specifier: ^1.0.0
         version: 1.0.0
+      lucide-static:
+        specifier: ^1.32.0
+        version: 1.32.0
       pear-electron-forge-maker-appimage:
         specifier: ^2.0.0
         version: 2.0.0(dmg-builder@25.1.8)(electron-builder-squirrel-windows@25.1.8)
@@ -3456,6 +3459,9 @@ packages:
   lru-cache@7.18.3:
     resolution: {integrity: sha512-jumlc0BIUrS3qJGgIkWZsyfAM7NCWiBcCDhnd+3NNM5KbBmLTgHVfWBcg6W+rLUsIpzpERPsvwUP7CckAQSOoA==}
     engines: {node: '>=12'}
+
+  lucide-static@1.32.0:
+    resolution: {integrity: sha512-lLIg/D57X3QDqAhk0Hoz7Yc36tU9XYgWLXWL21x4TOIulwWyiC9wlHDswCHMbm5O3fFBLsBUWJuDs9rEpm70rg==}
 
   macos-alias@0.2.12:
     resolution: {integrity: sha512-yiLHa7cfJcGRFq4FrR4tMlpNHb4Vy4mWnpajlSSIFM5k4Lv8/7BbbDLzCAVogWNl0LlLhizRp1drXv0hK9h0Yw==}
@@ -8904,6 +8910,8 @@ snapshots:
       yallist: 4.0.0
 
   lru-cache@7.18.3: {}
+
+  lucide-static@1.32.0: {}
 
   macos-alias@0.2.12:
     dependencies:

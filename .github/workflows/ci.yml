@@ -58,3 +58,8 @@ jobs:
       # by hand or if the map changed without regenerating.
       - name: Icon sprite is current
         run: node apps/chat/scripts/build-icons.mjs --check
+
+      # index.html is assembled from renderer/partials. Editing it directly
+      # works until the next build, which is the worst kind of works.
+      - name: Markup is current
+        run: node apps/chat/scripts/build-markup.mjs --check

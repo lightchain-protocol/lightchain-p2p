@@ -29,7 +29,9 @@ import { fileURLToPath } from 'node:url'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const app = path.join(here, '..')
-const markup = path.join(app, 'renderer', 'index.html')
+// The sprite's own partial, not the assembled document. index.html is written
+// by build-markup.mjs and anything put there directly is lost on the next run.
+const markup = path.join(app, 'renderer', 'partials', 'sprite.html')
 
 // Asked for rather than guessed at. pnpm hoists to the workspace root, so the
 // package is not under this app's own node_modules and a path built by hand
@@ -126,7 +128,7 @@ const from = html.indexOf(START)
 const to = html.indexOf(END)
 
 if (from === -1 || to === -1) {
-  console.error(`index.html is missing the ${START} / ${END} markers`)
+  console.error(`partials/sprite.html is missing the ${START} / ${END} markers`)
   process.exit(1)
 }
 
@@ -134,11 +136,11 @@ const next = `${html.slice(0, from + START.length)}\n${sprite}\n        ${html.s
 
 if (process.argv.includes('--check')) {
   if (next !== html) {
-    console.error('index.html is out of date; run node scripts/build-icons.mjs')
+    console.error('partials/sprite.html is out of date; run node scripts/build-icons.mjs')
     process.exit(1)
   }
   console.log(`icon sprite is current (${Object.keys(ICONS).length} icons)`)
 } else {
   fs.writeFileSync(markup, next)
-  console.log(`wrote ${Object.keys(ICONS).length} icons into renderer/index.html`)
+  console.log(`wrote ${Object.keys(ICONS).length} icons into renderer/partials/sprite.html`)
 }

@@ -1,0 +1,162 @@
+    <dialog class="dialog" id="join-dialog">
+      <form method="dialog" class="dialog-form" id="join-form">
+        <h2 class="dialog-title">Join a room</h2>
+        <p class="dialog-body">
+          Paste the invite you were sent. You will arrive able to write, and nothing else is needed
+          from either side.
+        </p>
+        <input
+          class="input"
+          id="join-input"
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder="Invite"
+          aria-label="Invite"
+        />
+        <p class="dialog-note">
+          An invite only works while whoever sent it is running. If they are not, and the room is
+          held by a blind peer, join with its two keys instead.
+        </p>
+        <details class="dialog-details">
+          <summary>Join with keys</summary>
+          <input
+            class="input"
+            id="join-key"
+            type="text"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="Room key"
+            aria-label="Room key"
+          />
+          <input
+            class="input"
+            id="join-encryption-key"
+            type="text"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="Encryption key"
+            aria-label="Encryption key"
+          />
+        </details>
+        <p class="dialog-error" id="join-error" hidden></p>
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close="join-dialog">Cancel</button>
+          <button class="button button-primary" type="submit" id="join-submit">Join</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="dialog dialog-wide" id="invite-dialog">
+      <div class="dialog-form">
+        <h2 class="dialog-title">Invite someone</h2>
+        <p class="dialog-body">
+          Send them this. It carries no room key, so it cannot be used to read the room — it is
+          spent once, when they join, and they arrive able to write.
+        </p>
+        <div class="invite-share">
+          <div class="invite-codes">
+            <code class="invite" id="invite-value"></code>
+            <p class="dialog-note">
+              Or the raw invite, for anywhere a link will not survive being pasted.
+            </p>
+            <code class="invite invite-raw" id="invite-raw"></code>
+          </div>
+          <!-- Drawn from a module grid rather than an image, so it needs no
+               network, no data URL and no exception to the content policy. -->
+          <figure class="qr" id="invite-qr">
+            <figcaption class="qr-caption">Scan to join</figcaption>
+          </figure>
+        </div>
+        <p class="dialog-error" id="invite-error" hidden></p>
+        <p class="dialog-note">
+          It only works while this app is running, because the invite is held in memory rather than
+          written into the room.
+        </p>
+
+        <details class="dialog-details">
+          <summary>Or grant access to a writer key</summary>
+          <p class="dialog-note">
+            The way in when an invite will not do. It needs no timing, so it works for someone who
+            already joined read-only, and for someone who is not online right now.
+          </p>
+          <form class="grant-form" id="grant-form">
+            <input
+              class="input"
+              id="grant-key"
+              type="text"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="Their writer key"
+              aria-label="Writer key"
+            />
+            <button class="button" type="submit" id="grant-btn">Grant</button>
+          </form>
+          <p class="dialog-error" id="grant-error" hidden></p>
+        </details>
+
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close="invite-dialog">Close</button>
+          <button class="button" type="button" id="copy-invite-raw">Copy raw invite</button>
+          <button class="button button-primary" type="button" id="copy-invite-btn">
+            Copy link
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="dialog" id="pay-dialog">
+      <form method="dialog" class="dialog-form" id="pay-form">
+        <h2 class="dialog-title">Send LCAI</h2>
+        <p class="dialog-body">
+          Straight from your wallet to theirs, on chain. Nothing about this goes through the room —
+          it is a transfer, and it is irreversible.
+        </p>
+        <div class="key-row">
+          <code class="key" id="pay-to"></code>
+        </div>
+        <p class="dialog-note" id="pay-proof"></p>
+        <label class="field">
+          <span class="field-label">Amount in LCAI</span>
+          <input
+            class="input"
+            id="pay-amount"
+            type="text"
+            inputmode="decimal"
+            placeholder="0.1"
+            autocomplete="off"
+          />
+        </label>
+        <p class="dialog-note" id="pay-available"></p>
+        <p class="dialog-error" id="pay-error" hidden></p>
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close="pay-dialog">Cancel</button>
+          <button class="button button-primary" type="submit" id="pay-submit">Send</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="dialog" id="rename-dialog">
+      <form method="dialog" class="dialog-form" id="rename-form">
+        <h2 class="dialog-title">Name this room</h2>
+        <p class="dialog-body">
+          Everyone in the room sees the same name, and any writer can change it. It is written into
+          the room's history, so it survives every member going offline.
+        </p>
+        <input
+          class="input"
+          id="rename-input"
+          type="text"
+          maxlength="64"
+          autocomplete="off"
+          placeholder="Design"
+          aria-label="Room name"
+        />
+        <p class="dialog-error" id="rename-error" hidden></p>
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close="rename-dialog">Cancel</button>
+          <button class="button button-primary" type="submit" id="rename-submit">Save</button>
+        </div>
+      </form>
+    </dialog>
+

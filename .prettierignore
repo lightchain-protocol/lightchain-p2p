@@ -13,3 +13,14 @@ coverage/
 # that keys off HTML comments positioned above mermaid fences, so reflowing them
 # breaks the build rather than tidying it.
 docs/proposals/
+
+# Markup fragments, and the document assembled from them.
+#
+# Prettier does not merely reformat an unbalanced fragment, it repairs one:
+# given a partial whose closing tags live in the next partial, it helpfully
+# adds them, and the assembled document then carries both sets. That was not a
+# theory — it happened on the first run and produced a page with seven spurious
+# closing tags. There is no configuration for "reformat but do not balance", so
+# these are hand-formatted, and index.html is generated from them.
+apps/chat/renderer/partials/
+apps/chat/renderer/index.html

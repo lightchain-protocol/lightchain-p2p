@@ -1,0 +1,269 @@
+
+    <!-- Settings. One panel for the whole app: a section shows what is
+         happening, this is where everything is configured. -->
+    <div class="settings" id="settings" hidden>
+      <div class="settings-frame">
+        <nav class="settings-nav" aria-label="Settings">
+          <h2 class="sidebar-title">Settings</h2>
+          <button class="nav-item is-active" type="button" data-settings="general">General</button>
+          <button class="nav-item" type="button" data-settings="wallet">Wallet</button>
+          <button class="nav-item" type="button" data-settings="inference">Inference</button>
+          <button class="nav-item" type="button" data-settings="worker">Worker</button>
+          <button class="nav-item" type="button" data-settings="advanced">Advanced</button>
+          <button class="button button-block" type="button" id="settings-close">Done</button>
+        </nav>
+
+        <div class="settings-body">
+          <section class="settings-page" id="settings-general">
+            <h3 class="settings-heading">Network</h3>
+            <p class="settings-note">
+              Which chain balances are read from and transactions are signed for. Changing it does
+              not move anything — a wallet has the same address on both.
+            </p>
+            <label class="field">
+              <span class="field-label">Network</span>
+              <select class="input" id="set-network">
+                <option value="mainnet">Mainnet</option>
+                <option value="testnet">Testnet</option>
+              </select>
+            </label>
+            <dl class="facts" id="network-facts"></dl>
+          </section>
+
+          <section class="settings-page" id="settings-wallet" hidden>
+            <h3 class="settings-heading">Recovery phrase</h3>
+            <p class="settings-note">
+              Twelve words that restore this wallet anywhere. Seeing them costs your password, and
+              anyone who has them has the wallet.
+            </p>
+            <form class="wallet-form" id="reveal-form">
+              <label class="field">
+                <span class="field-label">Password</span>
+                <input
+                  class="input"
+                  id="reveal-password"
+                  type="password"
+                  autocomplete="current-password"
+                />
+              </label>
+              <p class="dialog-error" id="reveal-error" hidden></p>
+              <button class="button" type="submit" id="reveal-btn">Show recovery phrase</button>
+            </form>
+            <ol class="phrase" id="reveal-phrase" hidden></ol>
+
+            <h3 class="settings-heading">Change your password</h3>
+            <p class="settings-note">
+              Reseals the wallet on this machine. Your recovery phrase, your address and your saved
+              conversations are unaffected — the phrase is what your wallet is, and the password
+              only guards the copy kept here.
+            </p>
+            <form class="wallet-form" id="password-form">
+              <label class="field">
+                <span class="field-label">Current password</span>
+                <input
+                  class="input"
+                  id="password-current"
+                  type="password"
+                  autocomplete="current-password"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">New password</span>
+                <input
+                  class="input"
+                  id="password-next"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="At least 8 characters"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">Confirm new password</span>
+                <input
+                  class="input"
+                  id="password-confirm"
+                  type="password"
+                  autocomplete="new-password"
+                />
+              </label>
+              <p class="dialog-error" id="password-error" hidden></p>
+              <button class="button" type="submit" id="password-btn">Change password</button>
+            </form>
+
+            <h3 class="settings-heading">Remove this wallet</h3>
+            <p class="settings-note">
+              Deletes the encrypted vault from this machine. Without your recovery phrase written
+              down, this cannot be undone by anyone.
+            </p>
+            <form class="wallet-form" id="remove-form">
+              <label class="field">
+                <span class="field-label">Password</span>
+                <input
+                  class="input"
+                  id="remove-password"
+                  type="password"
+                  autocomplete="current-password"
+                />
+              </label>
+              <p class="dialog-error" id="remove-error" hidden></p>
+              <button class="button" type="submit" id="remove-btn">Remove wallet</button>
+            </form>
+          </section>
+
+          <section class="settings-page" id="settings-inference" hidden>
+            <h3 class="settings-heading">Prompt templates</h3>
+            <p class="settings-note">
+              A template is a block of text put in front of a prompt — the standing instructions you
+              would otherwise retype every time. Templates are sealed under your wallet and kept on
+              this machine only: no peer, no worker and no contract is ever told that this list
+              exists.
+            </p>
+            <p class="settings-note" id="template-status" hidden></p>
+            <ul class="template-list" id="template-list"></ul>
+            <p class="settings-note" id="template-empty" hidden></p>
+
+            <form class="wallet-form" id="template-form">
+              <label class="field">
+                <span class="field-label">Name</span>
+                <input
+                  class="input"
+                  id="template-name"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="Reviewer"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">Text put in front of the prompt</span>
+                <textarea class="input" id="template-body" rows="4" spellcheck="false"></textarea>
+              </label>
+              <p class="settings-hint" id="template-caps"></p>
+              <p class="dialog-error" id="template-error" hidden></p>
+              <div class="settings-actions">
+                <button class="button button-primary" type="submit" id="template-save">
+                  Add template
+                </button>
+                <button class="button" type="button" id="template-cancel" hidden>Cancel</button>
+              </div>
+            </form>
+
+            <h3 class="settings-heading">Spending limits</h3>
+            <p class="settings-note">
+              Both caps are optional and both are in LCAI. A job costs about 0.02 LCAI on mainnet,
+              which is the figure worth holding in mind when choosing one. Leave a field empty for
+              no limit.
+            </p>
+            <p class="settings-warning">
+              These are checked by this application, on this machine, before it submits a job. They
+              will catch a typo, a loop that keeps asking and a model that costs more than you
+              expected. They will not stop anybody who controls this machine, because anything that
+              can bypass this window can bypass the check with it. The delegate allowance you
+              authorised on chain is the only limit that is enforced against your money.
+            </p>
+            <p class="settings-note" id="limits-status" hidden></p>
+            <form class="wallet-form" id="limits-form">
+              <div class="settings-pair">
+                <label class="field">
+                  <span class="field-label">Most one job may cost</span>
+                  <input
+                    class="input"
+                    id="limit-per-job"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="No limit"
+                    autocomplete="off"
+                  />
+                  <span class="settings-hint" id="limit-per-job-wei"></span>
+                </label>
+                <label class="field">
+                  <span class="field-label">Most to spend in a day</span>
+                  <input
+                    class="input"
+                    id="limit-daily"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="No limit"
+                    autocomplete="off"
+                  />
+                  <span class="settings-hint" id="limit-daily-wei"></span>
+                </label>
+              </div>
+              <p class="dialog-error" id="limits-error" hidden></p>
+              <button class="button button-primary" type="submit" id="limits-save">
+                Save limits
+              </button>
+            </form>
+            <dl class="facts" id="limits-facts"></dl>
+          </section>
+
+          <section class="settings-page" id="settings-worker" hidden>
+            <h3 class="settings-heading">Worker</h3>
+            <p class="settings-note">
+              Used by the Worker section to talk to a running worker. Anything left blank falls back
+              to the environment variables the toolkit already uses, so an existing shell setup
+              keeps working.
+            </p>
+            <form class="wallet-form" id="worker-settings-form">
+              <label class="field">
+                <span class="field-label">Keystore password</span>
+                <input class="input" id="set-worker-password" type="password" autocomplete="off" />
+              </label>
+              <label class="field">
+                <span class="field-label">Keys directory</span>
+                <input class="input" id="set-keys-dir" type="text" spellcheck="false" />
+              </label>
+              <label class="field">
+                <span class="field-label">Container name</span>
+                <input class="input" id="set-container" type="text" spellcheck="false" />
+              </label>
+              <label class="field">
+                <span class="field-label">Supported models, comma separated and untagged</span>
+                <input class="input" id="set-models" type="text" spellcheck="false" />
+              </label>
+              <label class="field">
+                <span class="field-label">Ollama URL</span>
+                <input class="input" id="set-ollama" type="text" spellcheck="false" />
+              </label>
+              <p class="dialog-error" id="worker-settings-error" hidden></p>
+              <button class="button button-primary" type="submit">Save</button>
+            </form>
+          </section>
+
+          <section class="settings-page" id="settings-advanced" hidden>
+            <h3 class="settings-heading">Availability</h3>
+            <p class="settings-note">
+              Blind peers are always-on machines that hold your rooms without being able to read
+              them. Without one, a room only replicates while someone who has it is online — so two
+              people who are never online together never see each other's messages. There is no
+              public fleet; these are machines you or someone you trust runs.
+            </p>
+            <form class="wallet-form" id="blind-form">
+              <label class="field">
+                <span class="field-label">Blind peer keys, comma separated</span>
+                <input class="input" id="set-blind-peers" type="text" spellcheck="false" />
+              </label>
+              <p class="dialog-error" id="blind-error" hidden></p>
+              <button class="button" type="submit">Save</button>
+            </form>
+            <p class="settings-note" id="blind-status"></p>
+
+            <p class="settings-note">
+              Give this key to whoever runs the blind peer. It must be on their trusted list, or
+              they will hold your rooms and never advertise them — which looks like it is working
+              until the last person closes the app.
+            </p>
+            <div class="key-row">
+              <code class="key" id="dht-key"></code>
+              <button class="button button-sm" type="button" id="dht-copy">Copy</button>
+            </div>
+
+            <h3 class="settings-heading">Storage</h3>
+            <p class="settings-note">
+              Where rooms, the wallet vault and these settings live on this machine. Anyone who can
+              read this directory can read your rooms.
+            </p>
+            <dl class="facts" id="storage-facts"></dl>
+          </section>
+        </div>
+      </div>
+    </div>

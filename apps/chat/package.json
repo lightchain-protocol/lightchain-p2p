@@ -10,7 +10,7 @@
   "type": "commonjs",
   "main": "electron/main.js",
   "scripts": {
-    "build": "node scripts/build-tokens.mjs && node scripts/build-icons.mjs && node scripts/check-tokens.mjs",
+    "build": "node scripts/build-tokens.mjs && node scripts/build-icons.mjs && node scripts/build-markup.mjs && node scripts/check-tokens.mjs",
     "start": "npm run build && electron-forge start -- --no-updates",
     "package": "node scripts/forge.mjs package",
     "make": "node scripts/forge.mjs make"

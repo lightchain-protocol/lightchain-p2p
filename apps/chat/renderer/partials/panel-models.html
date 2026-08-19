@@ -1,0 +1,53 @@
+        <!-- Models ---------------------------------------------------------->
+        <div class="panel" id="panel-models" hidden>
+          <div class="ai">
+            <aside class="ai-models">
+              <header class="ai-models-head">
+                <h2 class="sidebar-title">Models</h2>
+                <button class="button button-sm" type="button" id="ai-refresh">Refresh</button>
+              </header>
+              <ul class="model-list" id="model-list"></ul>
+
+              <h2 class="sidebar-title ai-past-title" id="past-title" hidden>Earlier</h2>
+              <ul class="model-list conversation-list" id="conversation-list"></ul>
+
+              <p class="ai-note" id="ai-note"></p>
+            </aside>
+
+            <section class="ai-thread">
+              <header class="ai-head" id="ai-head" hidden>
+                <div>
+                  <h1 class="ai-title" id="ai-model">—</h1>
+                  <p class="ai-sub" id="ai-session">no session</p>
+                </div>
+                <div class="wallet-head-actions">
+                  <button class="button button-sm" type="button" id="ai-cancel" hidden>Stop</button>
+                  <button class="button button-sm" type="button" id="ai-forget">Delete</button>
+                  <button class="button button-sm" type="button" id="ai-end">End session</button>
+                </div>
+              </header>
+
+              <div class="ai-empty" id="ai-empty">
+                <h1 class="ai-empty-title">Ask a model</h1>
+                <p class="ai-empty-body">
+                  Pick a model to open a session. Drawing a worker takes up to a minute, and happens
+                  once — every question after it is immediate.
+                </p>
+              </div>
+
+              <div class="messages" id="ai-messages" hidden></div>
+
+              <form class="composer" id="ai-composer" hidden>
+                <input
+                  class="composer-input"
+                  id="ai-prompt"
+                  type="text"
+                  placeholder="Ask something"
+                  autocomplete="off"
+                />
+                <button class="button button-primary" type="submit" id="ai-send">Send</button>
+              </form>
+            </section>
+          </div>
+        </div>
+

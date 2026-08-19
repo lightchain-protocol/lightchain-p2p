@@ -1,0 +1,89 @@
+      <nav class="sidebar" id="sidebar" aria-label="Primary">
+        <div class="sidebar-head">
+          <span class="sidebar-brand">Hub</span>
+          <button
+            class="icon-button sidebar-collapse"
+            type="button"
+            id="collapse-btn"
+            title="Collapse the sidebar"
+            aria-label="Collapse the sidebar"
+            aria-expanded="true"
+          >
+            <svg class="icon" aria-hidden="true"><use href="#i-collapse" /></svg>
+          </button>
+        </div>
+
+        <!-- Grouped rather than one flat list, because the five sections are not
+             peers: three are things you do, two are machinery behind them. -->
+        <p class="sidebar-title">Workspace</p>
+        <ul class="sections">
+          <li>
+            <button
+              class="nav-item is-active"
+              type="button"
+              data-section="dashboard"
+              aria-current="page"
+            >
+              <svg class="nav-icon" aria-hidden="true"><use href="#i-dashboard" /></svg>
+              <span class="nav-label">Dashboard</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-item" type="button" data-section="chat">
+              <svg class="nav-icon" aria-hidden="true"><use href="#i-chat" /></svg>
+              <span class="nav-label">Chat</span>
+              <span class="nav-badge" id="rooms-badge" hidden></span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-item" type="button" data-section="models">
+              <svg class="nav-icon" aria-hidden="true"><use href="#i-models" /></svg>
+              <span class="nav-label">Models</span>
+            </button>
+          </li>
+        </ul>
+
+        <p class="sidebar-title">Network</p>
+        <ul class="sections">
+          <li>
+            <button class="nav-item" type="button" data-section="worker">
+              <svg class="nav-icon" aria-hidden="true"><use href="#i-worker" /></svg>
+              <span class="nav-label">Worker</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-item" type="button" data-section="wallet">
+              <svg class="nav-icon" aria-hidden="true"><use href="#i-wallet" /></svg>
+              <span class="nav-label">Wallet</span>
+            </button>
+          </li>
+        </ul>
+
+        <div class="sidebar-context" id="chat-context" hidden>
+          <p class="sidebar-title">Rooms</p>
+          <ul class="room-list" id="room-list"></ul>
+          <p class="sidebar-empty" id="sidebar-empty">No rooms yet.</p>
+          <div class="sidebar-actions">
+            <button class="button button-block" type="button" id="create-btn">
+              <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
+              <span class="nav-label">New room</span>
+            </button>
+            <button class="button button-block" type="button" id="join-btn">
+              <span class="nav-label">Join with an invite</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="sidebar-foot">
+          <!-- The wallet is the identity, so it sits where an account does. -->
+          <button class="account" type="button" id="account-btn">
+            <svg class="logo account-logo" aria-hidden="true"><use href="#i-logo" /></svg>
+            <span class="account-text">
+              <span class="account-name" id="account-name">No wallet</span>
+              <span class="account-role" id="account-role">Set one up</span>
+            </span>
+            <svg class="icon account-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+          </button>
+          <p class="version" id="version"></p>
+        </div>
+      </nav>

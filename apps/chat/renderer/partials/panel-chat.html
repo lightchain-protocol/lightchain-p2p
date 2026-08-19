@@ -1,0 +1,92 @@
+        <!-- Chat ------------------------------------------------------------>
+        <div class="panel" id="panel-chat" hidden>
+          <div class="empty" id="empty">
+            <h1 class="empty-title">The universal hub</h1>
+            <p class="empty-body">
+              One place to hold your identity, reach any published model, keep your own history and
+              pay for all of it from one balance.
+            </p>
+            <p class="empty-hint">Create a room, or join one with a key someone sent you.</p>
+          </div>
+
+          <div class="room" id="room" hidden>
+            <header class="room-head">
+              <div class="room-head-main">
+                <h1 class="room-title" id="room-title">Room</h1>
+                <code class="key" id="room-key" title="Room key"></code>
+              </div>
+              <div class="room-head-actions">
+                <!-- Not decoration. Somebody has to be able to tell whether the
+                     thing they are typing into is encrypted, and the only
+                     honest place to say so is beside the conversation. -->
+                <button
+                  class="badge badge-secure"
+                  type="button"
+                  id="room-secure"
+                  title="How this room is protected"
+                >
+                  <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+                  Encrypted
+                </button>
+                <span class="badge badge-peers" id="room-peers" hidden></span>
+                <span class="badge" id="room-role"></span>
+                <button class="button button-sm" type="button" id="rename-btn">Rename</button>
+                <button class="button button-sm" type="button" id="invite-btn">
+                  Invite someone
+                </button>
+                <button class="button button-sm" type="button" id="members-btn">Members</button>
+                <button class="button button-sm" type="button" id="leave-btn">Leave</button>
+              </div>
+            </header>
+
+            <div class="room-body">
+              <!-- Announced to screen readers as messages arrive, since they
+                   appear without the user having done anything. -->
+              <ol class="messages" id="messages" aria-live="polite"></ol>
+
+              <!-- Who is in the room, filled in by the members module. Hidden
+                   by default because a conversation is what somebody came for
+                   and a roster beside it is a choice they can make. -->
+              <aside class="room-members" id="members" hidden></aside>
+            </div>
+
+            <p class="typing" id="typing" hidden>
+              <span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span id="typing-text"></span>
+            </p>
+
+            <!-- A read-only member is not a dead end. An invite needs both
+                 people running at once; a writer key does not, so it is shown
+                 here rather than buried. -->
+            <div class="notice" id="readonly-notice" hidden>
+              <div class="notice-main">
+                <p class="notice-body">
+                  You can read this room but not write to it. Send this key to anyone already in it
+                  and they can grant you access — it works even when neither of you is online at the
+                  same moment, which an invite does not.
+                </p>
+                <div class="key-row">
+                  <code class="key" id="my-writer-key"></code>
+                  <button class="button button-sm" type="button" id="copy-writer-key">Copy</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Anchored to the composer so the list appears above what is
+                 being typed, the way every mention picker does. -->
+            <div class="composer-wrap">
+              <ul class="mentions" id="mentions" role="listbox" aria-label="Models" hidden></ul>
+              <form class="composer" id="composer">
+                <textarea
+                  class="composer-input"
+                  id="composer-input"
+                  rows="1"
+                  placeholder="Write a message, or @ a model to ask one"
+                  aria-label="Message"
+                ></textarea>
+                <button class="button button-primary" type="submit" id="send-btn">Send</button>
+              </form>
+            </div>
+          </div>
+        </div>
+

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      `img-src` is the only relaxation, and it is the narrowest one that lets an
+      attachment be displayed. An image arrives as bytes over IPC and becomes a
+      `blob:` URL in this document; `default-src 'self'` alone blocks that, and
+      the alternatives are worse — a `data:` URL is a script vector in an
+      `<img>` fallback, and any remote scheme would let a message pull a URL and
+      tell a stranger's server when it was read.
+
+      Nothing here permits a network origin. If a future change adds `http:`,
+      `https:` or `data:` to this line, a room member gains a way to phone home
+      from inside somebody else's window.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' blob:"
+    />
+    <title>Lightchain</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="styles/conversation.css" />
+    <link rel="stylesheet" href="styles/reactions.css" />
+    <link rel="stylesheet" href="styles/members.css" />
+    <link rel="stylesheet" href="styles/attachments.css" />
+    <link rel="stylesheet" href="styles/search.css" />
+    <link rel="stylesheet" href="styles/onboarding.css" />
+  </head>
+  <body>
