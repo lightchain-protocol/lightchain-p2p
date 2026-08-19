@@ -237,6 +237,46 @@ for (const theme of THEMES) {
 
 await evaluate(`(document.documentElement.dataset.theme = 'dark', true)`)
 
+// The surfaces that only exist once something is pressed. Every panel above is
+// in the document from boot, so walking for stray text found nothing that a
+// screenshot would not also have shown — and the one place this class of fault
+// actually appeared was behind a button. Reacting to a message appended
+// "[object Object]" to the body on every press, because the picker returns a
+// handle rather than a node and `append` stringifies whatever is not a Node.
+const transient = await evaluate(`(async () => {
+  const opened = []
+  const press = async (node, what) => {
+    if (!node) return
+    node.click()
+    await new Promise((r) => setTimeout(r, 350))
+    opened.push(what)
+  }
+
+  document.querySelector('[data-section="chat"]')?.click()
+  await new Promise((r) => setTimeout(r, 300))
+  document.querySelector('#room-list .nav-item')?.click()
+  await new Promise((r) => setTimeout(r, 500))
+
+  await press(document.getElementById('members-btn'), 'members')
+  await press(document.getElementById('room-more'), 'room menu')
+
+  const actions = [...document.querySelectorAll('.message-action')]
+  for (const label of ['React', 'Reply']) {
+    await press(
+      actions.find((b) => b.getAttribute('aria-label') === label),
+      label
+    )
+  }
+
+  return opened
+})()`)
+
+note(
+  transient.length > 0,
+  'the surfaces behind a button were opened before looking for stray text',
+  transient.length ? transient.join(', ') : 'none of them opened — the check below proves nothing'
+)
+
 // Checked after every surface has been opened, because a text sink only shows
 // what it was given once something has given it anything.
 const objects = await evaluate(`(() => {

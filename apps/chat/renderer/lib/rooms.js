@@ -546,15 +546,20 @@ function messageActions(message, room) {
 
   actions.append(
     act('Reply', 'i-reply', () => startReply(message)),
+    // Nothing is appended here. `emojiPicker` puts its own panel in the
+    // document — it has to, because it shows through the popover API — and
+    // returns a handle rather than a node. Appending that handle passed an
+    // object to `append`, which stringifies whatever is not a Node, so every
+    // press of React wrote "[object Object]" into the body. Clicking it twice
+    // to dismiss returns null and wrote "null".
     act('React', 'i-react', (evt) => {
-      const picker = emojiPicker({
+      emojiPicker({
         anchor: evt.currentTarget,
         onPick: (emoji) =>
           void request('room.react', { room: room.key, target: message.id, emoji, on: true }).catch(
             (err) => toast(err.message, 'error')
           )
       })
-      document.body.append(picker)
     })
   )
 
