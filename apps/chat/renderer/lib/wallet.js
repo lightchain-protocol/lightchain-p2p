@@ -175,7 +175,69 @@ function ledgerRow(entry) {
   })
 
   item.append(head, meta, hash)
+
+  // Only while it is still pending. Once a transaction is in a block there is
+  // no nonce left to race, and offering the buttons anyway would be offering
+  // to undo something already done.
+  if (entry.status === 'pending') item.append(stuckActions(entry))
+
   return item
+}
+
+/**
+ * The two things that can be done about a transaction that has not landed.
+ *
+ * Both work by sending a second transaction at the same nonce and letting the
+ * chain pick one, which is the only mechanism there is — so neither is a
+ * revision of the first. The worker's own note on `wallet.cancel` says an
+ * interface calling it "cancel" without saying so is promising something the
+ * chain does not offer, and this is where that promise would have been made.
+ */
+function stuckActions(entry) {
+  const row = document.createElement('div')
+  row.className = 'ledger-actions'
+
+  const act = (label, title, run) => {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = 'button button-sm'
+    button.textContent = label
+    button.title = title
+    button.addEventListener('click', async () => {
+      if (!run.confirm()) return
+      button.disabled = true
+      try {
+        const { hash } = await request(run.endpoint, { hash: entry.hash })
+        toast(`${run.done} as ${hash.slice(0, 12)}…`)
+        await refreshHistory()
+      } catch (err) {
+        toast(err.message, 'error')
+        button.disabled = false
+      }
+    })
+    return button
+  }
+
+  row.append(
+    act('Bid higher', 'Send the same transaction again at a higher fee', {
+      endpoint: 'wallet.speedUp',
+      done: 'Rebid',
+      confirm: () =>
+        window.confirm(
+          'Bid higher for this transaction?\n\nThe same payment is sent again at a higher fee, competing for the same nonce. The chain mines exactly one of the two, so this cannot pay twice — but the original may still be the one that lands.'
+        )
+    }),
+    act('Try to void', 'Race it with an empty transaction at the same nonce', {
+      endpoint: 'wallet.cancel',
+      done: 'Voiding sent',
+      confirm: () =>
+        window.confirm(
+          'Try to void this transaction?\n\nThis is not a cancellation and cannot be. An empty transaction is sent at the same nonce: either it wins and the original never happens, or it loses and the original happens exactly as it was sent. There is no third outcome and no way to know in advance which it will be.'
+        )
+    })
+  )
+
+  return row
 }
 
 document

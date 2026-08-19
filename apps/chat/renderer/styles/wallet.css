@@ -257,6 +257,15 @@
   color: var(--lc-fg);
 }
 
+/* Only on a pending row, so these appear rarely and should not be styled as
+   though the list were a toolbar. */
+.ledger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lc-space-sm);
+  margin-top: var(--lc-space-xs);
+}
+
 /* --- Forms ---------------------------------------------------------------- */
 
 /* Shared with Settings and onboarding, which is why these are not named for

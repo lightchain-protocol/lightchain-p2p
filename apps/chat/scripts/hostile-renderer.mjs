@@ -123,6 +123,29 @@ report(
   'narrowed, not eliminated'
 )
 
+// --- The two handlers that replace a transaction --------------------------------
+
+// `speedUp` and `cancel` both work by signing a second transaction at the same
+// nonce. A window that could aim them at a hash this wallet never sent would be
+// signing something of its own choosing, so the refusal matters more than the
+// success — and the success cannot be exercised here anyway, which needs a
+// funded account and a transaction genuinely stuck.
+for (const endpoint of ['wallet.speedUp', 'wallet.cancel']) {
+  for (const [what, hash] of [
+    ['a hash this wallet never sent', `0x${'ab'.repeat(32)}`],
+    ['a hash that is not a hash', 'not-a-hash'],
+    ['nothing at all', ''],
+    ['a number', 12345]
+  ]) {
+    const reply = await asWorker(endpoint, { hash })
+    report(
+      `${endpoint} refuses ${what}`,
+      Boolean(reply?.error),
+      reply?.error?.slice(0, 56) ?? `returned ${JSON.stringify(reply)}`
+    )
+  }
+}
+
 // --- What a compromised window could ask the main process for -------------------
 
 // `saveFile` and `chooseFiles` are the only two places the window reaches disk,
