@@ -90,8 +90,13 @@ function showUpdateReady() {
       await bridge.applyUpdate()
       await bridge.appAfterUpdate()
     } catch (err) {
+      // Offered again rather than taken away. The update is still downloaded
+      // and still applies; what failed was one attempt at the swap, and hiding
+      // the only control leaves somebody on an old version with nothing to
+      // press. The success path never returns here — the application restarts.
       setStatus(`update failed: ${err.message}`)
-      el.updateBtn.hidden = true
+      el.updateBtn.disabled = false
+      el.updateBtn.textContent = 'Try the update again'
     }
   }
 }

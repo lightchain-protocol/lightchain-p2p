@@ -90,7 +90,9 @@ const said = (state) => state.messages.filter((m) => !m.event).map((m) => m.text
 
 const peers = []
 let roomKey = null
-let credentials = null
+// Assigned once the first peer pairs, and read by every join after that. No
+// initialiser, because one would be overwritten before anything could read it.
+let credentials
 
 // --- 1. One peer pairs, and grants the others -------------------------------
 

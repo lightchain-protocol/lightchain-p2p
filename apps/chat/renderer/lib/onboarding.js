@@ -31,7 +31,6 @@ const onboarding = {
 
 /** The phrase, held only between showing it and confirming it. */
 let pendingPhrase = null
-let pendingChecks = []
 
 /**
  * The word the worker will accept to authorise a replacement.
@@ -135,7 +134,6 @@ function renderVerify(phrase) {
     if (!positions.includes(n)) positions.push(n)
   }
   positions.sort((a, b) => a - b)
-  pendingChecks = positions
 
   el('verify-prompt').textContent =
     'Type the words at these positions, to check the copy you wrote down is right.'

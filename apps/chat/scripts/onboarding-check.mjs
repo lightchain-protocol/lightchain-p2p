@@ -166,6 +166,17 @@ report('and leads to the check', (await showing()) === 'step-verify')
 const positions = await evaluate(
   `[...document.querySelectorAll('#verify-fields input')].map((n) => Number(n.dataset.position))`
 )
+
+// This was read and never used. Asserting on it is worth more than deleting it:
+// a check that asked for the same word three times, or for a thirteenth word,
+// would look exactly like a working one on screen.
+report(
+  'the check asks for distinct words from inside the phrase',
+  positions.length >= 2 &&
+    new Set(positions).size === positions.length &&
+    positions.every((p) => Number.isInteger(p) && p >= 0 && p < 12),
+  `positions ${positions.join(', ')}`
+)
 await evaluate(`(() => {
   const inputs = [...document.querySelectorAll('#verify-fields input')]
   inputs[0].value = 'definitelynotthisword'

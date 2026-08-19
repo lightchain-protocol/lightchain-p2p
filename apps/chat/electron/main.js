@@ -303,20 +303,51 @@ async function createWindow() {
   await win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'))
 }
 
+/**
+ * How long to wait for the worker to say the update was applied.
+ *
+ * The bytes are already on disk by the time an update is offered — this is the
+ * swap, not the download — so a minute is generous rather than tight. It is a
+ * backstop for a worker that has died rather than a budget for slow work.
+ */
+const APPLY_UPDATE_TIMEOUT_MS = 60_000
+
 ipcMain.handle('pear:applyUpdate', () => {
   const pipe = getWorker(mainWorkerSpecifier)
 
   return new Promise((resolve, reject) => {
+    // Every path through here removes the listener and clears the timer. The
+    // original had one exit and no rejection at all: a worker that failed, or
+    // died, left this promise pending for the life of the process, and the
+    // window sat on a disabled button reading "Updating…" with nothing to say.
+    let done = false
+
+    const finish = (err) => {
+      if (done) return
+      done = true
+      clearTimeout(timer)
+      pipe.removeListener('data', onData)
+      if (err) reject(err)
+      else resolve()
+    }
+
     // This listener sees everything the worker writes, including chat replies
     // on their way to the window, and a chunk holds whole messages only by
     // luck. Splitting on the delimiter is what stops the confirmation being
     // missed because it shared a chunk with the reply to something else.
     function onData(data) {
-      if (data.toString().split('\n').includes('pear:updateApplied')) {
-        pipe.removeListener('data', onData)
-        resolve()
+      for (const line of data.toString().split('\n')) {
+        if (line === 'pear:updateApplied') return finish()
+        if (line.startsWith('pear:updateFailed')) {
+          return finish(new Error(line.slice('pear:updateFailed'.length).trim() || 'unknown error'))
+        }
       }
     }
+
+    const timer = setTimeout(
+      () => finish(new Error('the worker did not confirm the update')),
+      APPLY_UPDATE_TIMEOUT_MS
+    )
 
     pipe.on('data', onData)
     pipe.write('pear:applyUpdate\n')

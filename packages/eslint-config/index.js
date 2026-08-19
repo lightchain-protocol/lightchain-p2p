@@ -1,6 +1,7 @@
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import prettier from 'eslint-config-prettier'
+import globals from 'globals'
 
 /**
  * Shared flat config.
@@ -63,8 +64,11 @@ export const bareScripts = {
       TextEncoder: 'readonly',
       URL: 'readonly',
       WebSocket: 'readonly',
+      clearInterval: 'readonly',
       clearTimeout: 'readonly',
       fetch: 'readonly',
+      performance: 'readonly',
+      setInterval: 'readonly',
       setTimeout: 'readonly'
     }
   }
@@ -91,6 +95,116 @@ export const runtimeAdapters = {
   }
 }
 
+/**
+ * The three runtimes an Electron application is written in at once.
+ *
+ * Without these the apps cannot be linted at all: the shared config assumes
+ * Node, so a first run over `apps/chat` reports 465 `no-undef` for `document`,
+ * `Bare` and `console` — globals that genuinely exist where they are used — and
+ * the three real findings underneath are unreadable. That is why no application
+ * had ever been linted, and why a duplicate declaration once shipped past both
+ * `pnpm build` and `pnpm lint` into a renderer that could not load a module.
+ */
+export const electronMain = {
+  // `forge.config.js` sits beside them and is the same thing: Node, CommonJS,
+  // never bundled and never shipped to a renderer.
+  files: ['electron/**/*.js', 'forge.config.js'],
+  languageOptions: {
+    sourceType: 'commonjs',
+    globals: { ...globals.node }
+  },
+  rules: {
+    // The main process is CommonJS by necessity: Electron's own entry point is
+    // required rather than imported.
+    '@typescript-eslint/no-require-imports': 'off'
+  }
+}
+
+export const electronRenderer = {
+  files: ['renderer/**/*.js'],
+  languageOptions: {
+    sourceType: 'module',
+    globals: { ...globals.browser }
+  }
+}
+
+/** Bare, which is neither Node nor a browser and shares globals with both. */
+const bareGlobals = {
+  Bare: 'readonly',
+  Buffer: 'readonly',
+  console: 'readonly',
+  global: 'readonly',
+  globalThis: 'readonly',
+  process: 'readonly',
+  queueMicrotask: 'readonly',
+  structuredClone: 'readonly',
+  AbortController: 'readonly',
+  AbortSignal: 'readonly',
+  TextDecoder: 'readonly',
+  TextEncoder: 'readonly',
+  URL: 'readonly',
+  WebSocket: 'readonly',
+  clearInterval: 'readonly',
+  clearTimeout: 'readonly',
+  fetch: 'readonly',
+  setInterval: 'readonly',
+  setTimeout: 'readonly'
+}
+
+/**
+ * Bare in CommonJS, which the supervisor's entry and its worker still are.
+ *
+ * Bare supports `require`, so this is a real shape rather than a leftover, and
+ * the rule against it is about TypeScript packages rather than these.
+ */
+export const bareCommonJs = {
+  files: ['app.js', 'workers/**/*.js'],
+  languageOptions: {
+    sourceType: 'commonjs',
+    globals: bareGlobals
+  },
+  rules: {
+    '@typescript-eslint/no-require-imports': 'off'
+  }
+}
+
+/** Tests run under vitest, which is Node. */
+export const appTests = {
+  files: ['test/**/*.{js,mjs}'],
+  languageOptions: {
+    sourceType: 'module',
+    globals: { ...globals.node }
+  }
+}
+
+export const bareWorkers = {
+  files: ['workers/**/*.mjs', 'lib/**/*.mjs', 'bin.mjs'],
+  languageOptions: {
+    sourceType: 'module',
+    globals: {
+      Bare: 'readonly',
+      Buffer: 'readonly',
+      console: 'readonly',
+      global: 'readonly',
+      globalThis: 'readonly',
+      process: 'readonly',
+      queueMicrotask: 'readonly',
+      structuredClone: 'readonly',
+      AbortController: 'readonly',
+      AbortSignal: 'readonly',
+      TextDecoder: 'readonly',
+      TextEncoder: 'readonly',
+      URL: 'readonly',
+      WebSocket: 'readonly',
+      clearInterval: 'readonly',
+      clearTimeout: 'readonly',
+      fetch: 'readonly',
+      setInterval: 'readonly',
+      setTimeout: 'readonly'
+    }
+  }
+}
+
 export default tseslint.config(
   { ignores: ['**/dist/**', '**/out/**', '**/.turbo/**', '**/node_modules/**'] },
   js.configs.recommended,
@@ -98,5 +212,10 @@ export default tseslint.config(
   prettier,
   pearBoundary,
   bareScripts,
-  runtimeAdapters
+  runtimeAdapters,
+  electronMain,
+  electronRenderer,
+  bareWorkers,
+  bareCommonJs,
+  appTests
 )

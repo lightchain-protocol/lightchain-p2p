@@ -26,6 +26,7 @@
     "start": "bare bin.mjs --no-updates",
     "//make": "Builds run from the workspace root via scripts/make.mjs. Invoking bare-build from this directory produces a binary that crashes at startup.",
     "make": "node ../../scripts/make.mjs supervisor",
+    "lint": "eslint .",
     "test": "vitest run"
   },
   "dependencies": {
@@ -47,9 +48,11 @@
     "which-runtime": "^1.4.0"
   },
   "devDependencies": {
+    "@lcai-p2p/eslint-config": "workspace:*",
     "@lcai-p2p/vitest-config": "workspace:*",
     "bare-build": "^1.0.2",
     "bare-runtime": "1.29.4",
+    "eslint": "^10.8.1",
     "vitest": "^4.1.10"
   }
 }

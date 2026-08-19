@@ -1002,9 +1002,17 @@ if (config.updates !== false) {
 
 async function onLine(text) {
   if (text === 'pear:applyUpdate') {
-    await pear.ready()
-    await pear.updater.applyUpdate()
-    pipe.write('pear:updateApplied\n')
+    // Answered either way. Only the success was reported before, so an update
+    // that threw left the main process waiting on a confirmation that was never
+    // coming and the window showing "Updating…" on a dead button until somebody
+    // restarted the application.
+    try {
+      await pear.ready()
+      await pear.updater.applyUpdate()
+      pipe.write('pear:updateApplied\n')
+    } catch (err) {
+      pipe.write(`pear:updateFailed ${String(err?.message ?? err).replace(/\r?\n/g, ' ')}\n`)
+    }
     return
   }
 
