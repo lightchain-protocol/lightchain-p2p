@@ -23,6 +23,8 @@
  * that proves nothing.
  */
 
+import { ASK } from './harness.mjs'
+
 const [portA, portB] = [Number(process.argv[2] ?? 9301), Number(process.argv[3] ?? 9302)]
 
 class Renderer {
@@ -326,6 +328,34 @@ await a.eval(`document.getElementById('invite-dialog').close()`)
 if (squares === 0) throw new Error('the invite produced no QR code')
 step(15, `A produced ${link.slice(0, 24)}… and a QR code of ${squares} runs`)
 
+// A file on its own is a message, so an uncaptioned attachment has to arrive
+// and render like any other. What it *notifies* as cannot be checked from here:
+// `bridge` comes through contextBridge and is read-only, so nothing in the
+// window can see what was passed to `notify`. That rule is unit tested instead,
+// in test/notify-body.test.js.
+const roomKeyForB = await b.eval(`return document.getElementById('room-key').textContent`)
+await b.eval(`
+  const ask = ${ASK}
+  const attached = await ask('room.attach', {
+    room: ${JSON.stringify(roomKeyForB.trim())},
+    files: [{ name: 'seaside.png', type: 'image/png', bytes: [137, 80, 78, 71] }]
+  })
+  if (attached?.error) throw new Error(attached.error)
+  const sent = await ask('room.send', {
+    room: ${JSON.stringify(roomKeyForB.trim())},
+    text: '',
+    attachment: attached.attachments[0]
+  })
+  if (sent?.error) throw new Error(sent.error)
+  return true
+`)
+
+await a.until(
+  `document.getElementById('messages').textContent.includes('seaside.png')`,
+  'A to receive an attachment sent without a caption'
+)
+step(16, 'an attachment with no caption arrives and is named')
+
 const read = `return [...document.querySelectorAll('.message-text')].map((n) => n.textContent)`
 const [seenByA, seenByB] = await Promise.all([a.eval(read), b.eval(read)])
 
@@ -335,7 +365,7 @@ console.log('B sees:', JSON.stringify(seenByB, null, 1))
 if (JSON.stringify(seenByA) !== JSON.stringify(seenByB)) {
   throw new Error('the two clients disagree on the order of the conversation')
 }
-step(16, 'both clients render the same history in the same order')
+step(17, 'both clients render the same history in the same order')
 
 console.log('\nPASS')
 

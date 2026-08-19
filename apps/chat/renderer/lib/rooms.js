@@ -17,6 +17,7 @@ import { addressedToModel, ensureModels, listModels } from './models.js'
 import { myAddress, openPay } from './wallet.js'
 import { closeEmojiPicker, emojiPicker, reactionBar } from './reactions.js'
 import { memberList, nameSelfControl } from './members.js'
+import { announcement } from './notify-body.js'
 import { acceptDrops, attachButton, attachmentView, pendingAttachment } from './attachments.js'
 
 /**
@@ -79,11 +80,8 @@ function announce(before, after) {
   if (arrived.length === 0) return
 
   const room = after.name ?? `Room ${short(after.key)}`
-  const last = arrived[arrived.length - 1]
-  const body =
-    arrived.length === 1 ? last.text : `${arrived.length} new messages. Latest: ${last.text}`
 
-  void bridge.notify(room, body.slice(0, 240)).catch(() => {})
+  void bridge.notify(room, announcement(arrived).slice(0, 240)).catch(() => {})
 }
 
 /**
