@@ -20,11 +20,32 @@ const decoder = new TextDecoder('utf-8')
 const pending = new Map()
 let nextId = 1
 
+/**
+ * Sends one request and waits for its reply.
+ *
+ * Two details here are load-bearing, and both were bugs first.
+ *
+ * The correlation id is `rid` and not `id`, because the fields are spread into
+ * the same object. Handlers legitimately take an `id` — a template, a contact,
+ * a message — and a field named `id` used to overwrite the envelope's. The
+ * worker then answered correctly, addressed the reply to the template id, and
+ * nobody was waiting on that: the work was done and the promise never settled.
+ * A hang is the worst possible shape for that mistake, because the request
+ * succeeded, so nothing anywhere reports an error.
+ *
+ * The trailing newline is the message boundary. The pipe is a byte stream, so
+ * two requests sent in the same tick can arrive as one chunk; without a
+ * delimiter the reader parses `{...}{...}`, throws, and drops both.
+ */
 export function request(t, fields = {}) {
-  const id = String(nextId++)
+  if ('rid' in fields || 't' in fields) {
+    throw new Error(`${t}: 'rid' and 't' belong to the envelope and cannot be request fields`)
+  }
+
+  const rid = String(nextId++)
   return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject })
-    bridge.writeWorkerIPC(WORKER, JSON.stringify({ id, t, ...fields }))
+    pending.set(rid, { resolve, reject })
+    bridge.writeWorkerIPC(WORKER, JSON.stringify({ rid, t, ...fields }) + '\n')
   })
 }
 
@@ -49,9 +70,9 @@ function onChatMessage(msg) {
     return
   }
 
-  const waiting = pending.get(msg.id)
+  const waiting = pending.get(msg.rid)
   if (!waiting) return
-  pending.delete(msg.id)
+  pending.delete(msg.rid)
 
   if (msg.t === 'ok') waiting.resolve(msg.value)
   else waiting.reject(new Error(msg.message))
@@ -87,9 +108,10 @@ const offStderr = bridge.onWorkerStderr(WORKER, (data) => {
   console.error('[worker]', decoder.decode(data))
 })
 
-const offIpc = bridge.onWorkerIPC(WORKER, (data) => {
-  const text = decoder.decode(data)
+/** The tail of a message split across two chunks, waiting for the rest. */
+let inbound = ''
 
+function onWorkerLine(text) {
   // The updater's control channel predates the chat protocol and is plain
   // strings; chat is JSON. See workers/main.mjs.
   if (text === 'updating') return setStatus('downloading update')
@@ -101,6 +123,18 @@ const offIpc = bridge.onWorkerIPC(WORKER, (data) => {
   } catch (err) {
     console.error('[worker] unreadable message', err)
   }
+}
+
+const offIpc = bridge.onWorkerIPC(WORKER, (data) => {
+  // `stream: true` is what makes a chunk that ends mid-character safe: the
+  // decoder holds the incomplete bytes back until the rest arrives instead of
+  // turning them into replacement characters.
+  inbound += decoder.decode(data, { stream: true })
+
+  const lines = inbound.split('\n')
+  inbound = lines.pop() ?? ''
+
+  for (const line of lines) if (line !== '') onWorkerLine(line)
 })
 
 const offExit = bridge.onWorkerExit(WORKER, (code) => {

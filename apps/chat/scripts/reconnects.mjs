@@ -10,6 +10,8 @@
  *     node scripts/reconnects.mjs [portA] [portB]
  */
 
+import { ASK } from './harness.mjs'
+
 const [portA, portB] = [Number(process.argv[2] ?? 9301), Number(process.argv[3] ?? 9302)]
 
 const results = []
@@ -47,17 +49,6 @@ async function attach(name, port) {
         })
       )
     })
-
-  const ASK = `(t, fields) => new Promise((resolve) => {
-    const id = 'c-' + Math.random().toString(36).slice(2)
-    const off = window.bridge.onWorkerIPC('/workers/main.mjs', (data) => {
-      const msg = JSON.parse(new TextDecoder().decode(data))
-      if (msg.id !== id) return
-      off()
-      resolve(msg.t === 'error' ? { error: msg.message } : (msg.value ?? null))
-    })
-    window.bridge.writeWorkerIPC('/workers/main.mjs', JSON.stringify({ id, t, ...fields }))
-  })`
 
   return {
     name,

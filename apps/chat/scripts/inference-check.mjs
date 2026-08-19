@@ -10,7 +10,7 @@
  *     node scripts/inference-check.mjs [port]
  */
 
-import { unlockForHarness } from './harness.mjs'
+import { ASK, unlockForHarness } from './harness.mjs'
 
 const port = Number(process.argv[2] ?? 9371)
 
@@ -48,19 +48,6 @@ const evaluate = (expression) =>
       })
     )
   })
-
-const ASK = `(t, fields) => new Promise((resolve) => {
-  const rid = 'i-' + Math.random().toString(36).slice(2)
-  const timer = setTimeout(() => { off(); resolve({ error: 'no answer in 25s' }) }, 25000)
-  const off = window.bridge.onWorkerIPC('/workers/main.mjs', (data) => {
-    const msg = JSON.parse(new TextDecoder().decode(data))
-    if (msg.id !== rid) return
-    clearTimeout(timer)
-    off()
-    resolve(msg.t === 'error' ? { error: msg.message } : (msg.value ?? null))
-  })
-  window.bridge.writeWorkerIPC('/workers/main.mjs', JSON.stringify({ id: rid, t, ...fields }))
-})`
 
 const ask = (t, fields = {}) =>
   evaluate(

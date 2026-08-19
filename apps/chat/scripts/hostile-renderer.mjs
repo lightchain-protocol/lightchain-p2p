@@ -16,6 +16,8 @@
  * Needs the application running with --remote-debugging-port.
  */
 
+import { ASK } from './harness.mjs'
+
 const port = Number(process.argv[2] ?? 9301)
 
 const results = []
@@ -75,16 +77,53 @@ await evaluate(
 )
 
 /** Talks to the worker the way the application does. */
-const ASK = `(t, fields) => new Promise((resolve) => {
-  const id = 'h-' + Math.random().toString(36).slice(2)
-  const off = window.bridge.onWorkerIPC('/workers/main.mjs', (data) => {
-    const msg = JSON.parse(new TextDecoder().decode(data))
-    if (msg.id !== id) return
-    off()
-    resolve(msg.t === 'error' ? { error: msg.message } : (msg.value ?? null))
-  })
-  window.bridge.writeWorkerIPC('/workers/main.mjs', JSON.stringify({ id, t, ...fields }))
-})`
+// --- The envelope holding up under load ---------------------------------------
+
+// Not hostility so much as ordinary traffic, but it belongs with the attacks
+// because both failures here are silent: a reply that is dropped or misaddressed
+// leaves a promise that never settles, and a hang reports nothing anywhere.
+const framing = await evaluate(`(async () => {
+  const { request } = await import('./lib/ipc.js')
+  const names = ['wallet.status', 'room.list', 'local.templates', 'ai.limits', 'settings.read']
+  const all = []
+  for (let i = 0; i < 12; i++) for (const n of names) all.push(request(n).then(() => 'ok', (e) => 'err'))
+  const done = await Promise.race([Promise.all(all), new Promise((r) => setTimeout(() => r(null), 20000))])
+  return done === null ? { hung: true } : { settled: done.length }
+})()`)
+
+report(
+  'sixty requests at once all come back',
+  framing?.settled === 60,
+  framing?.hung ? 'some never returned — replies are sharing chunks' : `${framing?.settled} settled`
+)
+
+// A handler's own `id` field must not be able to take over the envelope's.
+// When it could, the request succeeded and the caller waited forever.
+const correlation = await evaluate(`(async () => {
+  const { request } = await import('./lib/ipc.js')
+  const made = await request('local.saveTemplate', { name: 'Envelope', body: 'x' })
+  const id = made.templates.find((t) => t.name === 'Envelope').id
+  const edited = await Promise.race([
+    request('local.saveTemplate', { id, name: 'Envelope kept', body: 'y' }),
+    new Promise((r) => setTimeout(() => r(null), 6000))
+  ])
+  await request('local.removeTemplate', { id }).catch(() => {})
+  return edited === null ? 'hung' : 'replied'
+})()`)
+
+report('a request carrying its own id is still answered', correlation === 'replied', correlation)
+
+const reserved = await evaluate(`(async () => {
+  const { request } = await import('./lib/ipc.js')
+  try { await request('room.list', { rid: 'stolen' }); return 'allowed' }
+  catch (err) { return err.message }
+})()`)
+
+report(
+  'and the envelope names cannot be overridden by a caller',
+  typeof reserved === 'string' && reserved.includes('envelope'),
+  reserved
+)
 
 // --- A room to shout into ----------------------------------------------------
 

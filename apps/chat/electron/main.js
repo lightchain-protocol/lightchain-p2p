@@ -210,17 +210,19 @@ ipcMain.handle('pear:applyUpdate', () => {
   const pipe = getWorker(mainWorkerSpecifier)
 
   return new Promise((resolve, reject) => {
+    // This listener sees everything the worker writes, including chat replies
+    // on their way to the window, and a chunk holds whole messages only by
+    // luck. Splitting on the delimiter is what stops the confirmation being
+    // missed because it shared a chunk with the reply to something else.
     function onData(data) {
-      const message = data.toString()
-
-      if (message === 'pear:updateApplied') {
+      if (data.toString().split('\n').includes('pear:updateApplied')) {
         pipe.removeListener('data', onData)
         resolve()
       }
     }
 
     pipe.on('data', onData)
-    pipe.write('pear:applyUpdate')
+    pipe.write('pear:applyUpdate\n')
   })
 })
 /**

@@ -20,6 +20,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const [phase, portArg, password] = process.argv.slice(2)
+import { ASK } from './harness.mjs'
+
 const port = Number(portArg ?? 9301)
 const record = join(tmpdir(), `lcai-restart-${port}.json`)
 
@@ -61,17 +63,6 @@ const evaluate = (expression) =>
       })
     )
   })
-
-const ASK = `(t, fields) => new Promise((resolve) => {
-  const id = 'r-' + Math.random().toString(36).slice(2)
-  const off = window.bridge.onWorkerIPC('/workers/main.mjs', (data) => {
-    const msg = JSON.parse(new TextDecoder().decode(data))
-    if (msg.id !== id) return
-    off()
-    resolve(msg.t === 'error' ? { error: msg.message } : (msg.value ?? null))
-  })
-  window.bridge.writeWorkerIPC('/workers/main.mjs', JSON.stringify({ id, t, ...fields }))
-})`
 
 const ask = (t, fields = {}) =>
   evaluate(

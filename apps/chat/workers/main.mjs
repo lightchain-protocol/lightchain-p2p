@@ -57,32 +57,36 @@ import { localHandlers } from './handlers/local.mjs'
  *   matched exactly in `electron/main.js`; do not change them.
  * - **Chat**, one JSON object per frame, told apart by a leading `{`.
  *
- * Renderer to worker, each carrying an `id` the reply echoes:
+ * Renderer to worker, each carrying a `rid` the reply echoes. The envelope owns
+ * `rid` and `t` and nothing else, so a handler is free to take a field called
+ * `id` — several do, and when the envelope used that name too a request
+ * carrying one overwrote its own correlation id and hung. Every frame ends in a
+ * newline, which is what makes two of them in one chunk readable.
  *
- *     { id, t: 'room.list' }
- *     { id, t: 'room.create' }
- *     { id, t: 'room.join',    key }
- *     { id, t: 'room.invite',  room }
- *     { id, t: 'room.pair',    invite }
- *     { id, t: 'room.send',    room, text }
- *     { id, t: 'room.rename',  room, name }
- *     { id, t: 'room.leave',   room }
- *     { id, t: 'worker.doctor' }
- *     { id, t: 'worker.status' }
- *     { id, t: 'worker.logs' }
- *     { id, t: 'wallet.status' }
- *     { id, t: 'wallet.create',  password }     → also returns the phrase, once
- *     { id, t: 'wallet.import',  phrase, password }
- *     { id, t: 'wallet.reveal',  password }
- *     { id, t: 'wallet.unlock',  password }
- *     { id, t: 'wallet.lock' }
- *     { id, t: 'wallet.remove',  password }
- *     { id, t: 'wallet.balances' }
- *     { id, t: 'settings.read' }
- *     { id, t: 'settings.write', values }
- *     { id, t: 'dashboard.read', months }   → the whole summary in one reply
- *     { id, t: 'ai.fund',     amount }      → wallet into the job registry
- *     { id, t: 'ai.withdraw', amount }      → and back out again
+ *     { rid, t: 'room.list' }
+ *     { rid, t: 'room.create' }
+ *     { rid, t: 'room.join',    key }
+ *     { rid, t: 'room.invite',  room }
+ *     { rid, t: 'room.pair',    invite }
+ *     { rid, t: 'room.send',    room, text }
+ *     { rid, t: 'room.rename',  room, name }
+ *     { rid, t: 'room.leave',   room }
+ *     { rid, t: 'worker.doctor' }
+ *     { rid, t: 'worker.status' }
+ *     { rid, t: 'worker.logs' }
+ *     { rid, t: 'wallet.status' }
+ *     { rid, t: 'wallet.create',  password }     → also returns the phrase, once
+ *     { rid, t: 'wallet.import',  phrase, password }
+ *     { rid, t: 'wallet.reveal',  password }
+ *     { rid, t: 'wallet.unlock',  password }
+ *     { rid, t: 'wallet.lock' }
+ *     { rid, t: 'wallet.remove',  password }
+ *     { rid, t: 'wallet.balances' }
+ *     { rid, t: 'settings.read' }
+ *     { rid, t: 'settings.write', values }
+ *     { rid, t: 'dashboard.read', months }   → the whole summary in one reply
+ *     { rid, t: 'ai.fund',     amount }      → wallet into the job registry
+ *     { rid, t: 'ai.withdraw', amount }      → and back out again
  *
  * Passwords cross this seam, and so does the recovery phrase — but only when
  * the user asked to see it, and never a derived private key. Otherwise the
@@ -181,8 +185,23 @@ const chatStore = new Corestore(path.join(chatDir, 'corestore'))
 // to be migrated: room lists are now one file per account, see registryPathFor.
 const unscopedRegistryFile = path.join(chatDir, 'rooms.sealed')
 
+/**
+ * The byte that ends a message.
+ *
+ * The pipe is a byte stream and not a message queue: two writes can arrive as
+ * one chunk, and one write can arrive as two. Without a delimiter a reader that
+ * assumes one chunk is one message sees `{"t":"ok"...}{"t":"ok"...}`, JSON.parse
+ * throws, and *both* messages are lost — and when one of them is a reply, the
+ * caller waits on a promise that will never settle. That is a hang somebody
+ * reads as a frozen app, and it gets likelier the busier the app is.
+ *
+ * A newline is a safe delimiter for JSON specifically: JSON.stringify escapes
+ * every newline inside a string as `\n`, so a raw one can only be a boundary.
+ */
+const NEWLINE = 0x0a
+
 function send(message) {
-  pipe.write(JSON.stringify(message))
+  pipe.write(JSON.stringify(message) + '\n')
 }
 
 /**
@@ -824,8 +843,8 @@ async function handle(req) {
 }
 
 pear.updater.on('error', console.error)
-pear.updater.on('updating', () => pipe.write('updating'))
-pear.updater.on('updated', () => pipe.write('updated'))
+pear.updater.on('updating', () => pipe.write('updating\n'))
+pear.updater.on('updated', () => pipe.write('updated\n'))
 
 swarm.on('connection', (socket) => {
   // RoomHost attaches its own handler for rooms. Protomux multiplexes the
@@ -840,13 +859,11 @@ if (config.updates !== false) {
   swarm.join(pear.updater.drive.core.discoveryKey, { client: true, server: false })
 }
 
-pipe.on('data', async (data) => {
-  const text = b4a.toString(data)
-
+async function onLine(text) {
   if (text === 'pear:applyUpdate') {
     await pear.ready()
     await pear.updater.applyUpdate()
-    pipe.write('pear:updateApplied')
+    pipe.write('pear:updateApplied\n')
     return
   }
 
@@ -859,11 +876,41 @@ pipe.on('data', async (data) => {
   }
 
   try {
-    send({ t: 'ok', id: req.id, value: await handle(req) })
+    // `rid` and not `id`: handlers take an `id` of their own — a template, a
+    // contact — and when the envelope shared that name a request carrying one
+    // addressed its own reply to the wrong number. The work was done and the
+    // caller waited forever. See `request` in renderer/lib/ipc.js.
+    send({ t: 'ok', rid: req.rid, value: await handle(req) })
   } catch (err) {
     // A failed request must not take the worker with it. The window would be
     // left as a shell over a dead data plane, which looks like a frozen app.
-    send({ t: 'error', id: req.id, message: err.message })
+    send({ t: 'error', rid: req.rid, message: err.message })
+  }
+}
+
+/**
+ * Whatever has arrived that is not yet a whole message.
+ *
+ * Held as bytes rather than text because a chunk can end in the middle of a
+ * multi-byte character — one emoji split across two reads would decode to two
+ * replacement characters and corrupt the message silently.
+ */
+let inbound = b4a.alloc(0)
+
+pipe.on('data', (data) => {
+  inbound = b4a.concat([inbound, data])
+
+  let end = b4a.indexOf(inbound, NEWLINE)
+  while (end !== -1) {
+    const line = b4a.toString(inbound.subarray(0, end))
+    inbound = inbound.subarray(end + 1)
+
+    // Deliberately not awaited. Requests are independent and the renderer sends
+    // them concurrently; serialising them here would make one slow chain read
+    // hold up every other request behind it.
+    onLine(line)
+
+    end = b4a.indexOf(inbound, NEWLINE)
   }
 })
 

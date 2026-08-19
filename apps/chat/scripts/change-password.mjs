@@ -14,6 +14,8 @@
  * back.
  */
 
+import { ASK } from './harness.mjs'
+
 const port = Number(process.argv[2] ?? 9301)
 const current = process.argv[3]
 const next = process.argv[4]
@@ -58,17 +60,6 @@ const evaluate = (expression) =>
 // The worker discriminates on `t`, and a reply carries either a value or a
 // message. Reading a non-existent `error` field instead made every refusal look
 // like a success that returned nothing, which is the opposite of the answer.
-const ASK = `(t, fields) => new Promise((resolve) => {
-  const id = 'p-' + Math.random().toString(36).slice(2)
-  const off = window.bridge.onWorkerIPC('/workers/main.mjs', (data) => {
-    const msg = JSON.parse(new TextDecoder().decode(data))
-    if (msg.id !== id) return
-    off()
-    resolve(msg.t === 'error' ? { error: msg.message } : (msg.value ?? null))
-  })
-  window.bridge.writeWorkerIPC('/workers/main.mjs', JSON.stringify({ id, t, ...fields }))
-})`
-
 const ask = (t, fields = {}) =>
   evaluate(
     `(async () => { const ask = ${ASK}; return await ask(${JSON.stringify(t)}, ${JSON.stringify(fields)}) })()`

@@ -724,10 +724,14 @@ inference.limitsForm.addEventListener('submit', async (evt) => {
 /**
  * Both halves, each failing on its own.
  *
- * Neither may reject: this is called from `openSettings` without being awaited,
- * and an unhandled rejection there is an error in the console and a page that
- * stops half-drawn.
+ * Nothing here may reject: this is called from `openSettings` without being
+ * awaited, and an unhandled rejection there is an error in the console and a
+ * page that stops half-drawn.
  */
-function refreshInference() {
-  return Promise.all([refreshTemplates(), refreshLimits()])
+async function refreshInference() {
+  locked = await request('wallet.status')
+    .then((status) => status.unlocked !== true)
+    .catch(() => false)
+
+  await Promise.all([refreshTemplates(), refreshLimits()])
 }
