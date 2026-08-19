@@ -1,5 +1,6 @@
 import { el2, svg, toast } from './dom.js'
 import { bridge } from './ipc.js'
+import { blobCache } from './blob-cache.js'
 
 /**
  * Files put on a message, and files that arrive on one.
@@ -73,48 +74,8 @@ const TYPE_BY_EXTENSION = {
 
 const UNKNOWN_TYPE = 'application/octet-stream'
 
-/**
- * Bytes already fetched, keyed by the digest the message was signed with.
- *
- * A room re-renders in full whenever anything in it changes, so without this
- * one arriving message would refetch every image on screen. The digest is the
- * only sound key: the worker has already refused to hand over bytes that do
- * not hash to it, so two attachments sharing one are the same bytes whatever
- * they happen to be called.
- *
- * Bounded, because an attachment runs to 25 MB and a conversation does not run
- * to anything in particular. Eviction is by least recent use, which is the
- * wrong guess for somebody scrolling upwards through a year of photographs and
- * the right one for the ordinary case of reading a room as it arrives.
- */
-const CACHE_LIMIT = 48 * 1024 * 1024
-const cache = new Map()
-let cacheBytes = 0
-
-function recall(hash) {
-  const entry = cache.get(hash)
-  if (!entry) return null
-  // Reinserted, so insertion order — which is what a Map iterates — becomes an
-  // order of use rather than an order of arrival.
-  cache.delete(hash)
-  cache.set(hash, entry)
-  return entry
-}
-
-function remember(hash, entry) {
-  const held = cache.get(hash)
-  if (held) cacheBytes -= held.bytes.byteLength
-
-  cache.set(hash, entry)
-  cacheBytes += entry.bytes.byteLength
-
-  for (const [key, evicted] of cache) {
-    if (cacheBytes <= CACHE_LIMIT) break
-    if (key === hash) continue
-    cache.delete(key)
-    cacheBytes -= evicted.bytes.byteLength
-  }
-}
+/** Bytes already fetched, so a re-render does not refetch every image on screen. */
+const { recall, remember } = blobCache()
 
 // --- Saying it in words -----------------------------------------------------
 
