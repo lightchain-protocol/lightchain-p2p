@@ -1,0 +1,204 @@
+/**
+ * wallet.
+ *
+ * Split out of app.css so this surface can be worked on without touching every
+ * other one. app.css keeps what is genuinely shared.
+ */
+
+/* --- Wallet --------------------------------------------------------------- */
+
+/* Wide enough for a 42-character address on one line, and anchored to the top
+   like every other section. Centring it vertically made the panel jump as the
+   balances arrived and the content grew. */
+.wallet {
+  width: 100%;
+  max-width: 74ch;
+  margin: 0 auto;
+  padding: var(--lc-space-xxl);
+  overflow-y: auto;
+}
+
+/* The three stages before the wallet is open are short, and a short panel
+   pinned to the top of a tall window looks abandoned. */
+.wallet:has(#wallet-none:not([hidden])),
+.wallet:has(#wallet-locked:not([hidden])) {
+  margin: auto;
+  max-width: 56ch;
+}
+
+.wallet-title {
+  margin: 0;
+  font-size: var(--lc-text-xxl);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.wallet-body {
+  margin: var(--lc-space-md) 0 var(--lc-space-xl);
+  color: var(--lc-fg-muted);
+}
+
+.wallet-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  margin-bottom: var(--lc-space-xl);
+}
+
+.wallet-head-row {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-lg);
+}
+
+.wallet-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+/* An address is 42 characters and every one of them matters, so it is never
+   shortened here. It is allowed to scroll rather than wrap: broken across two
+   lines it is materially harder to compare against the one in another window,
+   which is the only reason it is on screen. */
+.wallet .key {
+  max-width: none;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+  scrollbar-width: none;
+}
+
+.wallet .key::-webkit-scrollbar {
+  display: none;
+}
+
+.wallet-form {
+  display: flex;
+  flex-direction: column;
+  /* Label-and-field pairs are one thing each, so the gap between pairs has to
+     be clearly larger than the gap inside one. */
+  gap: var(--lc-space-lg);
+  /* Without this a form in a wide panel stretches its fields to the full width
+     and a password box ends up eight inches long. */
+  max-width: 44ch;
+}
+
+/* Settings fields hold keys, paths and URLs rather than passwords, and those
+   have real lengths. Here the form takes the reading column it sits in, which
+   at least lines its edge up with the paragraph explaining it. */
+.settings-page .wallet-form {
+  max-width: none;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field-label {
+  font-size: var(--lc-text-xs);
+  font-weight: 500;
+  color: var(--lc-fg-muted);
+}
+
+/* Passwords are typed, not pasted from a key. Monospace makes them look like
+   data; this is the one input that should read as prose. */
+.wallet-form .input {
+  font-family: inherit;
+  font-size: var(--lc-text-md);
+}
+
+/* A form's submit is an action, not a banner. Stretching it across the column
+   made every secondary button read as the primary one. */
+.wallet-form .button {
+  align-self: flex-start;
+}
+
+.wallet-fund {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  margin-top: var(--lc-space-xl);
+  padding-top: var(--lc-space-xl);
+  border-top: 1px solid var(--lc-rule);
+}
+
+/* An amount and its button are one gesture, so they sit on one line. This has
+   to come after `.wallet-form`: the two selectors carry the same weight, and
+   when this was declared first the column direction won and the field stretched
+   to a 220px-tall box with the button stranded below it. */
+.wallet-fund-form {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: var(--lc-space-sm);
+}
+
+.wallet-fund-form .field {
+  flex: 0 1 200px;
+}
+
+.wallet-fund-form .button {
+  align-self: flex-end;
+}
+
+.wallet-warning {
+  margin: 0;
+  padding: var(--lc-space-md);
+  border-radius: var(--lc-radius-md);
+  border: 1px solid var(--lc-rule);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-warning);
+}
+
+.balances {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--lc-space-lg);
+  padding: var(--lc-space-lg) 0;
+  border-top: 1px solid var(--lc-rule);
+  border-bottom: 1px solid var(--lc-rule);
+}
+
+.balance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  min-width: 0;
+}
+
+.balance-value {
+  font-size: var(--lc-text-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.balance-label {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+.wallet-note {
+  margin: var(--lc-space-md) 0 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+.wallet-footnote {
+  margin: var(--lc-space-xl) 0 0;
+  padding-top: var(--lc-space-lg);
+  border-top: 1px solid var(--lc-rule);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+}
+
+.wallet-footnote code {
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.92em;
+}

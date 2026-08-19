@@ -1,0 +1,225 @@
+/**
+ * settings overlay.
+ *
+ * Split out of app.css so this surface can be worked on without touching every
+ * other one. app.css keeps what is genuinely shared.
+ */
+
+/* --- Settings ------------------------------------------------------------- */
+
+/* Always visible, because it is the number that decides whether the next thing
+   you try will work. Tabular figures so it does not jitter as it updates. */
+.titlebar-balance {
+  padding: 2px 8px;
+  border: 0;
+  border-radius: var(--lc-radius-md);
+  background: transparent;
+  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-xs);
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-balance:hover {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+}
+
+.titlebar-balance.is-empty {
+  color: var(--lc-danger, #ff8080);
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--lc-radius-md);
+  color: var(--lc-fg-muted);
+  background: transparent;
+  cursor: default;
+}
+
+.icon-button:hover {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+}
+
+.icon-button:focus-visible {
+  outline: 2px solid var(--lc-brand);
+  outline-offset: 2px;
+}
+
+.settings {
+  position: fixed;
+  inset: 38px 0 0;
+  z-index: 20;
+  background: var(--lc-bg);
+}
+
+.settings-frame {
+  display: flex;
+  height: 100%;
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 200px;
+  padding: var(--lc-space-md);
+  border-right: 1px solid var(--lc-rule);
+  background: var(--lc-bg-elevated);
+  flex: 0 0 auto;
+}
+
+.settings-nav .button-block {
+  margin-top: auto;
+}
+
+.settings-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  /* Less on the right than the left, because the scrollbar occupies that edge
+     and a symmetric pad leaves the thumb floating away from the panel. */
+  padding: var(--lc-space-xxl) var(--lc-space-lg) var(--lc-space-xxl) var(--lc-space-xxl);
+}
+
+.settings-page {
+  max-width: 62ch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-lg);
+}
+
+.settings-heading {
+  margin: 0;
+  font-size: var(--lc-text-lg);
+  font-weight: 600;
+  line-height: var(--lc-leading-tight);
+}
+
+/* Not the first heading, which already sits under the panel's own padding. */
+.settings-heading + * + * + .settings-heading,
+.settings-page > form + .settings-heading,
+.settings-page > ol + .settings-heading {
+  margin-top: var(--lc-space-xl);
+  padding-top: var(--lc-space-xl);
+  border-top: 1px solid var(--lc-rule);
+}
+
+.settings-note {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-fg-muted);
+}
+
+/* A note describes a setting; this one describes what a setting cannot do. It
+   is not styled like the wallet's warning by accident — but it is its own class
+   rather than a reuse, because restyling one of them should not silently
+   restyle the other. */
+.settings-warning {
+  margin: 0;
+  padding: var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-warning);
+}
+
+/* What a field resolves to, under the field. Quieter than a note, because it is
+   read while typing rather than before deciding. */
+.settings-hint {
+  margin: 0;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Two buttons that belong to one form, on one line. `.wallet-form` stacks its
+   children, and a Cancel stranded under its own Save reads as a second form. */
+.settings-actions {
+  display: flex;
+  gap: var(--lc-space-sm);
+  align-items: center;
+}
+
+/* Two fields that are one decision asked twice, so they are read across rather
+   than down. */
+.settings-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--lc-space-md);
+}
+
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.template {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lc-space-md);
+  padding: var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated);
+}
+
+.template-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.template-name {
+  font-size: var(--lc-text-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* A body runs to thousands of characters and this is a list, not a reader. Two
+   lines is enough to tell which template a row is, and the whole of it is one
+   Edit away. */
+.template-body {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: var(--lc-text-xs);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-fg-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.template-actions {
+  display: flex;
+  gap: var(--lc-space-sm);
+  flex: 0 0 auto;
+}
+
+/* Taller is useful for a long instruction; wider drags the field out of the
+   reading column the rest of the page is set in. */
+.settings-page textarea.input {
+  resize: vertical;
+}
+
+/* First run lives in styles/onboarding.css, which is the whole of that surface:
+   the stage, the steps, the phrase and every route back in. */

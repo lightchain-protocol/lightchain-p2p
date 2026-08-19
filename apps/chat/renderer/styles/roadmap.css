@@ -1,0 +1,137 @@
+/**
+ * pages for things that do not exist yet.
+ *
+ * Split out of app.css so this surface can be worked on without touching every
+ * other one. app.css keeps what is genuinely shared.
+ */
+
+/* --- Sections that do not exist yet --------------------------------------- */
+
+.unbuilt {
+  margin: auto;
+  max-width: 62ch;
+  padding: var(--lc-space-xxl);
+  overflow-y: auto;
+}
+
+.unbuilt-status {
+  margin: 0 0 var(--lc-space-md);
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lc-warning);
+}
+
+/* The supervisor case is different in kind from the others: the work exists
+   and only the interface is absent. */
+.unbuilt-status[data-tone='near'] {
+  color: var(--lc-success);
+}
+
+.unbuilt-title {
+  margin: 0 0 var(--lc-space-md);
+  font-size: var(--lc-text-xxl);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.unbuilt-body {
+  margin: 0 0 var(--lc-space-xl);
+  color: var(--lc-fg-muted);
+}
+
+.ledger {
+  display: grid;
+  grid-template-columns: minmax(0, 9rem) 1fr;
+  gap: var(--lc-space-md) var(--lc-space-lg);
+  margin: 0;
+  padding-top: var(--lc-space-lg);
+  border-top: 1px solid var(--lc-rule);
+}
+
+.ledger dt {
+  font-size: var(--lc-text-sm);
+  font-weight: 600;
+  color: var(--lc-fg-dim);
+}
+
+.ledger dd {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+  user-select: text;
+}
+
+.ledger code {
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.92em;
+  color: var(--lc-fg);
+}
+
+.dialog-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-sm);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+.dialog-details summary {
+  cursor: default;
+  user-select: none;
+  color: var(--lc-fg-muted);
+  list-style: none;
+}
+
+.dialog-details summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The default marker is a solid triangle sized to the text, which at 13px is a
+   blot. A chevron drawn from a border rotates instead of swapping glyph. */
+.dialog-details summary::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: var(--lc-space-sm);
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-1px) rotate(-45deg);
+  transition: transform 140ms ease-out;
+}
+
+.dialog-details[open] summary::before {
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.dialog-details summary:hover {
+  color: var(--lc-fg);
+}
+
+.dialog-details[open] summary {
+  margin-bottom: var(--lc-space-xs);
+}
+
+.message-proof,
+.message-warning {
+  display: inline-flex;
+  align-items: center;
+  height: 17px;
+  padding: 0 6px;
+  border-radius: var(--lc-radius-sm);
+  font-size: var(--lc-text-xs);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.message-proof {
+  background: color-mix(in srgb, var(--lc-success) 16%, transparent);
+  color: var(--lc-success);
+}
+
+.message-warning {
+  background: color-mix(in srgb, var(--lc-danger) 16%, transparent);
+  color: var(--lc-danger);
+}

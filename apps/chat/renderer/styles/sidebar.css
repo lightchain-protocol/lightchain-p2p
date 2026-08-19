@@ -1,0 +1,299 @@
+/**
+ * sidebar, its groups, the account row and the collapsed variant.
+ *
+ * Split out of app.css so this surface can be worked on without touching every
+ * other one. app.css keeps what is genuinely shared.
+ */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  width: 236px;
+  padding: var(--lc-space-md) var(--lc-space-sm) var(--lc-space-sm);
+  border-right: 1px solid var(--lc-rule);
+  background: var(--lc-bg-elevated);
+  flex: 0 0 auto;
+  transition: width 160ms ease-out;
+}
+
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  padding: 0 var(--lc-space-sm) var(--lc-space-md);
+}
+
+.sidebar-brand {
+  font-size: var(--lc-text-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lc-fg-dim);
+}
+
+.sidebar-collapse {
+  margin-left: auto;
+}
+
+.sidebar-collapse .icon {
+  transition: transform 160ms ease-out;
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 var(--lc-space-md);
+  padding: 0;
+  list-style: none;
+  flex: 0 0 auto;
+}
+
+/* --- Collapsed sidebar ----------------------------------------------------- */
+
+/* Icons only. The room list goes with the labels: a column of unlabelled keys
+   is not a navigable list, it is a puzzle. */
+.sidebar.is-collapsed {
+  width: 60px;
+}
+
+.sidebar.is-collapsed .nav-label,
+.sidebar.is-collapsed .nav-badge,
+.sidebar.is-collapsed .sidebar-title,
+.sidebar.is-collapsed .sidebar-brand,
+.sidebar.is-collapsed .sidebar-context,
+.sidebar.is-collapsed .account-text,
+.sidebar.is-collapsed .account-chevron,
+.sidebar.is-collapsed .version {
+  display: none;
+}
+
+.sidebar.is-collapsed .sidebar-collapse .icon {
+  transform: rotate(180deg);
+}
+
+.sidebar.is-collapsed .sidebar-head,
+.sidebar.is-collapsed .nav-item,
+.sidebar.is-collapsed .account {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sidebar.is-collapsed .sidebar-foot {
+  align-items: center;
+}
+
+/* The contextual half of the sidebar. Only Chat has one; the others are a
+   single panel with nothing to list. */
+.sidebar-context {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+  border-top: 1px solid var(--lc-rule);
+  padding-top: var(--lc-space-md);
+}
+
+.sidebar-title {
+  margin: 0 0 var(--lc-space-sm);
+  padding: 0 var(--lc-space-sm);
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lc-fg-dim);
+}
+
+.sidebar-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  margin-top: auto;
+  padding-top: var(--lc-space-sm);
+  border-top: 1px solid var(--lc-rule);
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  width: 100%;
+  min-width: 0;
+  padding: var(--lc-space-sm);
+  appearance: none;
+  border: 0;
+  border-radius: var(--lc-radius-md);
+  font: inherit;
+  text-align: left;
+  color: var(--lc-fg);
+  background: transparent;
+  cursor: default;
+  transition: background-color 120ms ease-out;
+}
+
+.account:hover {
+  background: var(--lc-bg-elevated-2);
+}
+
+/* The mark sits with the account rather than at the top of the sidebar, where
+   it was the third Lightchain logo on one screen. A letter cut from the address
+   said nothing an identicon would have said better, and nothing at all next to
+   the address it was cut from. */
+.account-logo {
+  width: 26px;
+  height: 26px;
+}
+
+.account-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.account-name,
+.account-role {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-name {
+  font-size: var(--lc-text-sm);
+  font-weight: 500;
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+}
+
+.account-role {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+.account-chevron {
+  flex: 0 0 auto;
+  color: var(--lc-fg-dim);
+}
+
+.room-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.sidebar-empty {
+  margin: var(--lc-space-sm);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+}
+
+.sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  margin-top: auto;
+  padding-top: var(--lc-space-md);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  appearance: none;
+  border: 0;
+  border-radius: var(--lc-radius-md);
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  font: inherit;
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-tight);
+  text-align: left;
+  color: var(--lc-fg-muted);
+  background: transparent;
+  cursor: default;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-icon {
+  color: var(--lc-fg-dim);
+}
+
+.nav-item:hover .nav-icon,
+.nav-item.is-active .nav-icon {
+  color: var(--lc-brand);
+}
+
+.nav-badge {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: var(--lc-radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 17px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--lc-brand-ink);
+  background: var(--lc-bg-elevated-2);
+}
+
+/* A room entry stacks a key over a preview, so its two lines need a column of
+   their own inside what is otherwise a row. */
+.nav-item-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.nav-item:hover {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+}
+
+.nav-item.is-active {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+  box-shadow: inset 2px 0 0 var(--lc-brand);
+}
+
+/* A room is named by its key and described by its last message, and neither has
+   a length anyone controls. Both are given one line: a sidebar entry that grows
+   to three lines to fit somebody else's sentence pushes the rest of the list
+   around every time a message arrives. */
+.nav-item-name,
+.nav-item-sub {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-item-name {
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-item-sub {
+  margin-top: 2px;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+/* Keyboard focus must stay visible. Removing outlines makes an app unusable
+   without a mouse, and it is the most common accessibility regression. */

@@ -1,0 +1,599 @@
+/**
+ * dashboard, hero balance, sparklines, charts, activity.
+ *
+ * Split out of app.css so this surface can be worked on without touching every
+ * other one. app.css keeps what is genuinely shared.
+ */
+
+/* --- Dashboard ------------------------------------------------------------ */
+
+.dash {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-lg);
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--lc-space-xl) var(--lc-space-lg) var(--lc-space-xl) var(--lc-space-xl);
+  overflow-y: auto;
+}
+
+.dash-head {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--lc-space-md) var(--lc-space-lg);
+}
+
+.dash-head-main {
+  flex: 1 1 28ch;
+  min-width: 0;
+}
+
+.dash-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.dash-title {
+  margin: 0;
+  font-size: var(--lc-text-xxl);
+  font-weight: 600;
+  line-height: var(--lc-leading-tight);
+}
+
+.dash-sub {
+  margin: var(--lc-space-xs) 0 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+.dash-locked {
+  margin: 0;
+  padding: var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-left: 2px solid var(--lc-warning);
+  border-radius: var(--lc-radius-md);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+  background: var(--lc-bg-elevated);
+}
+
+/* --- Hero balance --------------------------------------------------------- */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-lg);
+  padding: var(--lc-space-xl);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-lg);
+  background:
+    radial-gradient(
+      120% 140% at 0% 0%,
+      color-mix(in srgb, var(--lc-brand-violet) 14%, transparent),
+      transparent 60%
+    ),
+    var(--lc-bg-elevated);
+}
+
+.hero-row {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--lc-space-lg);
+}
+
+.hero-main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.hero-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+.hero-value {
+  margin: 6px 0 0;
+  font-size: 38px;
+  font-weight: 600;
+  line-height: var(--lc-leading-tight);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.hero-note {
+  margin: 6px 0 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  flex: 0 0 auto;
+}
+
+.hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lc-space-sm);
+  margin: 0;
+  padding: var(--lc-space-lg) 0 0;
+  border-top: 1px solid var(--lc-rule);
+  list-style: none;
+}
+
+/* Where the total actually sits. Two chips rather than two more stat cards,
+   because they are parts of the number above rather than facts beside it. */
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--lc-space-sm);
+  padding: 6px var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-pill);
+  font-size: var(--lc-text-xs);
+  white-space: nowrap;
+  color: var(--lc-fg-dim);
+  background: var(--lc-bg);
+}
+
+.chip-value {
+  font-size: var(--lc-text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--lc-fg);
+}
+
+/* --- Change pills --------------------------------------------------------- */
+
+/* A signed count against last month. Green and red alone would leave a
+   colourblind reader with two identical grey pills, so the sign carries it. */
+.delta {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--lc-radius-sm);
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--lc-fg-dim);
+  background: var(--lc-bg-elevated-2);
+}
+
+.delta[data-tone='up'] {
+  color: var(--lc-success);
+  background: color-mix(in srgb, var(--lc-success) 16%, transparent);
+}
+
+.delta[data-tone='down'] {
+  color: var(--lc-danger);
+  background: color-mix(in srgb, var(--lc-danger) 16%, transparent);
+}
+
+/* --- Sparklines ----------------------------------------------------------- */
+
+/* The shape of the last twelve months under the number it belongs to. No axis
+   and no labels: it answers "which way" and the card above answers "how much". */
+.spark {
+  margin-top: var(--lc-space-sm);
+  height: 34px;
+}
+
+.spark svg {
+  display: block;
+  width: 100%;
+  height: 34px;
+}
+
+.spark-line {
+  fill: none;
+  stroke: var(--lc-brand);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.spark-area {
+  fill: url(#spark-fill);
+  stroke: none;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  height: var(--lc-control-md);
+  padding: 0 var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-pill);
+  font-size: var(--lc-text-xs);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--lc-fg-muted);
+  background: var(--lc-bg-elevated);
+}
+
+/* One control with several states, rather than three buttons that happen to be
+   adjacent. The shared border makes the choice look exclusive, which it is. */
+.segmented {
+  display: inline-flex;
+  height: var(--lc-control-md);
+  padding: 2px;
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated);
+}
+
+.segment {
+  padding: 0 var(--lc-space-md);
+  appearance: none;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  font-size: var(--lc-text-xs);
+  font-weight: 500;
+  color: var(--lc-fg-dim);
+  background: transparent;
+  cursor: default;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.segment:hover {
+  color: var(--lc-fg);
+}
+
+.segment.is-active {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+}
+
+/* --- Cards ---------------------------------------------------------------- */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-lg);
+  background: var(--lc-bg-elevated);
+}
+
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lc-space-md);
+  margin-bottom: var(--lc-space-lg);
+}
+
+.card-title {
+  margin: 0;
+  font-size: var(--lc-text-md);
+  font-weight: 600;
+}
+
+.card-note {
+  margin: 2px 0 0;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+/* --- Stat cards ----------------------------------------------------------- */
+
+/* `auto-fit` rather than a fixed count: the row reflows to four or three across
+   in a narrow window instead of squeezing five columns until the numbers wrap.
+   Separate cards rather than one divided strip, because a strip whose last row
+   is half full leaves a gap that reads as a rendering fault. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: var(--lc-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  min-width: 0;
+  padding: var(--lc-space-md) var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-lg);
+  background: var(--lc-bg-elevated);
+}
+
+.stat-label {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+.stat-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--lc-space-sm);
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: var(--lc-text-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Absent is not zero. A dash says the app does not know; a nought would claim
+   it measured nothing, and those call for different actions. */
+.stat-value.is-unknown {
+  color: var(--lc-fg-dim);
+  font-weight: 400;
+}
+
+.stat-note {
+  font-size: var(--lc-text-xs);
+  white-space: nowrap;
+  color: var(--lc-fg-dim);
+}
+
+.stat-note[data-tone='up'] {
+  color: var(--lc-success);
+}
+
+.stat-note[data-tone='down'] {
+  color: var(--lc-danger);
+}
+
+/* --- Dashboard grid ------------------------------------------------------- */
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+  gap: var(--lc-space-lg);
+}
+
+@media (max-width: 1080px) {
+  .dash-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* --- Chart ---------------------------------------------------------------- */
+
+/* Drawn as SVG with the geometry in attributes. The content security policy
+   forbids inline styles, and an SVG needs no exception to it. */
+.chart {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Sized in pixels by the script that builds it, so the type inside is at its
+   real size rather than scaled down with the geometry. */
+.chart svg {
+  display: block;
+}
+
+.chart-grid {
+  stroke: var(--lc-rule);
+  stroke-dasharray: 3 4;
+}
+
+.chart-axis {
+  fill: var(--lc-fg-dim);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-bar {
+  fill: var(--lc-brand-violet);
+}
+
+.chart-bar.is-answered {
+  fill: var(--lc-brand);
+}
+
+.chart-empty {
+  fill: var(--lc-fg-dim);
+  font-size: 11px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lc-space-lg);
+  margin: var(--lc-space-lg) 0 0;
+  padding: var(--lc-space-lg) 0 0;
+  border-top: 1px solid var(--lc-rule);
+  list-style: none;
+}
+
+.legend-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.legend-key {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+.legend-swatch {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 2px;
+  background: var(--lc-brand-violet);
+}
+
+.legend-swatch[data-series='answered'] {
+  background: var(--lc-brand);
+}
+
+.legend-swatch[data-series='jobs'] {
+  background: var(--lc-brand-magenta);
+}
+
+.legend-value {
+  font-size: var(--lc-text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Activity feed -------------------------------------------------------- */
+
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.feed-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding-bottom: var(--lc-space-md);
+  border-bottom: 1px solid var(--lc-rule);
+}
+
+.feed-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.feed-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: var(--lc-radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--lc-brand-ink);
+  background: var(--lc-bg-elevated-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag[data-tone='proven'] {
+  color: var(--lc-success);
+  background: color-mix(in srgb, var(--lc-success) 16%, transparent);
+}
+
+.tag[data-tone='room'] {
+  color: var(--lc-brand);
+  background: color-mix(in srgb, var(--lc-brand) 16%, transparent);
+}
+
+.feed-text {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-tight);
+  /* Two lines: enough to tell one item from another, not so many that six
+     entries become a wall. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.feed-when {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Distribution bars ---------------------------------------------------- */
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bar-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--lc-space-sm);
+  margin-bottom: 6px;
+  font-size: var(--lc-text-sm);
+}
+
+.bar-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-count {
+  margin-left: auto;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bar-track {
+  display: flex;
+  height: 8px;
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-bg-elevated-2);
+  overflow: hidden;
+}
+
+.bar-fill {
+  background: var(--lc-brand-violet);
+  transition: width 220ms ease-out;
+}
+
+.bar-fill[data-series='jobs'] {
+  background: var(--lc-brand-magenta);
+}
+
+.dash-empty {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+}

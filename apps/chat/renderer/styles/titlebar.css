@@ -1,0 +1,83 @@
+/**
+ * window chrome.
+ *
+ * Split out of app.css so this surface can be worked on without touching every
+ * other one. app.css keeps what is genuinely shared.
+ */
+
+/* --- Title bar ------------------------------------------------------------ */
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-md);
+  height: 38px;
+  padding: 0 var(--lc-space-lg);
+  border-bottom: 1px solid var(--lc-rule);
+  background: var(--lc-bg-elevated);
+  /* Lets the window be dragged by its titlebar, which users expect. */
+  -webkit-app-region: drag;
+  flex: 0 0 auto;
+}
+
+/* macOS puts the traffic lights at the left, so our content starts clear of
+   them. Anything else and the wordmark sits underneath the close button. */
+:root[data-platform='darwin'] .titlebar {
+  padding-left: 78px;
+}
+
+/* Windows and Linux draw their controls over the right of the bar. */
+:root:not([data-platform='darwin']) .titlebar {
+  padding-right: 148px;
+}
+
+.titlebar button {
+  -webkit-app-region: no-drag;
+}
+
+.wordmark {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background: linear-gradient(90deg, var(--lc-brand-violet), var(--lc-brand-magenta));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.titlebar-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+/* Whether the app is talking to its worker is the one thing worth knowing
+   without reading, so it gets a shape and a colour as well as a word. */
+.titlebar-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-fg-dim);
+}
+
+.titlebar-status[data-state='ok']::before {
+  background: var(--lc-success);
+}
+
+.titlebar-status[data-state='busy']::before {
+  background: var(--lc-warning);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.titlebar-status[data-state='bad']::before {
+  background: var(--lc-danger);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}

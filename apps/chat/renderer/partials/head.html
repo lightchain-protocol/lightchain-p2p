@@ -19,13 +19,30 @@
       content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' blob:"
     />
     <title>Lightchain</title>
+    <!-- Order matters. Tokens define what everything else reads, app.css holds
+         the reset and what is genuinely shared, and the surface sheets come
+         last so a surface can override the shared rule it sits on. -->
     <link rel="stylesheet" href="tokens.css" />
     <link rel="stylesheet" href="app.css" />
+
+    <!-- One per surface, matching renderer/partials. Editing the Worker page
+         and editing the sidebar touch different files. -->
+    <link rel="stylesheet" href="styles/titlebar.css" />
+    <link rel="stylesheet" href="styles/sidebar.css" />
+    <link rel="stylesheet" href="styles/dashboard.css" />
+    <link rel="stylesheet" href="styles/room.css" />
+    <link rel="stylesheet" href="styles/models.css" />
+    <link rel="stylesheet" href="styles/worker.css" />
+    <link rel="stylesheet" href="styles/wallet.css" />
+    <link rel="stylesheet" href="styles/settings.css" />
+    <link rel="stylesheet" href="styles/roadmap.css" />
+    <link rel="stylesheet" href="styles/onboarding.css" />
+
+    <!-- Parts of a surface rather than surfaces of their own. -->
     <link rel="stylesheet" href="styles/conversation.css" />
     <link rel="stylesheet" href="styles/reactions.css" />
     <link rel="stylesheet" href="styles/members.css" />
     <link rel="stylesheet" href="styles/attachments.css" />
     <link rel="stylesheet" href="styles/search.css" />
-    <link rel="stylesheet" href="styles/onboarding.css" />
   </head>
   <body>
