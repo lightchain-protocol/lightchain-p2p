@@ -80,16 +80,21 @@ somebody is trying to break it, and each one reports every failure rather than
 stopping at the first — a suite that halts on failure one hides the rest, and
 those are the ones nobody has looked at.
 
-| Harness                           | What it does                                                                                                                                     |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `scripts/wsl-adversarial.mjs`     | 19 abuses of a live room from a second machine: forged signatures, spent invites, oversize text, concurrent renames, a peer killed mid-sentence. |
-| `scripts/hostile-renderer.mjs`    | 29 attempts to turn message text into markup in an Electron window, plus a formatter fed input shaped to hang it.                                |
-| `scripts/survives-restart.mjs`    | 12 checks either side of a kill: sealed rooms, wallet, DHT identity, write access, history.                                                      |
-| `scripts/change-password.mjs`     | 9 checks that a password change moves the vault and nothing else.                                                                                |
-| `scripts/reconnects.mjs`          | 5 checks that a restarted instance is found again by the peer that stayed up, and does not return as a second writer.                            |
-| `scripts/drive-two-instances.mjs` | The whole conversation through the real interface, 16 steps.                                                                                     |
-| `scripts/conversation-check.mjs`  | 11 checks on replying, reacting, editing and withdrawing, clicked rather than called.                                                            |
-| `scripts/wsl-soak.mjs`            | Four writers, concurrent bursts, clock skew, restart and catch-up.                                                                               |
+| Harness                            | What it does                                                                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scripts/wsl-adversarial.mjs`      | 19 abuses of a live room from a second machine: forged signatures, spent invites, oversize text, concurrent renames, a peer killed mid-sentence. |
+| `scripts/hostile-renderer.mjs`     | 48 attempts to turn message text into markup, spend a capability the window should not have, or hand the main process something oversized.       |
+| `scripts/onboarding-check.mjs`     | 32 checks over create, recover and reset, including that no two elements share an id.                                                            |
+| `scripts/inference-check.mjs`      | 17 checks on room context and spending caps, without spending anything.                                                                          |
+| `scripts/conversation-check.mjs`   | 16 checks on replying, reacting, editing and withdrawing, clicked rather than called.                                                            |
+| `scripts/drive-two-instances.mjs`  | The whole conversation through the real interface, 16 steps.                                                                                     |
+| `scripts/survives-restart.mjs`     | 12 checks either side of a kill: sealed rooms, wallet, DHT identity, write access, history.                                                      |
+| `scripts/review.mjs`               | 11 structural checks over every surface in both themes: duplicate ids, unlabelled buttons, misnested panels, `[object Object]`.                  |
+| `scripts/transcript-search.mjs`    | 11 checks that model history is searchable and stays separate from room history when the wallet is locked.                                       |
+| `scripts/change-password.mjs`      | 9 checks that a password change moves the vault and nothing else.                                                                                |
+| `scripts/hosted-room-survives.mjs` | Three instances: a room outlives its author because another user was hosting it.                                                                 |
+| `scripts/reconnects.mjs`           | 5 checks that a restarted instance is found again by the peer that stayed up, and does not return as a second writer.                            |
+| `scripts/wsl-soak.mjs`             | Four writers, concurrent bursts, clock skew, restart and catch-up.                                                                               |
 
 Five real defects came out of the first run and are fixed: invites were served
 to every comer rather than spent once, `send` wrote over-length messages that

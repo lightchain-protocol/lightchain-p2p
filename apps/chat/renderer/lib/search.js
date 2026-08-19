@@ -49,6 +49,7 @@ const LEAD_IN = 48
 let ui = null
 let isOpen = false
 let onChoose = null
+let onChooseTranscript = null
 let restoreTo = null
 let restoreOnClose = true
 
@@ -147,12 +148,14 @@ function surface() {
  * Opens the search surface.
  *
  * `onOpenResult` is called with `{ room, id }` for the result that was chosen,
- * after this has closed itself — see `choose`.
+ * and `onOpenTranscript` with a conversation id when the result was a model
+ * turn, both after this has closed itself — see `choose`.
  */
-export function openSearch({ onOpenResult } = {}) {
+export function openSearch({ onOpenResult, onOpenTranscript } = {}) {
   const { dialog, input } = surface()
 
   onChoose = typeof onOpenResult === 'function' ? onOpenResult : null
+  onChooseTranscript = typeof onOpenTranscript === 'function' ? onOpenTranscript : null
 
   if (!isOpen) {
     // Where focus was before this took it. A dialog restores focus itself when
@@ -265,20 +268,33 @@ async function run() {
   clear()
   setNote('Searching…')
 
-  let found
-  try {
-    found = await request('room.search', { query })
-  } catch (err) {
-    if (mine !== sequence || !isOpen) return
+  // Rooms and model transcripts are separate logs — the second is encrypted
+  // under a key only an unlocked wallet derives — so they are two calls that
+  // happen together rather than one search the worker could do.
+  const [inRooms, inTranscripts] = await Promise.allSettled([
+    request('room.search', { query }),
+    request('ai.search', { query })
+  ])
+
+  if (mine !== sequence || !isOpen) return
+
+  // Rooms failing is a failed search. Transcripts failing usually means the
+  // wallet is locked, which is a reason to show fewer results rather than none.
+  if (inRooms.status === 'rejected') {
     // Forgotten rather than remembered as done, so the same query typed again
     // is another attempt rather than silence.
     sent = null
-    setNote(err.message, 'error')
+    setNote(inRooms.reason?.message ?? 'the search failed', 'error')
     return
   }
 
-  if (mine !== sequence || !isOpen) return
-  show(found?.results ?? [], query)
+  show(inRooms.value?.results ?? [], transcriptsOf(inTranscripts), query)
+}
+
+/** Model matches, or none if that half could not be read. */
+function transcriptsOf(settled) {
+  if (settled.status !== 'fulfilled') return []
+  return Array.isArray(settled.value?.results) ? settled.value.results : []
 }
 
 // --- Drawing -----------------------------------------------------------------
@@ -294,12 +310,12 @@ function clear() {
   input.removeAttribute('aria-activedescendant')
 }
 
-function show(results, query) {
+function show(results, transcripts, query) {
   const { input, results: list } = surface()
   clear()
 
-  if (results.length === 0) {
-    setNote(`No messages match “${query}”.`)
+  if (results.length === 0 && transcripts.length === 0) {
+    setNote(`Nothing matches “${query}”.`)
     return
   }
 
@@ -338,8 +354,32 @@ function show(results, query) {
     list.append(item)
   }
 
+  // After the rooms, because a question put to a model is the rarer thing to be
+  // looking for and burying the chat results under it would be the wrong way
+  // round for all but the search that went looking for this.
+  if (transcripts.length > 0) {
+    const item = el2('li', 'search-group')
+    item.setAttribute('role', 'presentation')
+
+    const heading = el2('p', 'search-group-name', 'Model conversations')
+    heading.id = 'search-group-transcripts'
+
+    const options = el2('ul', 'search-group-items')
+    options.setAttribute('role', 'group')
+    options.setAttribute('aria-labelledby', heading.id)
+
+    for (const match of transcripts) {
+      const option = renderTranscriptResult(match, terms, rows.length)
+      rows.push({ node: option, result: match, transcript: true })
+      options.append(option)
+    }
+
+    item.append(heading, options)
+    list.append(item)
+  }
+
   input.setAttribute('aria-expanded', 'true')
-  setNote(summarise(results.length, byRoom.size))
+  setNote(summarise(results.length, byRoom.size, transcripts.length))
   // The first result is highlighted straight away so that Enter always opens
   // the row that is lit rather than one chosen on the reader's behalf.
   setActive(0)
@@ -361,6 +401,35 @@ function renderResult(result, terms, index) {
     author.title = `This message claims to be from ${result.author} but the signature does not match.`
   }
   meta.append(author, el2('span', 'search-result-when', when(result.at)))
+
+  option.append(text, meta)
+  option.addEventListener('click', () => choose(index))
+  return option
+}
+
+/**
+ * A turn from a model conversation.
+ *
+ * Deliberately not `renderResult`: that one's whole job is saying how much of a
+ * claimed author is proven, and here there is no claim to weigh. A transcript
+ * is this identity's own log, so the only two speakers are the person reading
+ * it and the model they paid.
+ */
+function renderTranscriptResult(match, terms, index) {
+  const option = el2('li', 'search-result')
+  option.id = `search-result-${index}`
+  option.setAttribute('role', 'option')
+  option.setAttribute('aria-selected', 'false')
+
+  const text = el2('p', 'search-result-text')
+  highlight(text, typeof match.text === 'string' ? match.text : '', terms)
+
+  const meta = el2('div', 'search-result-meta')
+  const who = match.role === 'you' ? 'you asked' : String(match.model ?? 'the model')
+  meta.append(
+    el2('span', 'search-result-author', who),
+    el2('span', 'search-result-when', when(match.at))
+  )
 
   option.append(text, meta)
   option.addEventListener('click', () => choose(index))
@@ -491,13 +560,19 @@ function when(at) {
   return new Date(at).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function summarise(count, rooms) {
-  const found = count === 1 ? '1 match' : `${count} matches`
-  const where = rooms === 1 ? '1 room' : `${rooms} rooms`
+function summarise(count, rooms, transcripts) {
+  const total = count + transcripts
+  const found = total === 1 ? '1 match' : `${total} matches`
+
+  const places = []
+  if (count > 0) places.push(rooms === 1 ? '1 room' : `${rooms} rooms`)
+  if (transcripts > 0) places.push(transcripts === 1 ? '1 model turn' : 'your model history')
+
   // The cap is the worker's, and a list that stops at exactly two hundred looks
-  // like an answer unless it says otherwise.
-  const capped = count >= CAP ? ` Showing the ${CAP} most recent.` : ''
-  return `${found} in ${where}.${capped}`
+  // like an answer unless it says otherwise. Each half is capped separately, so
+  // either reaching it means the list is a lid.
+  const capped = count >= CAP || transcripts >= CAP ? ` Showing the ${CAP} most recent.` : ''
+  return `${found} in ${places.join(' and ')}.${capped}`
 }
 
 /** The one line that carries every state this surface has. */
@@ -557,7 +632,8 @@ function setActive(index) {
 }
 
 function choose(index) {
-  const chosen = rows[index]?.result
+  const row = rows[index]
+  const chosen = row?.result
   if (!chosen) return
 
   // Closed first, and without taking focus back with it, so that the caller is
@@ -565,5 +641,7 @@ function choose(index) {
   // dialog tidying up afterwards would take it straight back out again.
   restoreOnClose = false
   closeSearch()
-  onChoose?.({ room: chosen.room, id: chosen.id })
+
+  if (row.transcript) onChooseTranscript?.(chosen.conversation)
+  else onChoose?.({ room: chosen.room, id: chosen.id })
 }

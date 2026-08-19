@@ -42,6 +42,9 @@ const LIMITS = 'limits'
 /** Rooms whose conversation may be sent to a model. Local, and off by default. */
 const ROOM_CONTEXT = 'roomcontext'
 
+/** Matching `room.search`, so the two searches cannot return different amounts. */
+const SEARCH_LIMIT = 200
+
 /** Wei, as a decimal string, since a bigint does not survive JSON or a sealed document. */
 const asWei = (value) => {
   if (typeof value !== 'string' || !/^\d+$/.test(value)) return null
@@ -591,6 +594,21 @@ export function aiHandlers(ctx) {
     'ai.cancel': () => ({ stopped: session.conversation?.cancel() ?? false }),
 
     'ai.history': async () => ({ conversations: await (await transcripts()).transcripts() }),
+
+    /**
+     * Searching what a model said, which `room.search` does not cover.
+     *
+     * Transcripts are a separate log from room history — encrypted under a key
+     * only this wallet derives — so the two cannot be searched together without
+     * putting a locked wallet's contents into a reply. Kept separate for that
+     * reason rather than for want of a merge.
+     */
+    'ai.search': async (req) => {
+      const query = String(req.query ?? '').trim()
+      if (query === '') throw new Error('what are you looking for?')
+
+      return { results: await (await transcripts()).search(query, SEARCH_LIMIT) }
+    },
 
     /**
      * Everything the dashboard shows, in one reply.

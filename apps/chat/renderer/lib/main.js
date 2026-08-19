@@ -9,7 +9,7 @@ import {
   receiveRoom
 } from './rooms.js'
 import { bindSearchShortcut } from './search.js'
-import { onAiProgress, onCommitment, refreshModels } from './models.js'
+import { onAiProgress, onCommitment, openTranscript, refreshModels } from './models.js'
 import { appendWorkerOutput, refreshWorker, setWorkerBusy } from './worker.js'
 import { refreshWallet } from './wallet.js'
 import { refreshDashboard } from './dashboard.js'
@@ -37,7 +37,7 @@ el.version.textContent = `v${bridge.pkg().version}`
 
 // Searching belongs to the window rather than to the room panel: it looks
 // across every room, and it has to be reachable from wherever somebody is.
-bindSearchShortcut({ onOpenResult: openMessage })
+bindSearchShortcut({ onOpenResult: openMessage, onOpenTranscript: openTranscript })
 
 // --- Theme -----------------------------------------------------------------
 

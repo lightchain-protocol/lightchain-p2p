@@ -82,8 +82,14 @@ arrives — on mainnet, paid for out of a prepaid balance you deposit in Wallet.
 Transcripts survive a restart, encrypted under a key only your wallet can
 derive, and earlier conversations are listed beside the models.
 
-Still thin above that: one session at a time, no way to continue an old
-conversation without paying for a new session, and no search.
+**Model history is searchable.** Control-K searches rooms and transcripts
+together and groups the results by where they came from. The two are separate
+logs and stay that way: transcripts are encrypted under a key only an unlocked
+wallet derives, so a locked one searches rooms and says why the rest is missing
+rather than quietly returning less.
+
+Still thin above that: one session at a time, and no way to continue an old
+conversation without paying for a new one.
 
 **The wallet is the identity, and it pays.** The key that pays is the key that
 signs: a message carries an EIP-191 signature over its own contents, and a

@@ -12,7 +12,14 @@ export {
 
 export { KeyEncodingError, decodeKey, encodeSealed } from './keys.js'
 
-export { History, type Log, type Record, type Transcript, type Turn } from './history.js'
+export {
+  History,
+  type Log,
+  type Match,
+  type Record,
+  type Transcript,
+  type Turn
+} from './history.js'
 
 export {
   Conversation,

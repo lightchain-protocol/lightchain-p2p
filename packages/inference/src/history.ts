@@ -53,6 +53,16 @@ export interface Transcript {
   readonly turns: readonly Turn[]
 }
 
+/** One matching turn, carrying enough of its conversation to be shown on its own. */
+export interface Match {
+  readonly conversation: string
+  readonly model: string
+  readonly role: 'you' | 'model'
+  readonly text: string
+  readonly jobId: string | null
+  readonly at: number
+}
+
 /** A log this can append to and read back. Injected, so it is testable without Corestore. */
 export interface Log {
   append(record: Record): Promise<void>
@@ -119,6 +129,42 @@ export class History {
       .map(([id, value]) => ({ id, model: value.model, at: value.at, turns: value.turns }))
       .filter((transcript) => transcript.turns.length > 0)
       .sort((a, b) => lastAt(b) - lastAt(a))
+  }
+
+  /**
+   * Turns containing `query`, newest first.
+   *
+   * Built on `transcripts()` rather than reading the log directly, so a deleted
+   * conversation cannot be found by searching for it — a tombstone that hides a
+   * transcript from the list but not from search would be worse than no
+   * deletion at all.
+   *
+   * Substring rather than tokens or ranking. A prompt is not a document
+   * collection, the whole corpus is one person's own turns, and matching what
+   * they typed is what they expect. Anything cleverer is a decision to make
+   * when the log is big enough to need it.
+   */
+  async search(query: string, limit = 100): Promise<readonly Match[]> {
+    const needle = query.trim().toLowerCase()
+    if (needle === '') return []
+
+    const matches: Match[] = []
+
+    for (const transcript of await this.transcripts()) {
+      for (const turn of transcript.turns) {
+        if (!turn.text.toLowerCase().includes(needle)) continue
+        matches.push({
+          conversation: transcript.id,
+          model: transcript.model,
+          role: turn.role,
+          text: turn.text,
+          jobId: turn.jobId,
+          at: turn.at
+        })
+      }
+    }
+
+    return matches.sort((a, b) => b.at - a.at).slice(0, limit)
   }
 }
 

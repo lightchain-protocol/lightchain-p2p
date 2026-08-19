@@ -1,4 +1,4 @@
-import { short, toast } from './dom.js'
+import { short, showSection, toast } from './dom.js'
 import { request } from './ipc.js'
 import { refreshTitlebarBalance } from './wallet.js'
 
@@ -456,6 +456,22 @@ function showTranscript(transcript) {
   showControls()
   renderModels()
   renderConversations()
+}
+
+/**
+ * Shows a past conversation by id, for a search result that landed on one.
+ *
+ * History is re-read first because search runs against the worker's log while
+ * this panel holds whatever it last fetched, and a result for a conversation
+ * this list has never seen would otherwise do nothing at all.
+ */
+export async function openTranscript(id) {
+  showSection('models')
+
+  if (!conversations.some((transcript) => transcript.id === id)) await refreshHistory()
+
+  const found = conversations.find((transcript) => transcript.id === id)
+  if (found) showTranscript(found)
 }
 
 async function refreshHistory() {
