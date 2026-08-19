@@ -30,6 +30,7 @@
   "dependencies": {
     "@lcai-p2p/host": "workspace:*",
     "@lcai-p2p/preflight": "workspace:*",
+    "@lcai-p2p/wallet": "workspace:*",
     "@lcai-p2p/worker": "workspace:*",
     "bare-fs": "^4.8.0",
     "bare-os": "^3.9.0",

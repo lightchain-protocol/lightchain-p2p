@@ -5,11 +5,12 @@ import path from 'bare-path'
 import process from 'bare-process'
 import fs from 'bare-fs'
 import {
+  KEYSTORE_DIR,
   containerKeystorePath,
   generateEncryptionKey,
-  importKey as importKeyCommand,
   inspectWorker,
   isHealthy,
+  keystoreFileName,
   logsWorker,
   parseContainerState,
   pullImage,
@@ -19,6 +20,7 @@ import {
   selectKeystore,
   stopWorker
 } from '@lcai-p2p/worker'
+import { encrypt } from '@lcai-p2p/wallet'
 
 /**
  * Executes the docker commands that @lcai-p2p/worker builds.
@@ -124,12 +126,19 @@ export function start(config, address) {
 }
 
 /**
- * Imports a private key into a keystore inside the data directory.
+ * Writes a private key into a keystore inside the data directory.
  *
  * The key is read from stdin and nowhere else. Not from a flag, because
  * arguments are visible in process listings; not from the environment, because
- * that is inherited by every child process and readable from /proc. It is passed
- * to the container once and never written anywhere by us.
+ * that is inherited by every child process and readable from /proc.
+ *
+ * And it is not handed to Docker either, which is where this used to fall down.
+ * The image's `import-key` takes `--private-key <hex>`, so the key spent the
+ * life of that container in the host's process table — the supervisor was
+ * careful with it right up to the point where it gave it away. A keystore is
+ * only a file, this application can already write a Keystore V3 that
+ * go-ethereum reads, and the worker wants nothing but the finished file. So the
+ * key now stops here.
  */
 export function importKey(config, privateKey) {
   if (!/^(0x)?[0-9a-fA-F]{64}$/.test(privateKey)) {
@@ -137,14 +146,31 @@ export function importKey(config, privateKey) {
     return false
   }
 
-  const res = execute(importKeyCommand(config, privateKey))
-  if (!res.ok) {
-    console.error(res.stderr.trim())
+  const key = privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`
+
+  let keystore
+  try {
+    keystore = encrypt(key, config.keystorePassword)
+  } catch (err) {
+    console.error(`The keystore could not be written: ${err.message}`)
     return false
   }
 
-  console.log(res.stdout.trim())
-  console.log('\nKey imported. The private key was not stored by the supervisor.')
+  const dir = path.join(config.keysDir, KEYSTORE_DIR)
+  const file = keystoreFileName(keystore.address)
+
+  try {
+    fs.mkdirSync(dir, { recursive: true })
+    // 0600 because this is the operator's key under a password, and the
+    // password is the only thing between the file and the account.
+    fs.writeFileSync(path.join(dir, file), JSON.stringify(keystore), { mode: 0o600 })
+  } catch (err) {
+    console.error(`The keystore could not be written: ${err.message}`)
+    return false
+  }
+
+  console.log(`Keystore written: ${file}`)
+  console.log('\nKey imported. It was not stored by the supervisor, nor passed to Docker.')
   return true
 }
 

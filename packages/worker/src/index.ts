@@ -16,7 +16,6 @@ export {
 
 export {
   generateEncryptionKey,
-  importKey,
   inspectWorker,
   logsWorker,
   pullImage,
@@ -34,8 +33,10 @@ export {
 } from './container.js'
 
 export {
+  KEYSTORE_DIR,
   KeystoreError,
   containerKeystorePath,
+  keystoreFileName,
   selectKeystore,
   type KeystoreSelection
 } from './keystore.js'

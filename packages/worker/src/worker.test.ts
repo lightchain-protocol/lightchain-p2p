@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
+  KeystoreError,
   NETWORKS,
   WorkerConfigError,
   containerKeystorePath,
   defaultOllamaUrl,
+  inspectWorker,
+  keystoreFileName,
+  logsWorker,
   selectKeystore,
   generateEncryptionKey,
-  importKey,
   isHealthy,
   isRunnable,
   parseContainerState,
@@ -136,19 +139,33 @@ describe('secret handling', () => {
     for (const cmd of [
       runWorker(config, '/data/ks'),
       register(config, '/data/ks'),
-      generateEncryptionKey(config),
-      importKey(config, PRIVKEY)
+      generateEncryptionKey(config)
     ]) {
       expect(cmd.display).not.toContain(PASSWORD)
       expect(cmd.display).toContain('<redacted>')
     }
   })
 
-  it('never shows the private key', () => {
-    const cmd = importKey(config, PRIVKEY)
-    // This is the one that ends up pasted into a support channel.
-    expect(cmd.display).not.toContain(PRIVKEY)
-    expect(cmd.argv).toContain(PRIVKEY)
+  it('hands the private key to no docker command at all', () => {
+    // There used to be an `importKey` that passed `--private-key <hex>`, and a
+    // test here asserting the key was in argv while absent from `display`. That
+    // was the bug written down as a feature: redacting what we print does
+    // nothing about `ps`, `/proc` or `docker inspect`. The supervisor writes the
+    // keystore itself now, so no command can carry a key.
+    const everything = [
+      pullImage(config),
+      runWorker(config, '/data/ks'),
+      register(config, '/data/ks'),
+      generateEncryptionKey(config),
+      stopWorker(config),
+      inspectWorker(config),
+      logsWorker(config)
+    ]
+
+    for (const cmd of everything) {
+      expect(cmd.argv.join(' ')).not.toContain(PRIVKEY)
+      expect(cmd.display).not.toContain(PRIVKEY)
+    }
   })
 
   it('still passes the real secrets in argv, since only display is redacted', () => {
@@ -193,6 +210,28 @@ describe('keystore selection', () => {
 
   it('maps to the container path', () => {
     expect(containerKeystorePath(A)).toBe(`/data/eth-keystore/${A}`)
+  })
+
+  it('names a keystore the way go-ethereum reads them back', () => {
+    // The worker finds its key by listing this directory with go-ethereum, and
+    // `selectKeystore` reads the address out of the name, so a file we write
+    // has to be one both of them recognise.
+    const name = keystoreFileName('0xAbCdEf0123456789AbCdEf0123456789AbCdEf01', new Date(0))
+
+    expect(name).toBe('UTC--1970-01-01T00-00-00.000Z--abcdef0123456789abcdef0123456789abcdef01')
+    expect(selectKeystore([name])).toEqual({
+      file: name,
+      address: 'abcdef0123456789abcdef0123456789abcdef01'
+    })
+  })
+
+  it('leaves no colons in the name, since Windows will not have them', () => {
+    expect(keystoreFileName('0x' + '1'.repeat(40))).not.toContain(':')
+  })
+
+  it('refuses something that is not an address', () => {
+    expect(() => keystoreFileName('nope')).toThrow(KeystoreError)
+    expect(() => keystoreFileName('0x' + '1'.repeat(39))).toThrow(KeystoreError)
   })
 })
 

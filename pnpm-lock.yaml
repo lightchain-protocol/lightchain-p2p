@@ -184,6 +184,9 @@ importers:
       '@lcai-p2p/preflight':
         specifier: workspace:*
         version: link:../../packages/preflight
+      '@lcai-p2p/wallet':
+        specifier: workspace:*
+        version: link:../../packages/wallet
       '@lcai-p2p/worker':
         specifier: workspace:*
         version: link:../../packages/worker

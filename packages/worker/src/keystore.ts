@@ -77,3 +77,29 @@ function addressOf(name: string): string {
 export function containerKeystorePath(file: string): string {
   return `/data/eth-keystore/${file}`
 }
+
+/** Where the keystore directory sits inside the mounted data directory. */
+export const KEYSTORE_DIR = 'eth-keystore'
+
+/**
+ * What to call a keystore this application writes itself.
+ *
+ * go-ethereum's own naming, because the worker reads this directory with
+ * go-ethereum and {@link selectKeystore} reads the address back out of the
+ * name. Colons are not legal in a Windows filename and go-ethereum does not use
+ * them either, so the time is written with dashes.
+ *
+ * Writing the file ourselves is the point. The image's `import-key` takes the
+ * private key as a command-line flag, which puts it in the host's process table
+ * for anybody with `ps` — and there is no need to hand it over at all, since a
+ * keystore is a file and this application can already produce one.
+ */
+export function keystoreFileName(address: string, at: Date = new Date()): string {
+  const bare = address.replace(/^0x/, '').toLowerCase()
+  if (!/^[0-9a-f]{40}$/.test(bare)) {
+    throw new KeystoreError(`not an address: ${address}`)
+  }
+
+  const stamp = at.toISOString().replace(/:/g, '-')
+  return `UTC--${stamp}--${bare}`
+}

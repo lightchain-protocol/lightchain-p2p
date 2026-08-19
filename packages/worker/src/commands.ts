@@ -40,28 +40,26 @@ export function pullImage(config: WorkerConfig): DockerCommand {
   return build(['pull', config.image], [])
 }
 
-/** Imports the operator's private key into a keystore inside the mounted volume. */
-export function importKey(config: WorkerConfig, privateKey: string): DockerCommand {
-  return build(
-    [
-      'run',
-      '--rm',
-      '-v',
-      `${config.keysDir}:/data`,
-      '--entrypoint',
-      '/bin/lightchain-worker',
-      config.image,
-      'import-key',
-      '--private-key',
-      privateKey,
-      '--password',
-      config.keystorePassword,
-      '--output',
-      config.keystorePath
-    ],
-    [privateKey, config.keystorePassword]
-  )
-}
+/*
+ * There is deliberately no `importKey` here any more.
+ *
+ * The image's `import-key` takes the private key and the keystore password as
+ * command-line flags — `--private-key <hex> --password <string>`, confirmed in
+ * its own source — and a container's arguments are readable by anyone on the
+ * host through `ps`, `/proc` and `docker inspect`. Redacting them from what we
+ * print fixed the logs and left the exposure exactly where it was.
+ *
+ * Nothing had to be handed over in the first place. A keystore is a file, this
+ * application can already write a Keystore V3 that go-ethereum reads, and the
+ * worker only ever wants the finished file. So the key stops at our own process
+ * and Docker is never told it. See `keystoreFileName` and the supervisor's
+ * `importKey`.
+ *
+ * The keystore *password* still reaches the running container as an environment
+ * variable, because `WORKER_KEYSTORE_PASSWORD` is the only way the image will
+ * accept one and environment is in `docker inspect` whatever we do. That needs
+ * a change upstream, not here.
+ */
 
 /** Generates the ECDH key the worker uses for encrypted payloads. */
 export function generateEncryptionKey(config: WorkerConfig): DockerCommand {
