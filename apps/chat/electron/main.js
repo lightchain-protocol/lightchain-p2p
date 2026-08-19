@@ -8,6 +8,7 @@ const QRCode = require('qrcode')
 
 const { isMac, isLinux, isWindows } = require('which-runtime')
 const { command, flag, sloppy } = require('paparam')
+const windowState = require('./window-state')
 const pkg = require('../package.json')
 const { name, productName, version, upgrade } = pkg
 
@@ -59,26 +60,38 @@ function sendToAll(name, data) {
   }
 }
 
+/**
+ * Everything this installation remembers, in one directory.
+ *
+ * The worker is handed this same path and lays `chat/` and `pear-runtime/` out
+ * inside it, so anything the main process keeps belongs under here too.
+ * Electron's own `userData` is not the same place: `--storage` points it here,
+ * but left alone it names a directory nothing else in the application writes
+ * to, and two instances started on separate storage would then share it.
+ */
+function storageDir() {
+  if (pearStore) return pearStore
+  if (!app.isPackaged) return path.join(os.tmpdir(), 'pear', appName)
+  if (isMac) return path.join(os.homedir(), 'Library', 'Application Support', appName)
+
+  if (isLinux) {
+    const isSnap = !!process.env.SNAP_USER_COMMON
+    const linuxConfigHome = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config')
+
+    return isSnap
+      ? path.join(process.env.SNAP_USER_COMMON, appName)
+      : path.join(linuxConfigHome, appName)
+  }
+
+  return path.join(os.homedir(), 'AppData', 'Local', appName)
+}
+
 function getWorker(specifier) {
   if (workers.has(specifier)) return workers.get(specifier)
   const appPath = getAppPath()
-  let dir = null
-  if (pearStore) {
-    console.log('pear store: ' + pearStore)
-    dir = pearStore
-  } else if (appPath === null) {
-    dir = path.join(os.tmpdir(), 'pear', appName)
-  } else {
-    const isSnap = !!process.env.SNAP_USER_COMMON
-    const linuxConfigHome = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config')
-    dir = isMac
-      ? path.join(os.homedir(), 'Library', 'Application Support', appName)
-      : isLinux
-        ? isSnap
-          ? path.join(process.env.SNAP_USER_COMMON, appName)
-          : path.join(linuxConfigHome, appName)
-        : path.join(os.homedir(), 'AppData', 'Local', appName)
-  }
+  const dir = storageDir()
+
+  if (pearStore) console.log('pear store: ' + pearStore)
 
   const extension = isLinux ? '.AppImage' : isMac ? '.app' : '.msix'
 
@@ -147,10 +160,41 @@ function windowChrome() {
   }
 }
 
+/**
+ * The window to open at when nothing has been remembered yet.
+ *
+ * Three columns share the width — a 236px sidebar, the conversation, and a
+ * 260px member list — so this leaves the conversation comfortably wider than
+ * the 68ch a message is allowed to run to with both of them open, and stays
+ * above the 1080px point where the dashboard folds into a single column. It is
+ * near the 1280x860 viewport `scripts/shoot.mjs` reviews every section at,
+ * which is the size the interface is actually designed against.
+ *
+ * Larger than a 1366x768 laptop can show, deliberately: `windowState.restore`
+ * clamps to the work area of the display the window opens on, and a default
+ * small enough for the worst screen would be the wrong window everywhere else.
+ *
+ * Onboarding does not get a window of its own and the window is not resized
+ * when it finishes. It is a centred overlay that is correct at any size, and a
+ * window that changes shape while somebody is looking at it moves whatever they
+ * were about to click out from under the pointer.
+ */
+const DEFAULT_BOUNDS = { width: 1320, height: 880 }
+
 async function createWindow() {
+  // Beside the worker's own `chat/settings.json` and `chat/vault.json`, in the
+  // directory `--storage` moves. Two instances run against separate storage —
+  // which is how a conversation is tested with oneself — each have to get their
+  // own window back rather than fighting over one shared record of it.
+  const stateFile = path.join(storageDir(), 'chat', 'window.json')
+  const placement = windowState.restore(stateFile, DEFAULT_BOUNDS)
+  const { maximised, ...bounds } = placement
+
   const win = new BrowserWindow({
-    width: 1100,
-    height: 720,
+    ...bounds,
+    // Not a floor picked to stop the layout breaking: `scripts/shoot.mjs`
+    // reviews every section at exactly 720px wide, so half a screen is a
+    // supported size rather than one the app merely survives.
     minWidth: 720,
     minHeight: 480,
     // Painted before the renderer loads. Without it the window flashes white,
@@ -166,7 +210,15 @@ async function createWindow() {
     }
   })
 
-  win.once('ready-to-show', () => win.show())
+  windowState.track(win, stateFile, placement)
+
+  win.once('ready-to-show', () => {
+    // Maximised here rather than at construction, because `maximize()` shows
+    // the window as a side effect — doing it earlier would put an unpainted
+    // window on screen, which is the flash `show: false` exists to prevent.
+    if (maximised) win.maximize()
+    win.show()
+  })
 
   // Denied by default, and the default is the point. Electron grants most
   // permissions to a renderer that asks, and this one displays text written by

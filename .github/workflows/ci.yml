@@ -46,3 +46,15 @@ jobs:
       # release ignoring invite links. Not something any other check would see.
       - name: Deep link scheme
         run: node apps/chat/scripts/check-scheme.mjs
+
+      # A misspelled design token is not a CSS error. The declaration is dropped
+      # and the element keeps whatever it had, so a control silently loses its
+      # background or its focus ring while every other check stays green. Five
+      # names were dead across ten declarations before this existed.
+      - name: Design tokens resolve
+        run: node apps/chat/scripts/check-tokens.mjs
+
+      # The sprite is generated from lucide-static. This fails if it was edited
+      # by hand or if the map changed without regenerating.
+      - name: Icon sprite is current
+        run: node apps/chat/scripts/build-icons.mjs --check
