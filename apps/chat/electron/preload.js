@@ -25,6 +25,14 @@ contextBridge.exposeInMainWorld('bridge', {
   openExternal: (url) => ipcRenderer.invoke('app:openExternal', url),
   setTitleBarColours: (colours) => ipcRenderer.invoke('app:setTitleBarColours', colours),
   notify: (title, body) => ipcRenderer.invoke('app:notify', { title, body }),
+  /**
+   * Puts text on the clipboard.
+   *
+   * `navigator.clipboard` cannot do this from a `file://` window — Chromium
+   * denies the permission to that origin — so it goes to the main process,
+   * which has no such restriction.
+   */
+  copy: (text) => ipcRenderer.invoke('app:copy', text),
   /** The module grid for a QR code: `{ size, data }`, or null if it would not fit. */
   qr: (text) => ipcRenderer.invoke('app:qr', text),
   /**

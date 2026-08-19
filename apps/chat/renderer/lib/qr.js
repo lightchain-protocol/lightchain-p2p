@@ -2,16 +2,20 @@ import { svg } from './dom.js'
 import { bridge } from './ipc.js'
 
 /**
- * The invite QR code.
+ * A QR code, wherever one is wanted.
  *
- * Its own module because it shares nothing with the rest of the room surface —
- * no selection, no composer, no room state. It takes a string and draws it.
+ * Its own module because it shares nothing with the surfaces that use it — no
+ * room state, no wallet state. It takes a string and an element and draws.
+ *
+ * Two callers now: a room invite and a receiving address. The invite is the
+ * default holder because it came first and because passing an element for the
+ * common case would be noise at every call site.
  */
 
-const figure = () => document.getElementById('invite-qr')
+const inviteFigure = () => document.getElementById('invite-qr')
 
-export function clearQr() {
-  figure()?.querySelector('svg')?.remove()
+export function clearQr(holder = inviteFigure()) {
+  holder?.querySelector('svg')?.remove()
 }
 
 /**
@@ -20,11 +24,17 @@ export function clearQr() {
  * One rect per run of dark modules rather than per module: an invite fills a
  * grid of around 60 squared, and six hundred elements render visibly slower
  * than the sixty or so that runs collapse into.
+ *
+ * The label matters for anyone using a screen reader, who otherwise meets an
+ * unexplained image in the middle of a dialog. It defaults to the invite
+ * wording for the same reason the holder does.
  */
-export async function drawQr(text) {
-  clearQr()
-
-  const holder = figure()
+export async function drawQr(
+  text,
+  holder = inviteFigure(),
+  label = 'An invite to this room, as a QR code'
+) {
+  clearQr(holder)
   if (!holder) return
 
   const grid = await bridge.qr(text)
@@ -41,7 +51,7 @@ export async function drawQr(text) {
     role: 'img'
   })
   const title = svg('title', {})
-  title.textContent = 'An invite to this room, as a QR code'
+  title.textContent = label
   chart.append(title)
   chart.append(svg('rect', { class: 'qr-bg', x: 0, y: 0, width: span, height: span }))
 

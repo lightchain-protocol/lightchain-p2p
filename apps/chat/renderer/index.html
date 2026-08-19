@@ -17,7 +17,6 @@
     partials/panel-models.html      models and inference
     partials/panel-worker.html      worker
     partials/panel-wallet.html      wallet
-    partials/panel-roadmap.html     roadmap
     partials/content-close.html     shared — closes content and shell
     partials/dialogs.html           shared dialogs: join, invite, pay, rename, move
     partials/dialog-secure.html     how this room is protected
@@ -61,7 +60,6 @@
     <link rel="stylesheet" href="styles/worker.css" />
     <link rel="stylesheet" href="styles/wallet.css" />
     <link rel="stylesheet" href="styles/settings.css" />
-    <link rel="stylesheet" href="styles/roadmap.css" />
     <link rel="stylesheet" href="styles/onboarding.css" />
 
     <!-- Parts of a surface rather than surfaces of their own. -->
@@ -127,11 +125,6 @@
           <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
           <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
         </symbol>
-        <symbol id="i-roadmap" viewBox="0 0 24 24">
-          <path d="M12 13v8" />
-          <path d="M12 3v3" />
-          <path d="M2.354 10.354a1.207 1.207 0 0 1 0-1.708l2.06-2.06A2 2 0 0 1 5.828 6h12.344a2 2 0 0 1 1.414.586l2.06 2.06a1.207 1.207 0 0 1 0 1.708l-2.06 2.06a2 2 0 0 1-1.414.586H5.828a2 2 0 0 1-1.414-.586z" />
-        </symbol>
         <symbol id="i-settings" viewBox="0 0 24 24">
           <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" />
           <circle cx="12" cy="12" r="3" />
@@ -148,6 +141,9 @@
         </symbol>
         <symbol id="i-chevron" viewBox="0 0 24 24">
           <path d="m9 18 6-6-6-6" />
+        </symbol>
+        <symbol id="i-chevron-left" viewBox="0 0 24 24">
+          <path d="m15 18-6-6 6-6" />
         </symbol>
         <symbol id="i-sun" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="4" />
@@ -339,19 +335,6 @@
           <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
           <path d="m9 12 2 2 4-4" />
         </symbol>
-        <symbol id="i-mobile" viewBox="0 0 24 24">
-          <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
-          <path d="M12 18h.01" />
-        </symbol>
-        <symbol id="i-hardware" viewBox="0 0 24 24">
-          <circle cx="10" cy="7" r="1" />
-          <circle cx="4" cy="20" r="1" />
-          <path d="M4.7 19.3 19 5" />
-          <path d="m21 3-3 1 2 2Z" />
-          <path d="M9.26 7.68 5 12l2 5" />
-          <path d="m10 14 5 2 3.5-3.5" />
-          <path d="m18 12 1-1 1 1-1 1Z" />
-        </symbol>
         <symbol id="i-routing" viewBox="0 0 24 24">
           <circle cx="6" cy="19" r="3" />
           <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
@@ -364,7 +347,20 @@
         </symbol>
         <!-- icons:end -->
       </defs>
-    </svg>
+            <!-- coins:start -->
+        <symbol id="c-btc" viewBox="0 0 32 32"><g fill="none" fill-rule="evenodd"><circle cx="16" cy="16" r="16" fill="#F7931A"/><path fill="#FFF" fill-rule="nonzero" d="M23.189 14.02c.314-2.096-1.283-3.223-3.465-3.975l.708-2.84-1.728-.43-.69 2.765c-.454-.114-.92-.22-1.385-.326l.695-2.783L15.596 6l-.708 2.839c-.376-.086-.746-.17-1.104-.26l.002-.009-2.384-.595-.46 1.846s1.283.294 1.256.312c.7.175.826.638.805 1.006l-.806 3.235c.048.012.11.03.18.057l-.183-.045-1.13 4.532c-.086.212-.303.531-.793.41.018.025-1.256-.313-1.256-.313l-.858 1.978 2.25.561c.418.105.828.215 1.231.318l-.715 2.872 1.727.43.708-2.84c.472.127.93.245 1.378.357l-.706 2.828 1.728.43.715-2.866c2.948.558 5.164.333 6.097-2.333.752-2.146-.037-3.385-1.588-4.192 1.13-.26 1.98-1.003 2.207-2.538zm-3.95 5.538c-.533 2.147-4.148.986-5.32.695l.95-3.805c1.172.293 4.929.872 4.37 3.11zm.535-5.569c-.487 1.953-3.495.96-4.47.717l.86-3.45c.975.243 4.118.696 3.61 2.733z"/></g></symbol>
+        <symbol id="c-eth" viewBox="0 0 32 32"><g fill="none" fill-rule="evenodd"><circle cx="16" cy="16" r="16" fill="#627EEA"/><g fill="#FFF" fill-rule="nonzero"><path fill-opacity=".602" d="M16.498 4v8.87l7.497 3.35z"/><path d="M16.498 4L9 16.22l7.498-3.35z"/><path fill-opacity=".602" d="M16.498 21.968v6.027L24 17.616z"/><path d="M16.498 27.995v-6.028L9 17.616z"/><path fill-opacity=".2" d="M16.498 20.573l7.497-4.353-7.497-3.348z"/><path fill-opacity=".602" d="M9 16.22l7.498 4.353v-7.701z"/></g></g></symbol>
+        <symbol id="c-usdc" viewBox="0 0 32 32"><g fill="none"><circle fill="#3E73C4" cx="16" cy="16" r="16"/><g fill="#FFF"><path d="M20.022 18.124c0-2.124-1.28-2.852-3.84-3.156-1.828-.243-2.193-.728-2.193-1.578 0-.85.61-1.396 1.828-1.396 1.097 0 1.707.364 2.011 1.275a.458.458 0 00.427.303h.975a.416.416 0 00.427-.425v-.06a3.04 3.04 0 00-2.743-2.489V9.142c0-.243-.183-.425-.487-.486h-.915c-.243 0-.426.182-.487.486v1.396c-1.829.242-2.986 1.456-2.986 2.974 0 2.002 1.218 2.791 3.778 3.095 1.707.303 2.255.668 2.255 1.639 0 .97-.853 1.638-2.011 1.638-1.585 0-2.133-.667-2.316-1.578-.06-.242-.244-.364-.427-.364h-1.036a.416.416 0 00-.426.425v.06c.243 1.518 1.219 2.61 3.23 2.914v1.457c0 .242.183.425.487.485h.915c.243 0 .426-.182.487-.485V21.34c1.829-.303 3.047-1.578 3.047-3.217z"/><path d="M12.892 24.497c-4.754-1.7-7.192-6.98-5.424-11.653.914-2.55 2.925-4.491 5.424-5.402.244-.121.365-.303.365-.607v-.85c0-.242-.121-.424-.365-.485-.061 0-.183 0-.244.06a10.895 10.895 0 00-7.13 13.717c1.096 3.4 3.717 6.01 7.13 7.102.244.121.488 0 .548-.243.061-.06.061-.122.061-.243v-.85c0-.182-.182-.424-.365-.546zm6.46-18.936c-.244-.122-.488 0-.548.242-.061.061-.061.122-.061.243v.85c0 .243.182.485.365.607 4.754 1.7 7.192 6.98 5.424 11.653-.914 2.55-2.925 4.491-5.424 5.402-.244.121-.365.303-.365.607v.85c0 .242.121.424.365.485.061 0 .183 0 .244-.06a10.895 10.895 0 007.13-13.717c-1.096-3.46-3.778-6.07-7.13-7.162z"/></g></g></symbol>
+        <symbol id="c-usdt" viewBox="0 0 32 32"><g fill="none" fill-rule="evenodd"><circle cx="16" cy="16" r="16" fill="#26A17B"/><path fill="#FFF" d="M17.922 17.383v-.002c-.11.008-.677.042-1.942.042-1.01 0-1.721-.03-1.971-.042v.003c-3.888-.171-6.79-.848-6.79-1.658 0-.809 2.902-1.486 6.79-1.66v2.644c.254.018.982.061 1.988.061 1.207 0 1.812-.05 1.925-.06v-2.643c3.88.173 6.775.85 6.775 1.658 0 .81-2.895 1.485-6.775 1.657m0-3.59v-2.366h5.414V7.819H8.595v3.608h5.414v2.365c-4.4.202-7.709 1.074-7.709 2.118 0 1.044 3.309 1.915 7.709 2.118v7.582h3.913v-7.584c4.393-.202 7.694-1.073 7.694-2.116 0-1.043-3.301-1.914-7.694-2.117"/></g></symbol>
+        <symbol id="c-dai" viewBox="0 0 32 32"><g fill="none" fill-rule="evenodd"><circle fill="#F4B731" fill-rule="nonzero" cx="16" cy="16" r="16"/><path d="M9.277 8h6.552c3.985 0 7.006 2.116 8.13 5.194H26v1.861h-1.611c.031.294.047.594.047.898v.046c0 .342-.02.68-.06 1.01H26v1.86h-2.08C22.767 21.905 19.77 24 15.83 24H9.277v-5.131H7v-1.86h2.277v-1.954H7v-1.86h2.277V8zm1.831 10.869v3.462h4.72c2.914 0 5.078-1.387 6.085-3.462H11.108zm11.366-1.86H11.108v-1.954h11.37c.041.307.063.622.063.944v.045c0 .329-.023.65-.067.964zM15.83 9.665c2.926 0 5.097 1.424 6.098 3.528h-10.82V9.666h4.72z" fill="#FFF"/></g></symbol>
+        <symbol id="c-wbtc" viewBox="0 0 32 32"><g fill="none"><circle fill="#201A2D" cx="16" cy="16" r="16"/><g fill="#FFF"><path d="M22.818 9.586l-.6.6a8.494 8.494 0 010 11.464l.6.6a9.352 9.352 0 000-12.678v.014zM10.2 9.638a8.494 8.494 0 0111.464 0l.6-.6a9.352 9.352 0 00-12.678 0l.614.6zm-.562 12.018a8.494 8.494 0 010-11.458l-.6-.6a9.352 9.352 0 000 12.678l.6-.62zm12.018.554a8.494 8.494 0 01-11.464 0l-.6.6a9.352 9.352 0 0012.678 0l-.614-.6zm-1.942-8.286c-.12-1.252-1.2-1.672-2.566-1.8V10.4h-1.056v1.692h-.844V10.4H14.2v1.736h-2.142v1.13s.78-.014.768 0a.546.546 0 01.6.464v4.752a.37.37 0 01-.128.258.366.366 0 01-.272.092c.014.012-.768 0-.768 0l-.2 1.262h2.122v1.764h1.056V20.12h.844v1.73h1.058v-1.744c1.784-.108 3.028-.548 3.184-2.218.126-1.344-.506-1.944-1.516-2.186.614-.302.994-.862.908-1.778zm-1.48 3.756c0 1.312-2.248 1.162-2.964 1.162v-2.328c.716.002 2.964-.204 2.964 1.166zm-.49-3.28c0 1.2-1.876 1.054-2.472 1.054v-2.116c.596 0 2.472-.188 2.472 1.062z"/><path d="M15.924 26.852C9.89 26.851 5 21.959 5 15.925 5 9.892 9.892 5 15.925 5c6.034 0 10.926 4.89 10.927 10.924a10.926 10.926 0 01-10.928 10.928zm0-21c-5.559.004-10.062 4.513-10.06 10.072.002 5.559 4.51 10.064 10.068 10.064 5.559 0 10.066-4.505 10.068-10.064A10.068 10.068 0 0015.924 5.852z"/></g></g></symbol>
+        <symbol id="c-weth" viewBox="0 0 32 32"><g fill="none" fill-rule="evenodd"><circle cx="16" cy="16" r="16" fill="#627EEA"/><g fill="#FFF" fill-rule="nonzero"><path fill-opacity=".602" d="M16.498 4v8.87l7.497 3.35z"/><path d="M16.498 4L9 16.22l7.498-3.35z"/><path fill-opacity=".602" d="M16.498 21.968v6.027L24 17.616z"/><path d="M16.498 27.995v-6.028L9 17.616z"/><path fill-opacity=".2" d="M16.498 20.573l7.497-4.353-7.497-3.348z"/><path fill-opacity=".602" d="M9 16.22l7.498 4.353v-7.701z"/></g></g></symbol>
+        <symbol id="c-bnb" viewBox="0 0 32 32"><g fill="none"><circle cx="16" cy="16" r="16" fill="#F3BA2F"/><path fill="#FFF" d="M12.116 14.404L16 10.52l3.886 3.886 2.26-2.26L16 6l-6.144 6.144 2.26 2.26zM6 16l2.26-2.26L10.52 16l-2.26 2.26L6 16zm6.116 1.596L16 21.48l3.886-3.886 2.26 2.259L16 26l-6.144-6.144-.003-.003 2.263-2.257zM21.48 16l2.26-2.26L26 16l-2.26 2.26L21.48 16zm-3.188-.002h.002V16L16 18.294l-2.291-2.29-.004-.004.004-.003.401-.402.195-.195L16 13.706l2.293 2.293z"/></g></symbol>
+        <symbol id="c-pol" viewBox="0 0 32 32"><g fill="none"><circle fill="#6F41D8" cx="16" cy="16" r="16"/><path d="M21.092 12.693c-.369-.215-.848-.215-1.254 0l-2.879 1.654-1.955 1.078-2.879 1.653c-.369.216-.848.216-1.254 0l-2.288-1.294c-.369-.215-.627-.61-.627-1.042V12.19c0-.431.221-.826.627-1.042l2.25-1.258c.37-.216.85-.216 1.256 0l2.25 1.258c.37.216.628.611.628 1.042v1.654l1.955-1.115v-1.653a1.16 1.16 0 00-.627-1.042l-4.17-2.372c-.369-.216-.848-.216-1.254 0l-4.244 2.372A1.16 1.16 0 006 11.076v4.78c0 .432.221.827.627 1.043l4.244 2.372c.369.215.849.215 1.254 0l2.879-1.618 1.955-1.114 2.879-1.617c.369-.216.848-.216 1.254 0l2.251 1.258c.37.215.627.61.627 1.042v2.552c0 .431-.22.826-.627 1.042l-2.25 1.294c-.37.216-.85.216-1.255 0l-2.251-1.258c-.37-.216-.628-.611-.628-1.042v-1.654l-1.955 1.115v1.653c0 .431.221.827.627 1.042l4.244 2.372c.369.216.848.216 1.254 0l4.244-2.372c.369-.215.627-.61.627-1.042v-4.78a1.16 1.16 0 00-.627-1.042l-4.28-2.409z" fill="#FFF"/></g></symbol>
+        <symbol id="c-arb" viewBox="0 0 32 32"><g fill="none" fill-rule="evenodd"><circle cx="16" cy="16" fill="#efb914" fill-rule="nonzero" r="16"/><path d="M21.002 9.855A7.947 7.947 0 0124 15.278l-2.847-.708a5.357 5.357 0 00-3.86-3.667c-2.866-.713-5.76.991-6.465 3.806s1.05 5.675 3.917 6.388a5.373 5.373 0 005.134-1.43l2.847.707a7.974 7.974 0 01-5.2 3.385L16.716 27l-2.596-.645.644-2.575a8.28 8.28 0 01-1.298-.323l-.643 2.575-2.596-.646.81-3.241c-2.378-1.875-3.575-4.996-2.804-8.081s3.297-5.281 6.28-5.823L15.323 5l2.596.645-.644 2.575a8.28 8.28 0 011.298.323l.643-2.575 2.596.646z" fill="#fff"/></g></symbol>
+        <symbol id="c-generic" viewBox="0 0 32 32"><g fill="none" fill-rule="evenodd"><circle cx="16" cy="16" fill="#efb914" fill-rule="nonzero" r="16"/><path d="M21.002 9.855A7.947 7.947 0 0124 15.278l-2.847-.708a5.357 5.357 0 00-3.86-3.667c-2.866-.713-5.76.991-6.465 3.806s1.05 5.675 3.917 6.388a5.373 5.373 0 005.134-1.43l2.847.707a7.974 7.974 0 01-5.2 3.385L16.716 27l-2.596-.645.644-2.575a8.28 8.28 0 01-1.298-.323l-.643 2.575-2.596-.646.81-3.241c-2.378-1.875-3.575-4.996-2.804-8.081s3.297-5.281 6.28-5.823L15.323 5l2.596.645-.644 2.575a8.28 8.28 0 011.298.323l.643-2.575 2.596.646z" fill="#fff"/></g></symbol>
+        <!-- coins:end -->
+      </svg>
 
     <!-- Drawn by us on Windows and Linux; on macOS the traffic lights sit here
          and the content is inset to clear them. -->
@@ -554,6 +550,34 @@
               ></textarea>
             </label>
             <p class="field-hint" id="restore-count">Twelve words.</p>
+
+            <details class="dialog-details" id="restore-advanced">
+              <summary>My phrase also has a passphrase</summary>
+              <p class="field-hint">
+                Some wallets add a word of your own on top of the twelve, sometimes called a
+                passphrase or a 25th word. Only fill this in if you set one. Capitals and spaces
+                matter here, and nothing can tell you it is wrong — the wrong one quietly opens a
+                different, empty wallet.
+              </p>
+              <label class="field">
+                <span class="field-label">Passphrase</span>
+                <span class="field-with-button">
+                  <input
+                    class="input"
+                    id="restore-passphrase"
+                    type="password"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="Leave empty if you did not set one"
+                  />
+                  <button class="field-reveal" type="button" data-reveal="restore-passphrase">
+                    Show
+                  </button>
+                </span>
+              </label>
+              <p class="field-hint" id="restore-preview" hidden></p>
+            </details>
+
             <label class="field">
               <span class="field-label">Password for this machine</span>
               <span class="field-with-button">
@@ -768,6 +792,23 @@
               </select>
             </label>
             <dl class="facts" id="network-facts"></dl>
+
+            <h3 class="settings-heading">Locking</h3>
+            <p class="settings-note">
+              How long the wallet stays open with nothing happening. It locks itself after that, and
+              opening it again costs your password. Rooms close with it.
+            </p>
+            <label class="field">
+              <span class="field-label">Lock after</span>
+              <select class="input" id="set-auto-lock">
+                <option value="1">1 minute</option>
+                <option value="5">5 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="480">8 hours</option>
+                <option value="0">Never — only on a machine nobody else uses</option>
+              </select>
+            </label>
           </section>
 
           <section class="settings-page" id="settings-wallet" hidden>
@@ -1076,62 +1117,6 @@
                 <button class="nav-item" type="button" data-section="wallet">
                   <svg class="nav-icon" aria-hidden="true"><use href="#i-wallet" /></svg>
                   <span class="nav-label">Wallet</span>
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          <div class="nav-group">
-            <h2 class="sidebar-title" id="nav-next">What is next</h2>
-            <ul class="sections" aria-labelledby="nav-next">
-              <li>
-                <button class="nav-item" type="button" data-section="roadmap">
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-roadmap" /></svg>
-                  <span class="nav-label">Roadmap</span>
-                </button>
-              </li>
-            </ul>
-
-            <!-- Deliberately not a `.sections` list: showSection looks up a
-                 panel for every nav item it finds in one, and these have none,
-                 so it would dereference null on every section change.
-
-                 Dimmed and aria-disabled, but each still leads somewhere — to
-                 the roadmap entry explaining what it is waiting on. A dimmed
-                 row that swallows the click is the dead end just taken out of
-                 onboarding, wearing a different colour. -->
-            <ul class="nav-upcoming" aria-label="Not built yet">
-              <li>
-                <button
-                  class="nav-item nav-item-upcoming"
-                  type="button"
-                  aria-disabled="true"
-                  data-roadmap="roadmap-mobile"
-                >
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-mobile" /></svg>
-                  <span class="nav-label">Mobile</span>
-                </button>
-              </li>
-              <li>
-                <button
-                  class="nav-item nav-item-upcoming"
-                  type="button"
-                  aria-disabled="true"
-                  data-roadmap="roadmap-hardware-wallets"
-                >
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-hardware" /></svg>
-                  <span class="nav-label">Hardware wallets</span>
-                </button>
-              </li>
-              <li>
-                <button
-                  class="nav-item nav-item-upcoming"
-                  type="button"
-                  aria-disabled="true"
-                  data-roadmap="roadmap-direct-routing"
-                >
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-routing" /></svg>
-                  <span class="nav-label">Direct routing</span>
                 </button>
               </li>
             </ul>
@@ -1747,6 +1732,92 @@
              the open wallet is a console, because balances and an address are
              compared and copied rather than read as prose. -->
         <div class="panel" id="panel-wallet" hidden>
+          <!-- One asset, on one chain -------------------------------------
+               A pane rather than a section. There is no router — panels are
+               flat toggles — and a nav entry for something reached by clicking
+               a row would be an entry that is empty until you have. -->
+          <section class="console asset-page" id="asset-detail" hidden>
+            <button class="asset-close" type="button" id="asset-back" aria-label="Back to holdings">
+              <svg class="icon" aria-hidden="true"><use href="#i-close" /></svg>
+            </button>
+
+            <div class="asset-hero">
+              <svg class="asset-hero-mark" aria-hidden="true">
+                <use href="#c-generic" id="asset-mark" />
+              </svg>
+              <h1 class="asset-hero-name" id="asset-title">—</h1>
+              <p class="asset-hero-balance" id="asset-balance">—</p>
+              <p class="asset-hero-worth" id="asset-worth">—</p>
+
+              <div class="asset-actions">
+                <button class="asset-action" type="button" id="asset-receive">Receive</button>
+                <button class="asset-action" type="button" id="asset-send">Send</button>
+                <button class="asset-action" type="button" id="asset-bridge">Bridge</button>
+                <button class="asset-action" type="button" id="asset-buy">Buy</button>
+              </div>
+            </div>
+
+            <div class="asset-tabs" role="tablist">
+              <button class="asset-tab is-active" type="button" role="tab" data-tab="chart">
+                Price chart
+              </button>
+              <button class="asset-tab" type="button" role="tab" data-tab="activity">
+                Transactions
+              </button>
+              <button class="asset-tab" type="button" role="tab" data-tab="about">About</button>
+            </div>
+
+            <div class="asset-body">
+              <section class="asset-tabpane" id="tab-chart">
+                <div class="asset-ranges" id="asset-ranges">
+                  <button class="asset-range" type="button" data-range="24h">24H</button>
+                  <button class="asset-range is-active" type="button" data-range="1w">1W</button>
+                  <button class="asset-range" type="button" data-range="1m">1M</button>
+                  <button class="asset-range" type="button" data-range="1y">1Y</button>
+                  <button class="asset-range" type="button" data-range="all">All</button>
+                </div>
+                <div class="asset-chart" id="asset-chart"></div>
+                <p class="wallet-note" id="asset-chart-note" hidden></p>
+              </section>
+
+              <section class="asset-tabpane" id="tab-activity" hidden>
+                <!-- What the source used can and cannot see. Said before the
+                     list rather than after it, because somebody who was paid
+                     and cannot find the payment will stop reading. -->
+                <p class="wallet-note" id="asset-history-covers"></p>
+                <div class="alert" data-tone="warn" id="asset-history-blind" hidden>
+                  <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                  <div class="alert-body">
+                    <strong class="alert-title">Not everything shows here</strong>
+                    <span id="asset-history-blind-note"></span>
+                  </div>
+                </div>
+                <ul class="ledger-list" id="asset-history"></ul>
+                <p class="wallet-note" id="asset-history-empty" hidden>
+                  Nothing found for this asset yet.
+                </p>
+              </section>
+
+              <section class="asset-tabpane" id="tab-about" hidden>
+                <dl class="facts">
+                  <dt>Network</dt>
+                  <dd><span class="chip" id="about-chain"></span></dd>
+                  <dt>Contract</dt>
+                  <dd><code class="wallet-key" id="about-contract"></code></dd>
+                  <dt>Decimals</dt>
+                  <dd id="about-decimals"></dd>
+                  <dt>Priced by</dt>
+                  <dd id="about-priced"></dd>
+                </dl>
+                <p class="wallet-note" id="about-note"></p>
+                <button class="button button-sm" type="button" id="asset-explorer">
+                  <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+                  View on explorer
+                </button>
+              </section>
+            </div>
+          </section>
+
           <div class="wallet-pane" id="wallet-pane">
             <!-- No wallet yet -->
             <section class="wallet-gate" id="wallet-none" hidden>
@@ -1863,21 +1934,60 @@
                 </div>
               </header>
 
-              <div class="console-body console-body-split">
-                <div class="wallet-column">
+              <!-- Holdings first and full width. It is a table of seven
+                   columns compared down the page, and squeezing it into half
+                   the window makes the comparison it exists for impossible.
+                   Everything else is narrower by nature and sits below. -->
+              <div class="console-body wallet-body">
+                <div class="wallet-wide">
                   <section class="kit-card kit-card-flush">
                     <header class="kit-card-head">
-                      <h2 class="kit-card-title">Balances</h2>
+                      <h2 class="kit-card-title">Holdings</h2>
+                      <button class="button button-sm" type="button" id="assets-refresh">
+                        <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                        Refresh
+                      </button>
                     </header>
                     <div class="kit-card-scroll">
-                      <!-- Two figures rather than one total. They are the same
-                           money in two places and only one of them can be sent,
-                           so adding them would overstate what is spendable. -->
-                      <div class="wallet-balances">
-                        <div class="wallet-balance">
-                          <span class="wallet-balance-label">LCAI on chain</span>
-                          <span class="wallet-balance-value" id="wallet-native">—</span>
+                      <!-- One figure, and a note when it is not the whole
+                           picture. A total presented as complete while a chain
+                           was unreachable is a number somebody would act on. -->
+                      <div class="holdings-total">
+                        <span class="holdings-total-label">Everything, in dollars</span>
+                        <span class="holdings-total-value" id="assets-total">—</span>
+                      </div>
+
+                      <div class="alert" data-tone="warn" role="status" id="assets-partial" hidden>
+                        <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                        <div class="alert-body">
+                          <strong class="alert-title">This total is incomplete</strong>
+                          <span id="assets-partial-note"></span>
                         </div>
+                      </div>
+
+                      <!-- A table, because these are columns being compared
+                           down rather than rows read across: which of these is
+                           worth most, which moved today. A list of cards makes
+                           that comparison impossible. -->
+                      <div class="holdings-head" aria-hidden="true" hidden>
+                        <span>Asset</span>
+                        <span class="holdings-col-num">Balance</span>
+                        <span class="holdings-col-num">Price</span>
+                        <span class="holdings-col-num">24h</span>
+                        <span class="holdings-col-chart">7 days</span>
+                        <span class="holdings-col-num">Value</span>
+                      </div>
+                      <ul class="holdings" id="assets-list"></ul>
+
+                      <p class="wallet-note" id="assets-empty" hidden>
+                        Nothing held yet on any of the six networks. Use Receive to get an address.
+                      </p>
+
+                      <!-- Prepaid sits apart from the holdings rather than in
+                           them. It is the same money in a different place and
+                           only one of the two can be sent, so adding them would
+                           overstate what is spendable. -->
+                      <div class="wallet-balances">
                         <div class="wallet-balance">
                           <span class="wallet-balance-label">Prepaid for inference</span>
                           <span class="wallet-balance-value" id="wallet-prepaid">—</span>
@@ -1900,6 +2010,9 @@
                     </div>
                   </section>
 
+                </div>
+
+                <div class="wallet-split">
                   <section class="kit-card kit-card-flush">
                     <header class="kit-card-head">
                       <h2 class="kit-card-title">Account</h2>
@@ -1928,9 +2041,7 @@
                       </dl>
                     </div>
                   </section>
-                </div>
 
-                <div class="wallet-column">
                   <section class="kit-card kit-card-flush">
                     <header class="kit-card-head">
                       <h2 class="kit-card-title">Move funds</h2>
@@ -1942,13 +2053,45 @@
                         brings back whatever is left. Neither leaves this machine's control.
                       </p>
                       <div class="wallet-actions">
-                        <button class="button button-primary" type="button" data-move="deposit">
+                        <button class="button button-primary" type="button" id="assets-send-btn">
+                          <svg class="icon" aria-hidden="true"><use href="#i-upload" /></svg>
+                          Send
+                        </button>
+                        <button class="button" type="button" id="assets-receive-btn">
                           <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
-                          Deposit
+                          Receive
+                        </button>
+                        <button class="button" type="button" data-move="deposit">
+                          Prepay inference
                         </button>
                         <button class="button" type="button" data-move="withdraw">
                           <svg class="icon" aria-hidden="true"><use href="#i-upload" /></svg>
-                          Withdraw
+                          Withdraw prepaid
+                        </button>
+                      </div>
+
+                      <h3 class="wallet-subheading">Bridge and exchanges</h3>
+                      <p class="wallet-note">
+                        LCAI exists as an ERC-20 on Ethereum and as the native coin on Lightchain.
+                        The bridge moves it between the two. Buying and selling happens on
+                        exchanges, which open in your browser — nothing here takes an order.
+                      </p>
+                      <div class="wallet-actions">
+                        <button class="button" type="button" id="bridge-open-btn">
+                          <svg class="icon" aria-hidden="true"><use href="#i-routing" /></svg>
+                          Bridge
+                        </button>
+                        <button class="button" type="button" data-external="https://bridge.lightchain.ai">
+                          <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+                          Official bridge
+                        </button>
+                        <button
+                          class="button"
+                          type="button"
+                          data-external="https://www.coingecko.com/en/coins/lightchain-ai#markets"
+                        >
+                          <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+                          Where LCAI trades
                         </button>
                       </div>
                     </div>
@@ -1979,330 +2122,214 @@
             </section>
           </div>
         </div>
-        <!-- What is next ----------------------------------------------------->
-        <!--
-          A reading page, because this is prose. Every item is taken from
-          ROADMAP.md, from the decision records in docs/decisions, or from
-          apps/chat/README.md, and the status on it says which kind of
-          not-built it is. Those kinds are genuinely different and the page is
-          worth nothing if it blurs them.
-
-          No dates and no progress. A date on a page like this becomes a
-          promise the moment somebody reads it, and none of these are held up
-          by anything a date would move.
-        -->
-        <div class="panel" id="panel-roadmap" hidden>
-          <div class="page">
-            <header class="page-head">
-              <div class="page-head-main">
-                <h1 class="page-title">Roadmap</h1>
-                <p class="page-sub">
-                  What is not built yet, and which kind of not-built each one is. Nothing here has
-                  a date.
-                </p>
-              </div>
-            </header>
-
-            <section class="kit-card">
-              <header class="kit-card-head">
-                <h2 class="kit-card-title">What the statuses mean</h2>
-              </header>
-              <dl class="unbuilt-legend">
-                <dt><span class="unbuilt-status">Not started</span></dt>
-                <dd>No code has been written. Nothing outside the work is holding it up.</dd>
-
-                <dt>
-                  <span class="unbuilt-status" data-tone="waiting">Built, nothing runs it</span>
-                </dt>
-                <dd>
-                  The code exists and is tested. Nobody operates it, so the property it provides is
-                  not there.
-                </dd>
-
-                <dt>
-                  <span class="unbuilt-status" data-tone="waiting">Waiting on procurement</span>
-                </dt>
-                <dd>Finished as far as this repository goes. What is missing has to be bought.</dd>
-
-                <dt><span class="unbuilt-status" data-tone="waiting">Not decided</span></dt>
-                <dd>A choice has to be made before any of it is work.</dd>
-
-                <dt>
-                  <span class="unbuilt-status" data-tone="decided">Decided against, for now</span>
-                </dt>
-                <dd>
-                  Looked at, turned down, and written up with the condition that would change the
-                  answer.
-                </dd>
-              </dl>
-            </section>
-
-            <div class="unbuilt-list">
-              <article class="unbuilt" id="roadmap-blind-peers">
-                <h2 class="unbuilt-title">
-                  <span class="unbuilt-status" data-tone="waiting">Built, nothing runs it</span>
-                  Blind peers, so a room outlives everyone leaving
-                </h2>
-                <p class="unbuilt-body">
-                  A room replicates only while somebody holding it is online, so two people who are
-                  never online at the same time exchange nothing. A blind peer closes that: a
-                  machine that holds an encrypted room without being able to read a word of it.
-                </p>
-                <p class="unbuilt-body">
-                  The code is finished. A room is lodged with the blind peers named in Settings as
-                  it opens, and <code>packages/room</code> has a test that shuts down every
-                  participant and reads the room back on a machine that was never given the keys.
-                  It has been done through the running application as well, not only in a test.
-                </p>
-                <dl class="facts">
-                  <dt>Waiting on</dt>
-                  <dd>
-                    A machine. There is no public fleet, and a third-party peer will cache for us
-                    without serving on our behalf.
-                  </dd>
-                  <dt>Recorded in</dt>
-                  <dd><code>docs/availability.md</code>, which has the systemd units.</dd>
-                </dl>
-              </article>
-
-              <article class="unbuilt" id="roadmap-seeders">
-                <h2 class="unbuilt-title">
-                  <span class="unbuilt-status" data-tone="waiting">Built, nothing runs it</span>
-                  A seeder that stays online
-                </h2>
-                <p class="unbuilt-body">
-                  Updates arrive peer to peer rather than from a download server, which means
-                  somebody has to be holding the release. <code>apps/seeder</code> does exactly
-                  that and is verified holding a real Pear-staged release. Applications are
-                  client-only by default, so until a seeder runs somewhere continuously a release
-                  reaches nobody once the machine that staged it goes offline.
-                </p>
-                <dl class="facts">
-                  <dt>Waiting on</dt>
-                  <dd>A host to run it on, continuously.</dd>
-                  <dt>Recorded in</dt>
-                  <dd><code>ROADMAP.md</code>, under infrastructure to operate.</dd>
-                </dl>
-              </article>
-
-              <article class="unbuilt" id="roadmap-signing">
-                <h2 class="unbuilt-title">
-                  <span class="unbuilt-status" data-tone="waiting">Waiting on procurement</span>
-                  A signed release you can install
-                </h2>
-                <p class="unbuilt-body">
-                  Nothing is published. Every tag builds a DMG, an MSIX and an AppImage alongside
-                  standalone binaries for six hosts, and every one of them is unsigned, uploaded as
-                  a build artifact and released nowhere. Building from source is the only way to
-                  run this today.
-                </p>
-                <p class="unbuilt-body">
-                  The signing and notarisation steps are written and skip themselves when no
-                  credentials are set, so the workflow will not change when certificates arrive.
-                  Until they do, macOS reports the app as damaged rather than as unsigned, and
-                  Windows warns on every download.
-                </p>
-                <dl class="facts">
-                  <dt>Waiting on</dt>
-                  <dd>
-                    An Apple Developer certificate, whose D-U-N-S number takes up to five business
-                    days to issue and two more before Apple can see it; a Windows certificate; and
-                    a production upgrade link under a multisig quorum. The legal entity name
-                    chosen becomes the Windows Publisher name, and that is permanent once a signed
-                    release ships.
-                  </dd>
-                  <dt>Not decided</dt>
-                  <dd>
-                    Which Windows and Linux artifacts to ship. ADR 0005 proposes an MSIX with a
-                    signed executable beside it, and AppImage alone, on the grounds that an
-                    installation which cannot receive peer-to-peer updates stops receiving fixes
-                    invisibly. It needs a decision rather than more research.
-                  </dd>
-                </dl>
-              </article>
-
-              <article class="unbuilt" id="roadmap-one-session">
-                <h2 class="unbuilt-title">
-                  <span class="unbuilt-status">Not started</span>
-                  More than one conversation at a time
-                </h2>
-                <p class="unbuilt-body">
-                  The worker holds one conversation, and starting a second closes the first. A
-                  session is expensive to open — a sortition draw takes the better part of a
-                  minute and creates a transaction — so it is made once and reused for every
-                  question after, which is right for one conversation and is the reason there is
-                  only one.
-                </p>
-                <dl class="facts">
-                  <dt>Recorded in</dt>
-                  <dd><code>apps/chat/README.md</code>, under what does not exist yet.</dd>
-                </dl>
-              </article>
-
-              <article class="unbuilt" id="roadmap-continue-conversation">
-                <h2 class="unbuilt-title">
-                  <span class="unbuilt-status">Not started</span>
-                  Continuing an earlier conversation
-                </h2>
-                <p class="unbuilt-body">
-                  Saved conversations are listed beside the models and can be read, and that is
-                  all they can be. Carrying on with one means paying for a new session, because the
-                  session that produced it was closed and the worker that answered was drawn for
-                  it. Nothing carries the earlier exchange into the new session either, so the
-                  model would not have read it.
-                </p>
-                <dl class="facts">
-                  <dt>Recorded in</dt>
-                  <dd><code>apps/chat/README.md</code>.</dd>
-                </dl>
-              </article>
-
-              <article class="unbuilt" id="roadmap-conversation-search">
-                <h2 class="unbuilt-title">
-                  <span class="unbuilt-status">Not started</span>
-                  Searching what a model said
-                </h2>
-                <p class="unbuilt-body">
-                  Search covers room messages, across every room this peer holds. It does not cover
-                  conversations with a model: those are kept in a separate transcript log, encrypted
-                  under a key only this wallet can derive, and nothing reads it looking for
-                  anything.
-                </p>
-                <dl class="facts">
-                  <dt>Recorded in</dt>
-                  <dd><code>apps/chat/README.md</code>.</dd>
-                </dl>
-              </article>
-
-              <article class="unbuilt" id="roadmap-direct-routing">
-                <h2 class="unbuilt-title">
-                  <span class="unbuilt-status" data-tone="waiting">Not decided</span>
-                  Reaching a worker directly
-                </h2>
-                <p class="unbuilt-body">
-                  Every prompt goes through a foundation-operated relay and dispatcher today, the
-                  same path the web client uses. The alternative is for clients to find workers
-                  themselves over HyperDHT, addressed by the worker's registered key: fewer hops on
-                  the critical path, and streaming a token at a time becomes natural rather than
-                  something an intermediary has to relay frame by frame.
-                </p>
-                <p class="unbuilt-body">
-                  It is not scheduled, because it is not decided. Worker selection determines who
-                  earns, so doing it permissionlessly and fairly depends on verifiable
-                  randomness — and the audit in this repository records that selection is
-                  currently a SHA-256 draw carrying a note to upgrade it to a real one. What was
-                  asked for is a design and a testnet prototype returning with measurements, not a
-                  migration.
-                </p>
-                <dl class="facts">
-                  <dt>Waiting on</dt>
-                  <dd>Verifiable randomness on the chain, and a vote. Neither has happened.</dd>
-                  <dt>Recorded in</dt>
-                  <dd>
-                    The proposal, section 9, and <code>docs/proposals/AUDIT.md</code> section 1.2.
-                  </dd>
-                </dl>
-              </article>
-
-              <article class="unbuilt" id="roadmap-da">
-                <h2 class="unbuilt-title">
-                  <span class="unbuilt-status">Not started</span>
-                  Data availability, <code>packages/da</code>
-                </h2>
-                <p class="unbuilt-body">
-                  The package is named in CODEOWNERS so that ownership is settled before the code
-                  exists, and that is the whole of it: there is no such directory. What it becomes
-                  will have to clear the same bar the other replicating packages clear — a
-                  two-machine test with the publisher offline for part of the run — because an
-                  availability bug does not appear on one machine.
-                </p>
-                <dl class="facts">
-                  <dt>Recorded in</dt>
-                  <dd>
-                    The status table in <code>README.md</code>, and <code>CONTRIBUTING.md</code>
-                    for the testing bar.
-                  </dd>
-                </dl>
-              </article>
-
-              <article class="unbuilt" id="roadmap-mobile">
-                <h2 class="unbuilt-title">
-                  <span class="unbuilt-status" data-tone="decided">Decided against, for now</span>
-                  iOS and Android
-                </h2>
-                <p class="unbuilt-body">
-                  Deferred on purpose, and written down rather than left to drift. On iOS and
-                  Android the shell is a store binary and the store owns the update channel, so the
-                  one property this whole architecture is built for — publish a fix and have it
-                  reach people directly — does not exist there.
-                </p>
-                <p class="unbuilt-body">
-                  There is no working reference either: the <code>pear-mobile</code> counterpart
-                  the documentation mentions is not in the mirror, and PearPass, the reference
-                  implementation, does not use over-the-air updates on mobile at all. And an open
-                  model catalogue, where anyone can publish and any user can call any model, is a
-                  plausible store rejection that no amount of engineering retires.
-                </p>
-                <p class="unbuilt-body">
-                  What is deferred is delivery, not portability. The Bare worker is the same code a
-                  mobile worklet would run, so choosing this costs nothing structurally.
-                </p>
-                <dl class="facts">
-                  <dt>Recorded in</dt>
-                  <dd>ADR 0001, accepted 17 August 2026.</dd>
-                  <dt>Revisit when</dt>
-                  <dd>
-                    Desktop has shipped a signed release and applied at least one over-the-air
-                    update in the field, and there is usage data showing demand.
-                  </dd>
-                </dl>
-              </article>
-
-              <article class="unbuilt" id="roadmap-hardware-wallets">
-                <h2 class="unbuilt-title">
-                  <span class="unbuilt-status" data-tone="decided">Decided against, for now</span>
-                  Hardware wallets
-                </h2>
-                <p class="unbuilt-body">
-                  Investigated and turned down, and the transport was never the problem: WebHID
-                  works in this renderer under the sandbox and the content security policy, which
-                  was the part most likely to be impossible.
-                </p>
-                <p class="unbuilt-body">
-                  The reason not to build it is what the device would be asked to do. This
-                  application signs on every message, every rename and every writer grant, and a
-                  hardware wallet is built for a wallet that signs occasionally. Worse, it could
-                  not show what it was signing: a message commits to a hash of its text rather than
-                  to the text, deliberately, so that a newline cannot impersonate the field
-                  separators and claim a different author. The sentence being approved is the one
-                  field the reader cannot see, and no device can invert a hash to recover it.
-                  Shipping this would look like protection and would teach somebody to press
-                  Approve without reading.
-                </p>
-                <dl class="facts">
-                  <dt>Recorded in</dt>
-                  <dd>ADR 0006, 18 August 2026.</dd>
-                  <dt>Revisit when</dt>
-                  <dd>
-                    <code>packages/protocol</code> grows a session key for some other reason. That
-                    is most of the four to six weeks this would take, and it is a wire format that
-                    can never be migrated once it ships.
-                  </dd>
-                </dl>
-              </article>
-            </div>
-
-            <p class="unbuilt-footnote">
-              Taken from <code>ROADMAP.md</code>, the decision records in
-              <code>docs/decisions</code>, and this application's own README. No dates,
-              deliberately: a date on a list like this is read as a promise, and what holds these
-              up is a certificate nobody has bought, a machine nobody is running and a decision
-              nobody has taken.
-            </p>
-          </div>
-        </div>
       </section>
     </main>
+
+    <!-- Receiving ----------------------------------------------------------
+         The network is the whole safety story on this screen. One address works
+         on all six chains, so an address that looks right is no evidence the
+         network is — and a token sent on the wrong one is gone with nobody to
+         ask. That is why the chain is chosen before the address is shown, why
+         the warning names both the token and the chain, and why changing the
+         picker clears the address and the code rather than leaving a stale one
+         under a new heading. -->
+    <dialog class="dialog" id="receive-dialog">
+      <div class="dialog-form">
+        <h2 class="dialog-title">Receive</h2>
+
+        <label class="field">
+          <span class="field-label">Network</span>
+          <select class="input" id="receive-chain"></select>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Asset</span>
+          <select class="input" id="receive-token"></select>
+        </label>
+
+        <div class="alert" data-tone="warn" id="receive-warning">
+          <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+          <div class="alert-body">
+            <strong class="alert-title" id="receive-warning-title"></strong>
+            <span id="receive-warning-note"></span>
+          </div>
+        </div>
+
+        <div class="receive-code">
+          <div class="qr" id="receive-qr" role="img" aria-label="This address as a QR code"></div>
+        </div>
+
+        <code class="invite" id="receive-address"></code>
+
+        <p class="dialog-note">
+          This address is yours on every network. It is safe to reuse and safe to publish — what is
+          not safe is sending to it on a network other than the one named above.
+        </p>
+
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close="receive-dialog">Close</button>
+          <button class="button" type="button" id="receive-explorer">View on explorer</button>
+          <button class="button button-primary" type="button" id="receive-copy">Copy address</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Sending -------------------------------------------------------------
+         Two steps, and the second is not decoration. The worker builds the
+         whole transaction and reports what it would cost and hit; only then is
+         there a button that signs. A single-step form would mean the figures on
+         screen were the ones the form guessed rather than the ones about to be
+         signed, and those are not always the same thing. -->
+    <dialog class="dialog" id="send-dialog">
+      <form method="dialog" class="dialog-form" id="send-form">
+        <h2 class="dialog-title">Send</h2>
+
+        <label class="field">
+          <span class="field-label">Asset</span>
+          <select class="input" id="send-asset"></select>
+        </label>
+
+        <label class="field">
+          <span class="field-label">To</span>
+          <input
+            class="input"
+            id="send-to"
+            type="text"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="0x…"
+          />
+        </label>
+        <p class="field-hint" id="send-to-hint"></p>
+
+        <label class="field">
+          <span class="field-label">Amount</span>
+          <span class="field-with-button">
+            <input
+              class="input"
+              id="send-amount"
+              type="text"
+              inputmode="decimal"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="0.0"
+            />
+            <button class="field-reveal" type="button" id="send-max">Max</button>
+          </span>
+        </label>
+        <p class="field-hint" id="send-balance"></p>
+
+        <div class="alert" data-tone="error" role="alert" id="send-error" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+          <div class="alert-body">
+            <strong class="alert-title">This cannot be sent</strong>
+            <span data-slot="detail"></span>
+          </div>
+        </div>
+
+        <!-- What the worker actually built. Everything here comes from the
+             transaction rather than from the form above it. -->
+        <section class="send-review" id="send-review" hidden>
+          <dl class="facts">
+            <dt>Sending</dt>
+            <dd id="review-amount"></dd>
+            <dt>To</dt>
+            <dd><code class="wallet-key" id="review-to"></code></dd>
+            <dt>Network</dt>
+            <dd><span class="chip" id="review-network"></span></dd>
+            <dt>Most it can cost in fees</dt>
+            <dd id="review-fee"></dd>
+          </dl>
+          <div class="send-warnings" id="review-warnings"></div>
+        </section>
+
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close="send-dialog">Cancel</button>
+          <button class="button" type="button" id="send-review-btn">Review</button>
+          <button class="button button-primary" type="button" id="send-confirm-btn" hidden>
+            Send it
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Bridging ------------------------------------------------------------
+         The disclosure is the first thing and it is a gate, not a notice. This
+         route's safety rests on one key, nothing on chain obliges anyone to
+         deliver, and a stalled transfer cannot be retried from here or looked
+         up anywhere. Somebody is entitled to know that before, not after. The
+         worker refuses to bridge until it has been accepted, so a window that
+         skipped this screen would gain nothing. -->
+    <dialog class="dialog" id="bridge-dialog">
+      <div class="dialog-form">
+        <h2 class="dialog-title">Bridge LCAI</h2>
+
+        <section id="bridge-terms">
+          <p class="dialog-body">
+            LCAI on Ethereum and LCAI on Lightchain are the same token in two places. Moving between
+            them means locking it on one side and releasing it on the other. Before you do that,
+            here is what you are relying on.
+          </p>
+          <ul class="bridge-disclosure" id="bridge-disclosure"></ul>
+          <label class="field bridge-accept">
+            <input type="checkbox" id="bridge-accept" />
+            <span>I have read this and want to continue</span>
+          </label>
+        </section>
+
+        <section id="bridge-form" hidden>
+          <label class="field">
+            <span class="field-label">Direction</span>
+            <select class="input" id="bridge-direction"></select>
+          </label>
+
+          <label class="field">
+            <span class="field-label">Amount</span>
+            <input
+              class="input"
+              id="bridge-amount"
+              type="text"
+              inputmode="decimal"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="0.0"
+            />
+          </label>
+          <p class="field-hint" id="bridge-balance"></p>
+
+          <div class="alert" data-tone="error" role="alert" id="bridge-error" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+            <div class="alert-body">
+              <strong class="alert-title">This cannot be bridged</strong>
+              <span data-slot="detail"></span>
+            </div>
+          </div>
+
+          <section class="send-review" id="bridge-review" hidden>
+            <dl class="facts">
+              <dt>Moving</dt>
+              <dd id="bridge-review-amount"></dd>
+              <dt>From</dt>
+              <dd id="bridge-review-from"></dd>
+              <dt>To</dt>
+              <dd id="bridge-review-to"></dd>
+              <dt>Delivery fee</dt>
+              <dd id="bridge-review-fee"></dd>
+            </dl>
+            <p class="send-warning" id="bridge-review-note"></p>
+          </section>
+        </section>
+
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close="bridge-dialog">Close</button>
+          <button class="button" type="button" id="bridge-quote-btn" hidden>Review</button>
+          <button class="button" type="button" id="bridge-approve-btn" hidden>Approve first</button>
+          <button class="button button-primary" type="button" id="bridge-send-btn" hidden>
+            Bridge it
+          </button>
+        </div>
+      </div>
+    </dialog>
 
     <dialog class="dialog" id="join-dialog">
       <form method="dialog" class="dialog-form" id="join-form">
@@ -2403,8 +2430,8 @@
 
         <div class="dialog-actions">
           <button class="button" type="button" data-close="invite-dialog">Close</button>
-          <button class="button" type="button" id="copy-invite-raw">Copy raw invite</button>
-          <button class="button button-primary" type="button" id="copy-invite-btn">
+          <button class="button" type="button" id="copy-invite-raw" disabled>Copy raw invite</button>
+          <button class="button button-primary" type="button" id="copy-invite-btn" disabled>
             Copy link
           </button>
         </div>

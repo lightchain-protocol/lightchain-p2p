@@ -79,7 +79,11 @@ const OWNED = new Set([
   // same reason as the ledger: one sealed store, so the names have to be shared.
   'limits',
   'roomcontext',
-  'transactions'
+  'transactions',
+  // Owned by the bridge handler. It records that somebody read what that bridge
+  // relies on before using it, and a window able to write it directly could
+  // acknowledge the disclosure on their behalf.
+  'bridge'
 ])
 
 /**

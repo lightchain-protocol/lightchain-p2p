@@ -70,7 +70,16 @@ export function isAccountIndex(index: number): boolean {
 }
 
 export interface Vault {
-  readonly version: 1
+  /**
+   * 1 holds the phrase alone. 2 holds a phrase and a BIP-39 passphrase, as JSON.
+   *
+   * A vault is only written as 2 when there is a passphrase to put in it, so
+   * every wallet that does not use one stays byte-identical to what it was and
+   * stays readable by a build that predates this. The upgrade is not a
+   * migration anybody is dragged through; it happens to the wallets that need
+   * it, at the moment they need it.
+   */
+  readonly version: 1 | 2
   readonly kdf: 'scrypt'
   readonly kdfparams: {
     readonly n: number
@@ -83,6 +92,26 @@ export interface Vault {
   readonly iv: string
   readonly tag: string
   readonly ciphertext: string
+}
+
+/**
+ * Everything needed to derive a key, which is not always just the phrase.
+ *
+ * BIP-39 allows a passphrase that is mixed into the seed — the "25th word".
+ * It is not a second password: it produces an entirely different, equally
+ * valid wallet, and there is no checksum or error that reveals a wrong one.
+ * Someone importing a phrase from a wallet that used one gets an empty account
+ * at a plausible-looking address unless they can bring the passphrase too.
+ *
+ * That is why it is supported on import. It is deliberately not offered on
+ * create: a phrase written on paper is recoverable, and a phrase plus a
+ * passphrase held only in someone's head is recoverable right up until it
+ * is not.
+ */
+export interface Secret {
+  readonly phrase: string
+  /** Empty when there is none, which is the ordinary case. */
+  readonly passphrase: string
 }
 
 function derive(password: string, salt: Uint8Array, params: { n: number; r: number; p: number }) {
@@ -114,7 +143,7 @@ export function normalise(phrase: string): string {
   return phrase.trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
-export function seal(phrase: string, password: string): Vault {
+export function seal(phrase: string, password: string, passphrase = ''): Vault {
   const clean = normalise(phrase)
   if (!isValidPhrase(clean)) throw new VaultError('that is not a valid recovery phrase')
   if (password.length < 8) throw new VaultError('the password must be at least 8 characters')
@@ -123,11 +152,16 @@ export function seal(phrase: string, password: string): Vault {
   const iv = new Uint8Array(randomBytes(12))
   const key = derive(password, salt, { n: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P })
 
+  // Version 1 stays the bare phrase so that a wallet without a passphrase
+  // produces exactly the file it always did.
+  const version = passphrase === '' ? 1 : 2
+  const payload = version === 1 ? clean : JSON.stringify({ phrase: clean, passphrase })
+
   const cipher = createCipheriv('aes-256-gcm', key, iv)
-  const ciphertext = Buffer.concat([cipher.update(Buffer.from(clean, 'utf8')), cipher.final()])
+  const ciphertext = Buffer.concat([cipher.update(Buffer.from(payload, 'utf8')), cipher.final()])
 
   return {
-    version: 1,
+    version,
     kdf: 'scrypt',
     kdfparams: { n: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P, dklen: 32, salt: toHex(salt) },
     cipher: 'aes-256-gcm',
@@ -137,16 +171,16 @@ export function seal(phrase: string, password: string): Vault {
   }
 }
 
-export function open(vault: unknown, password: string): string {
+export function open(vault: unknown, password: string): Secret {
   const v = validate(vault)
   const key = derive(password, toBytes(v.kdfparams.salt), v.kdfparams)
 
   const decipher = createDecipheriv('aes-256-gcm', key, toBytes(v.iv))
   decipher.setAuthTag(Buffer.from(toBytes(v.tag)))
 
-  let phrase: string
+  let plaintext: string
   try {
-    phrase = Buffer.concat([
+    plaintext = Buffer.concat([
       decipher.update(Buffer.from(toBytes(v.ciphertext))),
       decipher.final()
     ]).toString('utf8')
@@ -157,14 +191,44 @@ export function open(vault: unknown, password: string): string {
     throw new VaultError('wrong password, or the vault has been altered')
   }
 
-  if (!isValidPhrase(phrase)) throw new VaultError('the vault did not contain a valid phrase')
-  return phrase
+  const secret = v.version === 1 ? { phrase: plaintext, passphrase: '' } : parsePayload(plaintext)
+
+  if (!isValidPhrase(secret.phrase)) {
+    throw new VaultError('the vault did not contain a valid phrase')
+  }
+  return secret
+}
+
+/**
+ * A version 2 payload, which is JSON rather than a phrase.
+ *
+ * Anything malformed is reported as a bad vault rather than as a parse error.
+ * The bytes decrypted and authenticated, so this is not an attacker's doing —
+ * it is a file this code wrote and can no longer read, and the shape of the
+ * JSON is not information a user can act on.
+ */
+function parsePayload(plaintext: string): Secret {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(plaintext)
+  } catch {
+    throw new VaultError('the vault did not contain a readable phrase')
+  }
+
+  const p = parsed as Secret
+  if (!p || typeof p.phrase !== 'string' || typeof p.passphrase !== 'string') {
+    throw new VaultError('the vault did not contain a readable phrase')
+  }
+
+  return { phrase: p.phrase, passphrase: p.passphrase }
 }
 
 function validate(value: unknown): Vault {
   const v = value as Vault
   if (!v || typeof v !== 'object') throw new VaultError('vault must be an object')
-  if (v.version !== 1) throw new VaultError(`unsupported vault version: ${v.version}`)
+  if (v.version !== 1 && v.version !== 2) {
+    throw new VaultError(`unsupported vault version: ${v.version}`)
+  }
   if (v.kdf !== 'scrypt') throw new VaultError(`unsupported kdf: ${v.kdf}`)
   if (v.cipher !== 'aes-256-gcm') throw new VaultError(`unsupported cipher: ${v.cipher}`)
 
@@ -185,8 +249,17 @@ function validate(value: unknown): Vault {
  *
  * Index 0 at `m/44'/60'/0'/0/0` is what every wallet calls "Account 1", so the
  * first address here is the first address anywhere else the phrase is restored.
+ *
+ * Coin type 60 is Ethereum's, and it is what every EVM chain uses — the same
+ * key signs on Lightchain, Ethereum, Base, Arbitrum, Polygon and BSC, and the
+ * address is the same on all of them. There is nothing per-chain to derive.
+ *
+ * The passphrase is passed through unmodified apart from the NFKD the BIP-39
+ * library applies. It is emphatically not run through `normalise`: case and
+ * spacing are significant, and lowercasing one would silently derive a
+ * different wallet from the one it was written for.
  */
-export function derivePrivateKey(phrase: string, index = 0): string {
+export function derivePrivateKey(phrase: string, index = 0, passphrase = ''): string {
   if (!isAccountIndex(index)) {
     throw new VaultError(
       `account index must be a whole number between 0 and ${MAX_ACCOUNT_INDEX}, got ${index}`
@@ -196,7 +269,8 @@ export function derivePrivateKey(phrase: string, index = 0): string {
   const clean = normalise(phrase)
   if (!isValidPhrase(clean)) throw new VaultError('that is not a valid recovery phrase')
 
-  const key = HDKey.fromMasterSeed(mnemonicToSeedSync(clean)).derive(`${ACCOUNT_PATH}/${index}`)
+  const seed = mnemonicToSeedSync(clean, passphrase)
+  const key = HDKey.fromMasterSeed(seed).derive(`${ACCOUNT_PATH}/${index}`)
   if (!key.privateKey) throw new VaultError('derivation produced no private key')
 
   return toHex(key.privateKey)

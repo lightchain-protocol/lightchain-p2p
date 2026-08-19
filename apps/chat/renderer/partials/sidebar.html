@@ -70,62 +70,6 @@
             </ul>
           </div>
 
-          <div class="nav-group">
-            <h2 class="sidebar-title" id="nav-next">What is next</h2>
-            <ul class="sections" aria-labelledby="nav-next">
-              <li>
-                <button class="nav-item" type="button" data-section="roadmap">
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-roadmap" /></svg>
-                  <span class="nav-label">Roadmap</span>
-                </button>
-              </li>
-            </ul>
-
-            <!-- Deliberately not a `.sections` list: showSection looks up a
-                 panel for every nav item it finds in one, and these have none,
-                 so it would dereference null on every section change.
-
-                 Dimmed and aria-disabled, but each still leads somewhere — to
-                 the roadmap entry explaining what it is waiting on. A dimmed
-                 row that swallows the click is the dead end just taken out of
-                 onboarding, wearing a different colour. -->
-            <ul class="nav-upcoming" aria-label="Not built yet">
-              <li>
-                <button
-                  class="nav-item nav-item-upcoming"
-                  type="button"
-                  aria-disabled="true"
-                  data-roadmap="roadmap-mobile"
-                >
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-mobile" /></svg>
-                  <span class="nav-label">Mobile</span>
-                </button>
-              </li>
-              <li>
-                <button
-                  class="nav-item nav-item-upcoming"
-                  type="button"
-                  aria-disabled="true"
-                  data-roadmap="roadmap-hardware-wallets"
-                >
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-hardware" /></svg>
-                  <span class="nav-label">Hardware wallets</span>
-                </button>
-              </li>
-              <li>
-                <button
-                  class="nav-item nav-item-upcoming"
-                  type="button"
-                  aria-disabled="true"
-                  data-roadmap="roadmap-direct-routing"
-                >
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-routing" /></svg>
-                  <span class="nav-label">Direct routing</span>
-                </button>
-              </li>
-            </ul>
-          </div>
-
           <div class="sidebar-context" id="chat-context" hidden>
             <h2 class="sidebar-title" id="nav-rooms">Rooms</h2>
             <ul class="room-list" id="room-list" aria-labelledby="nav-rooms"></ul>

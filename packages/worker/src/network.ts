@@ -12,6 +12,12 @@ export interface NetworkProfile {
   readonly name: NetworkName
   readonly rpcUrl: string
   readonly chainId: number
+  /** What the native token is called, for anywhere an amount is shown to a person. */
+  readonly symbol: string
+  /** How many of its smallest units make one. Eighteen, as on every EVM chain so far. */
+  readonly decimals: number
+  /** Where a transaction can be looked up, without a trailing slash. */
+  readonly explorerUrl: string
   readonly beaconApiUrl: string
   readonly workerGatewayUrl: string
   readonly image: string
@@ -33,6 +39,9 @@ export const NETWORKS: Readonly<Record<NetworkName, NetworkProfile>> = {
     name: 'mainnet',
     rpcUrl: 'https://rpc.mainnet.lightchain.ai',
     chainId: 9200,
+    symbol: 'LCAI',
+    decimals: 18,
+    explorerUrl: 'https://mainnet.lightscan.app',
     beaconApiUrl: 'https://beacon.mainnet.lightchain.ai',
     workerGatewayUrl: 'https://worker-gateway.mainnet.lightchain.ai',
     image: 'us-central1-docker.pkg.dev/lightchain/lightchain-mainnet-public-docker/worker:latest',
@@ -43,6 +52,9 @@ export const NETWORKS: Readonly<Record<NetworkName, NetworkProfile>> = {
     name: 'testnet',
     rpcUrl: 'https://rpc.testnet.lightchain.ai',
     chainId: 8200,
+    symbol: 'LCAI',
+    decimals: 18,
+    explorerUrl: 'https://testnet.lightscan.app',
     beaconApiUrl: 'https://beacon.testnet.lightchain.ai',
     workerGatewayUrl: 'https://worker-gateway.testnet.lightchain.ai',
     image: 'us-central1-docker.pkg.dev/lightchain/lightchain-testnet-public-docker/worker:latest',

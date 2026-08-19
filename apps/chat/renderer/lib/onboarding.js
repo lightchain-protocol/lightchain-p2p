@@ -310,12 +310,50 @@ el('restore-phrase').addEventListener('input', (evt) => {
   }
 })
 
+/**
+ * Shows which wallet the phrase and passphrase together would open.
+ *
+ * The only check available. A wrong passphrase is not an error — it derives a
+ * different, valid, empty wallet — so the address is the one thing somebody can
+ * recognise before committing to it. Shown only while the passphrase field is
+ * in use, because for everyone else it is a hex string with no question
+ * attached.
+ */
+async function previewRestore() {
+  const preview = el('restore-preview')
+  const phrase = el('restore-phrase').value
+  const passphrase = el('restore-passphrase').value
+
+  if (passphrase === '' || phrase.trim().split(/\s+/).filter(Boolean).length !== WORDS_IN_PHRASE) {
+    preview.hidden = true
+    return
+  }
+
+  try {
+    const { address } = await request('wallet.previewImport', { phrase, passphrase })
+    preview.textContent = `This opens ${address}. Restore only if you recognise it.`
+    preview.dataset.state = 'ok'
+  } catch {
+    // An invalid phrase is already reported by the word count above, and the
+    // submit will say so properly. Nothing useful to add here.
+    preview.textContent = ''
+    preview.hidden = true
+    return
+  }
+
+  preview.hidden = false
+}
+
+el('restore-passphrase').addEventListener('input', previewRestore)
+el('restore-phrase').addEventListener('input', previewRestore)
+
 el('restore-form').addEventListener('submit', async (evt) => {
   evt.preventDefault()
 
   const button = el('restore-btn')
   const phrase = el('restore-phrase').value
   const password = el('restore-password').value
+  const passphrase = el('restore-passphrase').value
   const label = button.textContent
 
   el('restore-error').hidden = true
@@ -333,11 +371,14 @@ el('restore-form').addEventListener('submit', async (evt) => {
     const restored = await request('wallet.import', {
       phrase,
       password,
+      passphrase,
       confirmation: await replaceWord()
     })
 
     showWallet(restored)
     el('restore-phrase').value = ''
+    el('restore-passphrase').value = ''
+    el('restore-preview').hidden = true
     finishOnboarding()
     toast(restored.replaced ? 'Wallet replaced' : 'Wallet restored')
   } catch (err) {

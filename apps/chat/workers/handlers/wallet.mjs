@@ -3,13 +3,16 @@ import {
   cancel,
   fromPrivateKey,
   fromQuantity,
+  keccak256,
   prepaidBalance,
   resolveAddresses,
   sendTransaction,
-  speedUp
+  speedUp,
+  toChecksumAddress
 } from '@lcai-p2p/chain'
 import { REPLACE_CONFIRMATION, derivePrivateKey } from '@lcai-p2p/wallet'
 import { NETWORKS } from '@lcai-p2p/worker'
+import { readableAmount } from '../guard.mjs'
 
 /**
  * The wallet: an identity, a balance, and the ability to sign for both.
@@ -488,7 +491,7 @@ export async function recordTransaction(ctx, kind, sent) {
 }
 
 export function walletHandlers(ctx) {
-  const { wallet, rpc, network, useWalletInRooms, forgetInference } = ctx
+  const { wallet, rpc, network, useWalletInRooms, forgetInference, guard, saveSettings } = ctx
   const ledger = transactionLedger(ctx)
 
   /**
@@ -620,15 +623,81 @@ export function walletHandlers(ctx) {
       return { ...status, network: network(), phrase }
     },
 
-    /** Restores a phrase, over a wallet already here when `confirmation` allows it. */
+    /**
+     * Restores a phrase, over a wallet already here when `confirmation` allows it.
+     *
+     * `passphrase` is BIP-39's 25th word, for a phrase created with one in
+     * another wallet. Nothing can check it: a wrong one is not an error, it is
+     * a different and perfectly valid empty wallet. The address in the reply is
+     * the only confirmation available, which is why a screen offering the field
+     * should show it and ask whether it looks right.
+     */
     'wallet.import': (req) => {
       const password = String(req.password ?? '')
       const status = wallet.importPhrase(String(req.phrase ?? ''), password, {
-        confirmation: offered(req.confirmation)
+        confirmation: offered(req.confirmation),
+        // Not trimmed, not lowercased. Both are significant to the derivation,
+        // and tidying one here would restore a different wallet than the one
+        // the passphrase was written for.
+        passphrase: typeof req.passphrase === 'string' ? req.passphrase : ''
       })
 
       adoptIdentity(status.replaced, password)
       return { ...status, network: network() }
+    },
+
+    /**
+     * The address a phrase and passphrase would produce, without committing.
+     *
+     * The counterpart to the warning above. Somebody restoring a wallet that
+     * used a passphrase has no way to tell a right one from a wrong one except
+     * by recognising the address, and asking them to destroy the wallet they
+     * have in order to find out is not an acceptable way to offer that.
+     */
+    'wallet.previewImport': (req) => {
+      const phrase = String(req.phrase ?? '')
+      const passphrase = typeof req.passphrase === 'string' ? req.passphrase : ''
+
+      return {
+        address: fromPrivateKey(derivePrivateKey(phrase, 0, passphrase)).address,
+        hasPassphrase: passphrase !== ''
+      }
+    },
+
+    /**
+     * How long the wallet waits before locking itself.
+     *
+     * Minutes, because that is the unit somebody choosing it thinks in. Zero
+     * switches it off, which is a defensible choice on a machine only one
+     * person uses and a terrible one on a shared desk — so the interface says
+     * which it is rather than presenting a neutral list.
+     */
+    'wallet.setAutoLock': (req) => {
+      // Typed rather than coerced. `Number(null)` is zero, and zero means never
+      // lock — so a missing field would have switched the lock off entirely.
+      const minutes = req.minutes
+      if (typeof minutes !== 'number' || !Number.isInteger(minutes)) {
+        throw new Error('the lock time has to be a whole number of minutes')
+      }
+      if (minutes < 0 || minutes > 24 * 60) {
+        throw new Error('the lock time has to be between zero minutes and a day')
+      }
+
+      const status = wallet.setAutoLock(minutes * 60 * 1000)
+      saveSettings({ ...ctx.settings(), autoLockMinutes: String(minutes) })
+      return { ...status, network: network() }
+    },
+
+    /**
+     * Says somebody is still here, without doing anything.
+     *
+     * The window sends this while it is being used so that reading a long
+     * thread does not read as an empty room. It cannot unlock anything and it
+     * cannot extend a wallet that has already locked.
+     */
+    'wallet.touch': () => {
+      wallet.touch()
+      return { ...wallet.status(), network: network() }
     },
 
     'wallet.reveal': (req) => ({ phrase: wallet.revealPhrase(String(req.password ?? '')) }),
@@ -835,9 +904,28 @@ export function walletHandlers(ctx) {
         throw new Error('that is your own address')
       }
 
+      const value = whole(req.amount, 'amount') ?? 0n
+
+      // Before anything is signed, and describing the transfer from the values
+      // about to be used rather than from the request. A window that asked for
+      // one amount and displayed another is exactly what this exists to catch.
+      await guard.allow({
+        value,
+        password: req.password,
+        details: {
+          amount: readableAmount(value, NETWORKS[network()].symbol),
+          // Checksummed, because the dialog is where somebody checks the
+          // destination character by character and mixed case is what makes a
+          // wrong one visible.
+          to: toChecksumAddress(to, keccak256),
+          from: account.address,
+          network: network()
+        }
+      })
+
       const sent = await sendTransaction(rpc(), account, {
         to,
-        value: whole(req.amount, 'amount') ?? 0n,
+        value,
         maxFeePerGas: feePerGas(req.maxFeePerGas, 'maxFeePerGas'),
         maxPriorityFeePerGas: feePerGas(req.maxPriorityFeePerGas, 'maxPriorityFeePerGas'),
         nonce: whole(req.nonce, 'nonce'),

@@ -25,6 +25,19 @@ import {
 const PHRASE = 'test test test test test test test test test test test junk'
 const PASSWORD = 'correct horse battery staple'
 
+/**
+ * Changes the last byte of a hex string, whatever it happens to be.
+ *
+ * Overwriting it with a fixed value instead is a no-op roughly one time in 256
+ * — precisely when the byte already holds that value — and the salt and nonce
+ * are random, so the tamper tests below quietly passed on an untouched vault at
+ * about that rate. Flipping the low bit always changes something.
+ */
+function flipLastByte(hex: string): string {
+  const last = Number.parseInt(hex.slice(-2), 16)
+  return hex.slice(0, -2) + (last ^ 1).toString(16).padStart(2, '0')
+}
+
 describe('derivation', () => {
   it('agrees with viem on the first account', () => {
     const ours = privateKeyToAccount(derivePrivateKey(PHRASE, 0) as `0x${string}`)
@@ -112,7 +125,11 @@ describe('phrases', () => {
 describe('the vault', () => {
   it('seals and opens', () => {
     const vault = seal(PHRASE, PASSWORD)
-    expect(open(vault, PASSWORD)).toBe(PHRASE)
+    expect(open(vault, PASSWORD)).toEqual({ phrase: PHRASE, passphrase: '' })
+  })
+
+  it('stays version 1 when there is no passphrase, so older builds can still read it', () => {
+    expect(seal(PHRASE, PASSWORD).version).toBe(1)
   })
 
   it('does not contain the phrase in the clear', () => {
@@ -140,12 +157,10 @@ describe('the vault', () => {
 
   it('detects tampering, because GCM authenticates', () => {
     const vault = seal(PHRASE, PASSWORD)
-    expect(() =>
-      open({ ...vault, ciphertext: vault.ciphertext.replace(/..$/, '00') }, PASSWORD)
-    ).toThrow(VaultError)
-    expect(() => open({ ...vault, tag: vault.tag.replace(/..$/, '00') }, PASSWORD)).toThrow(
+    expect(() => open({ ...vault, ciphertext: flipLastByte(vault.ciphertext) }, PASSWORD)).toThrow(
       VaultError
     )
+    expect(() => open({ ...vault, tag: flipLastByte(vault.tag) }, PASSWORD)).toThrow(VaultError)
   })
 
   it('records its parameters so they can change later', () => {
@@ -170,5 +185,62 @@ describe('the vault', () => {
   it('refuses to seal a phrase that is not one', () => {
     expect(() => seal('not a real phrase at all', PASSWORD)).toThrow(/not a valid recovery phrase/)
     expect(() => seal(PHRASE, 'short')).toThrow(/at least 8 characters/)
+  })
+})
+
+describe("BIP-39's 25th word", () => {
+  const EXTRA = 'a Passphrase With Caps'
+
+  it('is carried through a seal and back', () => {
+    const vault = seal(PHRASE, PASSWORD, EXTRA)
+    expect(vault.version).toBe(2)
+    expect(open(vault, PASSWORD)).toEqual({ phrase: PHRASE, passphrase: EXTRA })
+  })
+
+  it('is not in the file in the clear', () => {
+    const serialised = JSON.stringify(seal(PHRASE, PASSWORD, EXTRA))
+    expect(serialised.includes('Passphrase')).toBe(false)
+    expect(serialised.includes('passphrase')).toBe(false)
+  })
+
+  it('derives a different wallet, which is the whole point', () => {
+    expect(derivePrivateKey(PHRASE, 0, EXTRA)).not.toBe(derivePrivateKey(PHRASE, 0))
+  })
+
+  it('agrees with viem, so a wallet made elsewhere restores here', () => {
+    const ours = privateKeyToAccount(derivePrivateKey(PHRASE, 0, EXTRA) as `0x${string}`)
+    expect(ours.address).toBe(mnemonicToAccount(PHRASE, { passphrase: EXTRA }).address)
+  })
+
+  it('is case and space sensitive, unlike the phrase', () => {
+    // `normalise` must never touch it. Lowercasing a passphrase would derive a
+    // different wallet from the one it was written for, silently.
+    expect(derivePrivateKey(PHRASE, 0, EXTRA)).not.toBe(
+      derivePrivateKey(PHRASE, 0, EXTRA.toLowerCase())
+    )
+    expect(derivePrivateKey(PHRASE, 0, ' x')).not.toBe(derivePrivateKey(PHRASE, 0, 'x'))
+  })
+
+  it('treats an empty one as none at all', () => {
+    expect(derivePrivateKey(PHRASE, 0, '')).toBe(derivePrivateKey(PHRASE, 0))
+    expect(seal(PHRASE, PASSWORD, '').version).toBe(1)
+  })
+
+  it('still refuses a wrong password', () => {
+    const vault = seal(PHRASE, PASSWORD, EXTRA)
+    expect(() => open(vault, 'not it')).toThrow(/wrong password/)
+  })
+
+  it('reports a version 2 payload that is not JSON as a bad vault', () => {
+    // Reachable only if this code wrote something it can no longer read. The
+    // bytes authenticated, so it is not an attacker, and the shape of the
+    // failure is not something a user can act on.
+    const v1 = seal(PHRASE, PASSWORD)
+    expect(() => open({ ...v1, version: 2 }, PASSWORD)).toThrow(/readable phrase/)
+  })
+
+  it('refuses a version it does not know', () => {
+    const vault = seal(PHRASE, PASSWORD)
+    expect(() => open({ ...vault, version: 3 }, PASSWORD)).toThrow(/unsupported vault version/)
   })
 })

@@ -16,7 +16,7 @@
  * Needs the application running with --remote-debugging-port.
  */
 
-import { ASK } from './harness.mjs'
+import { ASK, unlockForHarness } from './harness.mjs'
 
 const port = Number(process.argv[2] ?? 9301)
 
@@ -81,6 +81,12 @@ const asWorker = (name, fields = {}) =>
   evaluate(
     `(async () => { const ask = ${ASK}; return await ask(${JSON.stringify(name)}, ${JSON.stringify(fields)}) })()`
   )
+
+// Half of what follows needs a room, and a room needs an unlocked wallet. A
+// wallet is locked on every launch, so this suite used to pass only when
+// something else had happened to unlock it first — and reported the resulting
+// "the wallet is locked" as though it were the refusal being tested.
+await unlockForHarness(asWorker)
 
 // --- What a compromised window could ask the worker for -------------------------
 
@@ -513,6 +519,80 @@ if (csp === null) {
     'images are limited to this document and its own blobs',
     images !== null && images[1].trim() === "'self' blob:",
     images ? images[1].trim() : 'no img-src, so images fall back to default-src'
+  )
+}
+
+// --- What a compromised window could do with somebody's money -------------------------
+
+// The wallet holds assets on six chains now, and the window draws every screen
+// that describes moving them. So the checks below are not about the interface
+// refusing — a compromised one would not — but about the worker refusing
+// requests the interface could send directly.
+
+{
+  const chainId = 9200
+  const away = '0x000000000000000000000000000000000000dEaD'
+
+  // Amounts cross as decimal strings. A Number would be quietly rounded at
+  // about a hundredth of a token, and rounding somebody's send is not
+  // acceptable in either direction.
+  for (const [what, amount] of [
+    ['a Number', 1e18],
+    ['a float as text', '1.5'],
+    ['scientific notation', '1e18'],
+    ['a negative', '-1'],
+    ['hex', '0x10'],
+    ['nothing at all', undefined]
+  ]) {
+    const answer = await asWorker('assets.send', { chainId, to: away, amount })
+    report(
+      `a send refuses an amount given as ${what}`,
+      Boolean(answer?.error),
+      answer?.error?.slice(0, 60)
+    )
+  }
+
+  // The thresholds decide when a transfer needs the password again and when it
+  // needs a confirmation the operating system draws. A window able to raise
+  // them could turn both off and then send anything, which would make the guard
+  // a setting the attacker configures.
+  for (const key of ['reauthAboveWei', 'confirmAboveWei', 'autoLockMinutes']) {
+    const raised = await asWorker('settings.write', {
+      values: { [key]: (2n ** 255n).toString() }
+    })
+    report(
+      `${key} cannot be changed from the window`,
+      /not a setting this app writes/.test(raised?.error ?? ''),
+      raised?.error
+    )
+  }
+
+  // A user's own RPC key would be a credential the window has no business
+  // holding. Nothing should hand one back.
+  const settings = await asWorker('settings.read')
+  report(
+    'no endpoint credential is handed to the window',
+    !JSON.stringify(settings ?? {}).includes('rpcUrl1'),
+    'settings.read carries no per-chain endpoint'
+  )
+
+  // Bridging is gated on a disclosure recorded in the sealed store. The window
+  // must not be able to write that record itself.
+  const forged = await asWorker('local.write', { name: 'bridge', document: { acknowledged: true } })
+  report(
+    'the bridge disclosure cannot be acknowledged behind its own handler',
+    /maintained by the local/.test(forged?.error ?? ''),
+    forged?.error?.slice(0, 60)
+  )
+
+  // Receiving is the screen where naming the wrong network loses money. The
+  // warning is composed in the worker so that every surface says the same
+  // thing and a window cannot quietly drop it.
+  const receive = await asWorker('assets.receive', { chainId: 1 })
+  report(
+    'the receive warning comes from the worker, not the window',
+    /cannot be recovered/.test(receive?.warning ?? ''),
+    receive?.warning?.slice(0, 50)
   )
 }
 

@@ -67,6 +67,11 @@ export async function openSettings(page = settingsPage) {
     ['Chain ID', String(state.effective.chainId)]
   ])
 
+  // Whole minutes. The worker holds it in milliseconds because that is what a
+  // clock deals in, and nobody choosing a lock time thinks that way.
+  const status = await request('wallet.status')
+  document.getElementById('set-auto-lock').value = String(Math.round(status.autoLockMs / 60_000))
+
   // The password is deliberately not returned, so the field shows whether one
   // exists rather than what it is.
   const password = document.getElementById('set-worker-password')
@@ -148,6 +153,17 @@ document.getElementById('blind-form').addEventListener('submit', async (evt) => 
 document.getElementById('settings-btn').addEventListener('click', () => void openSettings())
 document.getElementById('settings-close').addEventListener('click', () => {
   settings.root.hidden = true
+})
+
+document.getElementById('set-auto-lock').addEventListener('change', async (evt) => {
+  const minutes = Number(evt.target.value)
+  try {
+    await request('wallet.setAutoLock', { minutes })
+    toast(minutes === 0 ? 'The wallet will not lock itself' : `Locking after ${minutes} min`)
+  } catch (err) {
+    toast(err.message, 'error')
+    void openSettings()
+  }
 })
 
 document.getElementById('set-network').addEventListener('change', async (evt) => {

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Notification, dialog, ipcMain, shell } = require('electron')
+const { app, BrowserWindow, Notification, clipboard, dialog, ipcMain, shell } = require('electron')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
@@ -62,6 +62,83 @@ function sendToAll(name, data) {
 }
 
 /**
+ * The confirmation a compromised window cannot draw over.
+ *
+ * Everything the user sees in this application is drawn by the renderer, which
+ * is exactly the wrong property for the screen that says how much money is
+ * about to leave. A window running injected script can draw a transfer of one
+ * token and ask the worker to send a thousand, and the person reading it has no
+ * way to tell. This is the answer: a modal the operating system draws, holding
+ * values the worker took from the transaction it assembled rather than from the
+ * request that asked for it.
+ *
+ * The worker speaks first, over the same pipe the updater uses. The renderer
+ * sees these lines too and ignores them — `onWorkerLine` drops anything that
+ * does not begin with a brace.
+ */
+const CONFIRM_REQUEST = 'wallet:confirm'
+const CONFIRM_REPLY = 'wallet:confirmed'
+
+/** Whatever has arrived on the worker pipe that is not yet a whole line. */
+let confirmInbound = ''
+
+function watchForConfirmRequests(pipe, data) {
+  confirmInbound += data.toString('utf8')
+
+  const lines = confirmInbound.split('\n')
+  confirmInbound = lines.pop() ?? ''
+
+  for (const line of lines) {
+    if (line.startsWith(CONFIRM_REQUEST)) askToConfirm(pipe, line.slice(CONFIRM_REQUEST.length))
+  }
+}
+
+async function askToConfirm(pipe, payload) {
+  let details
+  try {
+    details = JSON.parse(payload.trim())
+  } catch {
+    // Nothing to answer and nobody to tell. The worker times its request out
+    // and refuses, which is the safe direction.
+    return
+  }
+
+  let approved = false
+  try {
+    const window = BrowserWindow.getAllWindows()[0]
+    const question = {
+      type: 'warning',
+      buttons: ['Cancel', 'Send it'],
+      defaultId: 0,
+      // Escape and the window's close button both land on Cancel.
+      cancelId: 0,
+      noLink: true,
+      title: 'Confirm this transfer',
+      message: `Send ${details.amount} to ${details.to}?`,
+      detail: [
+        `Network: ${details.network}`,
+        `From: ${details.from}`,
+        details.fee ? `Most it can cost in fees: ${details.fee}` : null,
+        '',
+        'This cannot be undone, and nobody can reverse it for you.'
+      ]
+        .filter((line) => line !== null)
+        .join('\n')
+    }
+
+    const answer = window
+      ? await dialog.showMessageBox(window, question)
+      : await dialog.showMessageBox(question)
+
+    approved = answer.response === 1
+  } catch (err) {
+    console.error('could not ask for confirmation', err)
+  }
+
+  pipe.write(`${CONFIRM_REPLY} ${JSON.stringify({ id: details.id, approved })}\n`)
+}
+
+/**
  * Everything this installation remembers, in one directory.
  *
  * The worker is handed this same path and lays `chat/` and `pear-runtime/` out
@@ -119,6 +196,7 @@ function getWorker(specifier) {
   }
   function sendWorkerIPC(data) {
     sendToAll('pear:worker:ipc:' + specifier, data)
+    watchForConfirmRequests(pipe, data)
   }
   function onBeforeQuit() {
     pipe.destroy()
@@ -497,6 +575,29 @@ ipcMain.handle('app:openExternal', async (evt, url) => {
     console.error(`could not open ${parsed.protocol}//${parsed.host}: ${err.message}`)
     return false
   }
+})
+
+/**
+ * Puts text on the clipboard.
+ *
+ * Through the main process because `navigator.clipboard.writeText` cannot work
+ * here: this window is loaded from `file://`, and Chromium refuses the
+ * clipboard-write permission to that origin — every copy button in the app was
+ * rejecting with `NotAllowedError` and reporting failure in a toast. The
+ * alternative is granting the permission to the renderer, which is a wider
+ * capability than the four things that need it.
+ *
+ * Capped, because a window running somebody else's script could otherwise put a
+ * megabyte of anything into the paste buffer of whoever is using it.
+ */
+const MAX_CLIPBOARD_CHARS = 100_000
+
+ipcMain.handle('app:copy', (evt, text) => {
+  if (typeof text !== 'string' || text === '') return false
+  if (text.length > MAX_CLIPBOARD_CHARS) return false
+
+  clipboard.writeText(text)
+  return true
 })
 
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024

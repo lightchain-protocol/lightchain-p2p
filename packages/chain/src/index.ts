@@ -3,6 +3,8 @@ export {
   decodeAddress,
   decodeBool,
   decodeRevert,
+  decodeString,
+  decodeUint8,
   decodeUint256,
   encodeCall,
   encodeParameters,
@@ -11,6 +13,47 @@ export {
   type AbiType,
   type AbiValue
 } from './abi.js'
+
+export { CHAINS, LIGHTCHAIN_TESTNET, MULTICALL3, chainById, type EvmChain } from './chains.js'
+
+export {
+  TRANSFER_TOPIC,
+  allowance,
+  allowanceCall,
+  approveCall,
+  balanceOf,
+  balanceOfCall,
+  decodeTransferResult,
+  isContract,
+  tokenFacts,
+  transferCall,
+  type TokenFacts
+} from './erc20.js'
+
+export {
+  aggregate,
+  aggregate3Call,
+  decodeAggregate3,
+  type Call3,
+  type Call3Result
+} from './multicall.js'
+
+export { RpcPool, type PoolOptions } from './pool.js'
+
+export { TOKENS, tokensOn, type Token } from './tokens.js'
+
+export {
+  BRIDGE,
+  ETHEREUM_DOMAIN,
+  LIGHTCHAIN_DOMAIN,
+  decodeQuote,
+  domainsCall,
+  quoteTransfer,
+  quoteTransferRemoteCall,
+  toBytes32,
+  transferRemoteCall,
+  type Quote
+} from './hyperlane.js'
 
 export {
   AccountError,

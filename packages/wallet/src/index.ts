@@ -24,18 +24,23 @@ export {
   normalise,
   open,
   seal,
+  type Secret,
   type Vault
 } from './vault.js'
 
 export {
+  AUTO_LOCK_OFF,
+  DEFAULT_AUTO_LOCK_MS,
   REPLACE_CONFIRMATION,
   Wallet,
   WalletError,
   memoryVaultStore,
   type CreatedWallet,
+  type ImportOptions,
   type RemoveOptions,
   type ReplaceOptions,
   type ReplacementStatus,
   type VaultStore,
+  type WalletOptions,
   type WalletStatus
 } from './wallet.js'

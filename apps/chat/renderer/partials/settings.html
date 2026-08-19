@@ -28,6 +28,23 @@
               </select>
             </label>
             <dl class="facts" id="network-facts"></dl>
+
+            <h3 class="settings-heading">Locking</h3>
+            <p class="settings-note">
+              How long the wallet stays open with nothing happening. It locks itself after that, and
+              opening it again costs your password. Rooms close with it.
+            </p>
+            <label class="field">
+              <span class="field-label">Lock after</span>
+              <select class="input" id="set-auto-lock">
+                <option value="1">1 minute</option>
+                <option value="5">5 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="480">8 hours</option>
+                <option value="0">Never — only on a machine nobody else uses</option>
+              </select>
+            </label>
           </section>
 
           <section class="settings-page" id="settings-wallet" hidden>

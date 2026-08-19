@@ -23,6 +23,20 @@ const WRITABLE = new Set([
   // Appearance, written by the window itself
   'theme',
   'sidebar',
+  // Three settings are deliberately absent from this list, and all three decide
+  // what it costs to move money.
+  //
+  // `reauthAboveWei` and `confirmAboveWei` are the thresholds above which a
+  // transfer needs the password again and a confirmation the operating system
+  // draws. A window able to write them could raise both and then send anything
+  // with neither check firing — which would make the guard a setting the
+  // attacker configures. They are read from the settings file, so somebody can
+  // still change them deliberately with an editor; what they are not is
+  // reachable from the thing being guarded against.
+  //
+  // `autoLockMinutes` is absent for a second reason as well: the live wallet
+  // holds the timeout too, so a write reaching only the file would look
+  // accepted and take effect nowhere. It has a handler of its own.
   // Network and availability
   'network',
   'blindPeers',

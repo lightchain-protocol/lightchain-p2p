@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { mnemonicToAccount } from 'viem/accounts'
+import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts'
 import {
+  AUTO_LOCK_OFF,
+  DEFAULT_AUTO_LOCK_MS,
   REPLACE_CONFIRMATION,
   Wallet,
   WalletError,
@@ -411,5 +413,194 @@ describe('signing', () => {
     wallet.importPhrase(PHRASE, PASSWORD)
     expect(wallet.signMessage('lightchain')).toHaveLength(132)
     expect(() => new Wallet(memoryVaultStore()).signMessage('x')).toThrow(WalletError)
+  })
+})
+
+describe('locking itself when nobody is there', () => {
+  // The clock is an argument rather than a timer, so these are exact rather
+  // than slow. A real caller passes `Date.now()` from a poll loop.
+  const minutes = (n: number) => n * 60 * 1000
+
+  function unlocked(autoLockMs = DEFAULT_AUTO_LOCK_MS) {
+    const wallet = new Wallet(memoryVaultStore(), { autoLockMs })
+    wallet.create(PASSWORD)
+    return wallet
+  }
+
+  it('defaults to fifteen minutes and reports how long it has been idle', () => {
+    const wallet = unlocked()
+    expect(wallet.status(0).autoLockMs).toBe(minutes(15))
+    expect(wallet.status(0).idleMs).toBe(0)
+  })
+
+  it('stays open right up to the timeout and locks the moment it passes', () => {
+    const wallet = unlocked(minutes(15))
+    wallet.touch(0)
+
+    expect(wallet.lockIfIdle(minutes(14))).toBe(false)
+    expect(wallet.status().unlocked).toBe(true)
+
+    expect(wallet.lockIfIdle(minutes(15))).toBe(true)
+    expect(wallet.status().unlocked).toBe(false)
+  })
+
+  it('says nothing happened when it was already locked', () => {
+    const wallet = unlocked(minutes(1))
+    wallet.lock()
+    expect(wallet.lockIfIdle(minutes(600))).toBe(false)
+  })
+
+  it('counts using the key as being present', () => {
+    const wallet = unlocked(minutes(15))
+    wallet.touch(0)
+
+    wallet.account(minutes(14))
+    expect(wallet.lockIfIdle(minutes(20))).toBe(false)
+    expect(wallet.lockIfIdle(minutes(29.1))).toBe(true)
+  })
+
+  it('counts a touch as being present, without needing the key', () => {
+    const wallet = unlocked(minutes(10))
+    wallet.touch(0)
+    wallet.touch(minutes(9))
+    expect(wallet.lockIfIdle(minutes(18))).toBe(false)
+  })
+
+  it('never locks when it is switched off', () => {
+    const wallet = unlocked(AUTO_LOCK_OFF)
+    wallet.touch(0)
+    expect(wallet.lockIfIdle(minutes(60 * 24 * 365))).toBe(false)
+  })
+
+  it('restarts the clock when the timeout changes, rather than locking on the spot', () => {
+    // Shortening the timeout below the time already spent idle would otherwise
+    // lock immediately, which reads as the setting having broken something.
+    const wallet = unlocked(minutes(60))
+    wallet.touch(0)
+
+    wallet.setAutoLock(minutes(5), minutes(30))
+    expect(wallet.lockIfIdle(minutes(31))).toBe(false)
+    expect(wallet.lockIfIdle(minutes(35))).toBe(true)
+  })
+
+  it('refuses a timeout that is not a length of time', () => {
+    const wallet = unlocked()
+    for (const bad of [-1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => wallet.setAutoLock(bad)).toThrow(WalletError)
+    }
+  })
+
+  it('has no idle time to report while locked', () => {
+    expect(new Wallet(memoryVaultStore()).status().idleMs).toBe(null)
+  })
+})
+
+describe('proving somebody is present', () => {
+  it('accepts the password and refuses anything else', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    wallet.create(PASSWORD)
+
+    expect(wallet.verifyPassword(PASSWORD)).toBe(true)
+    expect(wallet.verifyPassword('nearly right')).toBe(false)
+    expect(wallet.verifyPassword('')).toBe(false)
+  })
+
+  it('leaves the wallet exactly as it found it', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    const created = wallet.create(PASSWORD)
+    wallet.switchAccount(PASSWORD, 2)
+
+    wallet.verifyPassword('wrong')
+    expect(wallet.status()).toMatchObject({ unlocked: true, accountIndex: 2 })
+    expect(wallet.status().address).toBe(
+      mnemonicToAccount(created.phrase, { addressIndex: 2 }).address
+    )
+  })
+
+  it('counts as presence, so checking it holds off the lock', () => {
+    const wallet = new Wallet(memoryVaultStore(), { autoLockMs: 1000 })
+    wallet.create(PASSWORD)
+    wallet.touch(0)
+
+    wallet.verifyPassword(PASSWORD, 900)
+    expect(wallet.lockIfIdle(1500)).toBe(false)
+  })
+
+  it('has nothing to check when there is no wallet', () => {
+    expect(() => new Wallet(memoryVaultStore()).verifyPassword(PASSWORD)).toThrow(/no wallet/)
+  })
+})
+
+describe('importing a phrase that has a passphrase', () => {
+  const EXTRA = 'a Passphrase With Caps'
+
+  it('derives the wallet that passphrase makes, not the bare one', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    const status = wallet.importPhrase(PHRASE, PASSWORD, { passphrase: EXTRA })
+
+    expect(status.address).toBe(mnemonicToAccount(PHRASE, { passphrase: EXTRA }).address)
+    expect(status.address).not.toBe(mnemonicToAccount(PHRASE).address)
+  })
+
+  it('says one exists without ever saying what it is', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    wallet.importPhrase(PHRASE, PASSWORD, { passphrase: EXTRA })
+
+    expect(wallet.status().hasPassphrase).toBe(true)
+    expect(JSON.stringify(wallet.status()).includes('With Caps')).toBe(false)
+  })
+
+  it('survives a lock and unlock', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    const address = wallet.importPhrase(PHRASE, PASSWORD, { passphrase: EXTRA }).address
+
+    wallet.lock()
+    expect(wallet.status().hasPassphrase).toBe(false)
+    expect(wallet.unlock(PASSWORD).address).toBe(address)
+    expect(wallet.status().hasPassphrase).toBe(true)
+  })
+
+  it('survives a password change, which would otherwise empty the wallet', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    const address = wallet.importPhrase(PHRASE, PASSWORD, { passphrase: EXTRA }).address
+
+    wallet.changePassword(PASSWORD, 'a different password')
+    wallet.lock()
+
+    expect(wallet.unlock('a different password').address).toBe(address)
+    expect(wallet.revealSecret('a different password').passphrase).toBe(EXTRA)
+  })
+
+  it('follows the phrase into other accounts and exports', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    wallet.importPhrase(PHRASE, PASSWORD, { passphrase: EXTRA })
+
+    expect(wallet.addressAt(PASSWORD, 4)).toBe(
+      mnemonicToAccount(PHRASE, { passphrase: EXTRA, addressIndex: 4 }).address
+    )
+    expect(wallet.switchAccount(PASSWORD, 4).address).toBe(
+      mnemonicToAccount(PHRASE, { passphrase: EXTRA, addressIndex: 4 }).address
+    )
+
+    const key = decrypt(wallet.exportKeystore(PASSWORD, 4), PASSWORD)
+    expect(privateKeyToAccount(key as `0x${string}`).address).toBe(
+      mnemonicToAccount(PHRASE, { passphrase: EXTRA, addressIndex: 4 }).address
+    )
+  })
+
+  it('reveals the phrase alone, and the passphrase only when asked for both', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    wallet.importPhrase(PHRASE, PASSWORD, { passphrase: EXTRA })
+
+    expect(wallet.revealPhrase(PASSWORD)).toBe(PHRASE)
+    expect(wallet.revealSecret(PASSWORD)).toEqual({ phrase: PHRASE, passphrase: EXTRA })
+  })
+
+  it('treats an empty passphrase as the ordinary case', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    const status = wallet.importPhrase(PHRASE, PASSWORD, { passphrase: '' })
+
+    expect(status.address).toBe(mnemonicToAccount(PHRASE).address)
+    expect(status.hasPassphrase).toBe(false)
   })
 })

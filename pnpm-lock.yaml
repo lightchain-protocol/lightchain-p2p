@@ -54,6 +54,9 @@ importers:
       '@lcai-p2p/preflight':
         specifier: workspace:*
         version: link:../../packages/preflight
+      '@lcai-p2p/prices':
+        specifier: workspace:*
+        version: link:../../packages/prices
       '@lcai-p2p/room':
         specifier: workspace:*
         version: link:../../packages/room
@@ -69,6 +72,9 @@ importers:
       b4a:
         specifier: ^1.8.1
         version: 1.8.1
+      bare-fetch:
+        specifier: ^3.2.0
+        version: 3.2.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-pipe@4.2.3(bare-buffer@3.7.0))
       bare-fs:
         specifier: ^4.8.0
         version: 4.8.0(bare-buffer@3.7.0)
@@ -142,6 +148,9 @@ importers:
       '@lcai-p2p/vitest-config':
         specifier: workspace:*
         version: link:../../packages/vitest-config
+      cryptocurrency-icons:
+        specifier: ^0.18.1
+        version: 0.18.1
       electron:
         specifier: ^41.10.6
         version: 41.10.6
@@ -533,6 +542,28 @@ importers:
         version: 4.1.10(@types/node@26.2.0)(vite@8.2.1(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))
 
   packages/preflight:
+    devDependencies:
+      '@lcai-p2p/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@lcai-p2p/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@lcai-p2p/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      eslint:
+        specifier: ^10.8.1
+        version: 10.8.1(jiti@2.7.0)
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.2.0)(vite@8.2.1(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))
+
+  packages/prices:
+    dependencies:
+      '@lcai-p2p/chain':
+        specifier: workspace:*
+        version: link:../chain
     devDependencies:
       '@lcai-p2p/eslint-config':
         specifier: workspace:*
@@ -2520,6 +2551,9 @@ packages:
   cross-zip@4.0.1:
     resolution: {integrity: sha512-n63i0lZ0rvQ6FXiGQ+/JFCKAUyPFhLQYJIqKaa+tSJtfKeULF/IDNDAbdnSIxgS4NTuw2b0+lj8LzfITuq+ZxQ==}
     engines: {node: '>=12.10'}
+
+  cryptocurrency-icons@0.18.1:
+    resolution: {integrity: sha512-dvR5O8JOmav3559Yb0Igpkia+3vpt/aeNvMu5ZIVUG2Bzpq9wNcOJRIQas49XJrPjtZ98GAEn3aDQO+w7uhS2w==}
 
   debounceify@1.1.0:
     resolution: {integrity: sha512-eKuHDVfJVg+u/0nPy8P+fhnLgbyuTgVxuCRrS/R7EpDSMMkBDgSes41MJtSAY1F1hcqfHz3Zy/qpqHHIp/EhdA==}
@@ -7581,6 +7615,8 @@ snapshots:
       which: 2.0.2
 
   cross-zip@4.0.1: {}
+
+  cryptocurrency-icons@0.18.1: {}
 
   debounceify@1.1.0: {}
 

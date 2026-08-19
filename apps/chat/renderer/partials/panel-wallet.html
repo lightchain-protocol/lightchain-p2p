@@ -4,6 +4,92 @@
              the open wallet is a console, because balances and an address are
              compared and copied rather than read as prose. -->
         <div class="panel" id="panel-wallet" hidden>
+          <!-- One asset, on one chain -------------------------------------
+               A pane rather than a section. There is no router — panels are
+               flat toggles — and a nav entry for something reached by clicking
+               a row would be an entry that is empty until you have. -->
+          <section class="console asset-page" id="asset-detail" hidden>
+            <button class="asset-close" type="button" id="asset-back" aria-label="Back to holdings">
+              <svg class="icon" aria-hidden="true"><use href="#i-close" /></svg>
+            </button>
+
+            <div class="asset-hero">
+              <svg class="asset-hero-mark" aria-hidden="true">
+                <use href="#c-generic" id="asset-mark" />
+              </svg>
+              <h1 class="asset-hero-name" id="asset-title">—</h1>
+              <p class="asset-hero-balance" id="asset-balance">—</p>
+              <p class="asset-hero-worth" id="asset-worth">—</p>
+
+              <div class="asset-actions">
+                <button class="asset-action" type="button" id="asset-receive">Receive</button>
+                <button class="asset-action" type="button" id="asset-send">Send</button>
+                <button class="asset-action" type="button" id="asset-bridge">Bridge</button>
+                <button class="asset-action" type="button" id="asset-buy">Buy</button>
+              </div>
+            </div>
+
+            <div class="asset-tabs" role="tablist">
+              <button class="asset-tab is-active" type="button" role="tab" data-tab="chart">
+                Price chart
+              </button>
+              <button class="asset-tab" type="button" role="tab" data-tab="activity">
+                Transactions
+              </button>
+              <button class="asset-tab" type="button" role="tab" data-tab="about">About</button>
+            </div>
+
+            <div class="asset-body">
+              <section class="asset-tabpane" id="tab-chart">
+                <div class="asset-ranges" id="asset-ranges">
+                  <button class="asset-range" type="button" data-range="24h">24H</button>
+                  <button class="asset-range is-active" type="button" data-range="1w">1W</button>
+                  <button class="asset-range" type="button" data-range="1m">1M</button>
+                  <button class="asset-range" type="button" data-range="1y">1Y</button>
+                  <button class="asset-range" type="button" data-range="all">All</button>
+                </div>
+                <div class="asset-chart" id="asset-chart"></div>
+                <p class="wallet-note" id="asset-chart-note" hidden></p>
+              </section>
+
+              <section class="asset-tabpane" id="tab-activity" hidden>
+                <!-- What the source used can and cannot see. Said before the
+                     list rather than after it, because somebody who was paid
+                     and cannot find the payment will stop reading. -->
+                <p class="wallet-note" id="asset-history-covers"></p>
+                <div class="alert" data-tone="warn" id="asset-history-blind" hidden>
+                  <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                  <div class="alert-body">
+                    <strong class="alert-title">Not everything shows here</strong>
+                    <span id="asset-history-blind-note"></span>
+                  </div>
+                </div>
+                <ul class="ledger-list" id="asset-history"></ul>
+                <p class="wallet-note" id="asset-history-empty" hidden>
+                  Nothing found for this asset yet.
+                </p>
+              </section>
+
+              <section class="asset-tabpane" id="tab-about" hidden>
+                <dl class="facts">
+                  <dt>Network</dt>
+                  <dd><span class="chip" id="about-chain"></span></dd>
+                  <dt>Contract</dt>
+                  <dd><code class="wallet-key" id="about-contract"></code></dd>
+                  <dt>Decimals</dt>
+                  <dd id="about-decimals"></dd>
+                  <dt>Priced by</dt>
+                  <dd id="about-priced"></dd>
+                </dl>
+                <p class="wallet-note" id="about-note"></p>
+                <button class="button button-sm" type="button" id="asset-explorer">
+                  <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+                  View on explorer
+                </button>
+              </section>
+            </div>
+          </section>
+
           <div class="wallet-pane" id="wallet-pane">
             <!-- No wallet yet -->
             <section class="wallet-gate" id="wallet-none" hidden>
@@ -120,21 +206,60 @@
                 </div>
               </header>
 
-              <div class="console-body console-body-split">
-                <div class="wallet-column">
+              <!-- Holdings first and full width. It is a table of seven
+                   columns compared down the page, and squeezing it into half
+                   the window makes the comparison it exists for impossible.
+                   Everything else is narrower by nature and sits below. -->
+              <div class="console-body wallet-body">
+                <div class="wallet-wide">
                   <section class="kit-card kit-card-flush">
                     <header class="kit-card-head">
-                      <h2 class="kit-card-title">Balances</h2>
+                      <h2 class="kit-card-title">Holdings</h2>
+                      <button class="button button-sm" type="button" id="assets-refresh">
+                        <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                        Refresh
+                      </button>
                     </header>
                     <div class="kit-card-scroll">
-                      <!-- Two figures rather than one total. They are the same
-                           money in two places and only one of them can be sent,
-                           so adding them would overstate what is spendable. -->
-                      <div class="wallet-balances">
-                        <div class="wallet-balance">
-                          <span class="wallet-balance-label">LCAI on chain</span>
-                          <span class="wallet-balance-value" id="wallet-native">—</span>
+                      <!-- One figure, and a note when it is not the whole
+                           picture. A total presented as complete while a chain
+                           was unreachable is a number somebody would act on. -->
+                      <div class="holdings-total">
+                        <span class="holdings-total-label">Everything, in dollars</span>
+                        <span class="holdings-total-value" id="assets-total">—</span>
+                      </div>
+
+                      <div class="alert" data-tone="warn" role="status" id="assets-partial" hidden>
+                        <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                        <div class="alert-body">
+                          <strong class="alert-title">This total is incomplete</strong>
+                          <span id="assets-partial-note"></span>
                         </div>
+                      </div>
+
+                      <!-- A table, because these are columns being compared
+                           down rather than rows read across: which of these is
+                           worth most, which moved today. A list of cards makes
+                           that comparison impossible. -->
+                      <div class="holdings-head" aria-hidden="true" hidden>
+                        <span>Asset</span>
+                        <span class="holdings-col-num">Balance</span>
+                        <span class="holdings-col-num">Price</span>
+                        <span class="holdings-col-num">24h</span>
+                        <span class="holdings-col-chart">7 days</span>
+                        <span class="holdings-col-num">Value</span>
+                      </div>
+                      <ul class="holdings" id="assets-list"></ul>
+
+                      <p class="wallet-note" id="assets-empty" hidden>
+                        Nothing held yet on any of the six networks. Use Receive to get an address.
+                      </p>
+
+                      <!-- Prepaid sits apart from the holdings rather than in
+                           them. It is the same money in a different place and
+                           only one of the two can be sent, so adding them would
+                           overstate what is spendable. -->
+                      <div class="wallet-balances">
                         <div class="wallet-balance">
                           <span class="wallet-balance-label">Prepaid for inference</span>
                           <span class="wallet-balance-value" id="wallet-prepaid">—</span>
@@ -157,6 +282,9 @@
                     </div>
                   </section>
 
+                </div>
+
+                <div class="wallet-split">
                   <section class="kit-card kit-card-flush">
                     <header class="kit-card-head">
                       <h2 class="kit-card-title">Account</h2>
@@ -185,9 +313,7 @@
                       </dl>
                     </div>
                   </section>
-                </div>
 
-                <div class="wallet-column">
                   <section class="kit-card kit-card-flush">
                     <header class="kit-card-head">
                       <h2 class="kit-card-title">Move funds</h2>
@@ -199,13 +325,45 @@
                         brings back whatever is left. Neither leaves this machine's control.
                       </p>
                       <div class="wallet-actions">
-                        <button class="button button-primary" type="button" data-move="deposit">
+                        <button class="button button-primary" type="button" id="assets-send-btn">
+                          <svg class="icon" aria-hidden="true"><use href="#i-upload" /></svg>
+                          Send
+                        </button>
+                        <button class="button" type="button" id="assets-receive-btn">
                           <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
-                          Deposit
+                          Receive
+                        </button>
+                        <button class="button" type="button" data-move="deposit">
+                          Prepay inference
                         </button>
                         <button class="button" type="button" data-move="withdraw">
                           <svg class="icon" aria-hidden="true"><use href="#i-upload" /></svg>
-                          Withdraw
+                          Withdraw prepaid
+                        </button>
+                      </div>
+
+                      <h3 class="wallet-subheading">Bridge and exchanges</h3>
+                      <p class="wallet-note">
+                        LCAI exists as an ERC-20 on Ethereum and as the native coin on Lightchain.
+                        The bridge moves it between the two. Buying and selling happens on
+                        exchanges, which open in your browser — nothing here takes an order.
+                      </p>
+                      <div class="wallet-actions">
+                        <button class="button" type="button" id="bridge-open-btn">
+                          <svg class="icon" aria-hidden="true"><use href="#i-routing" /></svg>
+                          Bridge
+                        </button>
+                        <button class="button" type="button" data-external="https://bridge.lightchain.ai">
+                          <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+                          Official bridge
+                        </button>
+                        <button
+                          class="button"
+                          type="button"
+                          data-external="https://www.coingecko.com/en/coins/lightchain-ai#markets"
+                        >
+                          <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+                          Where LCAI trades
                         </button>
                       </div>
                     </div>

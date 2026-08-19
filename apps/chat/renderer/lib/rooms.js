@@ -1015,12 +1015,27 @@ el.joinForm.addEventListener('submit', async (evt) => {
   }
 })
 
+const copyInviteRawBtn = document.getElementById('copy-invite-raw')
+
+/**
+ * Whether there is a link worth copying yet.
+ *
+ * Making an invite is a round trip to the worker, and until it lands the field
+ * holds the word "Creating…". Both copy buttons were live throughout, so a
+ * quick click put that word on the clipboard and said "Link copied".
+ */
+function offerInviteCopies(ready) {
+  el.copyInviteBtn.disabled = !ready
+  copyInviteRawBtn.disabled = !ready
+}
+
 el.inviteBtn.addEventListener('click', async () => {
   if (!activeKey) return
 
   el.inviteError.hidden = true
   el.inviteValue.textContent = 'Creating…'
   el.inviteRaw.textContent = ''
+  offerInviteCopies(false)
   clearQr()
   el.inviteDialog.showModal()
 
@@ -1028,6 +1043,7 @@ el.inviteBtn.addEventListener('click', async () => {
     const { invite, link } = await request('room.invite', { room: activeKey })
     el.inviteValue.textContent = link
     el.inviteRaw.textContent = invite
+    offerInviteCopies(true)
     await drawQr(link)
   } catch (err) {
     el.inviteValue.textContent = ''
@@ -1069,9 +1085,7 @@ document.getElementById('grant-form').addEventListener('submit', async (evt) => 
 })
 
 el.copyInviteBtn.addEventListener('click', () => copy(el.inviteValue.textContent, 'Link'))
-document
-  .getElementById('copy-invite-raw')
-  .addEventListener('click', () => copy(el.inviteRaw.textContent, 'Invite'))
+copyInviteRawBtn.addEventListener('click', () => copy(el.inviteRaw.textContent, 'Invite'))
 
 const membersBtn = document.getElementById('members-btn')
 

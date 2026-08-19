@@ -56,13 +56,14 @@ const ICONS = {
   'i-models': 'sparkles',
   'i-worker': 'server',
   'i-wallet': 'wallet',
-  'i-roadmap': 'signpost',
 
   // Chrome
   'i-settings': 'settings',
   'i-collapse': 'panel-left-close',
   'i-expand': 'panel-left-open',
   'i-chevron': 'chevron-right',
+  // Going back out of a nested pane, which the wallet's per-asset view is.
+  'i-chevron-left': 'chevron-left',
   'i-sun': 'sun',
   'i-moon': 'moon',
   'i-search': 'search',
@@ -115,9 +116,6 @@ const ICONS = {
   'i-key': 'key',
   'i-shield': 'shield-check',
 
-  // Things the roadmap points at
-  'i-mobile': 'smartphone',
-  'i-hardware': 'usb',
   'i-routing': 'route',
   'i-storage': 'database'
 }

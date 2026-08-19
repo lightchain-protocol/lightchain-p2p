@@ -300,47 +300,31 @@ report(
   dockerless?.error ? dockerless.error.slice(0, 50) : 'answered'
 )
 
-// --- Roadmap ------------------------------------------------------------------
+// --- Nothing advertises what does not exist -----------------------------------
 
-await show('roadmap')
-
-const roadmap = await evaluate(`(() => {
-  const items = [...document.querySelectorAll('#panel-roadmap .unbuilt-title')]
-  // Counted inside each title rather than across the panel: the legend carries
-  // one of every status, so a panel-wide count agrees with nothing.
-  const withStatus = items.filter((i) => i.querySelector('.unbuilt-status'))
-  const legend = [...document.querySelectorAll('.unbuilt-legend .unbuilt-status')]
-  return {
-    count: items.length,
-    allNamed: items.every((i) => (i.textContent ?? '').trim() !== ''),
-    withStatus: withStatus.length,
-    legend: legend.map((s) => s.textContent.trim())
-  }
+// The sidebar used to carry a "What is next" group: a roadmap panel and three
+// dimmed rows for features that were not built. It is gone, and this is what
+// notices if any of it comes back by accident — a nav item leading to a panel
+// that no longer exists is a dead end, which is the thing the whole first-run
+// rework was about.
+const advertised = await evaluate(`(() => {
+  const sections = [...document.querySelectorAll('[data-section]')].map((b) => b.dataset.section)
+  return JSON.stringify({
+    sections,
+    orphaned: sections.filter((name) => document.getElementById('panel-' + name) === null),
+    dimmed: document.querySelectorAll('[aria-disabled="true"]').length
+  })
 })()`)
 
-report(
-  'the roadmap lists what is not built yet, each with a name',
-  roadmap?.count > 0 && roadmap.allNamed,
-  `${roadmap?.count} entries`
-)
+const nav = JSON.parse(advertised)
 
 report(
-  'and each carries a status rather than a bare title',
-  roadmap?.withStatus === roadmap?.count,
-  `${roadmap?.withStatus} of ${roadmap?.count} entries`
+  'every nav item leads to a panel that exists',
+  nav.orphaned.length === 0,
+  nav.orphaned.length === 0 ? `${nav.sections.length} sections` : `orphaned: ${nav.orphaned.join(', ')}`
 )
 
-// A legend describing states nothing is in is a legend that has drifted from
-// the list it explains.
-const used = await evaluate(
-  `JSON.stringify([...new Set([...document.querySelectorAll('.unbuilt-list .unbuilt-status')].map((s) => s.textContent.trim()))])`
-)
-const unused = (roadmap?.legend ?? []).filter((entry) => !JSON.parse(used).includes(entry))
-report(
-  'and the legend only describes states entries are actually in',
-  unused.length === 0,
-  unused.length === 0 ? `${JSON.parse(used).length} states in use` : `unused: ${unused.join(', ')}`
-)
+report('and nothing in the sidebar is dimmed out', nav.dimmed === 0, `${nav.dimmed} dimmed controls`)
 
 // --- Nothing threw on the way through -----------------------------------------
 

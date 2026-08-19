@@ -58,14 +58,6 @@
 /* `.console-body-split` starts its items rather than stretching them, which is
    right for cards that hug their content. The column asks for the whole row
    back so its own cards can share it. */
-.wallet-column {
-  display: flex;
-  flex-direction: column;
-  align-self: stretch;
-  gap: var(--lc-space-lg);
-  min-height: 0;
-}
-
 /* --- Balances ------------------------------------------------------------- */
 
 /**
@@ -276,4 +268,403 @@
    at least lines its edge up with the paragraph explaining it. */
 .settings-page .form {
   max-width: none;
+}
+
+
+/* --- Holdings -------------------------------------------------------------
+   A table rather than a list of cards. These are columns being compared down —
+   which is worth most, which moved today — and a card layout makes that
+   comparison impossible. The grid is shared between the header and the rows so
+   the two cannot drift apart. */
+
+.holdings-head,
+.holding {
+  display: grid;
+  grid-template-columns: 2rem minmax(8rem, 1fr) 7rem 6rem 5rem 5.5rem 7rem;
+  align-items: center;
+  gap: var(--lc-space-sm);
+}
+
+.holdings-head {
+  padding: 0 var(--lc-space-xs) var(--lc-space-xs);
+  border-bottom: 1px solid var(--lc-rule);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-muted);
+}
+
+/* The first two columns are the asset, so the headings start at the third. */
+.holdings-head > :first-child {
+  grid-column: 1 / 3;
+}
+
+.holdings-col-num,
+.holdings-col-chart {
+  text-align: right;
+}
+
+.holdings-total {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  padding-bottom: var(--lc-space-md);
+}
+
+.holdings-total-label {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-muted);
+}
+
+.holdings-total-value {
+  font-size: var(--lc-text-xxl);
+  line-height: var(--lc-leading-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.holdings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.holding {
+  padding: var(--lc-space-sm) var(--lc-space-xs);
+  border-bottom: 1px solid var(--lc-rule);
+}
+
+/* Full colour, unlike every other icon here. These are brand marks and a
+   monochrome Bitcoin logo is not a Bitcoin logo. */
+.holding-mark {
+  width: 2rem;
+  height: 2rem;
+}
+
+.holding-named {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.holding-symbol {
+  font-size: var(--lc-text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The ticker and the chain, on every row. Without the chain a wallet holding
+   USDC in four places shows four identical rows. */
+.holding-chain {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.holding-num {
+  text-align: right;
+  font-size: var(--lc-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.holding-dim {
+  color: var(--lc-fg-dim);
+}
+
+.holding-change[data-way='up'] {
+  color: var(--lc-success);
+}
+
+.holding-change[data-way='down'] {
+  color: var(--lc-danger);
+}
+
+.holding-spark {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.spark-line {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.spark-line[data-way='up'] {
+  stroke: var(--lc-success);
+}
+
+.spark-line[data-way='down'] {
+  stroke: var(--lc-danger);
+}
+
+/* A price from one thin pool, and a price nobody has refreshed. Both are real
+   numbers worth showing and neither should be read with the same confidence as
+   an aggregate, so both are marked rather than hidden. */
+.holding-value[data-state='indicative'] {
+  color: var(--lc-warning);
+}
+
+.holding-value[data-state='stale'] {
+  color: var(--lc-fg-muted);
+  font-style: italic;
+}
+
+.holding[role='button'] {
+  cursor: pointer;
+}
+
+.holding[role='button']:hover {
+  background: var(--lc-bg-elevated-2);
+}
+
+.holding[role='button']:focus-visible {
+  outline: 2px solid var(--lc-brand);
+  outline-offset: -2px;
+  border-radius: var(--lc-radius-sm);
+}
+
+/* --- Receiving ------------------------------------------------------------ */
+
+.receive-code {
+  display: grid;
+  place-items: center;
+  padding: var(--lc-space-sm) 0;
+}
+
+/* --- One asset ------------------------------------------------------------
+   Centred rather than laid out in cards. There is one subject on this screen
+   and everything else is about it, so it reads down the middle. */
+
+.asset-page {
+  position: relative;
+  overflow-y: auto;
+}
+
+.asset-close {
+  position: absolute;
+  top: var(--lc-space-md);
+  right: var(--lc-space-md);
+  display: grid;
+  place-items: center;
+  width: var(--lc-control-sm);
+  height: var(--lc-control-sm);
+  appearance: none;
+  border: 0;
+  border-radius: var(--lc-radius-sm);
+  background: transparent;
+  color: var(--lc-fg-dim);
+  cursor: pointer;
+}
+
+.asset-close:hover {
+  background: var(--lc-bg-elevated-2);
+  color: var(--lc-fg);
+}
+
+.asset-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lc-space-xs);
+  padding: var(--lc-space-xl) var(--lc-space-lg) var(--lc-space-lg);
+}
+
+.asset-hero-mark {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+.asset-hero-name {
+  margin: 0;
+  font-size: var(--lc-text-lg);
+  font-weight: 600;
+}
+
+.asset-hero-balance {
+  margin: 0;
+  font-size: var(--lc-text-xxl);
+  line-height: var(--lc-leading-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.asset-hero-worth {
+  margin: 0;
+  color: var(--lc-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.asset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--lc-space-sm);
+  margin-top: var(--lc-space-md);
+}
+
+/* Pill-shaped and outlined, so the four read as one set of choices rather than
+   as one primary action and three afterthoughts. */
+.asset-action {
+  appearance: none;
+  padding: 0 var(--lc-space-lg);
+  height: var(--lc-control-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-pill);
+  background: transparent;
+  color: var(--lc-fg);
+  font: inherit;
+  font-size: var(--lc-text-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.asset-action:hover {
+  border-color: var(--lc-brand);
+  color: var(--lc-brand);
+}
+
+.asset-tabs {
+  display: flex;
+  justify-content: center;
+  gap: var(--lc-space-lg);
+  border-bottom: 1px solid var(--lc-rule);
+}
+
+.asset-tab {
+  appearance: none;
+  padding: var(--lc-space-sm) 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--lc-fg-muted);
+  font: inherit;
+  font-size: var(--lc-text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.asset-tab:hover {
+  color: var(--lc-fg);
+}
+
+.asset-tab.is-active {
+  color: var(--lc-fg);
+  border-bottom-color: var(--lc-brand);
+}
+
+.asset-body {
+  padding: var(--lc-space-lg);
+}
+
+.asset-tabpane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+}
+
+.asset-ranges {
+  display: flex;
+  gap: var(--lc-space-xs);
+}
+
+.asset-range {
+  appearance: none;
+  padding: 0 var(--lc-space-md);
+  height: var(--lc-control-sm);
+  border: 0;
+  border-radius: var(--lc-radius-sm);
+  background: transparent;
+  color: var(--lc-fg-muted);
+  font: inherit;
+  font-size: var(--lc-text-xs);
+  cursor: pointer;
+}
+
+.asset-range:hover {
+  color: var(--lc-fg);
+}
+
+.asset-range.is-active {
+  background: var(--lc-bg-elevated-2);
+  color: var(--lc-fg);
+}
+
+.asset-chart {
+  position: relative;
+  min-height: 260px;
+}
+
+/* Stretched to the pane rather than kept square. A price line has no natural
+   aspect ratio, and the width available is the width worth using. */
+.chart {
+  width: 100%;
+  height: 260px;
+  display: block;
+}
+
+.chart-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart-line[data-way='up'] {
+  stroke: var(--lc-success);
+}
+
+.chart-line[data-way='down'] {
+  stroke: var(--lc-danger);
+}
+
+.chart-area {
+  stroke: none;
+}
+
+.chart-area[data-way='up'] {
+  fill: color-mix(in oklab, var(--lc-success) 14%, transparent);
+}
+
+.chart-area[data-way='down'] {
+  fill: color-mix(in oklab, var(--lc-danger) 14%, transparent);
+}
+
+.chart-marks {
+  display: flex;
+  gap: var(--lc-space-lg);
+  margin-top: var(--lc-space-xs);
+}
+
+.chart-mark {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- The wallet's own layout ---------------------------------------------
+   Holdings full width above, everything narrower below it in two columns. The
+   table has seven columns compared down the page and half a window is not
+   enough for that; Account and Move funds are lists of short facts and would
+   look stranded across the whole thing. */
+
+.wallet-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  overflow-y: auto;
+}
+
+.wallet-wide {
+  flex: 0 0 auto;
+}
+
+.wallet-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  gap: var(--lc-space-md);
+  align-items: start;
 }

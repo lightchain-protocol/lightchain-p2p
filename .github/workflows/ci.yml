@@ -59,6 +59,12 @@ jobs:
       - name: Icon sprite is current
         run: node apps/chat/scripts/build-icons.mjs --check
 
+      # The asset marks are compiled into the same sprite from a CC0 set,
+      # because the renderer's policy allows no network origin for images and
+      # loading logos from a CDN would mean relaxing that for decoration.
+      - name: Coin marks are current
+        run: node apps/chat/scripts/build-coins.mjs --check
+
       # index.html is assembled from renderer/partials. Editing it directly
       # works until the next build, which is the worst kind of works.
       - name: Markup is current
@@ -83,6 +89,39 @@ jobs:
       # build, both boot, and the damage only shows on somebody else's machine.
       - name: Apps have distinct upgrade links
         run: node scripts/check-links.mjs
+
+      # Three surveys that ask the chains whether this repository still
+      # describes them. None of them signs anything or costs anything.
+      #
+      # They exist because every constant they check is one that fails quietly.
+      # A wrong token address reads as a zero balance, so the asset simply never
+      # appears. A stale `decimals` shows a balance wrong by a factor of a
+      # million, and applies that factor to anything typed into a send field. A
+      # bridge router that has moved accepts a transfer and keeps it. None of
+      # that raises an error anywhere, and none of it can be caught by reading
+      # the file — only by asking.
+      #
+      # `continue-on-error`, because they depend on public endpoints that go
+      # down. A red run here means "go and look", not "the branch is broken".
+      - name: Chains are as the registry describes
+        continue-on-error: true
+        run: node packages/chain/scripts/survey-chains.mjs
+
+      - name: Tokens are as the list describes
+        continue-on-error: true
+        run: node packages/chain/scripts/survey-tokens.mjs
+
+      - name: The bridge is where it was
+        continue-on-error: true
+        run: node packages/chain/scripts/survey-bridge.mjs
+
+      # Price feeds are read straight from Ethereum, so this catches an
+      # aggregator being retired or its answer changing shape. The sanity checks
+      # inside it — a stablecoin near a dollar, BTC above ETH — are what catch a
+      # decoding error that still produces a plausible number.
+      - name: Prices resemble reality
+        continue-on-error: true
+        run: node packages/prices/scripts/survey-prices.mjs
 
   # The end-to-end harnesses, which until now only ever ran on somebody's own
   # machine. Everything they cover — the onboarding flow, message text becoming
@@ -123,7 +162,10 @@ jobs:
           # runner, and the audio library was renamed between Ubuntu releases,
           # so they are installed individually and allowed to be absent rather
           # than failing the job over a package name.
-          sudo apt-get install -y xvfb
+          # xclip is not optional either: the clipboard harness reads the
+          # selection back from outside the application, and refuses to run
+          # without a reader rather than passing on assertions it cannot make.
+          sudo apt-get install -y xvfb xclip
           for lib in libgtk-3-0 libgtk-3-0t64 libnss3 libasound2 libasound2t64; do
             sudo apt-get install -y "$lib" || true
           done
@@ -138,9 +180,17 @@ jobs:
           sudo chown root:root node_modules/electron/dist/chrome-sandbox
           sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
 
-      # Only the five that need nothing but this machine. `surfaces-check` and
-      # `inference-check` read balances and model fees from a live chain, and a
-      # suite that fails when a testnet is slow is a suite nobody trusts.
+      # Everything that needs nothing but this machine and a network.
+      #
+      # `surfaces-check` and `inference-check` stay out: they read balances and
+      # model fees from a live chain, and a suite that fails when a testnet is
+      # slow is a suite nobody trusts.
+      #
+      # The wallet harnesses are in, and they do reach real chains — but only to
+      # read. None of them signs anything, because every check worth making
+      # about a transfer is on the near side of the signature. What they would
+      # catch is a token address drifting, a decoder breaking, or a refusal
+      # quietly stopping refusing.
       - name: Drive the application
         working-directory: apps/chat
         run: |
@@ -156,7 +206,9 @@ jobs:
           done
           curl -sf http://127.0.0.1:9222/json/list > /dev/null || { echo 'the window never came up'; exit 1; }
 
-          for harness in onboarding-check hostile-renderer conversation-check transcript-search; do
+          for harness in onboarding-check hostile-renderer conversation-check transcript-search \
+                         clipboard-check locking-check assets-check send-check \
+                         asset-page-check bridge-check; do
             echo "--- $harness"
             node "scripts/$harness.mjs" 9222
           done

@@ -68,7 +68,6 @@ export const el = {
   walletNetwork: document.getElementById('wallet-network'),
   walletCopy: document.getElementById('wallet-copy'),
   walletLockBtn: document.getElementById('wallet-lock'),
-  walletNative: document.getElementById('wallet-native'),
   walletPrepaid: document.getElementById('wallet-prepaid'),
   walletBalanceNote: document.getElementById('wallet-balance-note'),
   joinDialog: document.getElementById('join-dialog'),
@@ -234,12 +233,36 @@ export function toast(text, tone) {
   }, 3200)
 }
 
-export async function copy(text, label) {
-  try {
-    await navigator.clipboard.writeText(text)
-    toast(`${label} copied`)
-  } catch {
-    // Selecting it by hand still works; the key is rendered in full.
-    toast(`Could not copy the ${label.toLowerCase()}`, 'error')
+/**
+ * Puts text on the clipboard and says so.
+ *
+ * Through the bridge rather than `navigator.clipboard`, which cannot work from
+ * this window: it is loaded over `file://`, and Chromium refuses the
+ * clipboard-write permission to that origin. Every copy button in the app was
+ * failing with `NotAllowedError` and reporting it in a toast that read "could
+ * not copy" — the buttons were honest and useless.
+ *
+ * The label defaults rather than being required. One caller passed none and the
+ * toast read "undefined copied", which is the sort of thing that only shows up
+ * on the path nobody clicks.
+ */
+export async function copy(text, label = 'Text') {
+  const what = String(text ?? '')
+
+  if (what === '') {
+    toast(`There is no ${label.toLowerCase()} to copy yet`, 'error')
+    return false
   }
+
+  // `window.bridge` rather than the export in `ipc.js`, which imports from this
+  // module — taking it from there would make the two depend on each other for
+  // one function call. It is the same object either way.
+  const done = await window.bridge.copy(what).catch(() => false)
+
+  // Selecting it by hand still works; everything offered here is rendered in
+  // full for exactly that reason.
+  if (done) toast(`${label} copied`)
+  else toast(`Could not copy the ${label.toLowerCase()}`, 'error')
+
+  return done
 }

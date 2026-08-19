@@ -69,7 +69,7 @@ last said so — what is still missing is a signed release, not the code.
 | `packages/drive`            | **Real**        | Publish, resolve and range-read a model drive, 9 tests including publisher-offline                               |
 | `packages/blind`            | **Real**        | Blind-peer registration, 4 tests against a real server with every holder offline                                 |
 | `packages/room`             | **Real**        | Multi-writer rooms, presence, attachments and a suite of abuses, 112 tests                                       |
-| `packages/wallet`           | **Real**        | BIP-39 phrase, BIP-32 accounts, a sealed local store, Keystore V3, 109 tests                                     |
+| `packages/wallet`           | **Real**        | BIP-39 phrase and passphrase, BIP-32 accounts, idle locking, a sealed local store, Keystore V3, 139 tests        |
 | `packages/inference`        | **Real**        | The session handshake, the prompt, the relay and what a model is shown of the conversation, under Bare, 73 tests |
 | `packages/inference-crypto` | **Real**        | ECDH P-256 and AES-256-GCM as the deployed workers speak it, 15 tests                                            |
 | `packages/host`             | **Real**        | Probes the machine a worker would run on, 15 tests                                                               |
@@ -77,12 +77,13 @@ last said so — what is still missing is a signed release, not the code.
 | `packages/preflight`        | **Real**        | Host readiness checks with actionable remedies, 28 tests                                                         |
 | `packages/worker`           | **Real**        | Network profiles, config validation, Docker orchestration, 33 tests                                              |
 | `apps/supervisor`           | **Real**        | Full worker lifecycle, contract addresses read from the registry, 17 tests                                       |
-| `packages/chain`            | **Real**        | Signing, fees, nonces, replacement and a chain-id guard, 139 tests                                               |
+| `packages/chain`            | **Real**        | Six EVM chains: signing, fees, ERC-20, Multicall3, endpoint failover, the bridge, 193 tests                      |
+| `packages/prices`           | **Real**        | Chainlink feeds and one Uniswap pool, read from the chain rather than an API, 31 tests                           |
 | `packages/da`               | **Not started** | Referenced in CODEOWNERS so ownership is settled before the code exists                                          |
 | Blind peer infrastructure   | **Not started** | There is no public fleet; we must operate our own servers or nothing stays available                             |
 | `packages/seed`             | **Real**        | Holds and serves drives, 6 tests                                                                                 |
 | `apps/seeder`               | **Real**        | Always-on seeding; verified holding a real Pear-staged release                                                   |
-| `apps/chat`                 | **Real**        | Rooms, wallet-signed messages, paid inference, OTA updates; 49 unit tests and 187 checks over seven harnesses    |
+| `apps/chat`                 | **Real**        | Rooms, a six-chain wallet, paid inference, OTA updates; 102 unit tests and 432 checks over nineteen harnesses    |
 | Code signing                | **Not started** | Longest external lead time; blocks release on four platforms                                                     |
 | iOS, Android                | **Deferred**    | By decision — see [ADR 0001](docs/decisions/0001-defer-mobile.md)                                                |
 

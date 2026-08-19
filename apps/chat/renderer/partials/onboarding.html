@@ -168,6 +168,34 @@
               ></textarea>
             </label>
             <p class="field-hint" id="restore-count">Twelve words.</p>
+
+            <details class="dialog-details" id="restore-advanced">
+              <summary>My phrase also has a passphrase</summary>
+              <p class="field-hint">
+                Some wallets add a word of your own on top of the twelve, sometimes called a
+                passphrase or a 25th word. Only fill this in if you set one. Capitals and spaces
+                matter here, and nothing can tell you it is wrong — the wrong one quietly opens a
+                different, empty wallet.
+              </p>
+              <label class="field">
+                <span class="field-label">Passphrase</span>
+                <span class="field-with-button">
+                  <input
+                    class="input"
+                    id="restore-passphrase"
+                    type="password"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="Leave empty if you did not set one"
+                  />
+                  <button class="field-reveal" type="button" data-reveal="restore-passphrase">
+                    Show
+                  </button>
+                </span>
+              </label>
+              <p class="field-hint" id="restore-preview" hidden></p>
+            </details>
+
             <label class="field">
               <span class="field-label">Password for this machine</span>
               <span class="field-with-button">

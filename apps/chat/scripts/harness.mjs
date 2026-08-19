@@ -71,6 +71,29 @@ const HARNESS_PASSWORDS = [
  * because the useful next step is to clear the storage directory rather than to
  * keep guessing.
  */
+/**
+ * Which of the known passwords this instance's wallet actually has.
+ *
+ * `unlockForHarness` discovers this as a side effect of guessing, but only when
+ * the wallet was locked — a suite that runs after another finds it open and
+ * never learns. Anything asserting a password-gated refusal needs the real one
+ * to prove the refusal was about the password rather than about everything.
+ *
+ * `wallet.reveal` is the oracle because it costs the same scrypt as an unlock
+ * and changes nothing. It hands back the phrase, which is a secret this process
+ * is welcome to: it is about to sign with the key derived from it.
+ */
+export async function passwordForHarness(ask) {
+  for (const password of HARNESS_PASSWORDS) {
+    const revealed = await ask('wallet.reveal', { password })
+    if (!revealed?.error) return password
+  }
+
+  throw new Error(
+    'this instance has a wallet no harness password opens. Stop it, delete its storage directory, and start it again.'
+  )
+}
+
 export async function unlockForHarness(ask) {
   const status = await ask('wallet.status')
 

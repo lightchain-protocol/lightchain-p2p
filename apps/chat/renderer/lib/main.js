@@ -1,19 +1,20 @@
-import { el, setStatus, showSection } from './dom.js'
+import { el, setStatus, showSection, toast } from './dom.js'
 import { bridge, onPush, request, startWorker } from './ipc.js'
 import { adopt, openInvite, openMessage, receivePresence, receiveRoom } from './rooms.js'
 import { receiveAiProgress } from './answering.js'
 import { bindSearchShortcut } from './search.js'
 import { onAiProgress, onCommitment, openTranscript, refreshModels } from './models.js'
 import { appendWorkerOutput, refreshWorker, setWorkerBusy } from './worker.js'
-import { refreshWallet } from './wallet.js'
+import { refreshWallet, showWallet } from './wallet.js'
+import { refreshAssets } from './assets.js'
 import { refreshDashboard } from './dashboard.js'
 import { startOnboarding } from './onboarding.js'
 // Nothing out here calls into the settings panel, but importing a panel is what
 // attaches its controls, and the button that opens it is one of them.
 import './settings.js'
-// Same reason: the sidebar's dimmed entries are wired by the roadmap module,
-// which binds whatever carries `data-roadmap` and does nothing when nothing does.
-import './roadmap.js'
+// Same reason: the bridge dialog and the links out to exchanges are attached by
+// importing the module that owns them.
+import './bridge.js'
 
 /**
  * The shell around the panels, and the order things come up in.
@@ -129,6 +130,7 @@ el.collapseBtn.addEventListener('click', () => {
 el.accountBtn.addEventListener('click', () => {
   showSection('wallet')
   void refreshWallet()
+  void refreshAssets()
 })
 
 // --- Sections --------------------------------------------------------------
@@ -139,7 +141,12 @@ for (const button of el.sections) {
     // Probing the host costs a few subprocesses and reading balances costs a
     // round trip, so both happen when the panel is opened rather than at launch.
     if (button.dataset.section === 'worker') void refreshWorker()
-    if (button.dataset.section === 'wallet') void refreshWallet()
+    if (button.dataset.section === 'wallet') {
+      void refreshWallet()
+      // Started alongside rather than after. Reading six chains takes longer
+      // than reading one, and the address and lock state should not wait on it.
+      void refreshAssets()
+    }
     if (button.dataset.section === 'models') void refreshModels()
     if (button.dataset.section === 'dashboard') void refreshDashboard()
   })
@@ -164,6 +171,38 @@ onPush('ai.progress', (msg) => (msg.room ? receiveAiProgress(msg) : onAiProgress
 onPush('ai.commitment', onCommitment)
 onPush('worker.busy', setWorkerBusy)
 onPush('worker.output', appendWorkerOutput)
+
+/**
+ * The wallet locked itself because nobody was here.
+ *
+ * The worker decides this, not the window — an idle timer in the renderer would
+ * be one a compromised renderer could simply not run. All this does is catch up
+ * with a decision already made.
+ */
+onPush('wallet.locked', () => {
+  void showWallet({ exists: true, unlocked: false, address: null })
+  toast('Wallet locked after being idle')
+})
+
+/**
+ * Says somebody is still here, at most once a minute.
+ *
+ * Without this, reading a long thread for twenty minutes reads to the worker as
+ * an empty room. Throttled hard because it is a round trip and its only job is
+ * to be roughly true.
+ */
+let lastTouch = 0
+
+function stillHere() {
+  const now = Date.now()
+  if (now - lastTouch < 60_000) return
+  lastTouch = now
+  void request('wallet.touch').catch(() => {})
+}
+
+for (const name of ['pointerdown', 'keydown']) {
+  window.addEventListener(name, stillHere, { passive: true })
+}
 
 /**
  * View preferences, which live in the worker because a `file://` renderer has

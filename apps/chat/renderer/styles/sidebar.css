@@ -111,8 +111,7 @@
   margin-top: var(--lc-space-md);
 }
 
-.sections,
-.nav-upcoming {
+.sections {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -120,12 +119,6 @@
   padding: 0;
   list-style: none;
   flex: 0 0 auto;
-}
-
-/* Continues the list above it rather than starting a new one, so the group's
-   heading covers both the built and the unbuilt. */
-.nav-upcoming {
-  margin-top: 2px;
 }
 
 .sidebar-title {
@@ -197,29 +190,6 @@
   color: var(--lc-brand);
 }
 
-/**
- * Advertised, not yet available.
- *
- * `aria-disabled` rather than `disabled`, because it is still a control: it
- * opens the roadmap at the entry saying what this one is waiting on. A dimmed
- * row that swallows the click is the dead end just taken out of onboarding,
- * wearing a different colour.
- *
- * Declared after the hover and active rules above, which it ties with on
- * specificity, so that a row nobody can use yet does not light up in the brand
- * colour as though it were about to do something.
- */
-.nav-item-upcoming,
-.nav-item-upcoming .nav-icon {
-  color: var(--lc-fg-dim);
-}
-
-/* Up to where a live entry rests, and no further. The hover wash stays, since
-   this is still something to click. */
-.sidebar .nav-item-upcoming:hover,
-.nav-item-upcoming:hover .nav-icon {
-  color: var(--lc-fg-muted);
-}
 
 /* Brand-tinted rather than filled with the elevated surface, which this plane
    has all but swallowed. */

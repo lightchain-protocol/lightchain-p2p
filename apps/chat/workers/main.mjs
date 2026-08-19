@@ -28,10 +28,21 @@ import {
   toBytes,
   toHex
 } from '@lcai-p2p/chain'
-import { SealedStore, Wallet, deriveKey, openJson, sealJson } from '@lcai-p2p/wallet'
+import {
+  DEFAULT_AUTO_LOCK_MS,
+  SealedStore,
+  Wallet,
+  deriveKey,
+  openJson,
+  sealJson
+} from '@lcai-p2p/wallet'
+import { createGuard } from './guard.mjs'
 import { Api, History, isAnswerVerified } from '@lcai-p2p/inference'
 import { roomHandlers } from './handlers/rooms.mjs'
 import { walletHandlers } from './handlers/wallet.mjs'
+import { assetHandlers, chainPools } from './handlers/assets.mjs'
+import { historyHandlers } from './handlers/history.mjs'
+import { bridgeHandlers } from './handlers/bridge.mjs'
 import { aiHandlers } from './handlers/ai.mjs'
 import { workerHandlers } from './handlers/worker.mjs'
 import { settingsHandlers } from './handlers/settings.mjs'
@@ -376,7 +387,7 @@ function lockRegistry() {
  */
 const vaultFile = path.join(chatDir, 'vault.json')
 
-const wallet = new Wallet({
+const vaultStore = {
   read() {
     try {
       return JSON.parse(fs.readFileSync(vaultFile, 'utf8'))
@@ -395,7 +406,21 @@ const wallet = new Wallet({
       // Already gone is the outcome we wanted.
     }
   }
-})
+}
+
+/**
+ * The idle timeout, read before the wallet exists so it applies from the first
+ * unlock rather than from whenever a settings handler first runs.
+ *
+ * Stored in minutes because that is the unit anybody choosing it thinks in.
+ * Zero switches it off, which is a choice somebody is allowed to make on a
+ * machine only they use.
+ */
+function autoLockMsFromSettings(values) {
+  const raw = values.autoLockMinutes
+  if (typeof raw !== 'string' || !/^[0-9]+$/.test(raw)) return DEFAULT_AUTO_LOCK_MS
+  return Number(raw) * 60 * 1000
+}
 
 /**
  * Settings, in one file rather than scattered across sections.
@@ -422,6 +447,10 @@ function writeSettings(next) {
 }
 
 let settings = readSettings()
+
+// After the settings, because the idle timeout is one of them and a wallet
+// built before they are read would spend the first session on the default.
+const wallet = new Wallet(vaultStore, { autoLockMs: autoLockMsFromSettings(settings) })
 
 /**
  * The consumer API, signed in.
@@ -919,13 +948,38 @@ const localState = new SealedStore(fileByteStore(path.join(chatDir, 'local')), {
  * booted on — silently, and only for some requests. A call is the signal that
  * the answer is read fresh.
  */
+/**
+ * The checks a compromised window cannot answer for itself.
+ *
+ * Started here rather than lazily, because the idle timer has to be running
+ * from the moment the wallet can be unlocked — not from the first transfer.
+ */
+const guard = createGuard({
+  wallet,
+  pipe,
+  settings: () => settings,
+  onAutoLock() {
+    // Locking has to end the conversation for the same reason `wallet.lock`
+    // does: the session is paid for by an address that just went away.
+    forgetInference()
+    useWalletInRooms()
+    send({ t: 'wallet.locked', reason: 'idle' })
+  }
+})
+
+guard.watchIdle()
+
 const ctx = {
   attachmentsFor,
   forgetAttachments,
   availability,
   chatDir,
   chatStore,
+  guard,
   host,
+  // One per chain, shared by holdings and history so that both learn about an
+  // endpoint being down from the same place.
+  poolFor: chainPools(() => settings),
   localState,
   rooms,
   send,
@@ -971,6 +1025,9 @@ const handlers = {
   __proto__: null,
   ...roomHandlers(ctx),
   ...walletHandlers(ctx),
+  ...assetHandlers(ctx),
+  ...historyHandlers(ctx),
+  ...bridgeHandlers(ctx),
   ...aiHandlers(ctx),
   ...workerHandlers(ctx),
   ...settingsHandlers(ctx),
@@ -1001,6 +1058,10 @@ if (config.updates !== false) {
 }
 
 async function onLine(text) {
+  // Before the JSON, because the confirmation channel is plain strings like the
+  // updater's and would otherwise be logged as an unreadable message.
+  if (guard.handleLine(text)) return
+
   if (text === 'pear:applyUpdate') {
     // Answered either way. Only the success was reported before, so an update
     // that threw left the main process waiting on a confirmation that was never
@@ -1064,6 +1125,7 @@ pipe.on('data', (data) => {
 })
 
 goodbye(async () => {
+  guard.stop()
   await rooms.close()
   // Before the swarm, so hosted cores stop being served rather than being cut
   // off mid-replication.

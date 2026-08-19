@@ -17,6 +17,7 @@ import {
   normalise,
   open,
   seal,
+  type Secret,
   type Vault
 } from './vault.js'
 
@@ -83,6 +84,40 @@ export interface WalletStatus {
   readonly accountIndex: number
   /** The derivation path, so a user can restore elsewhere without guessing. */
   readonly path: string
+  /**
+   * Whether this wallet's seed is a phrase plus a passphrase.
+   *
+   * Worth surfacing, because the phrase alone will not restore it and somebody
+   * who wrote down twelve words believing otherwise has a backup that does not
+   * work. Says only that one exists — never what it is.
+   */
+  readonly hasPassphrase: boolean
+  /** How long the wallet may sit idle before locking itself, in milliseconds. */
+  readonly autoLockMs: number
+  /**
+   * Idle milliseconds, or null while locked.
+   *
+   * Lets an interface warn before the lock rather than surprise somebody
+   * mid-sentence with a screen asking for a password.
+   */
+  readonly idleMs: number | null
+}
+
+/**
+ * How long an unlocked wallet stays unlocked with nothing happening.
+ *
+ * Fifteen minutes is the compromise every wallet lands near. Shorter and it
+ * interrupts somebody reading a long thread; longer and an unlocked wallet on
+ * an unattended desk stops being a hypothetical.
+ */
+export const DEFAULT_AUTO_LOCK_MS = 15 * 60 * 1000
+
+/** Off. Nameable, so nothing has to compare against a bare zero to know what it means. */
+export const AUTO_LOCK_OFF = 0
+
+export interface WalletOptions {
+  /** Defaults to {@link DEFAULT_AUTO_LOCK_MS}. {@link AUTO_LOCK_OFF} disables it. */
+  readonly autoLockMs?: number
 }
 
 /**
@@ -118,6 +153,12 @@ export interface ReplaceOptions {
 export interface RemoveOptions extends ReplaceOptions {
   /** The vault's password, which proves ownership rather than mere presence. */
   readonly password?: string
+}
+
+/** Importing can also carry the passphrase the phrase was created with. */
+export interface ImportOptions extends ReplaceOptions {
+  /** BIP-39's 25th word. Case and spacing are significant; nothing can verify it. */
+  readonly passphrase?: string
 }
 
 /** What creating a wallet hands back. The phrase is shown once and not stored elsewhere. */
@@ -172,25 +213,80 @@ export class Wallet {
   readonly #store: VaultStore
   #account: Account | null = null
   #index = 0
+  #hasPassphrase = false
+  #autoLockMs: number
+  /** When the account was last derived or used, by the clock the caller passes in. */
+  #lastUsed = 0
 
-  constructor(store: VaultStore) {
+  constructor(store: VaultStore, options: WalletOptions = {}) {
     this.#store = store
+    this.#autoLockMs = options.autoLockMs ?? DEFAULT_AUTO_LOCK_MS
   }
 
-  status(): WalletStatus {
+  status(now = Date.now()): WalletStatus {
     return {
       exists: this.#store.read() !== null,
       unlocked: this.#account !== null,
       address: this.#account?.address ?? null,
       accountIndex: this.#index,
-      path: `${ACCOUNT_PATH}/${this.#index}`
+      path: `${ACCOUNT_PATH}/${this.#index}`,
+      hasPassphrase: this.#hasPassphrase,
+      autoLockMs: this.#autoLockMs,
+      idleMs: this.#account === null ? null : Math.max(0, now - this.#lastUsed)
     }
   }
 
+  /**
+   * Changes the idle timeout, and restarts the clock.
+   *
+   * Restarting matters: shortening the timeout to five minutes while a wallet
+   * has already sat idle for ten would otherwise lock it on the spot, which
+   * reads as the setting having broken something.
+   */
+  setAutoLock(ms: number, now = Date.now()): WalletStatus {
+    if (!Number.isFinite(ms) || ms < 0) {
+      throw new WalletError('the auto-lock time must be zero or a positive number of milliseconds')
+    }
+
+    this.#autoLockMs = ms
+    this.#lastUsed = now
+    return this.status(now)
+  }
+
+  /**
+   * Locks if the wallet has been idle past the timeout, and says whether it did.
+   *
+   * The clock arrives as an argument and the timer lives outside this package.
+   * A `setInterval` in here would keep a Bare process alive on its own and be
+   * untestable without waiting in real time; a caller that already has a poll
+   * loop can pass a number and get a deterministic answer.
+   */
+  lockIfIdle(now = Date.now()): boolean {
+    if (this.#account === null) return false
+    if (this.#autoLockMs === AUTO_LOCK_OFF) return false
+    if (now - this.#lastUsed < this.#autoLockMs) return false
+
+    this.lock()
+    return true
+  }
+
+  /**
+   * Restarts the idle clock without needing the key.
+   *
+   * For activity that should count as presence but does not sign anything —
+   * reading a room, switching a panel. Deliberately separate from `account()`
+   * so that "the user is here" and "something used the key" stay distinct.
+   */
+  touch(now = Date.now()): void {
+    if (this.#account !== null) this.#lastUsed = now
+  }
+
   /** Derivation and the record of what was derived, kept together. */
-  #use(phrase: string, index: number): void {
-    this.#account = fromPrivateKey(derivePrivateKey(phrase, index))
+  #use(secret: Secret, index: number, now = Date.now()): void {
+    this.#account = fromPrivateKey(derivePrivateKey(secret.phrase, index, secret.passphrase))
     this.#index = index
+    this.#hasPassphrase = secret.passphrase !== ''
+    this.#lastUsed = now
   }
 
   /**
@@ -233,14 +329,14 @@ export class Wallet {
 
     // Opened before it is trusted. A vault that will not open is otherwise
     // discovered when someone needs it, which is the worst possible moment.
-    if (open(vault, password) !== phrase) {
+    if (open(vault, password).phrase !== phrase) {
       throw new WalletError(
         'the vault did not reopen to the phrase it was given; nothing was saved'
       )
     }
 
     this.#store.write(vault)
-    this.#use(phrase, 0)
+    this.#use({ phrase, passphrase: '' }, 0)
     return { status: { ...this.status(), replaced }, phrase }
   }
 
@@ -251,8 +347,19 @@ export class Wallet {
    * for a better reason: restoring the phrase is precisely what somebody
    * locked out of this machine came here to do, and the wallet in the way is
    * the one they cannot open.
+   *
+   * `passphrase` is BIP-39's optional 25th word, for a phrase that was created
+   * with one somewhere else. **Nothing can check it.** A wrong passphrase is
+   * not an error — it derives a different, valid, empty wallet at a
+   * plausible-looking address. An interface offering the field should show the
+   * resulting address and let the user recognise it, because that is the only
+   * confirmation available.
    */
-  importPhrase(phrase: string, password: string, options: ReplaceOptions = {}): ReplacementStatus {
+  importPhrase(
+    phrase: string,
+    password: string,
+    options: ImportOptions = {}
+  ): ReplacementStatus {
     const replaced = this.#displacing(
       options.confirmation,
       'a wallet already exists. Remove it deliberately before importing another.'
@@ -267,15 +374,18 @@ export class Wallet {
       )
     }
 
-    const vault = seal(clean, password)
-    if (open(vault, password) !== clean) {
+    const passphrase = options.passphrase ?? ''
+    const vault = seal(clean, password, passphrase)
+
+    const reopened = open(vault, password)
+    if (reopened.phrase !== clean || reopened.passphrase !== passphrase) {
       throw new WalletError(
         'the vault did not reopen to the phrase it was given; nothing was saved'
       )
     }
 
     this.#store.write(vault)
-    this.#use(clean, 0)
+    this.#use(reopened, 0)
     return { ...this.status(), replaced }
   }
 
@@ -335,11 +445,20 @@ export class Wallet {
   lock(): WalletStatus {
     this.#account = null
     this.#index = 0
+    this.#hasPassphrase = false
     return this.status()
   }
 
-  account(): Account {
+  /**
+   * The account, if the wallet is open — and using it counts as being here.
+   *
+   * Every read of the key restarts the idle clock, so a wallet that is signing
+   * is a wallet nobody has walked away from. The lock is for the case where
+   * they have.
+   */
+  account(now = Date.now()): Account {
     if (!this.#account) throw new WalletError('the wallet is locked')
+    this.#lastUsed = now
     return this.#account
   }
 
@@ -352,6 +471,28 @@ export class Wallet {
   }
 
   /**
+   * Checks a password without doing anything else.
+   *
+   * The proof that somebody is present before the key moves real money. It
+   * costs the same scrypt as an unlock, which is the point: it is the only
+   * check available that a compromised window cannot fake, because the answer
+   * comes from the vault rather than from the window's own say-so.
+   */
+  verifyPassword(password: string, now = Date.now()): boolean {
+    const vault = this.#store.read()
+    if (!vault) throw new WalletError('there is no wallet')
+
+    try {
+      open(vault, password)
+    } catch {
+      return false
+    }
+
+    this.touch(now)
+    return true
+  }
+
+  /**
    * The phrase again, for someone backing it up late.
    *
    * Costs the password even when unlocked. An unlocked wallet is left unlocked
@@ -359,6 +500,18 @@ export class Wallet {
    * than proximity to see it.
    */
   revealPhrase(password: string): string {
+    return this.revealSecret(password).phrase
+  }
+
+  /**
+   * The phrase and its passphrase together.
+   *
+   * Separate from `revealPhrase` because most callers want the words to show
+   * somebody, and only derivation wants both. Keeping them apart means a
+   * caller has to reach for the passphrase deliberately rather than receive it
+   * in a field it was not thinking about.
+   */
+  revealSecret(password: string): Secret {
     const vault = this.#store.read()
     if (!vault) throw new WalletError('there is no wallet')
     return open(vault, password)
@@ -366,8 +519,8 @@ export class Wallet {
 
   /** The address of any account, without switching to it. */
   addressAt(password: string, index: number): string {
-    const phrase = this.revealPhrase(password)
-    return fromPrivateKey(derivePrivateKey(phrase, index)).address
+    const secret = this.revealSecret(password)
+    return fromPrivateKey(derivePrivateKey(secret.phrase, index, secret.passphrase)).address
   }
 
   /**
@@ -378,8 +531,8 @@ export class Wallet {
    * others, which is a feature rather than a limitation.
    */
   exportKeystore(password: string, index = 0): KeystoreV3 {
-    const phrase = this.revealPhrase(password)
-    return encryptKeystore(derivePrivateKey(phrase, index), password)
+    const secret = this.revealSecret(password)
+    return encryptKeystore(derivePrivateKey(secret.phrase, index, secret.passphrase), password)
   }
 
   /**
@@ -399,11 +552,14 @@ export class Wallet {
     const vault = this.#store.read()
     if (!vault) throw new WalletError('there is no wallet')
 
-    const phrase = open(vault, current)
+    const secret = open(vault, current)
     if (next === current) throw new WalletError('that is the password it already has')
 
-    const resealed = seal(phrase, next)
-    if (open(resealed, next) !== phrase) {
+    // The passphrase is carried across untouched. Losing it here would leave a
+    // vault that opens under the new password onto a different, empty wallet.
+    const resealed = seal(secret.phrase, next, secret.passphrase)
+    const reopened = open(resealed, next)
+    if (reopened.phrase !== secret.phrase || reopened.passphrase !== secret.passphrase) {
       throw new WalletError('the new vault did not reopen to the same phrase; nothing was changed')
     }
 
@@ -447,6 +603,7 @@ export class Wallet {
     this.#store.clear()
     this.#account = null
     this.#index = 0
+    this.#hasPassphrase = false
     return this.status()
   }
 }

@@ -169,10 +169,9 @@ function ledgerRow(entry) {
   hash.className = 'ledger-hash'
   hash.textContent = entry.hash
   hash.title = 'Copy this transaction hash'
-  hash.addEventListener('click', () => {
-    void copy(entry.hash)
-    toast('Transaction hash copied')
-  })
+  // `copy` reports the outcome itself. Announcing success here as well both
+  // said it twice and said it even when the copy had failed.
+  hash.addEventListener('click', () => void copy(entry.hash, 'Transaction hash'))
 
   item.append(head, meta, hash)
 
@@ -271,8 +270,15 @@ function reportBalances(tone, title, detail) {
   balanceAlert.hidden = false
 }
 
+/**
+ * The prepaid balance, which the holdings list deliberately does not carry.
+ *
+ * Native LCAI is one of six chains' worth of assets and belongs in that list.
+ * Prepaid is not an asset in the same sense — it is LCAI already handed to the
+ * job registry, spendable only on inference — so it sits on its own. Adding the
+ * two would overstate what can be sent.
+ */
 async function refreshBalances() {
-  el.walletNative.textContent = '…'
   el.walletPrepaid.textContent = '…'
   el.walletBalanceNote.textContent = ''
   balanceAlert.hidden = true
@@ -283,7 +289,6 @@ async function refreshBalances() {
 
   try {
     const balances = await request('wallet.balances')
-    el.walletNative.textContent = formatLcai(balances.native)
     el.walletPrepaid.textContent =
       balances.prepaid === null ? 'unknown' : formatLcai(balances.prepaid)
 
@@ -297,7 +302,6 @@ async function refreshBalances() {
       )
     }
   } catch (err) {
-    el.walletNative.textContent = '—'
     el.walletPrepaid.textContent = '—'
     reportBalances('error', 'The chain could not be reached', err.message)
   }

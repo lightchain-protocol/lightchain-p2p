@@ -12,27 +12,28 @@ Nothing below is waiting on an engineering decision that has not been made.
 
 ## Built and verified
 
-|                             | Tests | Notes                                                                                                                             |
-| --------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/chain`            | 139   | Reads Lightchain and signs for it, every byte checked against viem. Fees, replacement and confirmation depth.                     |
-| `packages/room`             | 112   | Multi-writer rooms on Autobase, the host that keeps several, presence, attachments, and a suite of abuses.                        |
-| `packages/wallet`           | 109   | BIP-39 phrase, BIP-32 accounts at any index, a sealed store for local state, Keystore V3 checked against Foundry.                 |
-| `packages/protocol`         | 92    | Model references, manifests, room entries and the rules for resolving them. A reference is a key **and** a version.               |
-| `packages/ui`               | 57    | Design tokens and identicons, held to WCAG contrast in tests.                                                                     |
-| `packages/inference`        | 77    | The session handshake, the prompt and the relay. Transcripts, their search, and the turns a model is shown. Runs under Bare.      |
-| `apps/chat`                 | 49    | The name an attachment is saved under, and what a notification says when a message is only a file.                                |
-| `packages/worker`           | 33    | Network profiles, config validation, Docker orchestration, container state.                                                       |
-| `packages/preflight`        | 28    | Host readiness with actionable remedies.                                                                                          |
-| `apps/supervisor`           | 17    | Contract addresses resolved from the registry, and the keystore password's file. Two skip on Windows, where the mode is advisory. |
-| `packages/host`             | 15    | Probes the machine a worker would run on: Docker, Ollama, GPU, memory, disk.                                                      |
-| `packages/inference-crypto` | 15    | ECDH P-256 and AES-256-GCM as the deployed workers speak it, under Bare.                                                          |
-| `packages/safety`           | 10    | Refusal-list decision logic.                                                                                                      |
-| `packages/drive`            | 9     | Publish a model, resolve it, range-read weights. Survives the publisher going offline.                                            |
-| `packages/seed`             | 6     | Holds and serves drives after the publisher leaves.                                                                               |
-| `packages/testkit`          | 6     | Two-machine harness with a negative control.                                                                                      |
-| `packages/blind`            | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server.                                     |
+|                             | Tests | Notes                                                                                                                                   |
+| --------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/chain`            | 193   | Reads six EVM chains and signs for them, every byte checked against viem. ERC-20, Multicall3, endpoint failover, the bridge.            |
+| `packages/room`             | 112   | Multi-writer rooms on Autobase, the host that keeps several, presence, attachments, and a suite of abuses.                              |
+| `packages/wallet`           | 139   | BIP-39 phrase and optional passphrase, BIP-32 accounts at any index, idle locking, a sealed store, Keystore V3 checked against Foundry. |
+| `packages/protocol`         | 92    | Model references, manifests, room entries and the rules for resolving them. A reference is a key **and** a version.                     |
+| `packages/ui`               | 57    | Design tokens and identicons, held to WCAG contrast in tests.                                                                           |
+| `packages/inference`        | 77    | The session handshake, the prompt and the relay. Transcripts, their search, and the turns a model is shown. Runs under Bare.            |
+| `apps/chat`                 | 102   | Turning a typed amount into what gets signed, the guard that stands before a transfer, filenames, notifications, the blob cache.        |
+| `packages/worker`           | 33    | Network profiles, config validation, Docker orchestration, container state.                                                             |
+| `packages/prices`           | 31    | Chainlink feeds read from the chain, per-feed staleness, and the one Uniswap pool that prices LCAI.                                     |
+| `packages/preflight`        | 28    | Host readiness with actionable remedies.                                                                                                |
+| `apps/supervisor`           | 17    | Contract addresses resolved from the registry, and the keystore password's file. Two skip on Windows, where the mode is advisory.       |
+| `packages/host`             | 15    | Probes the machine a worker would run on: Docker, Ollama, GPU, memory, disk.                                                            |
+| `packages/inference-crypto` | 15    | ECDH P-256 and AES-256-GCM as the deployed workers speak it, under Bare.                                                                |
+| `packages/safety`           | 10    | Refusal-list decision logic.                                                                                                            |
+| `packages/drive`            | 9     | Publish a model, resolve it, range-read weights. Survives the publisher going offline.                                                  |
+| `packages/seed`             | 6     | Holds and serves drives after the publisher leaves.                                                                                     |
+| `packages/testkit`          | 6     | Two-machine harness with a negative control.                                                                                            |
+| `packages/blind`            | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server.                                           |
 
-**778 tests.** CI green on every push. The six-platform build matrix compiles a
+**944 tests.** CI green on every push. The six-platform build matrix compiles a
 standalone supervisor binary for Windows, macOS and Linux on x64 and arm64, and
 every runner executes the binary it produced.
 
@@ -90,22 +91,28 @@ somebody is trying to break it, and each one reports every failure rather than
 stopping at the first — a suite that halts on failure one hides the rest, and
 those are the ones nobody has looked at.
 
-| Harness                            | What it does                                                                                                                                                                                        |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/wsl-adversarial.mjs`      | 19 abuses of a live room from a second machine: forged signatures, spent invites, oversize text, concurrent renames, a peer killed mid-sentence.                                                    |
-| `scripts/hostile-renderer.mjs`     | 62 attempts to turn message text into markup, spend a capability the window should not have, aim a transaction replacement at a hash this wallet never sent, or name a file so it reads as another. |
-| `scripts/onboarding-check.mjs`     | 33 checks over create, recover and reset, including that no two elements share an id and that the phrase check asks for distinct words.                                                             |
-| `scripts/conversation-check.mjs`   | 31 checks on replying, reacting, editing, withdrawing, pinning, naming yourself and drafts, clicked rather than called.                                                                             |
-| `scripts/surfaces-check.mjs`       | 21 checks that Dashboard, Wallet, Models, Worker and the roadmap agree with the worker rather than only looking right.                                                                              |
-| `scripts/drive-two-instances.mjs`  | The whole conversation through the real interface, 17 steps.                                                                                                                                        |
-| `scripts/inference-check.mjs`      | 17 checks on room context and spending caps, without spending anything.                                                                                                                             |
-| `scripts/survives-restart.mjs`     | 12 checks either side of a kill: sealed rooms, wallet, DHT identity, write access, history.                                                                                                         |
-| `scripts/review.mjs`               | 12 structural checks over every surface in both themes, and over the pickers that only exist once a button is pressed.                                                                              |
-| `scripts/transcript-search.mjs`    | 11 checks that model history is searchable and stays separate from room history when the wallet is locked.                                                                                          |
-| `scripts/change-password.mjs`      | 9 checks that a password change moves the vault and nothing else.                                                                                                                                   |
-| `scripts/hosted-room-survives.mjs` | Three instances: a room outlives its author because another user was hosting it.                                                                                                                    |
-| `scripts/reconnects.mjs`           | 5 checks that a restarted instance is found again by the peer that stayed up, and does not return as a second writer.                                                                               |
-| `scripts/wsl-soak.mjs`             | Four writers, concurrent bursts, clock skew, restart and catch-up.                                                                                                                                  |
+| Harness                            | What it does                                                                                                                                                                                                                        |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/wsl-adversarial.mjs`      | 19 abuses of a live room from a second machine: forged signatures, spent invites, oversize text, concurrent renames, a peer killed mid-sentence.                                                                                    |
+| `scripts/hostile-renderer.mjs`     | 74 attempts to turn message text into markup, spend a capability the window should not have, raise the threshold that guards a transfer, aim a replacement at a hash this wallet never sent, or name a file so it reads as another. |
+| `scripts/onboarding-check.mjs`     | 33 checks over create, recover and reset, including that no two elements share an id and that the phrase check asks for distinct words.                                                                                             |
+| `scripts/conversation-check.mjs`   | 37 checks on replying, reacting, editing, withdrawing, pinning, naming yourself and drafts, clicked rather than called.                                                                                                             |
+| `scripts/send-check.mjs`           | 32 checks on the send path up to the signature: what a quote refuses, that its figures come from the built transaction, and that editing anything throws the review away.                                                           |
+| `scripts/assets-check.mjs`         | 31 checks that holdings across six chains are read, that an unreachable chain is never a zero, and that the receive screen names the network as loudly as the address.                                                              |
+| `scripts/bridge-check.mjs`         | 31 checks that bridging is refused until the disclosure has been read, that the fee is quoted rather than assumed, and that the window cannot acknowledge on somebody's behalf.                                                     |
+| `scripts/clipboard-check.mjs`      | 25 checks that every copy button in the app reaches the system clipboard, read back from outside the application rather than asked of it.                                                                                           |
+| `scripts/surfaces-check.mjs`       | 21 checks that Dashboard, Wallet, Models, Worker and the roadmap agree with the worker rather than only looking right.                                                                                                              |
+| `scripts/locking-check.mjs`        | 17 checks that the wallet locks itself, that a large transfer costs the password again, and that neither can be switched off from the window.                                                                                       |
+| `scripts/asset-page-check.mjs`     | 17 checks on one asset's page, most of them that the history screen says what its source cannot see rather than implying it saw everything.                                                                                         |
+| `scripts/drive-two-instances.mjs`  | The whole conversation through the real interface, 17 steps.                                                                                                                                                                        |
+| `scripts/inference-check.mjs`      | 17 checks on room context and spending caps, without spending anything.                                                                                                                                                             |
+| `scripts/survives-restart.mjs`     | 12 checks either side of a kill: sealed rooms, wallet, DHT identity, write access, history.                                                                                                                                         |
+| `scripts/review.mjs`               | 14 structural checks over every surface in both themes, and over the pickers that only exist once a button is pressed.                                                                                                              |
+| `scripts/transcript-search.mjs`    | 11 checks that model history is searchable and stays separate from room history when the wallet is locked.                                                                                                                          |
+| `scripts/change-password.mjs`      | 9 checks that a password change moves the vault and nothing else.                                                                                                                                                                   |
+| `scripts/hosted-room-survives.mjs` | Three instances: a room outlives its author because another user was hosting it.                                                                                                                                                    |
+| `scripts/reconnects.mjs`           | 5 checks that a restarted instance is found again by the peer that stayed up, and does not return as a second writer.                                                                                                               |
+| `scripts/wsl-soak.mjs`             | Four writers, concurrent bursts, clock skew, restart and catch-up.                                                                                                                                                                  |
 
 Five real defects came out of the first run and are fixed: invites were served
 to every comer rather than spent once, `send` wrote over-length messages that
@@ -256,6 +263,52 @@ not match its partials, an icon sprite edited by hand, and a deep link scheme
 that disagrees between the four places it is declared. A sixth lives in the
 harness — two elements sharing an id, which had bound the Settings password form
 to the onboarding one and produced a password that silently never changed.
+
+The same shape turned up in every copy button at once. They share one helper,
+that helper called `navigator.clipboard.writeText`, and Chromium refuses the
+clipboard-write permission to a window loaded from `file://` — so all six failed
+with `NotAllowedError`, said "could not copy" in a toast, and were reported by a
+user rather than by CI, because no test had ever clicked one. Copying now goes
+through the main process, which has no such restriction, and `clipboard-check`
+reads the selection back from outside the application. Asking the window whether
+its own write worked would have passed against the broken build.
+
+### A wallet for six chains, and what asking the chain caught
+
+The wallet reads and sends on Lightchain, Ethereum, Base, Arbitrum, Polygon and
+BNB Smart Chain. It is one key: every chain here is EVM, so `m/44'/60'` already
+covered all of them and there was no derivation work to do. The address is
+identical on all six, which is the convenience and also the hazard — sending a
+token on the wrong network to an address that exists on both is the ordinary way
+people lose money, so the network travels with every balance, every receive
+screen and every confirmation.
+
+Prices come from Chainlink aggregators read directly, with LCAI priced from the
+one Uniswap pool that trades it. That is not a preference. Every hosted price
+API examined licenses its data for personal or non-commercial use, and
+Coinbase's terms say plainly that it "may not be used to build an application
+intended for use by end users". Reading a `view` function needs no key, accepts
+no terms, and tells no third party which tokens somebody holds.
+
+Four things were wrong and only asking the chain found them:
+
+- **Tether renamed itself in place.** The contracts on Arbitrum and Polygon now
+  report `USD₮0` and `USDT0`. The addresses are unchanged, so nothing would have
+  broken — the wallet would simply have shown a ticker the explorer disagreed
+  with.
+- **The bridge quote is positional, not keyed by address.** The live route
+  returns three entries and the last two name the same token, so reading them by
+  address takes the trailing zero. Every Ethereum-side transfer would have been
+  approved for nothing and reverted.
+- **The Max button filled the amount field with a grouped number.** `1,234.5` is
+  not something the parser accepts, on the one control whose whole job is to be
+  exactly right.
+- **Two of the endpoints in the registry were dead.** `polygon-rpc.com` answers
+  401 and is still what most documentation gives.
+
+Underneath all of it, the rule is that a failure is never a zero. A balance that
+could not be read is reported as unread with the chain named, because a zero and
+an outage look identical on screen and call for opposite reactions.
 
 Underneath, `index.html` is assembled from per-surface partials and the
 stylesheet is split to match, so the window is no longer one 1,600-line file

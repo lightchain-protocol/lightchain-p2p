@@ -37,13 +37,29 @@ export function keccak256(bytes: Uint8Array): Uint8Array {
  * The signature must be canonical — no argument names, no spaces — because it
  * is hashed verbatim. `transfer(address to, uint256 amount)` hashes to a
  * different, wrong selector than `transfer(address,uint256)`.
+ *
+ * Nested parentheses are allowed, because a tuple argument is written that way
+ * and is every bit as canonical: `aggregate3((address,bool,bytes)[])` is the
+ * real signature of a real function. What the check is actually for is spaces
+ * and argument names, and those stay refused.
  */
 export function selector(signature: string): Uint8Array {
-  if (!/^[A-Za-z_]\w*\((|[\w[\],]+)\)$/.test(signature)) {
+  if (!/^[A-Za-z_]\w*\((|[\w[\],()]+)\)$/.test(signature)) {
     throw new AbiError(
       `signature must be canonical, like "transfer(address,uint256)", got ${JSON.stringify(signature)}`
     )
   }
+
+  let depth = 0
+  for (const character of signature) {
+    if (character === '(') depth++
+    else if (character === ')') depth--
+    if (depth < 0) break
+  }
+  if (depth !== 0) {
+    throw new AbiError(`signature has unbalanced parentheses: ${JSON.stringify(signature)}`)
+  }
+
   return keccak256(new TextEncoder().encode(signature)).slice(0, 4)
 }
 
@@ -170,6 +186,55 @@ export function decodeBool(data: string): boolean {
   const value = decodeUint256(data)
   if (value > 1n) throw new AbiError(`bool word is neither 0 nor 1: ${value}`)
   return value === 1n
+}
+
+/**
+ * A `uint8`, which arrives in a full word like everything else.
+ *
+ * Its own function rather than a cast at each call site, because the range
+ * check is the point: a token reporting 300 decimals would otherwise silently
+ * become a balance divided by an absurd power of ten.
+ */
+export function decodeUint8(data: string): number {
+  const value = decodeUint256(data)
+  if (value > 255n) throw new AbiError(`uint8 word is out of range: ${value}`)
+  return Number(value)
+}
+
+/**
+ * A string return, in either of the two shapes tokens actually use.
+ *
+ * ERC-20 says `symbol()` returns a `string`, and the well-behaved majority do:
+ * one word of offset, one of length, then the bytes. But several of the oldest
+ * and largest tokens predate that and return a fixed `bytes32` — MKR and SAI
+ * among them — so a decoder that handles only the standard shape throws on
+ * exactly the tokens somebody is most likely to hold.
+ *
+ * Length is what tells them apart: 32 bytes is the old shape, anything longer
+ * is the encoded one.
+ */
+export function decodeString(data: string): string {
+  const bytes = toBytes(data)
+  if (bytes.length === 0) return ''
+
+  const decoder = new TextDecoder()
+
+  // The `bytes32` shape: right-padded with zeros, which are not part of it.
+  if (bytes.length === 32) {
+    let end = 32
+    while (end > 0 && bytes[end - 1] === 0) end--
+    return decoder.decode(bytes.slice(0, end))
+  }
+
+  if (bytes.length < 64) throw new AbiError(`string return too short: ${bytes.length} bytes`)
+
+  const offset = Number(BigInt(toHex(bytes.slice(0, 32))))
+  if (offset + 32 > bytes.length) throw new AbiError('string offset points past the data')
+
+  const length = Number(BigInt(toHex(bytes.slice(offset, offset + 32))))
+  if (offset + 32 + length > bytes.length) throw new AbiError('string runs past the data')
+
+  return decoder.decode(bytes.slice(offset + 32, offset + 32 + length))
 }
 
 /**
