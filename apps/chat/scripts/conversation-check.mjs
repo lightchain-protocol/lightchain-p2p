@@ -351,6 +351,53 @@ report(
   String(shown)
 )
 
+// --- Two Enters do not send two messages -------------------------------------------
+
+// `submitMessage` has no explicit reentrancy guard. What stops a double press
+// is that the composer is cleared before the round trip, so the second call
+// finds nothing to send — which works, and is incidental rather than stated.
+// Incidental guards are the ones that quietly stop working, and a duplicate
+// message here is signed and permanent.
+const twice = `pressed twice ${Date.now().toString(36)}`
+const doubled = await evaluate(`(async () => {
+  const input = document.getElementById('composer-input')
+  const form = document.getElementById('composer')
+  input.value = ${JSON.stringify(twice)}
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+
+  // Both in the same tick, before either round trip can finish.
+  form.requestSubmit()
+  form.requestSubmit()
+
+  await new Promise((r) => setTimeout(r, 2000))
+  return [...document.querySelectorAll('#messages .message-text')].filter((n) =>
+    n.textContent.includes(${JSON.stringify(twice)})
+  ).length
+})()`)
+
+report(
+  'submitting twice in one tick sends the message once',
+  doubled === 1,
+  `${doubled} copies in the room`
+)
+
+// The room's own history rather than the rendering, because a duplicate entry
+// is signed and cannot be taken back — the view agreeing with itself would not
+// prove the log did.
+//
+// The room is found before it is searched. An earlier version of this asked a
+// handler that does not exist, and `?.` turned the error into an empty list and
+// a confident report of zero copies.
+const listed = await ask('room.list')
+const room = (Array.isArray(listed) ? listed : []).find((r) => r.key === created.key)
+const copies = room ? room.conversation.filter((m) => m.text === twice).length : null
+
+report(
+  'and the room holds one copy of it',
+  copies === 1,
+  room ? `${copies} entries` : 'the room was not in room.list at all'
+)
+
 // --- Pinning ----------------------------------------------------------------------
 
 // Pinning differs from editing and withdrawing in who may do it: the resolver
