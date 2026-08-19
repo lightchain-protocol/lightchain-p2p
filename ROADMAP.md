@@ -236,9 +236,6 @@ updates at all.
 
 ### Smaller pieces
 
-- **Notarization for `bare-build` binaries.** `bare-build` signs and cannot
-  notarize, so macOS Gatekeeper will block the supervisor. Needs an
-  `xcrun notarytool submit` plus stapling step we write.
 - **A Windows sign hook** if we take Azure Artifact Signing, which the upstream
   Pear action does not support.
 - **`packages/da`** — not started.

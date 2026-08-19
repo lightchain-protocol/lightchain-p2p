@@ -85,11 +85,15 @@ derive, and earlier conversations are listed beside the models.
 Still thin above that: one session at a time, no way to continue an old
 conversation without paying for a new session, and no search.
 
-**There are no payments, and the wallet is not yet the identity.** It exists,
-holds an address and reads balances, but nothing spends from it. The proposal
-makes the wallet the root identity, so the key that pays is the key that signs;
-today a peer in a room is still identified only by its Autobase writer key, and
-the two have not been joined up.
+**The wallet is the identity, and it pays.** The key that pays is the key that
+signs: a message carries an EIP-191 signature over its own contents, and a
+reader recovers the address rather than trusting a claim. The Autobase writer
+key still says which peer wrote a block, but it is no longer what a person is
+identified by.
+
+What that does not extend to is a peer's *name*. A nickname is a local label,
+not a claim anybody can check, and the interface never shows one in place of an
+address that was actually signed for.
 
 **Encryption no longer stops at this machine.** Rooms are encrypted against the
 peers replicating them, and the keys that open them are sealed in

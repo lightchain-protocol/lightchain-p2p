@@ -17,6 +17,9 @@ import { startOnboarding } from './onboarding.js'
 // Nothing out here calls into the settings panel, but importing a panel is what
 // attaches its controls, and the button that opens it is one of them.
 import './settings.js'
+// Same reason: the sidebar's dimmed entries are wired by the roadmap module,
+// which binds whatever carries `data-roadmap` and does nothing when nothing does.
+import './roadmap.js'
 
 /**
  * The shell around the panels, and the order things come up in.

@@ -71,11 +71,12 @@ proven in CI; the applications are scaffolds.
 | `packages/preflight`        | **Real**        | Host readiness checks with actionable remedies, 19 tests                             |
 | `packages/worker`           | **Real**        | Network profiles, config validation, Docker orchestration, 23 tests                  |
 | `apps/supervisor`           | **Real**        | Full worker lifecycle; contract address resolution still supplied by hand            |
-| `packages/da`, `chain`      | **Not started** | Referenced in CODEOWNERS so ownership is settled before the code exists              |
+| `packages/chain`            | **Real**        | Signing, fees, nonces, replacement and a chain-id guard, 122 tests                   |
+| `packages/da`               | **Not started** | Referenced in CODEOWNERS so ownership is settled before the code exists              |
 | Blind peer infrastructure   | **Not started** | There is no public fleet; we must operate our own servers or nothing stays available |
 | `packages/seed`             | **Real**        | Holds and serves drives, 6 tests                                                     |
 | `apps/seeder`               | **Real**        | Always-on seeding; verified holding a real Pear-staged release                       |
-| `apps/chat`                 | **Not started** |                                                                                      |
+| `apps/chat`                 | **Real**        | Rooms, wallet-signed messages, paid inference, OTA updates; four end-to-end harnesses |
 | Code signing                | **Not started** | Longest external lead time; blocks release on four platforms                         |
 | iOS, Android                | **Deferred**    | By decision — see [ADR 0001](docs/decisions/0001-defer-mobile.md)                    |
 
