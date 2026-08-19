@@ -130,10 +130,43 @@ export function formatLcai(wei) {
  * Anything unrecognised is treated as trouble, because every message that is
  * not one of the two good ones is a failure or an interruption.
  */
+/**
+ * Something a person can read, from whatever was passed.
+ *
+ * `textContent = someObject` renders the words `[object Object]`, which tells
+ * the reader nothing and tells whoever has to fix it even less: there is no
+ * error, no stack, and no clue which of a hundred call sites did it. It was
+ * seen in the corner of a screenshot once and could not be reproduced.
+ *
+ * So the two places text reaches the screen go through here. An Error gives up
+ * its message, anything else is named by shape rather than flattened, and the
+ * console gets the real value with a trace so the call site is findable the
+ * first time it happens rather than the tenth.
+ */
+function readable(value) {
+  if (typeof value === 'string') return value
+  if (value instanceof Error) return value.message
+
+  console.error('a non-string reached the interface', value, new Error('written here'))
+
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'object') {
+    // Named rather than stringified. A dump of somebody's wallet state in a
+    // toast is worse than a short admission that something is wrong.
+    return `unexpected ${Array.isArray(value) ? 'list' : 'value'} — see the console`
+  }
+  return String(value)
+}
+
 export function setStatus(text) {
-  el.status.textContent = text
+  const readableText = readable(text)
+  el.status.textContent = readableText
   el.status.dataset.state =
-    text === 'connected' ? 'ok' : text === 'connecting' || text === 'starting' ? 'busy' : 'bad'
+    readableText === 'connected'
+      ? 'ok'
+      : readableText === 'connecting' || readableText === 'starting'
+        ? 'busy'
+        : 'bad'
 }
 
 export function showSection(name) {
@@ -155,7 +188,7 @@ export function showSection(name) {
 
 let toastTimer = null
 export function toast(text, tone) {
-  el.toast.textContent = text
+  el.toast.textContent = readable(text)
   el.toast.dataset.tone = tone ?? 'info'
   el.toast.hidden = false
   clearTimeout(toastTimer)
