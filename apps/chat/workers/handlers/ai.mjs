@@ -404,10 +404,16 @@ export function aiHandlers(ctx) {
           send({ t: 'ai.progress', ...progress })
         )
 
-        const evidence = asking.evidence()
-        if (!evidence) {
+        // Every signed piece, in order. A streamed answer used to be refused
+        // from a room outright, because one piece's evidence beside all of the
+        // text proves nothing — so the room got no answer at all rather than an
+        // unprovable one. Now the whole list travels and a reader checks each
+        // piece and joins them, which is the same guarantee for an answer that
+        // happened to arrive in five parts.
+        const quoted = asking.answerFrames()
+        if (!quoted) {
           throw new Error(
-            'this answer arrived in several signed pieces, and cannot yet be quoted into a room with proof attached'
+            'the worker sent part of this answer unsigned, so it cannot be quoted into the room with proof. It was still paid for.'
           )
         }
 
@@ -416,7 +422,14 @@ export function aiHandlers(ctx) {
           jobId: String(answer.jobId),
           sessionId: String(asking.sessionId),
           worker: String(asking.worker),
-          ...evidence
+          sessionKey: quoted.sessionKey,
+          // Collapsed to the single-artifact shape when there is only one
+          // piece, which is what mainnet sends today and what every answer
+          // already in a log carries. A one-element list would read the same
+          // and be a needless second spelling of the common case.
+          ...(quoted.frames.length === 1
+            ? { ciphertext: quoted.frames[0].ciphertext, signature: quoted.frames[0].signature }
+            : { frames: quoted.frames })
         })
 
         return { jobId: answer.jobId }

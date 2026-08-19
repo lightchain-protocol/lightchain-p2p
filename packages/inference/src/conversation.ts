@@ -503,13 +503,42 @@ export class Conversation {
   }
 
   /**
-   * Everything needed to quote the last answer to somebody else.
+   * Everything needed to quote the last answer to somebody else, however many
+   * pieces it arrived in.
    *
-   * Null when the answer arrived in more than one frame. Each frame is signed
-   * over its own ciphertext, so a chunked answer has no single artifact that
-   * covers the whole text — and posting one chunk's evidence beside all of the
-   * text would look like proof of something it does not prove. Refusing is the
-   * only honest option until the format carries a list.
+   * Each frame is signed over its own ciphertext, so a streamed answer has no
+   * single artifact covering the whole text — it has one per piece, in order,
+   * and a reader checks all of them and joins the result. Handing back only the
+   * first used to be the alternative, and it was refused instead, correctly:
+   * one piece's evidence beside all of the text looks like proof of something
+   * it does not prove.
+   *
+   * Null only when there is nothing to quote, or when a frame arrived unsigned
+   * — an unsigned piece cannot be checked by anybody, and quoting the rest
+   * around it would hide that.
+   */
+  answerFrames(): {
+    frames: { ciphertext: string; signature: string }[]
+    sessionKey: string
+  } | null {
+    if (this.#evidence.size === 0 || !this.#sessionKey) return null
+
+    const frames = [...this.#evidence.entries()].sort(([a], [b]) => a - b).map(([, frame]) => frame)
+
+    if (frames.some((frame) => !frame.signature)) return null
+
+    return { frames, sessionKey: toHex(this.#sessionKey) }
+  }
+
+  /**
+   * The single signed frame behind the last answer, where there was only one.
+   *
+   * Narrower than {@link answerFrames} on purpose, and kept for the two things
+   * that genuinely need one artifact: `commitment` compares a ciphertext to the
+   * hash the registry recorded, and `dispute` submits one to the contract.
+   * Neither has a defined meaning for a response the worker sent in pieces, and
+   * guessing at one would file a dispute on a reading of the protocol nobody
+   * has confirmed.
    */
   evidence(): { ciphertext: string; sessionKey: string; signature: string } | null {
     if (this.#evidence.size !== 1 || !this.#sessionKey) return null

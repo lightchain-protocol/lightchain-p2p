@@ -112,3 +112,115 @@ describe('an answer relayed into a room', () => {
     expect(() => verifyRoomAnswer(spliced, 'forged', CHAIN)).toThrow(/but was signed by|could not/)
   })
 })
+
+describe('an answer that arrived in pieces', () => {
+  /**
+   * A streamed answer, as the relay delivers one and a room would quote it.
+   *
+   * The worker signs each piece over its own ciphertext, so there is no single
+   * artifact covering the whole reply — which is why these could not be quoted
+   * into a room at all until the format carried a list.
+   */
+  function streamed(pieces: readonly string[], over: Partial<ModelAnswer> = {}): ModelAnswer {
+    const sessionKey = generateSessionKey()
+
+    const frames = pieces.map((piece) => {
+      const ciphertext = encrypt(sessionKey, new TextEncoder().encode(piece))
+      const digest = responseDigest({
+        chainId: CHAIN.chainId,
+        jobRegistry: CHAIN.jobRegistry,
+        jobId: 7n,
+        sessionId: 3n,
+        ciphertext
+      })
+      return {
+        ciphertext: Buffer.from(ciphertext).toString('base64'),
+        signature: toHex(signDigest(WORKER_KEY, hashDigestForSigning(digest)))
+      }
+    })
+
+    return {
+      model: 'llama3-8b',
+      jobId: '7',
+      sessionId: '3',
+      worker: worker.address,
+      sessionKey: toHex(sessionKey),
+      frames,
+      ...over
+    }
+  }
+
+  const PIECES = ['A Merkle tree ', 'summarises a dataset ', 'into one hash.']
+  const WHOLE = PIECES.join('')
+
+  it('verifies when every piece is signed and they join to what is shown', () => {
+    expect(() => verifyRoomAnswer(streamed(PIECES), WHOLE, CHAIN)).not.toThrow()
+    expect(isAnswerVerified(streamed(PIECES), WHOLE, CHAIN)).toBe(true)
+  })
+
+  it('catches a piece that was dropped', () => {
+    // Silently the most useful edit available to a dishonest quoter: leave out
+    // the sentence that qualifies the rest. Every remaining signature holds.
+    const answer = streamed(PIECES)
+    const short = { ...answer, frames: answer.frames!.slice(0, 2) }
+
+    expect(() => verifyRoomAnswer(short, WHOLE, CHAIN)).toThrow(/not what the worker signed/)
+  })
+
+  it('catches pieces put back in the wrong order', () => {
+    const answer = streamed(PIECES)
+    const shuffled = {
+      ...answer,
+      frames: [answer.frames![1]!, answer.frames![0]!, answer.frames![2]!]
+    }
+
+    expect(() => verifyRoomAnswer(shuffled, WHOLE, CHAIN)).toThrow(/not what the worker signed/)
+  })
+
+  it('catches a piece repeated to say something twice', () => {
+    const answer = streamed(PIECES)
+    const doubled = { ...answer, frames: [...answer.frames!, answer.frames![2]!] }
+
+    expect(() => verifyRoomAnswer(doubled, WHOLE, CHAIN)).toThrow(/not what the worker signed/)
+  })
+
+  it('catches one forged piece among genuine ones', () => {
+    // The reason every frame is checked rather than the first: an answer whose
+    // opening is real and whose middle was written by the person quoting it.
+    const real = streamed(PIECES)
+    const fake = streamed(['something else entirely'])
+    const spliced = {
+      ...real,
+      frames: [real.frames![0]!, fake.frames![0]!, real.frames![2]!]
+    }
+
+    expect(() => verifyRoomAnswer(spliced, WHOLE, CHAIN)).toThrow(AnswerError)
+  })
+
+  it('says which piece failed, since one of forty is otherwise a needle', () => {
+    const answer = streamed(PIECES)
+    const broken = {
+      ...answer,
+      frames: [
+        answer.frames![0]!,
+        { ...answer.frames![1]!, signature: '0xbad' },
+        answer.frames![2]!
+      ]
+    }
+
+    expect(() => verifyRoomAnswer(broken, WHOLE, CHAIN)).toThrow(/piece 2 of 3/)
+  })
+
+  it('refuses an answer carrying no evidence at all', () => {
+    const answer = streamed(PIECES)
+    const empty = { ...answer, frames: undefined } as ModelAnswer
+
+    expect(() => verifyRoomAnswer(empty, WHOLE, CHAIN)).toThrow(/no evidence/)
+  })
+
+  it('still reads a single-artifact answer, which is what every old one is', () => {
+    // These are in logs already and cannot be rewritten.
+    const text = 'written before streaming existed'
+    expect(isAnswerVerified(answered(text), text, CHAIN)).toBe(true)
+  })
+})

@@ -9,6 +9,7 @@ export {
 } from './ref.js'
 
 export {
+  MAX_ANSWER_FRAMES,
   MAX_ATTACHMENT_NAME_LENGTH,
   MAX_ATTACHMENT_SIZE,
   MAX_DISPLAY_NAME_LENGTH,
@@ -17,6 +18,7 @@ export {
   MAX_TEXT_LENGTH,
   MESSAGE_VERSION,
   MessageError,
+  answerFrames,
   authorPreimage,
   verifyAuthor,
   compareMessages,
@@ -26,6 +28,7 @@ export {
   parseEntry,
   roomName,
   type AddWriterCommand,
+  type AnswerFrame,
   type Attachment,
   type BlobId,
   type ChatMessage,

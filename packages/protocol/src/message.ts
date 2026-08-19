@@ -325,11 +325,34 @@ export interface ModelAnswer {
   readonly sessionId: string
   /** The worker the session was assigned to, as an address. */
   readonly worker: string
-  /** Base64. What the worker actually signed. */
-  readonly ciphertext: string
+  /** Base64. What the worker actually signed. Absent when the answer streamed. */
+  readonly ciphertext?: string
   /** Hex, 32 bytes. Opens the ciphertext, and only this room's traffic. */
   readonly sessionKey: string
-  /** The worker's signature over the response digest. */
+  /** The worker's signature over the response digest. Absent when the answer streamed. */
+  readonly signature?: string
+  /**
+   * The pieces of a streamed answer, in the order they were sent.
+   *
+   * A worker signs each frame over its own ciphertext, so an answer that
+   * arrived in five pieces has five signatures and no single artifact covering
+   * the whole of it. Quoting one piece's evidence beside all of the text would
+   * look like proof of something it does not prove, so a chunked answer used to
+   * be refused from a room entirely — which meant streaming and provable
+   * quotation could not both exist.
+   *
+   * Exactly one of `frames` or the `ciphertext`/`signature` pair is present. The
+   * pair is what every answer written before streaming carries, and it stays
+   * readable forever.
+   */
+  readonly frames?: readonly AnswerFrame[]
+}
+
+/** One signed piece of a streamed answer. */
+export interface AnswerFrame {
+  /** Base64, exactly the bytes this frame's signature covers. */
+  readonly ciphertext: string
+  /** The worker's signature over this frame. */
   readonly signature: string
 }
 
@@ -688,14 +711,22 @@ const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/
 const SESSION_KEY = /^0x[0-9a-fA-F]{64}$/
 const DIGITS = /^\d+$/
 
+/**
+ * Most pieces a streamed answer may be quoted in.
+ *
+ * Every frame is a signature and a ciphertext in an entry replicated to every
+ * member forever, so this is a limit on what one answer can cost the room
+ * rather than on how a worker chooses to stream. Two hundred is far more than
+ * any answer within the message length has ever needed.
+ */
+export const MAX_ANSWER_FRAMES = 200
+
 function parseAnswer(value: unknown): ModelAnswer | undefined {
   if (value === undefined) return undefined
   if (!isRecord(value)) throw new MessageError('message answer must be an object')
 
-  const { model, jobId, sessionId, worker, ciphertext, sessionKey, signature } = value as Record<
-    string,
-    unknown
-  >
+  const { model, jobId, sessionId, worker, ciphertext, sessionKey, signature, frames } =
+    value as Record<string, unknown>
 
   // All or nothing. A half-populated claim cannot be checked, and showing it as
   // if it could would be worse than showing an ordinary message.
@@ -711,17 +742,69 @@ function parseAnswer(value: unknown): ModelAnswer | undefined {
   if (typeof worker !== 'string' || !ADDRESS.test(worker)) {
     throw new MessageError('answer worker must be a 20-byte hex address')
   }
-  if (typeof ciphertext !== 'string' || !BASE64.test(ciphertext)) {
-    throw new MessageError('answer ciphertext must be base64')
-  }
   if (typeof sessionKey !== 'string' || !SESSION_KEY.test(sessionKey)) {
     throw new MessageError('answer sessionKey must be 32 bytes of hex')
+  }
+
+  const base = { model, jobId, sessionId, worker, sessionKey }
+
+  // One shape or the other, never both and never neither. Both would leave a
+  // reader to choose which evidence to believe, and the choice is exactly what
+  // somebody quoting dishonestly would want to make for them.
+  const streamed = frames !== undefined
+  const single = ciphertext !== undefined || signature !== undefined
+
+  if (streamed && single) {
+    throw new MessageError('an answer carries either frames or one ciphertext, not both')
+  }
+
+  if (streamed) {
+    if (!Array.isArray(frames) || frames.length === 0) {
+      throw new MessageError('answer frames must be a non-empty array')
+    }
+    if (frames.length > MAX_ANSWER_FRAMES) {
+      throw new MessageError(`an answer may not be quoted in more than ${MAX_ANSWER_FRAMES} pieces`)
+    }
+
+    return { ...base, frames: frames.map(parseFrame) }
+  }
+
+  if (typeof ciphertext !== 'string' || !BASE64.test(ciphertext)) {
+    throw new MessageError('answer ciphertext must be base64')
   }
   if (typeof signature !== 'string' || !SIGNATURE.test(signature)) {
     throw new MessageError('answer signature must be 65 bytes of hex')
   }
 
-  return { model, jobId, sessionId, worker, ciphertext, sessionKey, signature }
+  return { ...base, ciphertext, signature }
+}
+
+function parseFrame(value: unknown): AnswerFrame {
+  if (!isRecord(value)) throw new MessageError('an answer frame must be an object')
+  const { ciphertext, signature } = value
+
+  if (typeof ciphertext !== 'string' || !BASE64.test(ciphertext)) {
+    throw new MessageError('an answer frame ciphertext must be base64')
+  }
+  if (typeof signature !== 'string' || !SIGNATURE.test(signature)) {
+    throw new MessageError('an answer frame signature must be 65 bytes of hex')
+  }
+
+  return { ciphertext, signature }
+}
+
+/**
+ * An answer's pieces, however it was quoted.
+ *
+ * One shape to check against, so nothing verifying an answer has to remember
+ * that there are two.
+ */
+export function answerFrames(answer: ModelAnswer): readonly AnswerFrame[] {
+  if (answer.frames !== undefined) return answer.frames
+  if (answer.ciphertext !== undefined && answer.signature !== undefined) {
+    return [{ ciphertext: answer.ciphertext, signature: answer.signature }]
+  }
+  return []
 }
 
 /**
