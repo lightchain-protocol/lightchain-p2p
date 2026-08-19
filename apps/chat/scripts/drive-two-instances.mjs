@@ -134,33 +134,39 @@ async function setUpWallet(r) {
 
   if (await r.eval(`return !document.getElementById('step-unlock').hidden`)) {
     await r.eval(`
-      document.getElementById('onboard-unlock-password').value = ${JSON.stringify(PASSWORD)}
-      document.getElementById('onboard-unlock-form').requestSubmit()
+      document.getElementById('unlock-password').value = ${JSON.stringify(PASSWORD)}
+      document.getElementById('unlock-form').requestSubmit()
     `)
   } else {
     await r.eval(`document.getElementById('choose-create').click()`)
     await r.until(`!document.getElementById('step-password').hidden`, 'the password step')
     await r.eval(`
       document.getElementById('onboard-password').value = ${JSON.stringify(PASSWORD)}
-      document.getElementById('onboard-confirm').value = ${JSON.stringify(PASSWORD)}
+      document.getElementById('onboard-password-confirm').value = ${JSON.stringify(PASSWORD)}
       document.getElementById('onboard-password-form').requestSubmit()
     `)
     await r.until(`!document.getElementById('step-phrase').hidden`, 'the recovery phrase')
 
-    // The confirmation asks for three of the twelve words back. Reading them
-    // off the screen is what a person does; there is no test hook for it.
+    // The words are covered until somebody asks for them, so that a phrase is
+    // not left on screen in front of whoever is in the room. Continuing is held
+    // back until then too, which is why revealing has to come first here rather
+    // than being an optional flourish.
+    await r.eval(`document.getElementById('phrase-reveal').click()`)
+
+    // The check asks for three of the twelve words back. Reading them off the
+    // screen is what a person does; there is no test hook for it.
     const words = await r.eval(
       `return [...document.querySelectorAll('#phrase-words li')].map((n) => n.textContent.replace(/^\\d+/, '').trim())`
     )
     await r.eval(`document.getElementById('phrase-continue').click()`)
-    await r.until(`!document.getElementById('step-confirm').hidden`, 'the confirmation')
+    await r.until(`!document.getElementById('step-verify').hidden`, 'the check')
 
     await r.eval(`
       const words = ${JSON.stringify(words)}
-      for (const input of document.querySelectorAll('#confirm-fields input')) {
+      for (const input of document.querySelectorAll('#verify-fields input')) {
         input.value = words[Number(input.dataset.position)]
       }
-      document.getElementById('confirm-form').requestSubmit()
+      document.getElementById('verify-form').requestSubmit()
     `)
   }
 
