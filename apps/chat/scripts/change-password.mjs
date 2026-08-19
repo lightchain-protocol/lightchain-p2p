@@ -85,7 +85,20 @@ if (!status?.unlocked) {
 if (!status?.unlocked) throw new Error('could not unlock with the current password')
 
 const addressBefore = status.address
+
+// A room of its own if the instance has none. The point of this script is that
+// the registry is sealed under the account and survives a reseal, and on an
+// empty instance every one of those assertions would compare nothing to nothing
+// and report success.
+if ((await keysOf()).length === 0) {
+  const made = await ask('room.create')
+  if (made?.error) throw new Error(`could not create a room to test with: ${made.error}`)
+  await ask('room.rename', { room: made.key, name: 'a room to reseal around' })
+  await wait(1_000)
+}
+
 const roomsBefore = await keysOf()
+if (roomsBefore.length === 0) throw new Error('no rooms to test against, and one could not be made')
 console.log(`${addressBefore} holding ${roomsBefore.length} room(s)`)
 
 // --- It refuses to change on a guess ----------------------------------------------
@@ -153,7 +166,10 @@ report(
 const writable = await ask('room.list')
 const target = (Array.isArray(writable) ? writable : []).find((r) => r.writable)
 if (!target) {
-  report('it can still write to a room', roomsBefore.length === 0, 'no writable room')
+  // Not a pass. A room was created above precisely so this could be checked,
+  // so its absence means the reseal lost write access — which is the failure
+  // this assertion exists to catch.
+  report('it can still write to a room', false, 'no writable room survived the change')
 } else {
   const text = `written after a password change ${new Date().toISOString()}`
   const sent = await ask('room.send', { room: target.key, text })
