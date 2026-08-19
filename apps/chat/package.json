@@ -5,7 +5,7 @@
   "private": true,
   "license": "MIT",
   "description": "Lightchain AI universal peer-to-peer hub",
-  "//upgrade": "Development link. A production release needs its own under the multisig policy; do not ship this one.",
+  "//upgrade": "Development link. A production release needs its own under the multisig policy; do not ship this one. It must also differ from every other app in this repository: a link is an update channel, so two apps sharing one means staging either overwrites the other and installs receive the wrong application.",
   "upgrade": "pear://os5tpkgk8d1fajhfj5q8h9szc6ow7yk4ewy1cw91yhnk3go5gr1o",
   "type": "commonjs",
   "main": "electron/main.js",

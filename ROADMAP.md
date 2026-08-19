@@ -383,7 +383,10 @@ locally.
    `WORKER_KEYSTORE_PASSWORD`, so it remains readable in `docker inspect` until
    the image accepts something else.
 2. **The production `pear://` link and its multisig quorum.** The current
-   `upgrade` link is a development one whose secret key sits on one machine.
+   `upgrade` links are development ones whose secret keys sit on one machine.
+   Both apps carried the *same* link until this was noticed, which would have
+   made staging either one push it to the other's installs; they are distinct
+   now and `scripts/check-links.mjs` fails the build if that recurs.
 3. **Custody**: signing certificates and the release multisig are different key
    sets protecting different things, and both need rules for who holds them and
    what happens when that person leaves.
