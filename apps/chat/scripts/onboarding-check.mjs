@@ -344,13 +344,23 @@ const duplicates = await evaluate(`(() => {
   for (const node of document.querySelectorAll('[id]')) {
     seen.set(node.id, (seen.get(node.id) ?? 0) + 1)
   }
-  return [...seen].filter(([, count]) => count > 1).map(([id, count]) => id + '×' + count)
+  return {
+    total: document.querySelectorAll('[id]').length,
+    repeated: [...seen].filter(([, count]) => count > 1).map(([id, count]) => id + '×' + count)
+  }
 })()`)
 
+// The count is part of the assertion, not decoration. "No duplicates" is also
+// true of a document with no ids in it, so a window that failed to render would
+// have reported this as a pass.
 report(
   'no two elements in the document share an id',
-  duplicates.length === 0,
-  duplicates.length ? duplicates.join(', ') : 'all unique'
+  duplicates.repeated.length === 0 && duplicates.total >= 100,
+  duplicates.repeated.length
+    ? duplicates.repeated.join(', ')
+    : duplicates.total < 100
+      ? `only ${duplicates.total} ids in the document — did it render?`
+      : `${duplicates.total} ids, all unique`
 )
 
 // The collision above also proves the other half has to be checked: Settings

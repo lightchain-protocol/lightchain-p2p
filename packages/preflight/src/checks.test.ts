@@ -157,6 +157,12 @@ describe('reporting', () => {
 
   it('an unprobed host warns rather than falsely passing', () => {
     const results = runChecks({})
+
+    // Counted before the `every`, which is otherwise satisfied by an empty
+    // array — and `isReady([])` is true as well, so a version of `runChecks`
+    // that returned nothing would pass both assertions below while checking
+    // nothing at all.
+    expect(results.length).toBeGreaterThan(0)
     expect(results.every((r) => r.status === 'warn')).toBe(true)
     expect(isReady(results)).toBe(true)
   })

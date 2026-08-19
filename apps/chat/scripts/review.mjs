@@ -97,57 +97,86 @@ if (!rooms?.length) {
 
 // --- What a picture will not show ---------------------------------------------
 
+// Each of these looks for the absence of something bad, which is a shape that
+// reports success when it found nothing to examine at all. A window that
+// rendered no panels has no misnested ones; a window with no buttons has no
+// unlabelled ones. So each states the population it searched, and fails if that
+// population is implausibly small — the number is the difference between "this
+// held" and "this never ran".
+const FLOOR = { ids: 100, buttons: 20, panels: 5 }
+
 // Two elements answering to one id means getElementById hands both their
 // handlers the same element. It has happened here once already, between the
 // onboarding password form and the Settings one, and the only symptom was a
 // password that silently never changed.
-const duplicates = await evaluate(`(() => {
+const ids = await evaluate(`(() => {
   const seen = new Map()
   for (const node of document.querySelectorAll('[id]')) {
     seen.set(node.id, (seen.get(node.id) ?? 0) + 1)
   }
-  return [...seen].filter(([, n]) => n > 1).map(([id, n]) => id + '×' + n)
+  return {
+    total: document.querySelectorAll('[id]').length,
+    repeated: [...seen].filter(([, n]) => n > 1).map(([id, n]) => id + '×' + n)
+  }
 })()`)
 note(
-  duplicates.length === 0,
+  ids.repeated.length === 0 && ids.total >= FLOOR.ids,
   'no two elements share an id',
-  duplicates.length ? duplicates.join(', ') : 'all unique'
+  ids.repeated.length
+    ? ids.repeated.join(', ')
+    : ids.total < FLOOR.ids
+      ? `only ${ids.total} ids in the document — did it render?`
+      : `${ids.total} ids, all unique`
 )
 
 // An unlabelled icon button is a button a screen reader announces as "button".
-const unlabelled = await evaluate(`(() => {
+const buttons = await evaluate(`(() => {
+  const all = [...document.querySelectorAll('button')]
   const bad = []
-  for (const b of document.querySelectorAll('button')) {
+  for (const b of all) {
     const text = (b.textContent ?? '').trim()
     if (text) continue
     if (b.getAttribute('aria-label') || b.getAttribute('title')) continue
     if (b.closest('[hidden]')) continue
     bad.push(b.id || b.className || 'anonymous')
   }
-  return bad
+  return { total: all.length, bad }
 })()`)
 note(
-  unlabelled.length === 0,
+  buttons.bad.length === 0 && buttons.total >= FLOOR.buttons,
   'every icon-only button carries a label',
-  unlabelled.length ? unlabelled.slice(0, 4).join(', ') : 'all labelled'
+  buttons.bad.length
+    ? buttons.bad.slice(0, 4).join(', ')
+    : buttons.total < FLOOR.buttons
+      ? `only ${buttons.total} buttons in the document — did it render?`
+      : `${buttons.total} buttons, all labelled`
 )
 
 // index.html is assembled from partials, and a partial that does not close what
 // it opens takes the next one inside it. That happened: the wallet panel was
 // truncated and swallowed the roadmap panel, which then lived inside a subtree
 // hidden unless a wallet was unlocked. Every panel should be a sibling.
-const misnested = await evaluate(`(() => {
+//
+// Counting matters most here. This check was written because a panel went
+// missing, and without a floor it would have reported success if every panel
+// had gone missing.
+const panels = await evaluate(`(() => {
+  const all = [...document.querySelectorAll('.panel')]
   const bad = []
-  for (const panel of document.querySelectorAll('.panel')) {
+  for (const panel of all) {
     const inside = panel.parentElement?.closest('.panel')
     if (inside) bad.push(panel.id + ' inside ' + inside.id)
   }
-  return bad
+  return { total: all.length, bad }
 })()`)
 note(
-  misnested.length === 0,
+  panels.bad.length === 0 && panels.total >= FLOOR.panels,
   'no panel is nested inside another',
-  misnested.length ? misnested.join(', ') : 'all siblings'
+  panels.bad.length
+    ? panels.bad.join(', ')
+    : panels.total < FLOOR.panels
+      ? `only ${panels.total} panels — one of them has swallowed the others`
+      : `${panels.total} panels, all siblings`
 )
 
 // --- Every surface, in both themes --------------------------------------------

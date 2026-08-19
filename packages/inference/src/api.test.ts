@@ -128,6 +128,11 @@ describe('signing in', () => {
     seen = []
 
     const api = await signedIn()
+
+    // The count first. This asserts that no call before sign-in carried a
+    // token, and `every` over an empty array says that too — so without this
+    // the strongest reading of a pass is "signing in made no requests".
+    expect(seen.length).toBeGreaterThan(0)
     expect(seen.every((call) => call.auth === undefined)).toBe(true)
 
     await api.models()
