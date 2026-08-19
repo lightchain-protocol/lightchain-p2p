@@ -66,6 +66,40 @@ function applyTheme(next) {
   const label = theme === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme'
   el.themeBtn.title = label
   el.themeBtn.setAttribute('aria-label', label)
+
+  paintWindowControls()
+}
+
+/**
+ * Tells the platform what colour to draw its own caption buttons.
+ *
+ * Windows draws minimise, maximise and close itself, so they inherit nothing
+ * from the document. Their colour was fixed at the dark palette, which left a
+ * black rectangle in the corner of a light window.
+ *
+ * The values are read back out of the stylesheet rather than written here, so
+ * the buttons cannot drift from the bar they sit against, and the main process
+ * does not need a second copy of the palette. Read after the theme attribute is
+ * set and the layout flushed above, which is why this is the last thing
+ * `applyTheme` does.
+ */
+function paintWindowControls() {
+  if (!bridge.setTitleBarColours) return
+
+  const style = getComputedStyle(document.documentElement)
+  const colours = {
+    color: hexOf(style.getPropertyValue('--lc-bg-elevated')),
+    symbolColor: hexOf(style.getPropertyValue('--lc-fg-muted'))
+  }
+
+  if (!colours.color || !colours.symbolColor) return
+  void bridge.setTitleBarColours(colours).catch(() => {})
+}
+
+/** The tokens are authored as hex, so this is a trim rather than a conversion. */
+function hexOf(value) {
+  const text = value.trim()
+  return /^#[0-9a-f]{6}$/i.test(text) ? text : null
 }
 
 el.themeBtn.addEventListener('click', () => {

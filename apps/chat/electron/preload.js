@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('bridge', {
    * to open `file://` has been persuaded to run something.
    */
   openExternal: (url) => ipcRenderer.invoke('app:openExternal', url),
+  setTitleBarColours: (colours) => ipcRenderer.invoke('app:setTitleBarColours', colours),
   notify: (title, body) => ipcRenderer.invoke('app:notify', { title, body }),
   /** The module grid for a QR code: `{ size, data }`, or null if it would not fit. */
   qr: (text) => ipcRenderer.invoke('app:qr', text),

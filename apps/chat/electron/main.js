@@ -142,6 +142,17 @@ function getWorker(specifier) {
   return pipe
 }
 
+/**
+ * How tall the title bar is, in both the platform's opinion and ours.
+ *
+ * Windows reserves this strip for the caption buttons and the renderer draws
+ * its own bar to the same height. The two have to agree: too short and the
+ * buttons overhang our content, too tall and there is a band of window nobody
+ * owns. 38px is what comparable Electron applications settled on and what
+ * `.titlebar` already uses.
+ */
+const TITLEBAR_HEIGHT = 38
+
 // Brand identity is the same on every platform; window chrome is not. macOS
 // keeps its traffic lights and insets our content behind them, while Windows
 // and Linux get native controls overlaid on a title bar we draw.
@@ -151,14 +162,47 @@ function windowChrome() {
   return {
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      // Matches --lc-bg-elevated so the controls sit on our title bar rather
-      // than a strip of a different colour.
+      // The dark palette's --lc-bg-elevated, because dark is the theme the
+      // first paint uses. A stored light theme arrives with the settings a
+      // moment later and repaints these through app:setTitleBarColours; until
+      // then the wrong colour here would be a black block in the corner of a
+      // light window.
       color: '#0f0f1d',
       symbolColor: '#b1b3d0',
-      height: 38
+      height: TITLEBAR_HEIGHT
     }
   }
 }
+
+/**
+ * Repaints the native caption buttons when the theme changes.
+ *
+ * The buttons are drawn by Windows, not by us, so they do not inherit anything.
+ * Their colour was fixed at the dark palette's elevated background, which meant
+ * switching to the light theme left a black rectangle in the top-right corner
+ * of an otherwise light window.
+ *
+ * The renderer sends the resolved token values rather than the main process
+ * keeping its own copy of the palette, so there is one source of truth and the
+ * buttons cannot drift from the bar they sit on.
+ */
+ipcMain.handle('app:setTitleBarColours', (evt, colours) => {
+  if (isMac) return false
+
+  const win = BrowserWindow.fromWebContents(evt.sender)
+  if (!win || win.isDestroyed()) return false
+
+  // Validated rather than trusted. This is reached from a window that spends
+  // its life rendering text written by strangers, and the values go straight
+  // into a platform API.
+  const hex = /^#[0-9a-f]{6}$/i
+  const color = String(colours?.color ?? '')
+  const symbolColor = String(colours?.symbolColor ?? '')
+  if (!hex.test(color) || !hex.test(symbolColor)) return false
+
+  win.setTitleBarOverlay({ color, symbolColor, height: TITLEBAR_HEIGHT })
+  return true
+})
 
 /**
  * The window to open at when nothing has been remembered yet.

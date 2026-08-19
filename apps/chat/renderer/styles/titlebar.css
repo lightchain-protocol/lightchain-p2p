@@ -7,10 +7,28 @@
 
 /* --- Title bar ------------------------------------------------------------ */
 
+/**
+ * The mark, and the rest of the strip left as somewhere to grab the window.
+ *
+ * It used to carry the mark, a balance, a live connection status, a theme
+ * toggle and a settings gear at one flat gap, so brand, money and preferences
+ * read as one undifferentiated row that then ended a few pixels short of the
+ * OS window controls. The account, the balance, the theme and settings have
+ * moved to the sidebar footer, and status is only worth a pixel when something
+ * is wrong — a permanent "connected" spends the top edge of the window saying
+ * nothing happened.
+ *
+ * The fill has to stay --lc-bg-elevated: electron/main.js paints the Windows
+ * and Linux caption buttons to match it, so any other colour here leaves the OS
+ * controls sitting on a strip of their own.
+ */
 .titlebar {
   display: flex;
   align-items: center;
   gap: var(--lc-space-md);
+  /* Locked to titleBarOverlay.height in electron/main.js. A shorter bar leaves
+     a band of the page showing behind the caption buttons; a taller one puts
+     the buttons above its own bottom edge. */
   height: 38px;
   padding: 0 var(--lc-space-lg);
   border-bottom: 1px solid var(--lc-rule);
@@ -26,16 +44,46 @@
   padding-left: 78px;
 }
 
-/* Windows and Linux draw their controls over the right of the bar. */
+/**
+ * Windows and Linux draw their controls over the right of the bar.
+ *
+ * How wide that cluster is belongs to the OS, and it is not fixed: it moves
+ * with the display scale factor and with how the shell is configured. So the
+ * clearance is asked for rather than measured once — `titlebar-area-width` is
+ * Chromium reporting what the platform actually reserved, and the difference
+ * from the window width is the cluster, plus a gap so the update button does
+ * not sit flush against the minimise box.
+ *
+ * The floor is the number that was hardcoded here, which is what this resolves
+ * to on a machine that reports the area and what it falls back to on one that
+ * does not. Erring wide only moves our own content left; erring narrow puts it
+ * under a button, where it cannot be clicked and looks like a rendering fault.
+ */
 :root:not([data-platform='darwin']) .titlebar {
-  padding-right: 148px;
+  padding-right: max(148px, calc(100vw - env(titlebar-area-width, 100vw) + var(--lc-space-md)));
 }
 
+/* Anything clickable has to opt out of the drag region or the window moves
+   instead of the button being pressed. */
 .titlebar button {
   -webkit-app-region: no-drag;
 }
 
+/* One object, so it is spaced as one. At the row's own gap the logo and the
+   wordmark were as far apart as the wordmark was from the balance beside it,
+   which is how a lockup turns into two more items in a list. */
+.titlebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  flex: 0 0 auto;
+}
+
+/* Sized to the sidebar's own brand label, which sits directly beneath it in the
+   same column. At body size it was a pixel larger than that label: too small a
+   difference to read as hierarchy and large enough to read as a mistake. */
 .wordmark {
+  font-size: var(--lc-text-sm);
   font-weight: 600;
   letter-spacing: 0.01em;
   background: linear-gradient(90deg, var(--lc-brand-violet), var(--lc-brand-magenta));
@@ -44,40 +92,9 @@
   color: transparent;
 }
 
-.titlebar-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* Held against the far end rather than left to follow the mark, so the space
+   between them stays a drag handle instead of becoming the gap between two
+   things in a row. */
+.titlebar-update {
   margin-left: auto;
-  font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
-}
-
-/* Whether the app is talking to its worker is the one thing worth knowing
-   without reading, so it gets a shape and a colour as well as a word. */
-.titlebar-status::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: var(--lc-radius-pill);
-  background: var(--lc-fg-dim);
-}
-
-.titlebar-status[data-state='ok']::before {
-  background: var(--lc-success);
-}
-
-.titlebar-status[data-state='busy']::before {
-  background: var(--lc-warning);
-  animation: pulse 1.6s ease-in-out infinite;
-}
-
-.titlebar-status[data-state='bad']::before {
-  background: var(--lc-danger);
-}
-
-@keyframes pulse {
-  50% {
-    opacity: 0.35;
-  }
 }

@@ -95,6 +95,19 @@ body {
   min-height: 0;
 }
 
+/* --- Animation ------------------------------------------------------------ */
+
+/* Keyframes are one global namespace no matter which file declares them, so a
+   shared one has to live somewhere shared. This was in the titlebar's
+   stylesheet and used by attachments.css two surfaces away, which meant
+   deleting the last titlebar animation would have silently stopped a transfer
+   indicator with nothing logged anywhere. */
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
 /* --- Icons ---------------------------------------------------------------- */
 
 /* Defined once in a sprite and referenced by `<use>`. Stroked rather than
