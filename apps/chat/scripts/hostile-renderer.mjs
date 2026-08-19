@@ -328,6 +328,70 @@ report(
   `${scriptsBefore} before, ${scriptsAfter} after`
 )
 
+// --- A filename chosen to be read as something it is not --------------------------
+
+// The name on an attachment comes from whoever sent it and is drawn beside a
+// Save button, which is the moment somebody decides whether to open it. The
+// bidirectional override is the one worth naming: U+202E reverses what follows,
+// so `holiday<U+202E>gnp.exe` is drawn by every conforming renderer as
+// `holidayexe.png`. The extension read is not the extension saved.
+// Asserted on the codepoint rather than on how the string looks, because
+// `textContent` is in logical order: a name that still carries U+202E reads
+// back unreversed here and is drawn reversed on screen, so comparing the text
+// to what a person would see would pass in both directions.
+const names = [
+  ['a right-to-left override', `holiday${String.fromCharCode(0x202e)}gnp.exe`, 0x202e],
+  ['a right-to-left isolate', `report${String.fromCharCode(0x2067)}fdp.scr`, 0x2067],
+  ['a pop-directional-isolate', `sheet${String.fromCharCode(0x2069)}slx.bat`, 0x2069],
+  ['an embedded newline', 'invoice.pdf\nrm -rf /', 0x0a],
+  ['a carriage return', 'notes.txt\rDELETED', 0x0d],
+  ['a null byte', 'photo.png\u0000.exe', 0x00]
+]
+
+for (const [what, filename, forbidden] of names) {
+  const shown = await evaluate(`(async () => {
+    const ask = ${ASK}
+    const attached = await ask('room.attach', {
+      room: ${JSON.stringify(roomKey)},
+      files: [{ name: ${JSON.stringify(filename)}, type: 'application/octet-stream', bytes: [1, 2, 3] }]
+    })
+    if (attached?.error) return { error: attached.error }
+
+    await ask('room.send', {
+      room: ${JSON.stringify(roomKey)},
+      text: '',
+      attachment: attached.attachments[0]
+    })
+    await new Promise((r) => setTimeout(r, 900))
+
+    const node = [...document.querySelectorAll('#messages .attachment-name')].at(-1)
+    return { text: node ? node.textContent : null }
+  })()`)
+
+  if (shown?.error) {
+    // The worker refusing it outright is a stronger answer than scrubbing it.
+    report(
+      `a filename with ${what} is refused or defanged`,
+      true,
+      `refused: ${shown.error.slice(0, 40)}`
+    )
+    continue
+  }
+
+  const text = shown?.text ?? ''
+  const survived = [...text].some((ch) => ch.codePointAt(0) === forbidden)
+
+  report(
+    `a filename with ${what} cannot reorder or truncate what is shown`,
+    text !== '' && !survived,
+    text === ''
+      ? 'no name rendered at all'
+      : survived
+        ? `U+${forbidden.toString(16).padStart(4, '0')} reached the screen`
+        : JSON.stringify(text)
+  )
+}
+
 // --- The formatter, given input designed to hang it -------------------------------
 
 const nasty = [

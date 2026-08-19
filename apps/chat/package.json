@@ -13,7 +13,8 @@
     "build": "node scripts/build-tokens.mjs && node scripts/build-icons.mjs && node scripts/build-markup.mjs && node scripts/check-tokens.mjs && node scripts/check-kit.mjs",
     "start": "npm run build && electron-forge start -- --no-updates",
     "package": "node scripts/forge.mjs package",
-    "make": "node scripts/forge.mjs make"
+    "make": "node scripts/forge.mjs make",
+    "test": "vitest run"
   },
   "dependencies": {
     "@lcai-p2p/blind": "workspace:*",
@@ -50,12 +51,14 @@
     "@electron-forge/maker-dmg": "^7.11.1",
     "@electron-forge/maker-msix": "^7.11.1",
     "@electron-forge/maker-zip": "^7.11.1",
+    "@lcai-p2p/vitest-config": "workspace:*",
     "electron": "^41.10.6",
     "electron-forge-plugin-prune-prebuilds": "^1.0.1",
     "electron-forge-plugin-universal-prebuilds": "^1.0.0",
     "lucide-static": "^1.32.0",
     "pear-electron-forge-maker-appimage": "^2.0.0",
     "pear-electron-forge-maker-flatpak": "^0.0.6",
-    "pear-electron-forge-maker-snap": "^1.0.0"
+    "pear-electron-forge-maker-snap": "^1.0.0",
+    "vitest": "^4.1.10"
   }
 }

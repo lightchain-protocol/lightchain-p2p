@@ -9,6 +9,7 @@ const QRCode = require('qrcode')
 const { isMac, isLinux, isWindows } = require('which-runtime')
 const { command, flag, sloppy } = require('paparam')
 const windowState = require('./window-state')
+const { safeFileName } = require('./safe-file-name')
 const pkg = require('../package.json')
 const { name, productName, version, upgrade } = pkg
 
@@ -466,31 +467,6 @@ ipcMain.handle('app:openExternal', async (evt, url) => {
     return false
   }
 })
-
-/**
- * Strips a filename down to something that cannot escape the folder it is
- * saved into.
- *
- * The name on an attachment was chosen by whoever sent it, and a save dialog
- * pre-filled with `..\..\Windows\System32\evil.exe` is a way to put a file
- * somewhere it was not meant to go. Windows also reserves a handful of device
- * names that behave very strangely when written to, and refuses names ending
- * in a dot or a space.
- */
-function safeFileName(name) {
-  const stripped = String(name ?? '')
-    .replace(/[\\/]/g, '_')
-    .replace(/^[a-zA-Z]:/, '')
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\u0000-\u001f\u007f<>:"|?*]/g, '_')
-    .replace(/^\.+/, '')
-    .replace(/[. ]+$/, '')
-    .slice(0, 255)
-
-  if (stripped === '') return 'attachment'
-  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(stripped)) return `_${stripped}`
-  return stripped
-}
 
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
 
