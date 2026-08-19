@@ -3,31 +3,76 @@ import { request } from './ipc.js'
 import { refreshTitlebarBalance, showWallet } from './wallet.js'
 
 /**
- * First run, which covers everything.
+ * First run, and every way back in.
  *
  * The wallet is the identity: rooms are sealed under a key derived from it and
  * inference is paid for by it, so there is nothing meaningful behind this until
  * one exists and is unlocked.
+ *
+ * The rule this file exists to keep is that **no screen here is terminal**. The
+ * version before it broke that rule in a way that made the application
+ * unusable: the unlock screen had no exit, removing a wallet required the
+ * password somebody had just said they had lost, and the only remove button was
+ * in Settings, behind the overlay that would not lift. A forgotten password
+ * meant no reachable state anywhere in the app, with nothing on screen
+ * admitting it. Anything added here needs a way onward from every state,
+ * including the states nobody plans for.
  */
+
+const WORDS_IN_PHRASE = 12
+const MIN_PASSWORD = 8
+const WORDS_TO_VERIFY = 3
 
 const onboarding = {
   root: document.getElementById('onboarding'),
   steps: [...document.querySelectorAll('.onboarding .step')],
-  phraseWords: document.getElementById('phrase-words'),
-  confirmPrompt: document.getElementById('confirm-prompt'),
-  confirmFields: document.getElementById('confirm-fields'),
-  confirmError: document.getElementById('confirm-error')
+  heading: document.getElementById('step-heading')
 }
 
 /** The phrase, held only between showing it and confirming it. */
 let pendingPhrase = null
 let pendingChecks = []
 
+/**
+ * The word the worker will accept to authorise a replacement.
+ *
+ * Read from `wallet.replacePreview` rather than written here. The renderer is
+ * sandboxed and cannot import from the workspace, so quoting the worker is the
+ * only way for the two sides to hold one value instead of two literals that
+ * drift.
+ */
+let confirmationWord = null
+
+/** Where "Back" from the restore screen should go, which depends on arrival. */
+let restoreReturn = 'step-welcome'
+
+function el(id) {
+  return document.getElementById(id)
+}
+
 function showStep(id) {
   onboarding.root.hidden = false
   for (const step of onboarding.steps) step.hidden = step.id !== id
-  const focusable = document.querySelector(`#${id} input, #${id} textarea, #${id} .button-primary`)
+
+  // The dialog is labelled by whichever title is showing, so a screen reader
+  // announces the step rather than the first one that ever rendered. Pointing
+  // the label at the title's own id — rather than moving one shared id around —
+  // is what keeps the document from ending up with nine elements answering to
+  // the same name, which is what the first version of this did.
+  const step = el(id)
+  const title = step?.querySelector('.step-title')
+  if (title) onboarding.root.setAttribute('aria-labelledby', title.id)
+
+  for (const error of step?.querySelectorAll('.dialog-error') ?? []) error.hidden = true
+
+  const focusable = step?.querySelector('input, textarea, .choice, .button-primary')
   focusable?.focus()
+}
+
+function fail(id, message) {
+  const error = el(id)
+  error.textContent = message
+  error.hidden = false
 }
 
 function finishOnboarding() {
@@ -35,15 +80,44 @@ function finishOnboarding() {
   // time. Locking hides it again, through the same path.
   void refreshTitlebarBalance()
   pendingPhrase = null
+  // The phrase is gone, so the controls that act on it have to go back to not
+  // offering. Leaving them enabled let a later click reach a null phrase and
+  // throw, which is a blank screen with the reason only in the console.
+  coverPhrase()
   onboarding.root.hidden = true
 }
 
+/**
+ * Whether a wallet is on disk, asked again rather than remembered.
+ *
+ * The answer can change while this overlay is open — another window, a harness,
+ * a wallet removed in Settings — and a screen offering to create one when one
+ * already exists sends somebody into an error they cannot act on. Every branch
+ * that depends on it re-reads it.
+ */
+async function walletExists() {
+  const status = await request('wallet.status')
+  return status.exists === true
+}
+
+/** The confirmation word, fetched once and reused. */
+async function replaceWord() {
+  if (confirmationWord === null) {
+    const preview = await request('wallet.replacePreview')
+    confirmationWord = preview.confirmation
+  }
+  return confirmationWord
+}
+
+// --- Create ----------------------------------------------------------------
+
 function renderPhrase(phrase) {
-  onboarding.phraseWords.replaceChildren()
+  const list = el('phrase-words')
+  list.replaceChildren()
   for (const word of phrase.split(' ')) {
     const item = document.createElement('li')
     item.textContent = word
-    onboarding.phraseWords.append(item)
+    list.append(item)
   }
 }
 
@@ -53,20 +127,21 @@ function renderPhrase(phrase) {
  * Not ceremony: a phrase nobody wrote down correctly is a wallet nobody can
  * recover, and this is the last moment when finding that out is free.
  */
-function renderConfirm(phrase) {
+function renderVerify(phrase) {
   const words = phrase.split(' ')
   const positions = []
-  while (positions.length < 3) {
+  while (positions.length < WORDS_TO_VERIFY) {
     const n = Math.floor(Math.random() * words.length)
     if (!positions.includes(n)) positions.push(n)
   }
   positions.sort((a, b) => a - b)
   pendingChecks = positions
 
-  onboarding.confirmPrompt.textContent =
+  el('verify-prompt').textContent =
     'Type the words at these positions, to check the copy you wrote down is right.'
 
-  onboarding.confirmFields.replaceChildren()
+  const fields = el('verify-fields')
+  fields.replaceChildren()
   for (const position of positions) {
     const label = document.createElement('label')
     label.className = 'field'
@@ -83,34 +158,44 @@ function renderConfirm(phrase) {
     input.dataset.position = String(position)
 
     label.append(caption, input)
-    onboarding.confirmFields.append(label)
+    fields.append(label)
   }
 }
 
-document.getElementById('choose-create').addEventListener('click', () => showStep('step-password'))
-document.getElementById('choose-import').addEventListener('click', () => showStep('step-import'))
-for (const button of document.querySelectorAll('[data-back]')) {
-  button.addEventListener('click', () => showStep(button.dataset.back))
-}
+el('choose-create').addEventListener('click', () => showStep('step-password'))
 
-document.getElementById('onboard-password-form').addEventListener('submit', async (evt) => {
+el('choose-restore').addEventListener('click', () => {
+  restoreReturn = 'step-welcome'
+  void openRestore()
+})
+
+el('onboard-password').addEventListener('input', (evt) => {
+  const hint = el('onboard-password-hint')
+  const length = evt.target.value.length
+  if (length === 0) {
+    hint.textContent = `At least ${MIN_PASSWORD} characters.`
+    delete hint.dataset.state
+  } else if (length < MIN_PASSWORD) {
+    hint.textContent = `${MIN_PASSWORD - length} more to go.`
+    hint.dataset.state = 'bad'
+  } else {
+    hint.textContent = 'Long enough.'
+    hint.dataset.state = 'ok'
+  }
+})
+
+el('onboard-password-form').addEventListener('submit', async (evt) => {
   evt.preventDefault()
 
-  const error = document.getElementById('onboard-password-error')
-  const button = document.getElementById('onboard-password-btn')
-  const password = document.getElementById('onboard-password').value
-  const confirm = document.getElementById('onboard-confirm').value
+  const button = el('onboard-password-btn')
+  const password = el('onboard-password').value
+  const confirm = el('onboard-password-confirm').value
 
-  error.hidden = true
-  if (password !== confirm) {
-    error.textContent = 'Those two passwords are not the same.'
-    error.hidden = false
-    return
-  }
-  if (password.length < 8) {
-    error.textContent = 'Use at least 8 characters.'
-    error.hidden = false
-    return
+  el('onboard-password-error').hidden = true
+  if (password !== confirm)
+    return fail('onboard-password-error', 'Those two passwords are not the same.')
+  if (password.length < MIN_PASSWORD) {
+    return fail('onboard-password-error', `Use at least ${MIN_PASSWORD} characters.`)
   }
 
   button.disabled = true
@@ -121,88 +206,160 @@ document.getElementById('onboard-password-form').addEventListener('submit', asyn
     pendingPhrase = created.phrase
     renderPhrase(created.phrase)
     showWallet(created)
+    coverPhrase()
     showStep('step-phrase')
   } catch (err) {
-    error.textContent = err.message
-    error.hidden = false
+    // The most likely cause is a wallet that appeared while this screen was
+    // open, and the worker's message says so but offers nothing to do about it.
+    // Sending them to the screen that has the routes is the actionable part.
+    if (await walletExists()) {
+      fail('onboard-password-error', `${err.message} You can replace it from the next screen.`)
+      showStep('step-recovery')
+    } else {
+      fail('onboard-password-error', err.message)
+    }
   } finally {
-    document.getElementById('onboard-password').value = ''
-    document.getElementById('onboard-confirm').value = ''
+    el('onboard-password').value = ''
+    el('onboard-password-confirm').value = ''
     button.disabled = false
     button.textContent = 'Continue'
   }
 })
 
-document.getElementById('phrase-copy').addEventListener('click', () => {
+/** Hides the words again, which is the state the step has to open in. */
+function coverPhrase() {
+  el('phrase-reveal').hidden = false
+  el('phrase-copy').disabled = true
+  el('phrase-continue').disabled = true
+}
+
+el('phrase-reveal').addEventListener('click', () => {
+  el('phrase-reveal').hidden = true
+  el('phrase-copy').disabled = false
+  // Continuing is only offered once the words have actually been on screen,
+  // since "I have written it down" is not true of something never shown.
+  el('phrase-continue').disabled = false
+})
+
+el('phrase-copy').addEventListener('click', () => {
   if (pendingPhrase) void copy(pendingPhrase, 'Recovery phrase')
 })
 
-document.getElementById('phrase-continue').addEventListener('click', () => {
-  renderConfirm(pendingPhrase)
-  showStep('step-confirm')
+el('phrase-continue').addEventListener('click', () => {
+  // Belt as well as braces. The button is disabled without a phrase, but a
+  // disabled button is a claim about the DOM and this is a claim about the
+  // data, and the two have already disagreed once.
+  if (!pendingPhrase) return showStep('step-welcome')
+  renderVerify(pendingPhrase)
+  showStep('step-verify')
 })
 
-document.getElementById('confirm-back').addEventListener('click', () => showStep('step-phrase'))
+el('verify-back').addEventListener('click', () => {
+  coverPhrase()
+  showStep('step-phrase')
+})
 
-document.getElementById('confirm-form').addEventListener('submit', (evt) => {
+el('verify-form').addEventListener('submit', (evt) => {
   evt.preventDefault()
   const words = pendingPhrase.split(' ')
 
-  for (const input of onboarding.confirmFields.querySelectorAll('input')) {
+  for (const input of el('verify-fields').querySelectorAll('input')) {
     const position = Number(input.dataset.position)
     if (input.value.trim().toLowerCase() !== words[position]) {
-      onboarding.confirmError.textContent = `Word ${position + 1} does not match. Check what you wrote down.`
-      onboarding.confirmError.hidden = false
-      return
+      return fail('verify-error', `Word ${position + 1} does not match. Check what you wrote down.`)
     }
   }
 
-  onboarding.confirmError.hidden = true
+  el('verify-error').hidden = true
   finishOnboarding()
   toast('Wallet ready')
 })
 
-document.getElementById('import-form').addEventListener('submit', async (evt) => {
+// --- Restore ---------------------------------------------------------------
+
+/**
+ * Opens the restore screen, telling it whether it is replacing something.
+ *
+ * Restoring over an existing wallet is the recommended way back in for somebody
+ * who has lost their password, so it must not be refused — but it must also not
+ * happen quietly, hence the note.
+ */
+async function openRestore() {
+  const replacing = await walletExists()
+  el('restore-replacing').hidden = !replacing
+  el('restore-btn').textContent = replacing ? 'Replace and restore' : 'Restore'
+  showStep('step-restore')
+}
+
+el('restore-back').addEventListener('click', () => showStep(restoreReturn))
+
+el('restore-phrase').addEventListener('input', (evt) => {
+  const hint = el('restore-count')
+  const words = evt.target.value.trim().split(/\s+/).filter(Boolean)
+
+  if (words.length === 0) {
+    hint.textContent = `${WORDS_IN_PHRASE} words.`
+    delete hint.dataset.state
+  } else if (words.length === WORDS_IN_PHRASE) {
+    hint.textContent = `${WORDS_IN_PHRASE} words.`
+    hint.dataset.state = 'ok'
+  } else {
+    // Counting out loud catches the overwhelmingly common mistake — a missing
+    // or doubled word — before it comes back as "that phrase is not valid",
+    // which does not say which of the twelve to look at.
+    hint.textContent = `${words.length} of ${WORDS_IN_PHRASE} words.`
+    hint.dataset.state = 'bad'
+  }
+})
+
+el('restore-form').addEventListener('submit', async (evt) => {
   evt.preventDefault()
 
-  const error = document.getElementById('import-error')
-  const button = document.getElementById('import-btn')
-  const phrase = document.getElementById('import-phrase').value
-  const password = document.getElementById('import-password').value
+  const button = el('restore-btn')
+  const phrase = el('restore-phrase').value
+  const password = el('restore-password').value
+  const label = button.textContent
 
-  error.hidden = true
-  if (password.length < 8) {
-    error.textContent = 'Use at least 8 characters for the password.'
-    error.hidden = false
-    return
+  el('restore-error').hidden = true
+  if (password.length < MIN_PASSWORD) {
+    return fail('restore-error', `Use at least ${MIN_PASSWORD} characters for the password.`)
   }
 
   button.disabled = true
   button.textContent = 'Restoring…'
 
   try {
-    showWallet(await request('wallet.import', { phrase, password }))
-    document.getElementById('import-phrase').value = ''
+    // The confirmation is only meaningful when something is being replaced, and
+    // the worker ignores it otherwise. Sending it either way keeps this path
+    // from depending on a check made a moment ago in another screen.
+    const restored = await request('wallet.import', {
+      phrase,
+      password,
+      confirmation: await replaceWord()
+    })
+
+    showWallet(restored)
+    el('restore-phrase').value = ''
     finishOnboarding()
-    toast('Wallet restored')
+    toast(restored.replaced ? 'Wallet replaced' : 'Wallet restored')
   } catch (err) {
-    error.textContent = err.message
-    error.hidden = false
+    fail('restore-error', err.message)
   } finally {
-    document.getElementById('import-password').value = ''
+    el('restore-password').value = ''
     button.disabled = false
-    button.textContent = 'Restore'
+    button.textContent = label
   }
 })
 
-document.getElementById('onboard-unlock-form').addEventListener('submit', async (evt) => {
+// --- Unlock, and the ways out of it ----------------------------------------
+
+el('unlock-form').addEventListener('submit', async (evt) => {
   evt.preventDefault()
 
-  const error = document.getElementById('onboard-unlock-error')
-  const button = document.getElementById('onboard-unlock-btn')
-  const input = document.getElementById('onboard-unlock-password')
+  const button = el('unlock-btn')
+  const input = el('unlock-password')
 
-  error.hidden = true
+  el('unlock-error').hidden = true
   button.disabled = true
   button.textContent = 'Unlocking…'
 
@@ -210,14 +367,113 @@ document.getElementById('onboard-unlock-form').addEventListener('submit', async 
     showWallet(await request('wallet.unlock', { password: input.value }))
     finishOnboarding()
   } catch (err) {
-    error.textContent = err.message
-    error.hidden = false
+    fail('unlock-error', err.message)
   } finally {
     input.value = ''
     button.disabled = false
     button.textContent = 'Unlock'
   }
 })
+
+el('unlock-forgot').addEventListener('click', () => showStep('step-recovery'))
+
+el('recover-phrase').addEventListener('click', () => {
+  restoreReturn = 'step-recovery'
+  void openRestore()
+})
+
+el('recover-password').addEventListener('click', () => showStep('step-remove'))
+el('recover-neither').addEventListener('click', () => void openStartOver())
+
+el('remove-wallet-form').addEventListener('submit', async (evt) => {
+  evt.preventDefault()
+
+  const button = el('remove-wallet-btn')
+  const input = el('remove-wallet-password')
+
+  el('remove-wallet-error').hidden = true
+  button.disabled = true
+  button.textContent = 'Removing…'
+
+  try {
+    showWallet(await request('wallet.remove', { password: input.value }))
+    toast('Wallet removed')
+    showStep('step-welcome')
+  } catch (err) {
+    fail('remove-wallet-error', err.message)
+  } finally {
+    input.value = ''
+    button.disabled = false
+    button.textContent = 'Remove wallet'
+  }
+})
+
+// --- Starting over, with neither ------------------------------------------
+
+/**
+ * The last resort, gated by typing rather than by a password.
+ *
+ * Requiring the password here would be circular: this screen exists precisely
+ * for somebody who does not have it. The vault is encrypted and deleting it
+ * discloses nothing, and anyone who can reach the file could delete it without
+ * the app — so a password would not be protecting the secret, only trapping its
+ * owner. What is actually at risk is somebody destroying their own wallet
+ * without understanding it, and the guard for that is informed consent: a
+ * sentence naming what is lost, and a word typed out by hand.
+ */
+async function openStartOver() {
+  const word = await replaceWord()
+  // The label carries the word and the box stays empty. A placeholder showing
+  // the word to type reads as a box that is already filled in, which is the one
+  // impression a confirmation must never give.
+  el('startover-label').textContent = `Type ${word} to confirm`
+  el('startover-confirm').value = ''
+  el('startover-btn').disabled = true
+  showStep('step-startover')
+}
+
+el('startover-confirm').addEventListener('input', (evt) => {
+  el('startover-btn').disabled = evt.target.value !== confirmationWord
+})
+
+el('startover-form').addEventListener('submit', async (evt) => {
+  evt.preventDefault()
+
+  const button = el('startover-btn')
+  el('startover-error').hidden = true
+  button.disabled = true
+  button.textContent = 'Starting over…'
+
+  try {
+    showWallet(await request('wallet.remove', { confirmation: el('startover-confirm').value }))
+    toast('Wallet removed')
+    showStep('step-welcome')
+  } catch (err) {
+    fail('startover-error', err.message)
+    button.disabled = false
+  } finally {
+    el('startover-confirm').value = ''
+    button.textContent = 'Start over'
+  }
+})
+
+// --- Shared controls -------------------------------------------------------
+
+for (const button of document.querySelectorAll('[data-back]')) {
+  button.addEventListener('click', () => showStep(button.dataset.back))
+}
+
+// A password box somebody cannot read is a password box somebody mistypes, and
+// on this screen a mistyped one is set for good with no way to check it.
+for (const button of document.querySelectorAll('[data-reveal]')) {
+  button.addEventListener('click', () => {
+    const input = el(button.dataset.reveal)
+    const shown = input.type === 'text'
+    input.type = shown ? 'password' : 'text'
+    button.textContent = shown ? 'Show' : 'Hide'
+    input.focus()
+  })
+}
 
 /**
  * Decides what the app opens on.
@@ -229,7 +485,7 @@ export async function startOnboarding() {
   const status = await request('wallet.status')
   showWallet(status)
 
-  if (!status.exists) showStep('step-choose')
+  if (!status.exists) showStep('step-welcome')
   else if (!status.unlocked) showStep('step-unlock')
   else finishOnboarding()
 }

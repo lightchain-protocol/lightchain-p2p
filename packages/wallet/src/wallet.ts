@@ -45,6 +45,26 @@ export class WalletError extends Error {
   }
 }
 
+/**
+ * The word that stands in for a password nobody has any more.
+ *
+ * A wallet removable only by its password is one that somebody who has
+ * forgotten theirs can never get past, and the screen asking for that password
+ * is the only screen left to them — the application is finished, for that
+ * person, permanently. Typing this is the other proof, and it proves something
+ * weaker on purpose: that a person is present and read the sentence, rather
+ * than that they own what they are about to destroy. Nothing stronger is
+ * available to offer them. The vault is already on the disk of whoever is
+ * asking, the phrase inside it is what an attacker would have come for, and
+ * this destroys that phrase rather than revealing it.
+ *
+ * Exported so that everything quoting the word quotes one value. It also
+ * travels in the `wallet.replacePreview` reply, because the renderer is
+ * sandboxed and cannot import from this workspace: a literal typed there would
+ * be a second copy that nothing keeps in step with this one.
+ */
+export const REPLACE_CONFIRMATION = 'REPLACE'
+
 export interface VaultStore {
   read(): Vault | null
   write(vault: Vault): void
@@ -65,9 +85,44 @@ export interface WalletStatus {
   readonly path: string
 }
 
+/**
+ * A status from something that could have replaced a wallet, saying whether it did.
+ *
+ * Kept apart from `WalletStatus` because only `create` and `importPhrase` can
+ * replace anything, and a field that reads false on every other status is one
+ * an interface soon stops reading.
+ */
+export interface ReplacementStatus extends WalletStatus {
+  /**
+   * Whether a wallet already on this machine was destroyed to reach this one.
+   *
+   * Worth saying out loud wherever it is true. It is the last moment anybody
+   * can notice: afterwards the phrase that was here is gone, and nothing left
+   * on the machine remembers that it ever existed.
+   */
+  readonly replaced: boolean
+}
+
+/** How a caller says it means to destroy a wallet that is already here. */
+export interface ReplaceOptions {
+  /**
+   * {@link REPLACE_CONFIRMATION}, typed exactly, or nothing at all.
+   *
+   * Only consulted when a wallet is already here. A first wallet displaces
+   * nothing and needs nobody's permission to exist.
+   */
+  readonly confirmation?: string
+}
+
+/** Either of the two proofs that removing the wallet was meant. */
+export interface RemoveOptions extends ReplaceOptions {
+  /** The vault's password, which proves ownership rather than mere presence. */
+  readonly password?: string
+}
+
 /** What creating a wallet hands back. The phrase is shown once and not stored elsewhere. */
 export interface CreatedWallet {
-  readonly status: WalletStatus
+  readonly status: ReplacementStatus
   readonly phrase: string
 }
 
@@ -98,6 +153,21 @@ function requireAccountIndex(index: number): void {
   }
 }
 
+/**
+ * Whether somebody typed the confirmation, and typed it exactly.
+ *
+ * Neither trimmed nor case-folded, deliberately. This is not a field carrying
+ * data that happened to arrive untidy; it is the deliberation itself, and every
+ * leniency extended here lowers the bar it exists to raise. ` REPLACE ` is what
+ * a paste produces and `replace` is what a hurry produces, while somebody
+ * reading the sentence and typing the word produces neither. Strictness costs
+ * that person nothing and costs the other one a second attempt, which is the
+ * whole point of asking.
+ */
+function confirms(confirmation: string | undefined): boolean {
+  return confirmation === REPLACE_CONFIRMATION
+}
+
 export class Wallet {
   readonly #store: VaultStore
   #account: Account | null = null
@@ -124,19 +194,39 @@ export class Wallet {
   }
 
   /**
+   * Whether this call is displacing a wallet, refusing unless somebody said so.
+   *
+   * The vault already here is left exactly where it is. What replaces it is
+   * written over it further down, once the replacement has been proved to
+   * open — clearing first and writing after leaves a moment with no wallet on
+   * disk at all, and a process that stops in that moment has destroyed one
+   * phrase without having written the one meant to succeed it.
+   */
+  #displacing(confirmation: string | undefined, refusal: string): boolean {
+    if (this.#store.read() === null) return false
+    if (!confirms(confirmation)) throw new WalletError(refusal)
+    return true
+  }
+
+  /**
    * Generates a phrase, seals it, and returns it once.
    *
    * The caller is expected to show it and then forget it. Nothing here writes
    * it anywhere except the encrypted vault, so a caller that discards it
    * without the user writing it down has produced a wallet nobody can recover —
    * which is why onboarding asks for words back before continuing.
+   *
+   * A wallet already on this machine is refused unless the caller passes
+   * {@link REPLACE_CONFIRMATION}, and then the new vault is written over the
+   * old one with `status.replaced` saying so. **The phrase that was there is
+   * gone**, along with every account derived from it, and nothing in this
+   * package can bring it back.
    */
-  create(password: string): CreatedWallet {
-    if (this.#store.read() !== null) {
-      throw new WalletError(
-        'a wallet already exists. Remove it deliberately before creating another.'
-      )
-    }
+  create(password: string, options: ReplaceOptions = {}): CreatedWallet {
+    const replaced = this.#displacing(
+      options.confirmation,
+      'a wallet already exists. Remove it deliberately before creating another.'
+    )
 
     const phrase = generatePhrase()
     const vault = seal(phrase, password)
@@ -151,16 +241,22 @@ export class Wallet {
 
     this.#store.write(vault)
     this.#use(phrase, 0)
-    return { status: this.status(), phrase }
+    return { status: { ...this.status(), replaced }, phrase }
   }
 
-  /** Restores from a phrase written down elsewhere. */
-  importPhrase(phrase: string, password: string): WalletStatus {
-    if (this.#store.read() !== null) {
-      throw new WalletError(
-        'a wallet already exists. Remove it deliberately before importing another.'
-      )
-    }
+  /**
+   * Restores from a phrase written down elsewhere.
+   *
+   * Displaces a wallet already here on the same terms as {@link create}, and
+   * for a better reason: restoring the phrase is precisely what somebody
+   * locked out of this machine came here to do, and the wallet in the way is
+   * the one they cannot open.
+   */
+  importPhrase(phrase: string, password: string, options: ReplaceOptions = {}): ReplacementStatus {
+    const replaced = this.#displacing(
+      options.confirmation,
+      'a wallet already exists. Remove it deliberately before importing another.'
+    )
 
     const clean = normalise(phrase)
     if (!isValidPhrase(clean)) {
@@ -180,7 +276,7 @@ export class Wallet {
 
     this.#store.write(vault)
     this.#use(clean, 0)
-    return this.status()
+    return { ...this.status(), replaced }
   }
 
   /**
@@ -315,12 +411,39 @@ export class Wallet {
     return this.status()
   }
 
-  /** Removes the vault. The password is required so it cannot be wiped in passing. */
-  remove(password: string): WalletStatus {
+  /**
+   * Removes the vault, on proof that whoever asked meant it.
+   *
+   * Either proof does, and they are not equals. The password shows ownership,
+   * so a caller that offers one is held to it rather than allowed to slide
+   * down to the weaker check on a typo — which means a screen asking for
+   * {@link REPLACE_CONFIRMATION} must send that and nothing else.
+   *
+   * The confirmation shows only that a person read the sentence and typed a
+   * word. That is all somebody who has forgotten their password has left, and
+   * refusing them would mean an application whose one remaining screen asks
+   * for the single thing they do not have. Nothing here is a secret an
+   * attacker wants: they already hold the file, and this destroys the phrase
+   * rather than handing it over.
+   *
+   * An empty password counts as none. A box left untouched arrives as `''`,
+   * and answering "wrong password" to somebody who never typed one would bury
+   * the confirmation they did type; no password of that length opens a vault
+   * anyway, since `seal` refuses anything under eight characters.
+   */
+  remove(options: RemoveOptions = {}): WalletStatus {
     const vault = this.#store.read()
     if (!vault) throw new WalletError('there is no wallet to remove')
 
-    open(vault, password)
+    const password = options.password ?? ''
+    if (password !== '') {
+      open(vault, password)
+    } else if (!confirms(options.confirmation)) {
+      throw new WalletError(
+        `removing a wallet takes either its password or the word ${REPLACE_CONFIRMATION}, typed exactly as it is written here.`
+      )
+    }
+
     this.#store.clear()
     this.#account = null
     this.#index = 0

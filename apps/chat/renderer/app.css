@@ -1653,86 +1653,8 @@ body {
   resize: vertical;
 }
 
-/* --- First run ------------------------------------------------------------ */
-
-.onboarding {
-  position: fixed;
-  inset: 38px 0 0;
-  z-index: 10;
-  display: grid;
-  place-items: center;
-  padding: var(--lc-space-xl);
-  overflow-y: auto;
-  background: var(--lc-bg);
-}
-
-.onboarding-card {
-  width: 100%;
-  max-width: 54ch;
-}
-
-.step-title {
-  margin: 0 0 var(--lc-space-md);
-  font-size: var(--lc-text-xxl);
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-.step-body {
-  margin: 0 0 var(--lc-space-xl);
-  color: var(--lc-fg-muted);
-}
-
-.step-actions {
-  display: flex;
-  gap: var(--lc-space-sm);
-  align-items: center;
-}
-
-/* The words. Numbered, because order is the whole thing, and in a grid so a
-   person can check them against paper without losing their place. */
-.phrase {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--lc-space-sm);
-  margin: 0 0 var(--lc-space-xl);
-  padding: var(--lc-space-lg);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-md);
-  background: var(--lc-bg-elevated);
-  list-style: none;
-  counter-reset: word;
-}
-
-.phrase li {
-  counter-increment: word;
-  display: flex;
-  gap: var(--lc-space-sm);
-  align-items: baseline;
-  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
-  font-size: var(--lc-text-sm);
-  user-select: text;
-}
-
-.phrase li::before {
-  content: counter(word);
-  min-width: 1.4em;
-  text-align: right;
-  color: var(--lc-fg-dim);
-  font-variant-numeric: tabular-nums;
-}
-
-.confirm-fields {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--lc-space-md);
-}
-
-.phrase-input {
-  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
-  resize: vertical;
-  line-height: 1.6;
-}
+/* First run lives in styles/onboarding.css, which is the whole of that surface:
+   the stage, the steps, the phrase and every route back in. */
 
 /* --- Wallet --------------------------------------------------------------- */
 

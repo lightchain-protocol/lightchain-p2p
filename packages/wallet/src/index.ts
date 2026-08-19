@@ -28,10 +28,14 @@ export {
 } from './vault.js'
 
 export {
+  REPLACE_CONFIRMATION,
   Wallet,
   WalletError,
   memoryVaultStore,
   type CreatedWallet,
+  type RemoveOptions,
+  type ReplaceOptions,
+  type ReplacementStatus,
   type VaultStore,
   type WalletStatus
 } from './wallet.js'

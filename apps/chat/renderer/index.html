@@ -26,6 +26,7 @@
     <link rel="stylesheet" href="styles/members.css" />
     <link rel="stylesheet" href="styles/attachments.css" />
     <link rel="stylesheet" href="styles/search.css" />
+    <link rel="stylesheet" href="styles/onboarding.css" />
   </head>
   <body>
     <!-- One definition per icon, referenced by `<use>` wherever it appears. An
@@ -154,58 +155,98 @@
       </button>
     </header>
 
-    <!-- First run. Covers everything: the wallet is the identity, so there is
-         nothing meaningful to do before one exists. -->
-    <div class="onboarding" id="onboarding" hidden>
+    <!-- First run, and every way back in. The wallet is the identity, so there
+         is nothing meaningful to do before one exists and is open.
+
+         Every screen here has a way onward. The version before this one did
+         not: the unlock screen was terminal, and removing a wallet needed the
+         password somebody had just told us they did not have, so a forgotten
+         password left the application with no reachable state at all. -->
+    <div
+      class="onboarding"
+      id="onboarding"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="title-welcome"
+      hidden
+    >
       <div class="onboarding-card">
-        <!-- 1. Choose -->
-        <section class="step" id="step-choose">
-          <h1 class="step-title">Set up your wallet</h1>
+        <div class="onboarding-brand">
+          <div class="onboarding-logo" aria-hidden="true"></div>
+          <div class="onboarding-wordmark">Lightchain</div>
+        </div>
+
+        <!-- Welcome -->
+        <section class="step" id="step-welcome">
+          <h1 class="step-title" id="title-welcome">Welcome</h1>
           <p class="step-body">
-            One key is your identity here. It signs your messages, joins rooms and pays for
-            inference. It is generated on this machine and never leaves it.
+            A private, peer-to-peer place to talk and to ask models questions. One key is your
+            identity here: it signs what you write, opens the rooms you are in, and pays for
+            inference. It is made on this machine and never leaves it.
           </p>
-          <div class="step-actions">
-            <button class="button button-primary" type="button" id="choose-create">
-              Create a new wallet
+          <div class="choice-list">
+            <button class="choice choice-primary" type="button" id="choose-create">
+              <span>
+                <span class="choice-title">Create a new wallet</span>
+                <span class="choice-note">
+                  Takes about a minute. You will be given twelve words to write down.
+                </span>
+              </span>
+              <span class="choice-mark" aria-hidden="true">→</span>
             </button>
-            <button class="button" type="button" id="choose-import">
-              I already have a recovery phrase
+            <button class="choice" type="button" id="choose-restore">
+              <span>
+                <span class="choice-title">I have a recovery phrase</span>
+                <span class="choice-note">Restore a wallet you already own on this machine.</span>
+              </span>
+              <span class="choice-mark" aria-hidden="true">→</span>
             </button>
           </div>
         </section>
 
-        <!-- 2. Password -->
+        <!-- Create, 1 of 3 -->
         <section class="step" id="step-password" hidden>
-          <h1 class="step-title">Choose a password</h1>
+          <div class="step-progress" role="presentation">
+            <span data-state="here"></span><span></span><span></span>
+          </div>
+          <span class="step-eyebrow">Step 1 of 3</span>
+          <h1 class="step-title" id="title-password">Choose a password</h1>
           <p class="step-body">
-            This encrypts your wallet on this machine. It is not your recovery phrase, and it does
-            not leave here.
+            This encrypts the wallet on this machine and is asked for each time the app opens. It is
+            not your recovery phrase, and it cannot be reset — but you can always start again with
+            your phrase.
           </p>
           <form class="wallet-form" id="onboard-password-form">
             <label class="field">
               <span class="field-label">Password</span>
-              <input
-                class="input"
-                id="onboard-password"
-                type="password"
-                autocomplete="new-password"
-                placeholder="At least 8 characters"
-              />
+              <span class="field-with-button">
+                <input
+                  class="input"
+                  id="onboard-password"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="At least 8 characters"
+                />
+                <button class="field-reveal" type="button" data-reveal="onboard-password">
+                  Show
+                </button>
+              </span>
             </label>
+            <p class="field-hint" id="onboard-password-hint">At least 8 characters.</p>
             <label class="field">
               <span class="field-label">Confirm password</span>
               <input
                 class="input"
-                id="onboard-confirm"
+                id="onboard-password-confirm"
                 type="password"
                 autocomplete="new-password"
                 placeholder="Type it again"
               />
             </label>
-            <p class="dialog-error" id="onboard-password-error" hidden></p>
+            <p class="dialog-error" id="onboard-password-error" role="alert" hidden></p>
             <div class="step-actions">
-              <button class="button" type="button" data-back="step-choose">Back</button>
+              <button class="button" type="button" data-back="step-welcome">Back</button>
+              <span class="step-spacer"></span>
               <button class="button button-primary" type="submit" id="onboard-password-btn">
                 Continue
               </button>
@@ -213,89 +254,256 @@
           </form>
         </section>
 
-        <!-- 3. Show the phrase -->
+        <!-- Create, 2 of 3 -->
         <section class="step" id="step-phrase" hidden>
-          <h1 class="step-title">Write these twelve words down</h1>
+          <div class="step-progress" role="presentation">
+            <span data-state="done"></span><span data-state="here"></span><span></span>
+          </div>
+          <span class="step-eyebrow">Step 2 of 3</span>
+          <h1 class="step-title" id="title-phrase">Write these words down</h1>
           <p class="step-body">
-            This is the only way to recover your wallet. Anyone who has it has your wallet, and
-            nobody can restore it for you — not us, not anyone.
+            Twelve words, in this order. They are the only way back into this wallet, and anyone who
+            has them has it. Nobody can restore them for you.
           </p>
-          <ol class="phrase" id="phrase-words"></ol>
+          <div class="phrase-panel">
+            <ol class="phrase" id="phrase-words"></ol>
+            <button class="phrase-cover" type="button" id="phrase-reveal">
+              <span class="phrase-cover-title">Reveal the phrase</span>
+              <span class="phrase-cover-note">Make sure nobody is watching your screen.</span>
+            </button>
+          </div>
           <div class="step-actions">
-            <button class="button" type="button" id="phrase-copy">Copy</button>
-            <button class="button button-primary" type="button" id="phrase-continue">
+            <button class="button" type="button" id="phrase-copy" disabled>Copy</button>
+            <span class="step-spacer"></span>
+            <button class="button button-primary" type="button" id="phrase-continue" disabled>
               I have written it down
             </button>
           </div>
         </section>
 
-        <!-- 4. Prove it -->
-        <section class="step" id="step-confirm" hidden>
-          <h1 class="step-title">Check your backup</h1>
-          <p class="step-body" id="confirm-prompt"></p>
-          <form class="wallet-form" id="confirm-form">
-            <div class="confirm-fields" id="confirm-fields"></div>
-            <p class="dialog-error" id="confirm-error" hidden></p>
+        <!-- Create, 3 of 3 -->
+        <section class="step" id="step-verify" hidden>
+          <div class="step-progress" role="presentation">
+            <span data-state="done"></span><span data-state="done"></span
+            ><span data-state="here"></span>
+          </div>
+          <span class="step-eyebrow">Step 3 of 3</span>
+          <h1 class="step-title" id="title-verify">Check what you wrote</h1>
+          <p class="step-body" id="verify-prompt"></p>
+          <form class="wallet-form" id="verify-form">
+            <div class="confirm-fields" id="verify-fields"></div>
+            <p class="dialog-error" id="verify-error" role="alert" hidden></p>
             <div class="step-actions">
-              <button class="button" type="button" id="confirm-back">Show me again</button>
-              <button class="button button-primary" type="submit">Confirm</button>
+              <button class="button" type="button" id="verify-back">Show me again</button>
+              <span class="step-spacer"></span>
+              <button class="button button-primary" type="submit">Finish</button>
             </div>
           </form>
         </section>
 
-        <!-- Import -->
-        <section class="step" id="step-import" hidden>
-          <h1 class="step-title">Restore from a recovery phrase</h1>
+        <!-- Restore -->
+        <section class="step" id="step-restore" hidden>
+          <h1 class="step-title" id="title-restore">Restore your wallet</h1>
           <p class="step-body">Twelve words, in order. Capitals and extra spaces do not matter.</p>
-          <form class="wallet-form" id="import-form">
+          <div class="step-note" id="restore-replacing" hidden>
+            <span>
+              <strong>This replaces the wallet on this machine.</strong> Rooms and messages already
+              here stay on disk. If this phrase is the wallet they belong to, they come back.
+            </span>
+          </div>
+          <form class="wallet-form" id="restore-form">
             <label class="field">
               <span class="field-label">Recovery phrase</span>
               <textarea
                 class="input phrase-input"
-                id="import-phrase"
+                id="restore-phrase"
                 rows="3"
                 spellcheck="false"
                 autocomplete="off"
                 placeholder="word word word…"
               ></textarea>
             </label>
+            <p class="field-hint" id="restore-count">Twelve words.</p>
             <label class="field">
               <span class="field-label">Password for this machine</span>
-              <input
-                class="input"
-                id="import-password"
-                type="password"
-                autocomplete="new-password"
-                placeholder="At least 8 characters"
-              />
+              <span class="field-with-button">
+                <input
+                  class="input"
+                  id="restore-password"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="At least 8 characters"
+                />
+                <button class="field-reveal" type="button" data-reveal="restore-password">
+                  Show
+                </button>
+              </span>
             </label>
-            <p class="dialog-error" id="import-error" hidden></p>
+            <p class="dialog-error" id="restore-error" role="alert" hidden></p>
             <div class="step-actions">
-              <button class="button" type="button" data-back="step-choose">Back</button>
-              <button class="button button-primary" type="submit" id="import-btn">Restore</button>
+              <button class="button" type="button" id="restore-back">Back</button>
+              <span class="step-spacer"></span>
+              <button class="button button-primary" type="submit" id="restore-btn">Restore</button>
             </div>
           </form>
         </section>
 
-        <!-- Unlock, when a wallet exists but the app was restarted -->
+        <!-- Unlock -->
         <section class="step" id="step-unlock" hidden>
-          <h1 class="step-title">Welcome back</h1>
-          <p class="step-body">Unlock your wallet to continue.</p>
-          <form class="wallet-form" id="onboard-unlock-form">
+          <h1 class="step-title" id="title-unlock">Welcome back</h1>
+          <p class="step-body">Unlock the wallet on this machine to continue.</p>
+          <form class="wallet-form" id="unlock-form">
             <label class="field">
               <span class="field-label">Password</span>
-              <input
-                class="input"
-                id="onboard-unlock-password"
-                type="password"
-                autocomplete="current-password"
-                placeholder="Password"
-              />
+              <span class="field-with-button">
+                <input
+                  class="input"
+                  id="unlock-password"
+                  type="password"
+                  autocomplete="current-password"
+                  placeholder="Password"
+                />
+                <button class="field-reveal" type="button" data-reveal="unlock-password">
+                  Show
+                </button>
+              </span>
             </label>
-            <p class="dialog-error" id="onboard-unlock-error" hidden></p>
-            <button class="button button-primary" type="submit" id="onboard-unlock-btn">
+            <p class="dialog-error" id="unlock-error" role="alert" hidden></p>
+            <button class="button button-primary button-block" type="submit" id="unlock-btn">
               Unlock
             </button>
+          </form>
+          <p class="step-escape">
+            <button class="link-button" type="button" id="unlock-forgot">
+              Forgotten your password?
+            </button>
+          </p>
+        </section>
+
+        <!-- Every way back in, when the password is gone -->
+        <section class="step" id="step-recovery" hidden>
+          <h1 class="step-title" id="title-recovery">Getting back in</h1>
+          <p class="step-body">
+            The password cannot be recovered or reset — it never left this machine and is not stored
+            anywhere. What you can do depends on what you still have.
+          </p>
+          <div class="choice-list">
+            <button class="choice choice-primary" type="button" id="recover-phrase">
+              <span>
+                <span class="choice-title">I have my recovery phrase</span>
+                <span class="choice-note">
+                  Restore with the twelve words and choose a new password. If they are the same
+                  wallet, your rooms and messages come back.
+                </span>
+              </span>
+              <span class="choice-mark" aria-hidden="true">→</span>
+            </button>
+            <button class="choice" type="button" id="recover-password">
+              <span>
+                <span class="choice-title">I know the password — I want a different wallet</span>
+                <span class="choice-note">
+                  Remove this wallet with its password, then create or restore another.
+                </span>
+              </span>
+              <span class="choice-mark" aria-hidden="true">→</span>
+            </button>
+            <button class="choice choice-danger" type="button" id="recover-neither">
+              <span>
+                <span class="choice-title">I have neither</span>
+                <span class="choice-note">
+                  Start over with an empty wallet. Anything held by the wallet on this machine
+                  becomes permanently unreachable.
+                </span>
+              </span>
+              <span class="choice-mark" aria-hidden="true">→</span>
+            </button>
+          </div>
+          <p class="step-escape">
+            <button class="link-button" type="button" data-back="step-unlock">
+              Back to unlocking
+            </button>
+          </p>
+        </section>
+
+        <!-- Remove, with the password -->
+        <section class="step" id="step-remove" hidden>
+          <h1 class="step-title" id="title-remove">Remove this wallet</h1>
+          <p class="step-body">
+            Its password confirms this is yours to remove. You can then create a new wallet or
+            restore a different one.
+          </p>
+          <div class="step-note step-note-warn">
+            <span>
+              <strong>Make sure your recovery phrase is written down first.</strong> Removing the
+              wallet here does not delete anything held by it, but the phrase is the only way to
+              reach it again.
+            </span>
+          </div>
+          <form class="wallet-form" id="remove-wallet-form">
+            <label class="field">
+              <span class="field-label">Password</span>
+              <span class="field-with-button">
+                <input
+                  class="input"
+                  id="remove-wallet-password"
+                  type="password"
+                  autocomplete="current-password"
+                  placeholder="Password"
+                />
+                <button class="field-reveal" type="button" data-reveal="remove-wallet-password">
+                  Show
+                </button>
+              </span>
+            </label>
+            <p class="dialog-error" id="remove-wallet-error" role="alert" hidden></p>
+            <div class="step-actions">
+              <button class="button" type="button" data-back="step-recovery">Back</button>
+              <span class="step-spacer"></span>
+              <button class="button button-primary" type="submit" id="remove-wallet-btn">
+                Remove wallet
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Start over, with neither the password nor the phrase -->
+        <section class="step" id="step-startover" hidden>
+          <h1 class="step-title" id="title-startover">Start over</h1>
+          <p class="step-body">
+            Without the password or the recovery phrase there is no way into the wallet on this
+            machine — not here, and not with any other tool. Starting over gives you a working
+            application with a new, empty wallet.
+          </p>
+          <div class="step-note step-note-danger">
+            <span>
+              <strong>Anything the old wallet holds becomes unreachable forever.</strong> No
+              balance, no rooms you are the only member of, and no messages only it can decrypt.
+            </span>
+            <span>
+              Rooms and messages stay on disk and are not deleted. If you ever find the phrase, all
+              of it comes back.
+            </span>
+          </div>
+          <form class="wallet-form" id="startover-form">
+            <label class="field">
+              <span class="field-label" id="startover-label">Type the confirmation word</span>
+              <input
+                class="input"
+                id="startover-confirm"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                aria-describedby="startover-label"
+              />
+            </label>
+            <p class="dialog-error" id="startover-error" role="alert" hidden></p>
+            <div class="step-actions">
+              <button class="button" type="button" data-back="step-recovery">Back</button>
+              <span class="step-spacer"></span>
+              <button class="button button-primary" type="submit" id="startover-btn" disabled>
+                Start over
+              </button>
+            </div>
           </form>
         </section>
       </div>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mnemonicToAccount } from 'viem/accounts'
 import {
+  REPLACE_CONFIRMATION,
   Wallet,
   WalletError,
   decrypt,
@@ -131,10 +132,153 @@ describe('backing up later', () => {
   })
 
   it('needs the password to remove itself', () => {
-    expect(() => wallet.remove('wrong')).toThrow()
+    expect(() => wallet.remove({ password: 'wrong' })).toThrow()
     expect(wallet.status().exists).toBe(true)
 
-    expect(wallet.remove(PASSWORD)).toMatchObject({ exists: false, unlocked: false })
+    expect(wallet.remove({ password: PASSWORD })).toMatchObject({ exists: false, unlocked: false })
+  })
+})
+
+/**
+ * The situation all of this exists for: a vault on the disk, a password nobody
+ * has, and an unlock screen that is the only thing on offer. Every refusal
+ * below is calibrated against that — strict enough to be worth asking, and
+ * never so strict that the answer is "this machine is finished".
+ */
+describe('replacing a wallet nobody can unlock', () => {
+  it('removes on the confirmation alone, with no password anywhere', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    wallet.create(PASSWORD)
+
+    expect(wallet.remove({ confirmation: REPLACE_CONFIRMATION })).toMatchObject({
+      exists: false,
+      unlocked: false,
+      address: null
+    })
+  })
+
+  it('refuses anything that is not that word, exactly, and keeps the wallet', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    wallet.create(PASSWORD)
+
+    // Deliberately neither trimmed nor case-folded. ` REPLACE ` is what a paste
+    // produces and `replace` is what a hurry produces; somebody reading the
+    // sentence and typing the word produces neither, and pays nothing for the
+    // strictness.
+    for (const confirmation of [
+      undefined,
+      '',
+      'replace',
+      'Replace',
+      ' REPLACE',
+      'REPLACE ',
+      ' REPLACE ',
+      'REPLACE!'
+    ]) {
+      expect(() => wallet.remove({ confirmation })).toThrow(/typed exactly as it is written here/)
+    }
+
+    expect(() => wallet.remove()).toThrow(WalletError)
+    expect(wallet.status().exists).toBe(true)
+  })
+
+  it('holds a caller to a password it offered rather than dropping to the weaker proof', () => {
+    const wallet = new Wallet(memoryVaultStore())
+    wallet.create(PASSWORD)
+
+    // A screen asking for the word sends the word and nothing else. One that
+    // sends a wrong password beside it is claiming ownership and failing, and
+    // being told so beats succeeding by the back door.
+    expect(() =>
+      wallet.remove({ password: 'nearly right', confirmation: REPLACE_CONFIRMATION })
+    ).toThrow(/wrong password/)
+    expect(wallet.status().exists).toBe(true)
+
+    expect(wallet.remove({ password: PASSWORD, confirmation: 'nonsense' }).exists).toBe(false)
+  })
+})
+
+describe('replacing what is already here', () => {
+  const wallet = new Wallet(memoryVaultStore())
+  const first = wallet.create(PASSWORD)
+
+  it('says nothing was replaced when there was nothing to replace', () => {
+    expect(first.status.replaced).toBe(false)
+  })
+
+  it('still refuses in the words it always used when nobody confirmed', () => {
+    expect(() => wallet.create('another password entirely')).toThrow(
+      'a wallet already exists. Remove it deliberately before creating another.'
+    )
+    expect(() => wallet.importPhrase(PHRASE, PASSWORD)).toThrow(
+      'a wallet already exists. Remove it deliberately before importing another.'
+    )
+
+    // A near miss is not a confirmation, and says so in the same words: there
+    // is nothing to be gained by telling somebody how close they were.
+    expect(() => wallet.create(PASSWORD, { confirmation: 'replace' })).toThrow(/already exists/)
+    expect(wallet.revealPhrase(PASSWORD)).toBe(first.phrase)
+  })
+
+  it('creates over it on the confirmation, and reports that it did', () => {
+    const second = wallet.create(PASSWORD, { confirmation: REPLACE_CONFIRMATION })
+
+    expect(second.status.replaced).toBe(true)
+    expect(second.phrase).not.toBe(first.phrase)
+    expect(second.status.address).toBe(mnemonicToAccount(second.phrase).address)
+
+    // The old phrase is gone rather than shadowed. Nothing left here opens it.
+    expect(wallet.revealPhrase(PASSWORD)).toBe(second.phrase)
+  })
+
+  it('imports over it, landing on the address that phrase names anywhere', () => {
+    const status = wallet.importPhrase(PHRASE, PASSWORD, { confirmation: REPLACE_CONFIRMATION })
+
+    expect(status.replaced).toBe(true)
+    expect(status.address).toBe(mnemonicToAccount(PHRASE).address)
+  })
+
+  it('leaves the wallet it could not replace exactly as it was', () => {
+    // Everything that can fail is checked before anything is written, because a
+    // replacement that gets half way has destroyed a phrase and put nothing in
+    // its place.
+    const address = wallet.status().address
+
+    expect(() => wallet.create('short', { confirmation: REPLACE_CONFIRMATION })).toThrow(
+      /at least 8 characters/
+    )
+    expect(() =>
+      wallet.importPhrase('not twelve words at all', PASSWORD, {
+        confirmation: REPLACE_CONFIRMATION
+      })
+    ).toThrow(/mistyped or missing word/)
+
+    expect(wallet.status().address).toBe(address)
+    expect(wallet.revealPhrase(PASSWORD)).toBe(PHRASE)
+  })
+})
+
+describe('coming back after a replacement', () => {
+  it('restores the same identity, and every key derived from it', () => {
+    // This is the claim an interface is allowed to make on the confirmation
+    // screen. Room registries and sealed documents are held under keys derived
+    // from the account, and they are left on disk — so the same phrase typed
+    // back opens exactly what it opened before, and "your rooms come back" is
+    // a statement of fact rather than a hope.
+    const wallet = new Wallet(memoryVaultStore())
+    const before = wallet.importPhrase(PHRASE, PASSWORD)
+    const registryKey = deriveKey(wallet.account(), 'room registry')
+
+    const between = wallet.create(PASSWORD, { confirmation: REPLACE_CONFIRMATION })
+    expect(between.status.address).not.toBe(before.address)
+    expect(deriveKey(wallet.account(), 'room registry')).not.toEqual(registryKey)
+
+    const after = wallet.importPhrase(PHRASE, 'a different password entirely', {
+      confirmation: REPLACE_CONFIRMATION
+    })
+
+    expect(after.address).toBe(before.address)
+    expect(deriveKey(wallet.account(), 'room registry')).toEqual(registryKey)
   })
 })
 

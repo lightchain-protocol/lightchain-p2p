@@ -1,0 +1,473 @@
+/**
+ * First run, and every way back in.
+ *
+ * This is the first thing anybody sees, and for a while it is the only thing:
+ * the wallet is the identity, so there is no application behind it until one
+ * exists and is open. It is worth more care than a panel that gets seen after
+ * somebody has already decided to stay.
+ *
+ * Every value comes from a token. A hex code here is a value that will drift
+ * from the rest of the app and from the light theme.
+ */
+
+/* --- The stage ------------------------------------------------------------ */
+
+.onboarding {
+  position: fixed;
+  /* Clear of the custom titlebar, which stays draggable behind everything. */
+  inset: 38px 0 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: var(--lc-space-xxl) var(--lc-space-xl);
+  overflow-y: auto;
+  /* Promoted from visible to auto by overflow-y alone, which paints a
+     horizontal track on Windows over content that never needed one. */
+  overflow-x: hidden;
+  background: var(--lc-bg);
+}
+
+/* Two soft washes of brand colour, well below the text. The card sits on a
+   field with some depth rather than on flat near-black, which is the difference
+   between a window that looks finished and one that looks unstyled. Kept far
+   from the copy so nothing has to fight it for contrast. */
+.onboarding::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      60ch 40ch at 15% -10%,
+      color-mix(in srgb, var(--lc-logo-from) 22%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      50ch 36ch at 105% 105%,
+      color-mix(in srgb, var(--lc-logo-to) 16%, transparent),
+      transparent 70%
+    );
+}
+
+.onboarding-card {
+  position: relative;
+  width: 100%;
+  max-width: 52ch;
+}
+
+/* --- The mark ------------------------------------------------------------- */
+
+.onboarding-brand {
+  display: flex;
+  gap: var(--lc-space-md);
+  align-items: center;
+  margin-bottom: var(--lc-space-xxl);
+}
+
+.onboarding-logo {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: var(--lc-radius-pill);
+  background: linear-gradient(135deg, var(--lc-logo-from), var(--lc-logo-to));
+  /* The glow is what stops a flat circle reading as a placeholder. */
+  box-shadow:
+    0 0 0 1px var(--lc-rule),
+    0 6px 22px -6px var(--lc-logo-to);
+}
+
+.onboarding-wordmark {
+  font-size: var(--lc-text-lg);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* --- Steps ---------------------------------------------------------------- */
+
+/* Each step is a slide. The movement is small on purpose: enough to say the
+   screen changed, not enough to make somebody wait for it. */
+.step {
+  animation: onboarding-step-in 220ms ease-out both;
+}
+
+@keyframes onboarding-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step {
+    animation: none;
+  }
+}
+
+.step-eyebrow {
+  display: block;
+  margin-bottom: var(--lc-space-sm);
+  color: var(--lc-brand-ink);
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.step-title {
+  margin: 0 0 var(--lc-space-md);
+  font-size: var(--lc-text-xxl);
+  font-weight: 600;
+  line-height: var(--lc-leading-tight);
+  letter-spacing: -0.015em;
+  /* Evens the lines of a two-line heading instead of leaving one word alone
+     underneath, which at this size is the most visible flaw on the screen. */
+  text-wrap: balance;
+}
+
+/* `pretty` rather than reworded sentences: it stops a paragraph ending on a
+   single orphaned word, and it keeps doing so for copy that changes and for
+   the worker's own error strings, which are written here as text and cannot be
+   hand-fitted to a measure. */
+.step-body,
+.choice-note,
+.step-note,
+.field-hint,
+.dialog-error {
+  text-wrap: pretty;
+}
+
+.step-body {
+  margin: 0 0 var(--lc-space-xl);
+  max-width: 46ch;
+  color: var(--lc-fg-muted);
+  line-height: var(--lc-leading-relaxed);
+}
+
+.step-actions {
+  display: flex;
+  gap: var(--lc-space-sm);
+  align-items: center;
+  margin-top: var(--lc-space-xl);
+}
+
+/* Pushes the primary action to the right of a Back button while keeping a
+   lone primary action on the left, where the eye already is. */
+.step-actions-end {
+  justify-content: flex-end;
+}
+
+/* --- Progress ------------------------------------------------------------- */
+
+.step-progress {
+  display: flex;
+  gap: var(--lc-space-xs);
+  align-items: center;
+  margin-bottom: var(--lc-space-lg);
+}
+
+.step-progress span {
+  width: 22px;
+  height: 3px;
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-rule);
+}
+
+.step-progress span[data-state='done'] {
+  background: color-mix(in srgb, var(--lc-brand) 55%, transparent);
+}
+
+.step-progress span[data-state='here'] {
+  background: var(--lc-brand);
+}
+
+/* --- Choices -------------------------------------------------------------- */
+
+.choice-list {
+  display: grid;
+  gap: var(--lc-space-md);
+}
+
+/* A choice is a whole card and not a button in a row, because each one needs a
+   sentence about what it costs. A row of bare labels is how somebody picks the
+   destructive option believing it was the safe one. */
+.choice {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--lc-space-md);
+  align-items: center;
+  width: 100%;
+  padding: var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-lg);
+  background: var(--lc-bg-elevated);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    transform 120ms ease;
+}
+
+.choice:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--lc-brand) 60%, transparent);
+  background: var(--lc-bg-elevated-2);
+  transform: translateY(-1px);
+}
+
+.choice:active:not(:disabled) {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .choice {
+    transition: none;
+  }
+
+  .choice:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+.choice-title {
+  display: block;
+  font-weight: 600;
+}
+
+.choice-note {
+  display: block;
+  margin-top: var(--lc-space-xs);
+  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
+}
+
+.choice-mark {
+  color: var(--lc-fg-dim);
+  font-size: var(--lc-text-lg);
+}
+
+.choice-primary {
+  border-color: color-mix(in srgb, var(--lc-brand) 45%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--lc-brand) 16%, var(--lc-bg-elevated)),
+    var(--lc-bg-elevated)
+  );
+}
+
+/* Reserved for the routes that destroy something. Danger is carried by the
+   border and the words, never by colour alone. */
+.choice-danger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--lc-danger) 60%, transparent);
+}
+
+.choice-danger .choice-title {
+  color: var(--lc-danger);
+}
+
+/* --- The phrase ----------------------------------------------------------- */
+
+.phrase-panel {
+  position: relative;
+  margin-bottom: var(--lc-space-lg);
+}
+
+.phrase {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--lc-space-sm) var(--lc-space-md);
+  margin: 0;
+  padding: var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated);
+  list-style: none;
+  counter-reset: word;
+}
+
+.phrase li {
+  counter-increment: word;
+  display: flex;
+  gap: var(--lc-space-sm);
+  align-items: baseline;
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-size: var(--lc-text-sm);
+  /* The body forbids selection as a desktop-app convention. This is one of the
+     few things somebody genuinely needs to copy by hand. */
+  user-select: text;
+}
+
+.phrase li::before {
+  content: counter(word);
+  min-width: 1.4em;
+  text-align: right;
+  color: var(--lc-fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hidden until asked for. A recovery phrase on screen the moment the step
+   opens is a phrase in every screen recording and behind every shoulder, and
+   the person reading it has not yet been told what it is. */
+.phrase-cover {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  gap: var(--lc-space-sm);
+  place-content: center;
+  justify-items: center;
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: color-mix(in srgb, var(--lc-bg-elevated) 82%, transparent);
+  backdrop-filter: blur(7px);
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.phrase-cover:hover {
+  border-color: color-mix(in srgb, var(--lc-brand) 55%, transparent);
+}
+
+.phrase-cover-title {
+  font-weight: 600;
+}
+
+.phrase-cover-note {
+  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-sm);
+}
+
+.confirm-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--lc-space-md);
+}
+
+.phrase-input {
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  resize: vertical;
+  line-height: var(--lc-leading-relaxed);
+}
+
+/* --- Fields --------------------------------------------------------------- */
+
+/* A password box and the control that shows it, sharing one border so the
+   button reads as part of the field rather than as an action beside it. */
+.field-with-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field-with-button .input {
+  padding-right: 4.5rem;
+}
+
+.field-reveal {
+  position: absolute;
+  right: var(--lc-space-xs);
+  padding: var(--lc-space-xs) var(--lc-space-sm);
+  border: 0;
+  border-radius: var(--lc-radius-sm);
+  background: none;
+  color: var(--lc-fg-dim);
+  font: inherit;
+  font-size: var(--lc-text-xs);
+  cursor: pointer;
+}
+
+.field-reveal:hover {
+  color: var(--lc-fg);
+}
+
+/* Says what the field wants before it is wrong, rather than after. */
+.field-hint {
+  margin: calc(-1 * var(--lc-space-xs)) 0 0;
+  color: var(--lc-fg-dim);
+  font-size: var(--lc-text-xs);
+}
+
+.field-hint[data-state='ok'] {
+  color: var(--lc-success);
+}
+
+.field-hint[data-state='bad'] {
+  color: var(--lc-warning);
+}
+
+/* --- Notes ---------------------------------------------------------------- */
+
+.step-note {
+  display: grid;
+  gap: var(--lc-space-xs);
+  margin: 0 0 var(--lc-space-lg);
+  padding: var(--lc-space-md) var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-left-width: 3px;
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated);
+  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
+}
+
+.step-note strong {
+  color: var(--lc-fg);
+  font-weight: 600;
+}
+
+.step-note-warn {
+  border-left-color: var(--lc-warning);
+}
+
+.step-note-danger {
+  border-left-color: var(--lc-danger);
+}
+
+/* --- The quiet way out ---------------------------------------------------- */
+
+/* Small, and deliberately not a button: on the unlock screen the thing to do
+   is type a password. But it has to be here, because without it somebody who
+   has forgotten theirs has no next step anywhere in the application. */
+.step-escape {
+  margin: var(--lc-space-lg) 0 0;
+  text-align: center;
+}
+
+.link-button {
+  padding: var(--lc-space-xs);
+  border: 0;
+  border-radius: var(--lc-radius-sm);
+  background: none;
+  color: var(--lc-fg-dim);
+  font: inherit;
+  font-size: var(--lc-text-sm);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: var(--lc-fg);
+}
+
+/* --- Layout helpers ------------------------------------------------------- */
+
+.step-spacer {
+  flex: 1;
+}
+
+/* --- Focus ---------------------------------------------------------------- */
+
+/* app.css names the controls it knows about. These are new, and without them
+   they fall through to the user-agent ring, which on a near-black panel draws
+   in white and gold and belongs to a different application. */
+.choice:focus-visible,
+.phrase-cover:focus-visible,
+.link-button:focus-visible,
+.field-reveal:focus-visible {
+  outline: 2px solid var(--lc-brand);
+  outline-offset: 2px;
+}

@@ -8,7 +8,7 @@ import {
   sendTransaction,
   speedUp
 } from '@lcai-p2p/chain'
-import { derivePrivateKey } from '@lcai-p2p/wallet'
+import { REPLACE_CONFIRMATION, derivePrivateKey } from '@lcai-p2p/wallet'
 import { NETWORKS } from '@lcai-p2p/worker'
 
 /**
@@ -66,6 +66,18 @@ const LEDGER_KEEP = 500
 const MAX_ACCOUNTS = 20
 const DEFAULT_ACCOUNTS = 5
 
+/**
+ * That replacing a wallet leaves the room lists and sealed documents alone.
+ *
+ * Reported rather than left for a window to assume, because it is the one
+ * reassurance the confirmation screen can honestly give. Those files are sealed
+ * under keys derived from the account's signature, so the same phrase restored
+ * afterwards opens them again exactly as they were — and deleting them here to
+ * tidy up would turn "your rooms come back" into a promise nothing on this
+ * machine could keep.
+ */
+const KEPT_ON_DISK = true
+
 const isAddress = (value) => typeof value === 'string' && /^0x[0-9a-fA-F]{40}$/.test(value)
 const isHash = (value) => typeof value === 'string' && /^0x[0-9a-fA-F]{64}$/.test(value)
 const isCallData = (value) => typeof value === 'string' && /^0x([0-9a-fA-F]{2})*$/.test(value)
@@ -112,6 +124,20 @@ function feePerGas(value, field) {
     )
   }
   return fee
+}
+
+/**
+ * A proof the renderer sent, with an untouched box counting as none.
+ *
+ * Absent and empty mean the same thing to `Wallet`, and neither is tidied up on
+ * the way through: the confirmation is compared exactly, on purpose, so
+ * trimming it here would quietly undo the strictness it is there for. An empty
+ * password is dropped for a different reason — sent as a proof it would be
+ * answered with "wrong password", which is a confusing thing to tell somebody
+ * who typed the confirmation instead.
+ */
+function offered(value) {
+  return typeof value === 'string' && value !== '' ? value : undefined
 }
 
 function requireUnlocked(wallet) {
@@ -466,6 +492,35 @@ export function walletHandlers(ctx) {
   const ledger = transactionLedger(ctx)
 
   /**
+   * Points the rooms and the conversation at whichever identity the wallet
+   * holds now.
+   *
+   * A replacement takes the long way round, and has to. `useWalletInRooms`
+   * only lets go of the previous account's registry key while the wallet reads
+   * as locked — the lock is what closes the room list — so a replacement
+   * applied in one step would leave the new identity signing into the room
+   * list of the wallet it displaced, a state nothing downstream expects and
+   * nothing on screen would reveal. Going out through locked and back in costs
+   * a second scrypt, which is the right price for something that happens once,
+   * on the day somebody replaces their wallet.
+   *
+   * The conversation is dropped either way. It was opened by an address and is
+   * paid for out of that address's prepaid balance, so one carried across a
+   * replacement would be the new wallet spending the old one's money; where
+   * there was no wallet before there is no session, and the call costs nothing.
+   */
+  const adoptIdentity = (replaced, password) => {
+    if (replaced) {
+      wallet.lock()
+      useWalletInRooms()
+      wallet.unlock(password)
+    }
+
+    forgetInference()
+    useWalletInRooms()
+  }
+
+  /**
    * The transaction a replacement has to repeat, rebuilt from the ledger.
    *
    * `SentTransaction` is a live object holding everything that was signed, and
@@ -546,18 +601,33 @@ export function walletHandlers(ctx) {
   return {
     'wallet.status': () => ({ ...wallet.status(), network: network() }),
 
-    // The one reply that carries a secret. The phrase has to reach a screen so
-    // it can be written down, and it is not stored anywhere the renderer can
-    // reach afterwards — seeing it again costs the password.
+    /**
+     * The one reply that carries a secret. The phrase has to reach a screen so
+     * it can be written down, and it is not stored anywhere the renderer can
+     * reach afterwards — seeing it again costs the password.
+     *
+     * A wallet already here is refused unless `confirmation` holds the word,
+     * and `replaced` in the reply says whether one was destroyed to get here.
+     * Somebody has to be told that, and this is the last chance to tell them.
+     */
     'wallet.create': (req) => {
-      const { status, phrase } = wallet.create(String(req.password ?? ''))
-      useWalletInRooms()
+      const password = String(req.password ?? '')
+      const { status, phrase } = wallet.create(password, {
+        confirmation: offered(req.confirmation)
+      })
+
+      adoptIdentity(status.replaced, password)
       return { ...status, network: network(), phrase }
     },
 
+    /** Restores a phrase, over a wallet already here when `confirmation` allows it. */
     'wallet.import': (req) => {
-      const status = wallet.importPhrase(String(req.phrase ?? ''), String(req.password ?? ''))
-      useWalletInRooms()
+      const password = String(req.password ?? '')
+      const status = wallet.importPhrase(String(req.phrase ?? ''), password, {
+        confirmation: offered(req.confirmation)
+      })
+
+      adoptIdentity(status.replaced, password)
       return { ...status, network: network() }
     },
 
@@ -591,11 +661,46 @@ export function walletHandlers(ctx) {
       return { ...locked, network: network() }
     },
 
+    /**
+     * Destroys the wallet on this machine, for the password or for the word.
+     *
+     * Send one proof, not both: a password that is present and wrong is
+     * refused even alongside a correct confirmation, because a caller claiming
+     * ownership should be told when the claim fails rather than quietly
+     * succeeding by the weaker route.
+     */
     'wallet.remove': (req) => {
-      const status = wallet.remove(String(req.password ?? ''))
+      const status = wallet.remove({
+        password: offered(req.password),
+        confirmation: offered(req.confirmation)
+      })
+
       forgetInference()
       useWalletInRooms()
       return { ...status, network: network() }
+    },
+
+    /**
+     * What replacing the wallet on this machine costs, and what it does not.
+     *
+     * Read-only, needs no password, and exists so the screen that asks for
+     * {@link REPLACE_CONFIRMATION} can describe the thing it is about to
+     * destroy without overstating it.
+     *
+     * `address` is null whenever the wallet is locked, and that is not a
+     * shortcoming to work around. The vault holds a salt, an IV, a tag and
+     * ciphertext; the address lives in the phrase and the phrase is inside the
+     * ciphertext, so on a machine nobody can unlock there is genuinely no way
+     * to name the wallet being replaced. A window must say "the wallet on this
+     * machine" rather than invent one.
+     *
+     * No network here, unlike the replies that carry a balance. The address is
+     * shown to identify what is about to go, not to be acted on, and naming a
+     * chain beside it would invite a window to present this as an account.
+     */
+    'wallet.replacePreview': () => {
+      const { exists, address } = wallet.status()
+      return { exists, address, keptOnDisk: KEPT_ON_DISK, confirmation: REPLACE_CONFIRMATION }
     },
 
     /**

@@ -126,8 +126,8 @@ would have opened it is the one just discarded.
 
 Three deliberate refusals:
 
-- **`create` will not overwrite an existing vault.** Deciding to destroy the
-  only copy of a wallet belongs to a person.
+- **`create` will not overwrite an existing vault** unless the person says so in
+  as many words. Deciding to destroy the only copy of a wallet belongs to them.
 - **`revealPhrase` asks for the password**, even when unlocked. An unlocked
   wallet is left unlocked on a desk.
 - **A phrase failing its checksum is refused on import**, with a message saying
@@ -136,6 +136,32 @@ Three deliberate refusals:
 Both `create` and `importPhrase` reopen what they just wrote before reporting
 success. A vault that cannot be opened is otherwise discovered when the user
 needs it, which is the worst possible moment.
+
+## Replacing a wallet somebody cannot open
+
+A password is the proof of ownership and it cannot be the only one, because the
+person most likely to need this is the person who has lost it. A wallet
+removable by nothing else is a machine whose one remaining screen asks for the
+single thing its owner does not have.
+
+So `remove`, `create` and `importPhrase` all take `REPLACE_CONFIRMATION` — the
+word `REPLACE`, exported rather than written out, and compared **exactly**.
+Neither trimmed nor case-folded: `REPLACE` is what a paste produces and
+`replace` is what a hurry produces, while somebody reading the sentence and
+typing the word produces neither.
+
+It proves less than a password does, and there is nothing stronger to ask for.
+Whoever is typing it already holds the vault file, the phrase they might have
+wanted is inside it, and this destroys that phrase rather than revealing it. A
+password offered alongside is still binding — a caller claiming ownership is
+told when the claim fails rather than let through by the weaker route.
+
+`create` and `importPhrase` report `replaced` so an interface can say what
+happened. Nothing sealed under the old account is deleted: room registries and
+local documents are held under keys derived from the account's signature, so
+restoring the same phrase opens all of it again, unchanged. That is the only
+honest reassurance available on such a screen, and deleting those files to tidy
+up would take it away.
 
 ## Local state, sealed with the wallet
 
