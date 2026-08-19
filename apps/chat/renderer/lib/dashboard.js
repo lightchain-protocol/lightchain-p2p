@@ -484,12 +484,21 @@ for (const segment of dash.segments) {
 
 // The chart is drawn at a pixel width, so it has to be drawn again when that
 // width changes: collapsing the sidebar and resizing the window both do it.
+//
+// The redraw is deferred a frame because it writes into the element being
+// observed. Drawing straight from the callback resizes the observed box during
+// the delivery that reported it, which Chromium reports as "ResizeObserver loop
+// completed with undelivered notifications" — a warning on every launch, which
+// costs nothing except that it teaches you to ignore the console.
 let chartWidth = 0
+let chartRedraw = 0
 new ResizeObserver(([entry]) => {
   const width = Math.round(entry.contentRect.width)
   if (width === chartWidth || width === 0) return
   chartWidth = width
-  renderChart(lastInference)
+
+  cancelAnimationFrame(chartRedraw)
+  chartRedraw = requestAnimationFrame(() => renderChart(lastInference))
 }).observe(dash.chart)
 
 dash.refresh.addEventListener('click', () => void refreshDashboard())
