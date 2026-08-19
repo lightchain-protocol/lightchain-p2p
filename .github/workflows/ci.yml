@@ -63,3 +63,10 @@ jobs:
       # works until the next build, which is the worst kind of works.
       - name: Markup is current
         run: node apps/chat/scripts/build-markup.mjs --check
+
+      # Surface sheets load after the kit, so a surface that redeclares a shared
+      # class replaces that component everywhere rather than styling its own
+      # copy. Three of those were found in one evening, none of them visible in
+      # the panel that caused it.
+      - name: Surfaces do not redeclare kit components
+        run: node apps/chat/scripts/check-kit.mjs

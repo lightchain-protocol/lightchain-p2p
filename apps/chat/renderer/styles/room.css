@@ -266,20 +266,6 @@
 /* The room's own badges became kit chips. This is left because the wallet's
    network label still reads it, and it predates the kit rather than belonging
    to this surface. */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  height: var(--lc-control-sm);
-  padding: 0 var(--lc-space-md);
-  border-radius: var(--lc-radius-pill);
-  font-size: var(--lc-text-xs);
-  font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
-  color: var(--lc-brand-ink);
-  background: var(--lc-bg-elevated-2);
-}
-
 /* --- Room events ---------------------------------------------------------- */
 
 /* A rename is not addressed to anyone, so it reads across the conversation
