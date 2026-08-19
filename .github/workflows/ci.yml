@@ -100,9 +100,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
+      # 22 rather than the 20 the job above uses. These harnesses talk to the
+      # window over the DevTools protocol with a global `WebSocket`, which
+      # arrived in Node 22 — the check job stays on 20 deliberately, because
+      # that is the version `engines` declares and something should prove it.
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install
