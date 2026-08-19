@@ -14,6 +14,7 @@ VRAM and the LCAI stake all remain requirements.
 lcai-supervisor doctor       check whether this host can run a worker
 lcai-supervisor pull         fetch the worker image
 lcai-supervisor import-key   import a private key into a keystore (stdin only)
+lcai-supervisor set-password store the keystore password (stdin only)
 lcai-supervisor keygen       generate the ECDH encryption key
 lcai-supervisor register     register on chain and stake
 lcai-supervisor start        run the worker
@@ -33,7 +34,7 @@ so a current setup keeps working.
 | Variable               | Default                       |
 | ---------------------- | ----------------------------- |
 | `NETWORK`              | `mainnet`                     |
-| `WORKER_PASSWORD`      | required                      |
+| `WORKER_PASSWORD`      | fallback for `set-password`   |
 | `KEYS_DIR`             | `~/lightchain-worker/keys`    |
 | `AI_CONFIG_ADDRESS`    | read from the registry        |
 | `JOB_REGISTRY_ADDRESS` | read from the registry        |
@@ -54,17 +55,47 @@ cat key.txt | lcai-supervisor import-key
 
 Not a flag, because arguments are visible in process listings. Not an
 environment variable, because those are inherited by every child process and
-readable from `/proc`. It is handed to the container once and never written
-anywhere by the supervisor.
+readable from `/proc`.
+
+It is never given to Docker at all. The image's own `import-key` takes
+`--private-key <hex>`, which would put the key in the host's process table for
+the life of that container, so the supervisor writes the Keystore V3 file itself
+and hands the worker only the finished file.
 
 Every Docker command the supervisor prints has secrets replaced with
 `<redacted>`, so pasting output into a support channel is safe.
 
-**The keystore password is still an environment variable**, matching the
-toolkit's `secrets.env` convention. That is a deliberate interim position rather
-than the end state: the worker must survive unattended restarts, so the password
-has to be retrievable without a human, and Bare has no OS keychain binding today.
-A protected file or platform keychain would be better and is not yet built.
+**The keystore password is read from a protected file.**
+
+```bash
+cat password.txt | lcai-supervisor set-password
+```
+
+It is written to `<KEYS_DIR>/keystore-password` with mode `0600`. `WORKER_PASSWORD`
+still works if no file exists, so an existing `secrets.env` setup keeps running,
+but the file wins when both are present — otherwise setting one would look like
+it had closed the exposure while the variable quietly kept being used.
+
+### What that does and does not protect
+
+The worker restarts unattended, so the password has to be readable by a machine
+with nobody at the keyboard. Nothing in that situation can be protected by a
+passphrase: whatever the machine can read on its own, anyone with the machine's
+access can read too. This is a permission boundary, not a cryptographic one.
+
+It removes the environment variable, which is worth doing on its own — variables
+are inherited by every child process, readable from `/proc/<pid>/environ` by the
+same user, and end up in shell history, `docker inspect` output and CI logs.
+
+It does not protect against root, against the operator's own account being
+compromised, or against a stolen disk or backup. On Windows the mode is
+advisory, since NTFS uses ACLs, so the file inherits the directory's permissions
+and this is worth less there.
+
+**The password still reaches the container as an environment variable.**
+`WORKER_KEYSTORE_PASSWORD` is the only form the image accepts, so it is visible
+in `docker inspect` for as long as the container exists. Closing that needs a
+change to the image, not to the supervisor.
 
 ## Things it gets right that are easy to get wrong
 

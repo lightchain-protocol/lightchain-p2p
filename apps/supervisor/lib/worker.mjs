@@ -22,6 +22,7 @@ import {
 } from '@lcai-p2p/worker'
 import { encrypt } from '@lcai-p2p/wallet'
 import { withResolvedAddresses } from './addresses.mjs'
+import { passwordPath, readPasswordFile, writePasswordFile } from './password.mjs'
 
 export { withResolvedAddresses }
 
@@ -40,17 +41,58 @@ function execute(command, { quiet = false } = {}) {
   return run('docker', command.argv, { timeout: 0 })
 }
 
+/** Where the keys live, needed before a full config can be built. */
+export function keysDirFrom(env = process.env) {
+  return env.KEYS_DIR || path.join(os.homedir(), 'lightchain-worker', 'keys')
+}
+
+export { passwordPath, readPasswordFile }
+
+/**
+ * Stores the keystore password in a file only the operator can read.
+ *
+ * What this removes is the environment variable, which is inherited by every
+ * child process, readable from `/proc/<pid>/environ` by the same user, and ends
+ * up in shell history and CI logs. What it does not remove is anybody who can
+ * already read the operator's files — see the README, which says so plainly
+ * rather than implying a protection that is not there.
+ */
+export function setPassword(keysDir, password) {
+  if (!password) {
+    console.error('Nothing on stdin. The password was not changed.')
+    return false
+  }
+
+  try {
+    writePasswordFile(keysDir, password)
+  } catch (err) {
+    console.error(`The password file could not be written: ${err.message}`)
+    return false
+  }
+
+  console.log(`Password stored: ${passwordPath(keysDir)}`)
+  if (process.env.WORKER_PASSWORD) {
+    console.log('\nWORKER_PASSWORD is still set and is now ignored. Unset it — while it')
+    console.log('remains in the environment it is readable by every child process.')
+  }
+  return true
+}
+
 /**
  * Reads configuration from the environment, using the same variable names as
  * the existing worker toolkit so an operator's current setup keeps working.
+ *
+ * The password file wins over `WORKER_PASSWORD`. That ordering is deliberate:
+ * if the environment won, running `set-password` would look like it had fixed
+ * the exposure while the variable quietly kept being used.
  */
 export function loadConfig(env = process.env) {
-  const home = os.homedir()
+  const keysDir = keysDirFrom(env)
 
   return resolveConfig({
     network: env.NETWORK === 'testnet' ? 'testnet' : 'mainnet',
-    keysDir: env.KEYS_DIR || path.join(home, 'lightchain-worker', 'keys'),
-    keystorePassword: env.WORKER_PASSWORD || '',
+    keysDir,
+    keystorePassword: readPasswordFile(keysDir) ?? env.WORKER_PASSWORD ?? '',
     aiConfigAddress: env.AI_CONFIG_ADDRESS || undefined,
     jobRegistryAddress: env.JOB_REGISTRY_ADDRESS || undefined,
     supportedModels: env.SUPPORTED_MODELS ? env.SUPPORTED_MODELS.split(',') : undefined,

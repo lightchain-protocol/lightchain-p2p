@@ -119,11 +119,17 @@ not publish; an unreachable registry stops the start rather than falling back to
 a default, because a worker on the wrong contracts accepts jobs it cannot
 settle.
 
-One thing remains. **Better keystore password storage**: the private key is stdin-only and never stored, but the password is
-still an environment variable matching the toolkit's convention. The worker must
-survive unattended restarts so it has to be retrievable without a human, and Bare
-has no OS keychain binding today. A protected file or platform keychain would be
-better.
+**Keystore password storage is done too.** `set-password` reads it from stdin
+and writes `<KEYS_DIR>/keystore-password` at mode `0600`; `WORKER_PASSWORD`
+remains a fallback so existing setups keep running, and the file wins when both
+are present. The worker restarts unattended, so nothing here can be protected by
+a passphrase — this is a permission boundary, and the README says exactly what
+it does and does not cover rather than implying more.
+
+One exposure is left and it is not ours to close: the password reaches the
+container as `WORKER_KEYSTORE_PASSWORD`, the only form the image accepts, so it
+sits in `docker inspect` for the life of the container. That needs a change to
+the image.
 
 ### `apps/chat`, Advancement 4
 
@@ -366,10 +372,11 @@ locally.
 
 ## Open decisions
 
-1. **Where secrets live** for the supervisor's registration commands. No longer
-   blocking — the lifecycle is finished on the toolkit's `WORKER_PASSWORD`
-   convention — but an environment variable is an interim position, not the end
-   state.
+1. **Whether the worker image will read its password from a file.** Settled on
+   our side: the supervisor keeps it in a `0600` file rather than the
+   environment. It still has to be handed to the container as
+   `WORKER_KEYSTORE_PASSWORD`, so it remains readable in `docker inspect` until
+   the image accepts something else.
 2. **The production `pear://` link and its multisig quorum.** The current
    `upgrade` link is a development one whose secret key sits on one machine.
 3. **Custody**: signing certificates and the release multisig are different key

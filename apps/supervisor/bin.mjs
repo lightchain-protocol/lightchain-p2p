@@ -15,7 +15,7 @@ const cmd = command(
   summary(pkg.description),
   arg(
     '[subcommand]',
-    'doctor | status | pull | import-key | keygen | register | start | stop | logs'
+    'doctor | status | pull | import-key | set-password | keygen | register | start | stop | logs'
   ),
   flag('--address <hex>', 'which keystore to use, when more than one exists'),
   flag('--version|-v', 'Print the current version'),
@@ -40,6 +40,22 @@ if (subcommand === 'doctor') {
   Bare.exit(ready ? 0 : 1)
 }
 
+// Ahead of the rest because `loadConfig` refuses a configuration with no
+// password, which is exactly the state somebody setting one for the first time
+// is in.
+if (subcommand === 'set-password') {
+  const worker = await import('./lib/worker.mjs')
+  const password = await worker.readSecretFromStdin()
+
+  if (!password) {
+    console.error('\nNothing on stdin. Pipe the password in, so it never reaches argv:\n')
+    console.error('  cat password.txt | lcai-supervisor set-password\n')
+    Bare.exit(1)
+  }
+
+  Bare.exit(worker.setPassword(worker.keysDirFrom(), password) ? 0 : 1)
+}
+
 const WORKER_COMMANDS = [
   'status',
   'pull',
@@ -61,6 +77,11 @@ if (WORKER_COMMANDS.includes(subcommand)) {
     // Configuration problems are the operator's to fix and deserve the message
     // rather than a stack trace.
     console.error(`\nConfiguration: ${err.message}\n`)
+    // The toolkit's message cannot name a command that only exists here.
+    if (/keystorePassword/.test(err.message)) {
+      console.error('Set one without putting it in the environment:\n')
+      console.error('  cat password.txt | lcai-supervisor set-password\n')
+    }
     Bare.exit(1)
   }
 
