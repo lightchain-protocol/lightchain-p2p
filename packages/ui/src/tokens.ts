@@ -19,6 +19,19 @@ export interface Palette {
   readonly bgElevated: string
   /** Further raised: menus, popovers. */
   readonly bgElevated2: string
+  /**
+   * The navigation plane.
+   *
+   * Between `bg` and `bgElevated`, because a sidebar is a different plane from
+   * the content rather than a card sitting on it. Separated by a hairline and
+   * not a shadow: on a dark theme there is no overhead light, so a shadow
+   * against near-black either does nothing or smudges.
+   *
+   * Its own token because three things have to match it exactly — the plane,
+   * the ring around the presence dot, and the backing behind the sticky room
+   * actions — and three hand-mixed copies of one colour drift.
+   */
+  readonly bgSidebar: string
   /** Primary text. */
   readonly fg: string
   /** Secondary text. */
@@ -61,6 +74,9 @@ export const DARK: Palette = {
   bg: '#06060e',
   bgElevated: '#0f0f1d',
   bgElevated2: '#15152a',
+  // Between the two above it, so the navigation reads as a plane in front of
+  // the content rather than a card on it.
+  bgSidebar: '#121224',
   fg: '#f5f6ff',
   fgMuted: '#b1b3d0',
   fgDim: '#8385a8',
@@ -79,6 +95,9 @@ export const LIGHT: Palette = {
   // not nearly enough for a chat bubble floating in the middle of a panel.
   bgElevated: '#f2f4fa',
   bgElevated2: '#eae7fb',
+  // Darker than the page rather than lighter. The plane still separates from
+  // the content; which direction it separates in is what flips with the theme.
+  bgSidebar: '#eeedfb',
   fg: '#0f0f14',
   fgMuted: '#4e4e5c',
   // Darkened from the document palette: the original fails AA against white at
@@ -176,6 +195,7 @@ export function cssVariables(theme: Theme): string {
     `--lc-bg: ${p.bg};`,
     `--lc-bg-elevated: ${p.bgElevated};`,
     `--lc-bg-elevated-2: ${p.bgElevated2};`,
+    `--lc-bg-sidebar: ${p.bgSidebar};`,
     `--lc-fg: ${p.fg};`,
     `--lc-fg-muted: ${p.fgMuted};`,
     `--lc-fg-dim: ${p.fgDim};`,

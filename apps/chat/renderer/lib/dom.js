@@ -158,15 +158,28 @@ function readable(value) {
   return String(value)
 }
 
+/**
+ * States that are not failures, listed rather than inferred.
+ *
+ * Anything unrecognised is still treated as trouble — that part was right, and
+ * a status nobody classified should err towards being seen. But the update
+ * messages were falling through to it, so downloading an update reported the
+ * same way as a dead worker. That was survivable while the status was a grey
+ * word in the title bar. It is not now the sidebar draws a failure as a red
+ * banner, which is exactly the kind of thing that only becomes visible when
+ * something else gets better.
+ */
+const CALM = new Set(['connected'])
+const WORKING = new Set(['connecting', 'starting', 'downloading update', 'update ready'])
+
 export function setStatus(text) {
   const readableText = readable(text)
   el.status.textContent = readableText
-  el.status.dataset.state =
-    readableText === 'connected'
-      ? 'ok'
-      : readableText === 'connecting' || readableText === 'starting'
-        ? 'busy'
-        : 'bad'
+  el.status.dataset.state = CALM.has(readableText)
+    ? 'ok'
+    : WORKING.has(readableText)
+      ? 'busy'
+      : 'bad'
 }
 
 export function showSection(name) {

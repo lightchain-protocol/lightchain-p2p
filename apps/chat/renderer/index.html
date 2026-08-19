@@ -70,6 +70,7 @@
     <link rel="stylesheet" href="styles/members.css" />
     <link rel="stylesheet" href="styles/attachments.css" />
     <link rel="stylesheet" href="styles/search.css" />
+    <link rel="stylesheet" href="styles/secure.css" />
   </head>
   <body>
     <!-- One definition per icon, referenced by `<use>` wherever it appears. An
@@ -368,28 +369,19 @@
     <!-- Drawn by us on Windows and Linux; on macOS the traffic lights sit here
          and the content is inset to clear them. -->
     <header class="titlebar" id="titlebar">
-      <svg class="logo" aria-hidden="true"><use href="#i-logo" /></svg>
-      <span class="wordmark">Lightchain</span>
+      <div class="titlebar-brand">
+        <svg class="logo" aria-hidden="true"><use href="#i-logo" /></svg>
+        <span class="wordmark">Lightchain</span>
+      </div>
+      <!-- The only control the bar ever carries, and it is hidden until there
+           is something to apply. renderer/lib/ipc.js resolves it by id. -->
       <button
-        class="titlebar-balance"
+        class="button button-primary button-sm titlebar-update"
         type="button"
-        id="titlebar-balance"
-        title="Your wallet"
+        id="update-btn"
         hidden
-      ></button>
-      <span class="titlebar-status" id="status">starting</span>
-      <button class="button button-primary button-sm" id="update-btn" hidden>Apply update</button>
-      <button class="icon-button" type="button" id="theme-btn" title="Theme" aria-label="Theme">
-        <svg class="icon" aria-hidden="true"><use href="#i-sun" /></svg>
-      </button>
-      <button
-        class="icon-button"
-        type="button"
-        id="settings-btn"
-        title="Settings"
-        aria-label="Settings"
       >
-        <svg class="icon" aria-hidden="true"><use href="#i-settings" /></svg>
+        Apply update
       </button>
     </header>
 
@@ -1032,78 +1024,188 @@
           </button>
         </div>
 
-        <!-- Grouped rather than one flat list, because the five sections are not
-             peers: three are things you do, two are machinery behind them. -->
-        <p class="sidebar-title">Workspace</p>
-        <ul class="sections">
-          <li>
-            <button
-              class="nav-item is-active"
-              type="button"
-              data-section="dashboard"
-              aria-current="page"
-            >
-              <svg class="nav-icon" aria-hidden="true"><use href="#i-dashboard" /></svg>
-              <span class="nav-label">Dashboard</span>
-            </button>
-          </li>
-          <li>
-            <button class="nav-item" type="button" data-section="chat">
-              <svg class="nav-icon" aria-hidden="true"><use href="#i-chat" /></svg>
-              <span class="nav-label">Chat</span>
-              <span class="nav-badge" id="rooms-badge" hidden></span>
-            </button>
-          </li>
-          <li>
-            <button class="nav-item" type="button" data-section="models">
-              <svg class="nav-icon" aria-hidden="true"><use href="#i-models" /></svg>
-              <span class="nav-label">Models</span>
-            </button>
-          </li>
-        </ul>
+        <!-- The brand row and the footer hold their place; only what is between
+             them scrolls. Without this a long room list pushes the account row
+             and the connection state off the bottom of a short window. -->
+        <div class="sidebar-body">
+          <!-- Grouped rather than one flat list, because the five sections are not
+               peers: three are things you do, two are machinery behind them.
 
-        <p class="sidebar-title">Network</p>
-        <ul class="sections">
-          <li>
-            <button class="nav-item" type="button" data-section="worker">
-              <svg class="nav-icon" aria-hidden="true"><use href="#i-worker" /></svg>
-              <span class="nav-label">Worker</span>
-            </button>
-          </li>
-          <li>
-            <button class="nav-item" type="button" data-section="wallet">
-              <svg class="nav-icon" aria-hidden="true"><use href="#i-wallet" /></svg>
-              <span class="nav-label">Wallet</span>
-            </button>
-          </li>
-        </ul>
+               The heading names the group to a screen reader as well as to the
+               eye, which a paragraph sitting above a list does not. -->
+          <div class="nav-group">
+            <h2 class="sidebar-title" id="nav-workspace">Workspace</h2>
+            <ul class="sections" aria-labelledby="nav-workspace">
+              <li>
+                <button
+                  class="nav-item is-active"
+                  type="button"
+                  data-section="dashboard"
+                  aria-current="page"
+                >
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-dashboard" /></svg>
+                  <span class="nav-label">Dashboard</span>
+                </button>
+              </li>
+              <li>
+                <button class="nav-item" type="button" data-section="chat">
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-chat" /></svg>
+                  <span class="nav-label">Chat</span>
+                  <span class="nav-badge" id="rooms-badge" hidden></span>
+                </button>
+              </li>
+              <li>
+                <button class="nav-item" type="button" data-section="models">
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-models" /></svg>
+                  <span class="nav-label">Models</span>
+                </button>
+              </li>
+            </ul>
+          </div>
 
-        <div class="sidebar-context" id="chat-context" hidden>
-          <p class="sidebar-title">Rooms</p>
-          <ul class="room-list" id="room-list"></ul>
-          <p class="sidebar-empty" id="sidebar-empty">No rooms yet.</p>
-          <div class="sidebar-actions">
-            <button class="button button-block" type="button" id="create-btn">
-              <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
-              <span class="nav-label">New room</span>
-            </button>
-            <button class="button button-block" type="button" id="join-btn">
-              <span class="nav-label">Join with an invite</span>
-            </button>
+          <div class="nav-group">
+            <h2 class="sidebar-title" id="nav-network">Network</h2>
+            <ul class="sections" aria-labelledby="nav-network">
+              <li>
+                <button class="nav-item" type="button" data-section="worker">
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-worker" /></svg>
+                  <span class="nav-label">Worker</span>
+                </button>
+              </li>
+              <li>
+                <button class="nav-item" type="button" data-section="wallet">
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-wallet" /></svg>
+                  <span class="nav-label">Wallet</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="nav-group">
+            <h2 class="sidebar-title" id="nav-next">What is next</h2>
+            <ul class="sections" aria-labelledby="nav-next">
+              <li>
+                <button class="nav-item" type="button" data-section="roadmap">
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-roadmap" /></svg>
+                  <span class="nav-label">Roadmap</span>
+                </button>
+              </li>
+            </ul>
+
+            <!-- Deliberately not a `.sections` list: showSection looks up a
+                 panel for every nav item it finds in one, and these have none,
+                 so it would dereference null on every section change.
+
+                 Dimmed and aria-disabled, but each still leads somewhere — to
+                 the roadmap entry explaining what it is waiting on. A dimmed
+                 row that swallows the click is the dead end just taken out of
+                 onboarding, wearing a different colour. -->
+            <ul class="nav-upcoming" aria-label="Not built yet">
+              <li>
+                <button
+                  class="nav-item nav-item-upcoming"
+                  type="button"
+                  aria-disabled="true"
+                  data-roadmap="roadmap-mobile"
+                >
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-mobile" /></svg>
+                  <span class="nav-label">Mobile</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  class="nav-item nav-item-upcoming"
+                  type="button"
+                  aria-disabled="true"
+                  data-roadmap="roadmap-hardware-wallets"
+                >
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-hardware" /></svg>
+                  <span class="nav-label">Hardware wallets</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  class="nav-item nav-item-upcoming"
+                  type="button"
+                  aria-disabled="true"
+                  data-roadmap="roadmap-direct-routing"
+                >
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-routing" /></svg>
+                  <span class="nav-label">Direct routing</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="sidebar-context" id="chat-context" hidden>
+            <h2 class="sidebar-title" id="nav-rooms">Rooms</h2>
+            <ul class="room-list" id="room-list" aria-labelledby="nav-rooms"></ul>
+            <p class="sidebar-empty" id="sidebar-empty">No rooms yet.</p>
+            <div class="sidebar-actions">
+              <button class="button button-block" type="button" id="create-btn">
+                <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
+                <span class="nav-label">New room</span>
+              </button>
+              <button class="button button-block" type="button" id="join-btn">
+                <span class="nav-label">Join with an invite</span>
+              </button>
+            </div>
           </div>
         </div>
 
         <div class="sidebar-foot">
-          <!-- The wallet is the identity, so it sits where an account does. -->
-          <button class="account" type="button" id="account-btn">
-            <svg class="logo account-logo" aria-hidden="true"><use href="#i-logo" /></svg>
-            <span class="account-text">
-              <span class="account-name" id="account-name">No wallet</span>
-              <span class="account-role" id="account-role">Set one up</span>
-            </span>
-            <svg class="icon account-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
-          </button>
-          <p class="version" id="version"></p>
+          <!-- The wallet is the identity, so it sits where an account does, and
+               the connection state rides on it: a dot on the mark while there is
+               nothing to say, the row above as a banner when there is. One
+               element does both because setStatus writes to one node. -->
+          <div class="sidebar-account">
+            <span class="sidebar-status" id="status" role="status" data-state="busy">starting</span>
+            <button class="account" type="button" id="account-btn" data-kit-focus>
+              <svg class="logo account-logo" aria-hidden="true"><use href="#i-logo" /></svg>
+              <span class="account-text">
+                <span class="account-name" id="account-name">No wallet</span>
+                <span class="account-role" id="account-role">Set one up</span>
+              </span>
+              <svg class="icon account-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+            </button>
+          </div>
+
+          <!-- Still named for the bar it used to live in. wallet.js finds it by
+               id and styles/settings.css by class, so renaming it is not a change
+               this file can make on its own. -->
+          <button
+            class="titlebar-balance"
+            type="button"
+            id="titlebar-balance"
+            title="Your wallet"
+            data-kit-focus
+            hidden
+          ></button>
+
+          <!-- What the window is, and the two switches that change how it looks
+               and behaves. Both were in the title bar, which is being stripped
+               back to the brand and somewhere to drag. -->
+          <div class="sidebar-tools">
+            <p class="version" id="version"></p>
+            <button
+              class="icon-button"
+              type="button"
+              id="theme-btn"
+              title="Theme"
+              aria-label="Theme"
+            >
+              <svg class="icon" aria-hidden="true"><use href="#i-sun" /></svg>
+            </button>
+            <button
+              class="icon-button"
+              type="button"
+              id="settings-btn"
+              title="Settings"
+              aria-label="Settings"
+            >
+              <svg class="icon" aria-hidden="true"><use href="#i-settings" /></svg>
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -1111,104 +1213,138 @@
         <!-- Dashboard ------------------------------------------------------->
         <!-- Every number here is derived from something this machine already
              holds. Where there is none the card says so, rather than drawing a
-             zero that reads as a measurement. -->
+             zero that reads as a measurement.
+
+             A console page: the balance and the metric row are the answer, the
+             two panes below are the evidence, and the panes scroll rather than
+             the page. -->
         <div class="panel" id="panel-dashboard">
-          <div class="dash">
-            <header class="dash-head">
-              <div class="dash-head-main">
-                <h1 class="dash-title">Welcome back</h1>
-                <p class="dash-sub" id="dash-sub">
+          <div class="console dash">
+            <header class="page-head">
+              <div class="page-head-main">
+                <h1 class="page-title">Welcome back</h1>
+                <p class="page-sub" id="dash-sub">
                   Your identity, your models, your workers and one balance behind all of them.
                 </p>
               </div>
-              <div class="dash-head-actions">
-                <span class="pill" id="dash-network">—</span>
+              <div class="page-actions">
+                <span class="chip" id="dash-network">—</span>
                 <div class="segmented" role="group" aria-label="Range">
                   <button class="segment" type="button" data-months="6">6m</button>
                   <button class="segment is-active" type="button" data-months="12">12m</button>
                   <button class="segment" type="button" data-months="24">24m</button>
                 </div>
-                <button class="button button-sm" type="button" id="dash-refresh">Refresh</button>
+                <button class="button button-sm" type="button" id="dash-refresh">
+                  <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                  Refresh
+                </button>
               </div>
             </header>
+
+            <!-- Where a failed read goes. It used to be written into a stat
+                 card's note, where a chain error rendered as grey caption text
+                 under the word "Dashboard" and read as a description of one. -->
+            <div class="alert" data-tone="error" role="alert" id="dash-error" hidden>
+              <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+              <div class="alert-body">
+                <strong class="alert-title" id="dash-error-title"></strong>
+                <span id="dash-error-detail"></span>
+              </div>
+            </div>
+
+            <div class="alert" data-tone="warn" id="dash-locked" hidden>
+              <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+              <div class="alert-body">
+                <strong class="alert-title">Balances are public, so they show while locked</strong>
+                Your conversations are not — the key that opens them comes from the wallet, so
+                unlock it to see the rest.
+              </div>
+            </div>
 
             <!-- Both halves of what the wallet controls, and the two moves
                  between them. Depositing and withdrawing shift LCAI between the
                  wallet and the job registry; neither changes this total, which
                  is the point of showing it above the split. -->
-            <section class="hero">
-              <div class="hero-row">
-                <div class="hero-main">
-                  <p class="hero-label">
-                    <span>Total balance</span>
-                    <button
-                      class="icon-button icon-button-sm"
-                      type="button"
-                      id="hero-hide"
-                      title="Hide balances"
-                      aria-label="Hide balances"
-                    >
-                      <svg class="icon" aria-hidden="true"><use href="#i-eye" /></svg>
-                    </button>
-                  </p>
-                  <p class="hero-value" id="hero-value">—</p>
-                  <p class="hero-note" id="hero-note"></p>
-                </div>
-                <div class="hero-actions">
-                  <button class="button" type="button" data-move="deposit">
-                    <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
-                    Deposit
+            <section class="kit-card dash-balance">
+              <div class="dash-balance-main">
+                <p class="dash-balance-label">
+                  <span>Total balance</span>
+                  <button
+                    class="button button-sm dash-balance-hide"
+                    type="button"
+                    id="hero-hide"
+                    title="Hide balances"
+                    aria-label="Hide balances"
+                  >
+                    <svg class="icon" aria-hidden="true"><use href="#i-eye" /></svg>
                   </button>
-                  <button class="button" type="button" data-move="withdraw">
-                    <svg class="icon" aria-hidden="true"><use href="#i-upload" /></svg>
-                    Withdraw
-                  </button>
-                </div>
+                </p>
+                <p class="dash-balance-value" id="hero-value">—</p>
+                <p class="dash-balance-note" id="hero-note"></p>
               </div>
-              <ul class="hero-chips" id="hero-chips"></ul>
+
+              <ul class="dash-splits" id="hero-chips"></ul>
+
+              <div class="dash-balance-actions">
+                <button class="button button-primary" type="button" data-move="deposit">
+                  <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
+                  Deposit
+                </button>
+                <button class="button" type="button" data-move="withdraw">
+                  <svg class="icon" aria-hidden="true"><use href="#i-upload" /></svg>
+                  Withdraw
+                </button>
+              </div>
             </section>
 
-            <p class="dash-locked" id="dash-locked" hidden>
-              Balances are public, so they show while locked. Your conversations are not — the key
-              that opens them comes from the wallet, so unlock it to see the rest.
-            </p>
+            <!-- One card holding four cells rather than four cards. They are
+                 read across as a row, and four bordered tiles put a rule
+                 between figures that are meant to be compared. -->
+            <section class="kit-card">
+              <ul class="stats" id="dash-stats"></ul>
+            </section>
 
-            <ul class="stats" id="dash-stats"></ul>
-
-            <div class="dash-grid">
-              <section class="card">
-                <header class="card-head">
-                  <div>
-                    <h2 class="card-title">Inference activity</h2>
-                    <p class="card-note" id="chart-note">Questions asked and answers returned.</p>
+            <div class="console-body console-body-split">
+              <div class="dash-column">
+                <section class="kit-card kit-card-flush dash-fill">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">Inference activity</h2>
+                    <span class="dash-stamp" id="chart-note">
+                      Questions asked and answers returned.
+                    </span>
+                  </header>
+                  <div class="kit-card-scroll">
+                    <div class="chart" id="dash-chart"></div>
+                    <ul class="legend" id="dash-legend"></ul>
                   </div>
-                </header>
-                <div class="chart" id="dash-chart"></div>
-                <ul class="legend" id="dash-legend"></ul>
-              </section>
+                </section>
+              </div>
 
-              <section class="card">
-                <header class="card-head">
-                  <h2 class="card-title">Recent activity</h2>
-                </header>
-                <ul class="feed" id="dash-feed"></ul>
-              </section>
+              <div class="dash-column">
+                <section class="kit-card kit-card-flush dash-fill">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">Recent activity</h2>
+                  </header>
+                  <div class="kit-card-scroll">
+                    <ul class="feed" id="dash-feed"></ul>
+                  </div>
+                </section>
+
+                <section class="kit-card kit-card-flush dash-fill">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">Models used</h2>
+                  </header>
+                  <div class="kit-card-scroll">
+                    <p class="dash-note">
+                      Conversations per model, and how many of their turns reached the chain.
+                    </p>
+                    <ul class="bars" id="dash-models"></ul>
+                  </div>
+                </section>
+              </div>
             </div>
-
-            <section class="card">
-              <header class="card-head">
-                <div>
-                  <h2 class="card-title">Models used</h2>
-                  <p class="card-note">
-                    Conversations per model, and how many of their turns reached the chain.
-                  </p>
-                </div>
-              </header>
-              <ul class="bars" id="dash-models"></ul>
-            </section>
           </div>
         </div>
-
         <!-- Chat ------------------------------------------------------------>
         <div class="panel" id="panel-chat" hidden>
           <div class="empty" id="empty">
@@ -1221,32 +1357,103 @@
           </div>
 
           <div class="room" id="room" hidden>
+            <!-- Two zones, and the split is the whole point: what is true about
+                 the room on the left, what can be done to it on the right. The
+                 previous row put three status badges and four identical buttons
+                 in one strip, so nothing was ranked and Leave sat beside Members
+                 wearing the same clothes. -->
             <header class="room-head">
               <div class="room-head-main">
-                <h1 class="room-title" id="room-title">Room</h1>
-                <code class="key" id="room-key" title="Room key"></code>
+                <div class="room-identity">
+                  <h1 class="room-title" id="room-title">Room</h1>
+
+                  <!-- Not decoration. Somebody has to be able to tell whether
+                       the thing they are typing into is encrypted, and the only
+                       honest place to say so is beside the conversation. The
+                       word is gone because a padlock already says it; the button
+                       stays, because a padlock nobody can interrogate is a
+                       claim with nothing behind it. -->
+                  <button
+                    class="room-secure"
+                    type="button"
+                    id="room-secure"
+                    title="This room is encrypted — what that means"
+                    aria-label="This room is encrypted — what that means"
+                  >
+                    <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+                  </button>
+
+                  <!-- Facts, so chips rather than buttons. -->
+                  <span class="chip room-peers" id="room-peers" hidden></span>
+                  <span class="chip" id="room-role"></span>
+                </div>
+                <code class="key room-key" id="room-key" title="Room key"></code>
               </div>
+
               <div class="room-head-actions">
-                <!-- Not decoration. Somebody has to be able to tell whether the
-                     thing they are typing into is encrypted, and the only
-                     honest place to say so is beside the conversation. -->
                 <button
-                  class="badge badge-secure"
+                  class="button button-sm room-quiet room-square"
                   type="button"
-                  id="room-secure"
-                  title="How this room is protected"
+                  id="rename-btn"
+                  title="Rename this room"
+                  aria-label="Rename this room"
                 >
-                  <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
-                  Encrypted
+                  <svg class="icon" aria-hidden="true"><use href="#i-rename" /></svg>
                 </button>
-                <span class="badge badge-peers" id="room-peers" hidden></span>
-                <span class="badge" id="room-role"></span>
-                <button class="button button-sm" type="button" id="rename-btn">Rename</button>
-                <button class="button button-sm" type="button" id="invite-btn">
-                  Invite someone
+
+                <!-- A toggle rather than an action: it opens and closes the
+                     roster beside the conversation, and a control that leaves
+                     something on screen has to say that it did. -->
+                <button
+                  class="button button-sm room-toggle"
+                  type="button"
+                  id="members-btn"
+                  aria-expanded="false"
+                  aria-controls="members"
+                  title="Who is in this room"
+                >
+                  <svg class="icon" aria-hidden="true"><use href="#i-members" /></svg>
+                  <span class="room-action-label">Members</span>
                 </button>
-                <button class="button button-sm" type="button" id="members-btn">Members</button>
-                <button class="button button-sm" type="button" id="leave-btn">Leave</button>
+
+                <button
+                  class="button button-sm button-primary"
+                  type="button"
+                  id="invite-btn"
+                  title="Invite someone"
+                  aria-label="Invite someone"
+                >
+                  <svg class="icon" aria-hidden="true"><use href="#i-invite" /></svg>
+                  <span class="room-action-label">Invite someone</span>
+                </button>
+
+                <button
+                  class="button button-sm room-quiet room-square room-menu-trigger"
+                  type="button"
+                  id="room-more"
+                  popovertarget="room-menu"
+                  aria-expanded="false"
+                  title="More room actions"
+                  aria-label="More room actions"
+                >
+                  <svg class="icon" aria-hidden="true"><use href="#i-more" /></svg>
+                </button>
+
+                <!-- Leaving is the one thing here nobody undoes by pressing it
+                     again, so it is a press further away from everything else.
+                     The popover is the platform's: it closes on Escape, on a
+                     click outside, and on its own trigger, none of which is
+                     worth writing again. -->
+                <div class="room-menu" id="room-menu" popover aria-label="More room actions">
+                  <button class="room-menu-item room-menu-danger" type="button" id="leave-btn">
+                    <svg class="icon" aria-hidden="true"><use href="#i-leave" /></svg>
+                    Leave this room
+                  </button>
+                  <p class="room-menu-note">
+                    This machine stops following the room. Nobody in it is told, and every message
+                    already on their disks stays there.
+                  </p>
+                </div>
               </div>
             </header>
 
@@ -1306,225 +1513,769 @@
           <div class="ai">
             <aside class="ai-models">
               <header class="ai-models-head">
-                <h2 class="sidebar-title">Models</h2>
-                <button class="button button-sm" type="button" id="ai-refresh">Refresh</button>
+                <h2 class="kit-card-title">Models</h2>
+                <button class="button button-sm" type="button" id="ai-refresh">
+                  <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                  Refresh
+                </button>
               </header>
-              <ul class="model-list" id="model-list"></ul>
 
-              <h2 class="sidebar-title ai-past-title" id="past-title" hidden>Earlier</h2>
-              <ul class="model-list conversation-list" id="conversation-list"></ul>
+              <!-- Both lists share one scroller. Two of them stacked meant the
+                   earlier conversations could be scrolled while the models above
+                   them stayed where they were. -->
+              <div class="ai-models-scroll">
+                <ul class="model-list" id="model-list"></ul>
 
-              <p class="ai-note" id="ai-note"></p>
+                <h2 class="kit-card-title ai-past-title" id="past-title" hidden>Earlier</h2>
+                <ul class="model-list conversation-list" id="conversation-list"></ul>
+              </div>
+
+              <!-- Why the list above is short or empty. An alert rather than a
+                   caption, because the reason is always something to act on. -->
+              <div class="alert ai-models-alert" id="ai-list-alert" role="alert" hidden>
+                <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                <div class="alert-body">
+                  <strong class="alert-title"></strong>
+                  <p class="ai-alert-text"></p>
+                  <div class="ai-alert-actions" hidden>
+                    <button class="button button-sm" type="button">
+                      <svg class="icon" aria-hidden="true"><use href="#i-again" /></svg>
+                      Try again
+                    </button>
+                  </div>
+                </div>
+              </div>
             </aside>
 
             <section class="ai-thread">
-              <header class="ai-head" id="ai-head" hidden>
-                <div>
-                  <h1 class="ai-title" id="ai-model">—</h1>
-                  <p class="ai-sub" id="ai-session">no session</p>
+              <header class="page-head ai-head" id="ai-head" hidden>
+                <div class="page-head-main">
+                  <h1 class="page-title ai-title" id="ai-model">—</h1>
+                  <!-- Session facts only: the phase in flight, the worker, the
+                       session id, the number of turns. Never a failure. -->
+                  <p class="page-sub ai-session" id="ai-session">no session</p>
                 </div>
-                <div class="wallet-head-actions">
-                  <button class="button button-sm" type="button" id="ai-cancel" hidden>Stop</button>
-                  <button class="button button-sm" type="button" id="ai-forget">Delete</button>
-                  <button class="button button-sm" type="button" id="ai-end">End session</button>
+                <div class="page-actions">
+                  <button class="button button-sm" type="button" id="ai-cancel" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-close" /></svg>
+                    Stop
+                  </button>
+                  <button class="button button-sm" type="button" id="ai-end" hidden>
+                    End session
+                  </button>
+                  <button class="button button-sm" type="button" id="ai-close" hidden>Close</button>
+                  <button class="button button-sm" type="button" id="ai-forget" hidden>
+                    Delete
+                  </button>
                 </div>
               </header>
 
-              <div class="ai-empty" id="ai-empty">
-                <h1 class="ai-empty-title">Ask a model</h1>
-                <p class="ai-empty-body">
-                  Pick a model to open a session. Drawing a worker takes up to a minute, and happens
-                  once — every question after it is immediate.
-                </p>
+              <!-- Everything the thread shows before it has a first turn. One
+                   box, so the state and whatever is blocking it are centred
+                   together rather than each taking half the empty column. -->
+              <div class="ai-body" id="ai-body">
+                <div class="empty" id="ai-empty">
+                  <h1 class="empty-title">Ask a model</h1>
+                  <p class="empty-body">
+                    Pick a model on the left to open a session. Drawing a worker takes up to a
+                    minute and happens once — every question after that is immediate.
+                  </p>
+                  <p class="empty-hint">
+                    Each answer is a job: paid from the prepaid balance in your wallet, and signed
+                    by the worker that produced it.
+                  </p>
+                </div>
+
+                <!-- A session with nothing asked in it yet. Also what fills the
+                     minute a draw takes, which used to be an empty message list. -->
+                <div class="empty ai-state" id="ai-state" hidden>
+                  <p class="ai-phase">
+                    <span id="ai-phase-text"></span>
+                    <span class="ai-dots" id="ai-dots" hidden><i></i><i></i><i></i></span>
+                  </p>
+                  <p class="empty-body" id="ai-state-body"></p>
+                  <p class="empty-hint" id="ai-state-hint"></p>
+                </div>
+
+                <!-- The session that never opened, and before a model is picked,
+                     whatever would stop one opening. Both belong where the
+                     conversation would have been, not under the model's name. -->
+                <div class="alert ai-thread-alert" id="ai-thread-alert" role="alert" hidden>
+                  <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                  <div class="alert-body">
+                    <strong class="alert-title"></strong>
+                    <p class="ai-alert-text"></p>
+                    <div class="ai-alert-actions" hidden>
+                      <button class="button button-sm" type="button">
+                        <svg class="icon" aria-hidden="true"><use href="#i-again" /></svg>
+                        Try again
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div class="messages" id="ai-messages" hidden></div>
 
-              <form class="composer" id="ai-composer" hidden>
-                <input
-                  class="composer-input"
-                  id="ai-prompt"
-                  type="text"
-                  placeholder="Ask something"
-                  autocomplete="off"
-                />
-                <button class="button button-primary" type="submit" id="ai-send">Send</button>
-              </form>
+              <div class="ai-foot" id="ai-foot" hidden>
+                <!-- What stops this composer sending, beside the composer rather
+                     than at the foot of the column next to it. No Try again: a
+                     question that failed was usually paid for, so the question
+                     goes back into the field and the choice stays with the
+                     person whose balance it is. -->
+                <div class="alert ai-composer-alert" id="ai-composer-alert" role="alert" hidden>
+                  <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                  <div class="alert-body">
+                    <strong class="alert-title"></strong>
+                    <p class="ai-alert-text"></p>
+                  </div>
+                </div>
+
+                <form class="composer" id="ai-composer">
+                  <input
+                    class="composer-input"
+                    id="ai-prompt"
+                    type="text"
+                    placeholder="Ask something"
+                    autocomplete="off"
+                  />
+                  <button class="button button-primary" type="submit" id="ai-send">
+                    <svg class="icon" aria-hidden="true"><use href="#i-send" /></svg>
+                    Send
+                  </button>
+                </form>
+              </div>
             </section>
           </div>
         </div>
-
         <!-- Worker ---------------------------------------------------------->
         <div class="panel" id="panel-worker" hidden>
-          <div class="worker">
-            <header class="worker-head">
-              <div>
-                <h1 class="worker-title">Worker</h1>
-                <p class="worker-sub">Whether this machine can run one, and what it is doing.</p>
+          <div class="console worker">
+            <header class="page-head">
+              <div class="page-head-main">
+                <h1 class="page-title">Worker</h1>
+                <p class="page-sub">Whether this machine can run one, and what it is doing.</p>
               </div>
-              <div class="wallet-head-actions">
-                <button class="button button-sm" type="button" id="worker-pull">Pull image</button>
+              <div class="page-actions">
+                <button class="button button-sm" type="button" id="worker-pull">
+                  <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
+                  Pull image
+                </button>
                 <button class="button button-sm" type="button" id="worker-register">
+                  <svg class="icon" aria-hidden="true"><use href="#i-shield" /></svg>
                   Register
                 </button>
-                <button class="button button-sm" type="button" id="worker-start">Start</button>
-                <button class="button button-sm" type="button" id="worker-stop">Stop</button>
-                <button class="button button-sm" type="button" id="worker-refresh">Refresh</button>
+                <button class="button button-sm" type="button" id="worker-start">
+                  <svg class="icon" aria-hidden="true"><use href="#i-play" /></svg>
+                  Start
+                </button>
+                <button class="button button-sm" type="button" id="worker-stop">
+                  <svg class="icon" aria-hidden="true"><use href="#i-stop" /></svg>
+                  Stop
+                </button>
+                <button class="button button-sm" type="button" id="worker-refresh">
+                  <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                  Refresh
+                </button>
               </div>
             </header>
 
-            <p class="worker-summary" id="worker-busy" hidden></p>
+            <!-- The answer, above the evidence. This one sentence is what the page was
+                 opened for, and it used to sit under the list it summarises. -->
+            <div class="verdict" id="worker-verdict" role="status">
+              <span class="verdict-headline" id="worker-summary">Checking the host</span>
+              <span class="verdict-detail" id="worker-verdict-detail"></span>
+            </div>
 
-            <section class="worker-block">
-              <h2 class="worker-heading">Host readiness</h2>
-              <ul class="checks" id="worker-checks"></ul>
-              <p class="worker-summary" id="worker-summary"></p>
-            </section>
+            <div class="console-body console-body-split">
+              <div class="worker-column">
+                <section class="kit-card kit-card-flush worker-fill">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">
+                      <svg class="icon" aria-hidden="true"><use href="#i-cpu" /></svg>
+                      Host readiness
+                    </h2>
+                    <span class="worker-stamp" id="worker-checked"></span>
+                  </header>
+                  <div class="kit-card-scroll" id="worker-checks"></div>
+                </section>
 
-            <section class="worker-block">
-              <h2 class="worker-heading">Container</h2>
-              <div id="worker-container"></div>
-            </section>
+                <p class="worker-note">
+                  Importing a key stays in <code>lcai-supervisor</code>:
+                  <code>cat key.txt | lcai-supervisor import-key</code>. It is read from stdin and
+                  nowhere else, so it never reaches a command line, an environment variable or a
+                  log — routing it through here to save a terminal would undo that. Registering
+                  afterwards stakes LCAI from the address the keystore names.
+                </p>
+              </div>
 
-            <section class="worker-block">
-              <h2 class="worker-heading">Recent output</h2>
-              <pre class="logs" id="worker-logs"></pre>
-            </section>
+              <div class="worker-column">
+                <section class="kit-card kit-card-flush">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">
+                      <svg class="icon" aria-hidden="true"><use href="#i-container" /></svg>
+                      Container
+                    </h2>
+                    <span class="chip" id="worker-state" hidden></span>
+                  </header>
+                  <div class="worker-card-body" id="worker-container"></div>
+                </section>
 
-            <p class="worker-footnote">
-              Importing a key stays in <code>lcai-supervisor</code>:
-              <code>cat key.txt | lcai-supervisor import-key</code>. It is read from stdin and
-              nowhere else, so it never reaches a command line, an environment variable or a log —
-              routing it through here to save a terminal would undo that. Registering afterwards
-              stakes LCAI from the address the keystore names.
-            </p>
+                <!-- Where the scrolling belongs. A log that grows by a line must not move
+                     the heading that says what you are looking at. -->
+                <section class="kit-card kit-card-flush worker-fill">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">
+                      <svg class="icon" aria-hidden="true"><use href="#i-terminal" /></svg>
+                      Recent output
+                    </h2>
+                    <span class="chip" id="worker-busy" hidden></span>
+                  </header>
+                  <div class="kit-card-scroll worker-log" id="worker-log">
+                    <pre class="worker-log-text" id="worker-logs"></pre>
+                  </div>
+                </section>
+              </div>
+            </div>
           </div>
         </div>
-
         <!-- Wallet ---------------------------------------------------------->
+        <!-- Three stages behind one panel. The two before the wallet is open
+             are gates holding a single form each, so they are one centred card;
+             the open wallet is a console, because balances and an address are
+             compared and copied rather than read as prose. -->
         <div class="panel" id="panel-wallet" hidden>
-          <div class="wallet" id="wallet-pane">
+          <div class="wallet-pane" id="wallet-pane">
             <!-- No wallet yet -->
-            <section class="wallet-stage" id="wallet-none" hidden>
-              <h1 class="wallet-title">Your key, on this machine</h1>
-              <p class="wallet-body">
-                One key signs your messages, joins rooms and pays for inference. It is generated
-                here and never leaves — encrypted with a password only you know.
-              </p>
-
-              <form class="wallet-form" id="wallet-create-form">
-                <label class="field">
-                  <span class="field-label">Password</span>
-                  <input
-                    class="input"
-                    id="wallet-password"
-                    type="password"
-                    autocomplete="new-password"
-                    placeholder="At least 8 characters"
-                  />
-                </label>
-                <label class="field">
-                  <span class="field-label">Confirm password</span>
-                  <input
-                    class="input"
-                    id="wallet-confirm"
-                    type="password"
-                    autocomplete="new-password"
-                    placeholder="Type it again"
-                  />
-                </label>
-
-                <p class="wallet-warning">
-                  There is no way to recover this password. Lose it and the key is gone, along with
-                  anything it holds.
+            <section class="wallet-gate" id="wallet-none" hidden>
+              <div class="kit-card wallet-gate-card">
+                <h1 class="page-title">Your key, on this machine</h1>
+                <p class="page-sub">
+                  One key signs your messages, joins rooms and pays for inference. It is generated
+                  here and never leaves — encrypted with a password only you know.
                 </p>
 
-                <p class="dialog-error" id="wallet-create-error" hidden></p>
+                <form class="wallet-form" id="wallet-create-form">
+                  <label class="field">
+                    <span class="field-label">Password</span>
+                    <input
+                      class="input"
+                      id="wallet-password"
+                      type="password"
+                      autocomplete="new-password"
+                      placeholder="At least 8 characters"
+                    />
+                  </label>
+                  <label class="field">
+                    <span class="field-label">Confirm password</span>
+                    <input
+                      class="input"
+                      id="wallet-confirm"
+                      type="password"
+                      autocomplete="new-password"
+                      placeholder="Type it again"
+                    />
+                  </label>
 
-                <button class="button button-primary" type="submit" id="wallet-create-btn">
-                  Create wallet
-                </button>
-              </form>
+                  <div class="alert" data-tone="warn">
+                    <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                    <div class="alert-body">
+                      <strong class="alert-title">This password cannot be recovered</strong>
+                      Lose it and the key is gone, along with anything it holds. Write it down
+                      somewhere you would keep a house key.
+                    </div>
+                  </div>
+
+                  <div class="alert" data-tone="error" role="alert" id="wallet-create-error" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                    <div class="alert-body">
+                      <strong class="alert-title">The wallet was not created</strong>
+                      <span data-slot="detail"></span>
+                    </div>
+                  </div>
+
+                  <!-- No icon: the label is replaced with "Encrypting…" while
+                       the key is derived, and an icon beside it would be the
+                       first casualty of that. -->
+                  <button class="button button-primary" type="submit" id="wallet-create-btn">
+                    Create wallet
+                  </button>
+                </form>
+              </div>
             </section>
 
             <!-- Exists, locked -->
-            <section class="wallet-stage" id="wallet-locked" hidden>
-              <h1 class="wallet-title">Locked</h1>
-              <p class="wallet-body">
-                <code class="key" id="wallet-locked-address"></code>
-              </p>
+            <section class="wallet-gate" id="wallet-locked" hidden>
+              <div class="kit-card wallet-gate-card">
+                <h1 class="page-title">Locked</h1>
+                <!-- Which key this is, as a fact rather than a heading. Somebody
+                     who runs two of these needs to see it before they type. -->
+                <p class="wallet-gate-fact">
+                  <span class="chip">
+                    <svg class="icon" aria-hidden="true"><use href="#i-key" /></svg>
+                    <code class="wallet-key" id="wallet-locked-address"></code>
+                  </span>
+                </p>
 
-              <form class="wallet-form" id="wallet-unlock-form">
-                <label class="field">
-                  <span class="field-label">Password</span>
-                  <input
-                    class="input"
-                    id="wallet-unlock-password"
-                    type="password"
-                    autocomplete="current-password"
-                    placeholder="Password"
-                  />
-                </label>
-                <p class="dialog-error" id="wallet-unlock-error" hidden></p>
-                <button class="button button-primary" type="submit" id="wallet-unlock-btn">
-                  Unlock
-                </button>
-              </form>
+                <form class="wallet-form" id="wallet-unlock-form">
+                  <label class="field">
+                    <span class="field-label">Password</span>
+                    <input
+                      class="input"
+                      id="wallet-unlock-password"
+                      type="password"
+                      autocomplete="current-password"
+                      placeholder="Password"
+                    />
+                  </label>
+
+                  <div class="alert" data-tone="error" role="alert" id="wallet-unlock-error" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                    <div class="alert-body">
+                      <strong class="alert-title">The wallet did not unlock</strong>
+                      <span data-slot="detail"></span>
+                    </div>
+                  </div>
+
+                  <button class="button button-primary" type="submit" id="wallet-unlock-btn">
+                    Unlock
+                  </button>
+                </form>
+              </div>
             </section>
 
             <!-- Unlocked -->
-            <section class="wallet-stage" id="wallet-open" hidden>
-              <header class="wallet-head">
-                <div class="wallet-head-row">
-                  <h1 class="wallet-title">Wallet</h1>
-                  <div class="wallet-head-actions">
-                    <span class="badge" id="wallet-network"></span>
-                    <button class="button button-sm" type="button" id="wallet-lock">Lock</button>
-                  </div>
+            <section class="console wallet" id="wallet-open" hidden>
+              <header class="page-head">
+                <div class="page-head-main">
+                  <h1 class="page-title">Wallet</h1>
+                  <p class="page-sub">
+                    One key signs your messages, joins rooms and pays for inference.
+                  </p>
                 </div>
-                <!-- An address is read and compared by eye against whatever
-                     someone is about to send money to, so it is shown whole and
-                     on one line rather than shortened or wrapped. -->
-                <div class="key-row">
-                  <code class="key" id="wallet-address"></code>
-                  <button class="button button-sm" type="button" id="wallet-copy">Copy</button>
+                <div class="page-actions">
+                  <button class="button button-sm" type="button" id="wallet-lock">
+                    <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+                    Lock
+                  </button>
                 </div>
               </header>
 
-              <div class="balances">
-                <div class="balance">
-                  <span class="balance-value" id="wallet-native">—</span>
-                  <span class="balance-label">LCAI on chain</span>
+              <div class="console-body console-body-split">
+                <div class="wallet-column">
+                  <section class="kit-card kit-card-flush">
+                    <header class="kit-card-head">
+                      <h2 class="kit-card-title">Balances</h2>
+                    </header>
+                    <div class="kit-card-scroll">
+                      <!-- Two figures rather than one total. They are the same
+                           money in two places and only one of them can be sent,
+                           so adding them would overstate what is spendable. -->
+                      <div class="wallet-balances">
+                        <div class="wallet-balance">
+                          <span class="wallet-balance-label">LCAI on chain</span>
+                          <span class="wallet-balance-value" id="wallet-native">—</span>
+                        </div>
+                        <div class="wallet-balance">
+                          <span class="wallet-balance-label">Prepaid for inference</span>
+                          <span class="wallet-balance-value" id="wallet-prepaid">—</span>
+                        </div>
+                      </div>
+
+                      <div
+                        class="alert"
+                        data-tone="warn"
+                        role="alert"
+                        id="wallet-balance-alert"
+                        hidden
+                      >
+                        <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                        <div class="alert-body">
+                          <strong class="alert-title" id="wallet-balance-title"></strong>
+                          <span id="wallet-balance-note"></span>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="kit-card kit-card-flush">
+                    <header class="kit-card-head">
+                      <h2 class="kit-card-title">Account</h2>
+                    </header>
+                    <div class="kit-card-scroll">
+                      <dl class="facts">
+                        <dt>Address</dt>
+                        <!-- An address is read and compared by eye against
+                             whatever someone is about to send money to, so it is
+                             shown whole and on one line rather than shortened or
+                             wrapped. -->
+                        <dd class="wallet-address">
+                          <code class="wallet-key" id="wallet-address"></code>
+                          <button
+                            class="button button-sm"
+                            type="button"
+                            id="wallet-copy"
+                            title="Copy address"
+                            aria-label="Copy address"
+                          >
+                            <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
+                          </button>
+                        </dd>
+                        <dt>Network</dt>
+                        <dd><span class="chip" id="wallet-network"></span></dd>
+                      </dl>
+                    </div>
+                  </section>
                 </div>
-                <div class="balance">
-                  <span class="balance-value" id="wallet-prepaid">—</span>
-                  <span class="balance-label">Prepaid for inference</span>
+
+                <div class="wallet-column">
+                  <section class="kit-card kit-card-flush">
+                    <header class="kit-card-head">
+                      <h2 class="kit-card-title">Move funds</h2>
+                    </header>
+                    <div class="kit-card-scroll">
+                      <p class="wallet-note" id="fund-note">
+                        A deposit moves LCAI into the job registry and lets the network's delegate
+                        spend it on your behalf, which is what pays for inference. A withdrawal
+                        brings back whatever is left. Neither leaves this machine's control.
+                      </p>
+                      <div class="wallet-actions">
+                        <button class="button button-primary" type="button" data-move="deposit">
+                          <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
+                          Deposit
+                        </button>
+                        <button class="button" type="button" data-move="withdraw">
+                          <svg class="icon" aria-hidden="true"><use href="#i-upload" /></svg>
+                          Withdraw
+                        </button>
+                      </div>
+                    </div>
+                  </section>
                 </div>
               </div>
-
-              <p class="wallet-note" id="wallet-balance-note"></p>
-
-              <section class="wallet-fund">
-                <h2 class="settings-heading">Move funds</h2>
-                <p class="settings-note" id="fund-note">
-                  A deposit moves LCAI into the job registry and lets the network's delegate spend
-                  it on your behalf, which is what pays for inference. A withdrawal brings back
-                  whatever is left. Neither leaves this machine's control.
-                </p>
-                <div class="hero-actions">
-                  <button class="button button-primary" type="button" data-move="deposit">
-                    <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
-                    Deposit
-                  </button>
-                  <button class="button" type="button" data-move="withdraw">
-                    <svg class="icon" aria-hidden="true"><use href="#i-upload" /></svg>
-                    Withdraw
-                  </button>
-        <!-- What is next ----------------------------------------------------->
-        <div class="panel" id="panel-roadmap" hidden></div>
-                </div>
-              </section>
             </section>
+          </div>
+        </div>
+        <!-- What is next ----------------------------------------------------->
+        <!--
+          A reading page, because this is prose. Every item is taken from
+          ROADMAP.md, from the decision records in docs/decisions, or from
+          apps/chat/README.md, and the status on it says which kind of
+          not-built it is. Those kinds are genuinely different and the page is
+          worth nothing if it blurs them.
+
+          No dates and no progress. A date on a page like this becomes a
+          promise the moment somebody reads it, and none of these are held up
+          by anything a date would move.
+        -->
+        <div class="panel" id="panel-roadmap" hidden>
+          <div class="page">
+            <header class="page-head">
+              <div class="page-head-main">
+                <h1 class="page-title">Roadmap</h1>
+                <p class="page-sub">
+                  What is not built yet, and which kind of not-built each one is. Nothing here has
+                  a date.
+                </p>
+              </div>
+            </header>
+
+            <section class="kit-card">
+              <header class="kit-card-head">
+                <h2 class="kit-card-title">What the statuses mean</h2>
+              </header>
+              <dl class="unbuilt-legend">
+                <dt><span class="unbuilt-status">Not started</span></dt>
+                <dd>No code has been written. Nothing outside the work is holding it up.</dd>
+
+                <dt>
+                  <span class="unbuilt-status" data-tone="waiting">Built, nothing runs it</span>
+                </dt>
+                <dd>
+                  The code exists and is tested. Nobody operates it, so the property it provides is
+                  not there.
+                </dd>
+
+                <dt>
+                  <span class="unbuilt-status" data-tone="waiting">Waiting on procurement</span>
+                </dt>
+                <dd>Finished as far as this repository goes. What is missing has to be bought.</dd>
+
+                <dt><span class="unbuilt-status" data-tone="waiting">Not decided</span></dt>
+                <dd>A choice has to be made before any of it is work.</dd>
+
+                <dt>
+                  <span class="unbuilt-status" data-tone="decided">Decided against, for now</span>
+                </dt>
+                <dd>
+                  Looked at, turned down, and written up with the condition that would change the
+                  answer.
+                </dd>
+              </dl>
+            </section>
+
+            <div class="unbuilt-list">
+              <article class="unbuilt" id="roadmap-blind-peers">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status" data-tone="waiting">Built, nothing runs it</span>
+                  Blind peers, so a room outlives everyone leaving
+                </h2>
+                <p class="unbuilt-body">
+                  A room replicates only while somebody holding it is online, so two people who are
+                  never online at the same time exchange nothing. A blind peer closes that: a
+                  machine that holds an encrypted room without being able to read a word of it.
+                </p>
+                <p class="unbuilt-body">
+                  The code is finished. A room is lodged with the blind peers named in Settings as
+                  it opens, and <code>packages/room</code> has a test that shuts down every
+                  participant and reads the room back on a machine that was never given the keys.
+                  It has been done through the running application as well, not only in a test.
+                </p>
+                <dl class="facts">
+                  <dt>Waiting on</dt>
+                  <dd>
+                    A machine. There is no public fleet, and a third-party peer will cache for us
+                    without serving on our behalf.
+                  </dd>
+                  <dt>Recorded in</dt>
+                  <dd><code>docs/availability.md</code>, which has the systemd units.</dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-seeders">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status" data-tone="waiting">Built, nothing runs it</span>
+                  A seeder that stays online
+                </h2>
+                <p class="unbuilt-body">
+                  Updates arrive peer to peer rather than from a download server, which means
+                  somebody has to be holding the release. <code>apps/seeder</code> does exactly
+                  that and is verified holding a real Pear-staged release. Applications are
+                  client-only by default, so until a seeder runs somewhere continuously a release
+                  reaches nobody once the machine that staged it goes offline.
+                </p>
+                <dl class="facts">
+                  <dt>Waiting on</dt>
+                  <dd>A host to run it on, continuously.</dd>
+                  <dt>Recorded in</dt>
+                  <dd><code>ROADMAP.md</code>, under infrastructure to operate.</dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-signing">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status" data-tone="waiting">Waiting on procurement</span>
+                  A signed release you can install
+                </h2>
+                <p class="unbuilt-body">
+                  Nothing is published. Every tag builds a DMG, an MSIX and an AppImage alongside
+                  standalone binaries for six hosts, and every one of them is unsigned, uploaded as
+                  a build artifact and released nowhere. Building from source is the only way to
+                  run this today.
+                </p>
+                <p class="unbuilt-body">
+                  The signing and notarisation steps are written and skip themselves when no
+                  credentials are set, so the workflow will not change when certificates arrive.
+                  Until they do, macOS reports the app as damaged rather than as unsigned, and
+                  Windows warns on every download.
+                </p>
+                <dl class="facts">
+                  <dt>Waiting on</dt>
+                  <dd>
+                    An Apple Developer certificate, whose D-U-N-S number takes up to five business
+                    days to issue and two more before Apple can see it; a Windows certificate; and
+                    a production upgrade link under a multisig quorum. The legal entity name
+                    chosen becomes the Windows Publisher name, and that is permanent once a signed
+                    release ships.
+                  </dd>
+                  <dt>Not decided</dt>
+                  <dd>
+                    Which Windows and Linux artifacts to ship. ADR 0005 proposes an MSIX with a
+                    signed executable beside it, and AppImage alone, on the grounds that an
+                    installation which cannot receive peer-to-peer updates stops receiving fixes
+                    invisibly. It needs a decision rather than more research.
+                  </dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-one-session">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status">Not started</span>
+                  More than one conversation at a time
+                </h2>
+                <p class="unbuilt-body">
+                  The worker holds one conversation, and starting a second closes the first. A
+                  session is expensive to open — a sortition draw takes the better part of a
+                  minute and creates a transaction — so it is made once and reused for every
+                  question after, which is right for one conversation and is the reason there is
+                  only one.
+                </p>
+                <dl class="facts">
+                  <dt>Recorded in</dt>
+                  <dd><code>apps/chat/README.md</code>, under what does not exist yet.</dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-continue-conversation">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status">Not started</span>
+                  Continuing an earlier conversation
+                </h2>
+                <p class="unbuilt-body">
+                  Saved conversations are listed beside the models and can be read, and that is
+                  all they can be. Carrying on with one means paying for a new session, because the
+                  session that produced it was closed and the worker that answered was drawn for
+                  it. Nothing carries the earlier exchange into the new session either, so the
+                  model would not have read it.
+                </p>
+                <dl class="facts">
+                  <dt>Recorded in</dt>
+                  <dd><code>apps/chat/README.md</code>.</dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-conversation-search">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status">Not started</span>
+                  Searching what a model said
+                </h2>
+                <p class="unbuilt-body">
+                  Search covers room messages, across every room this peer holds. It does not cover
+                  conversations with a model: those are kept in a separate transcript log, encrypted
+                  under a key only this wallet can derive, and nothing reads it looking for
+                  anything.
+                </p>
+                <dl class="facts">
+                  <dt>Recorded in</dt>
+                  <dd><code>apps/chat/README.md</code>.</dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-direct-routing">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status" data-tone="waiting">Not decided</span>
+                  Reaching a worker directly
+                </h2>
+                <p class="unbuilt-body">
+                  Every prompt goes through a foundation-operated relay and dispatcher today, the
+                  same path the web client uses. The alternative is for clients to find workers
+                  themselves over HyperDHT, addressed by the worker's registered key: fewer hops on
+                  the critical path, and streaming a token at a time becomes natural rather than
+                  something an intermediary has to relay frame by frame.
+                </p>
+                <p class="unbuilt-body">
+                  It is not scheduled, because it is not decided. Worker selection determines who
+                  earns, so doing it permissionlessly and fairly depends on verifiable
+                  randomness — and the audit in this repository records that selection is
+                  currently a SHA-256 draw carrying a note to upgrade it to a real one. What was
+                  asked for is a design and a testnet prototype returning with measurements, not a
+                  migration.
+                </p>
+                <dl class="facts">
+                  <dt>Waiting on</dt>
+                  <dd>Verifiable randomness on the chain, and a vote. Neither has happened.</dd>
+                  <dt>Recorded in</dt>
+                  <dd>
+                    The proposal, section 9, and <code>docs/proposals/AUDIT.md</code> section 1.2.
+                  </dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-da">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status">Not started</span>
+                  Data availability, <code>packages/da</code>
+                </h2>
+                <p class="unbuilt-body">
+                  The package is named in CODEOWNERS so that ownership is settled before the code
+                  exists, and that is the whole of it: there is no such directory. What it becomes
+                  will have to clear the same bar the other replicating packages clear — a
+                  two-machine test with the publisher offline for part of the run — because an
+                  availability bug does not appear on one machine.
+                </p>
+                <dl class="facts">
+                  <dt>Recorded in</dt>
+                  <dd>
+                    The status table in <code>README.md</code>, and <code>CONTRIBUTING.md</code>
+                    for the testing bar.
+                  </dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-mobile">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status" data-tone="decided">Decided against, for now</span>
+                  iOS and Android
+                </h2>
+                <p class="unbuilt-body">
+                  Deferred on purpose, and written down rather than left to drift. On iOS and
+                  Android the shell is a store binary and the store owns the update channel, so the
+                  one property this whole architecture is built for — publish a fix and have it
+                  reach people directly — does not exist there.
+                </p>
+                <p class="unbuilt-body">
+                  There is no working reference either: the <code>pear-mobile</code> counterpart
+                  the documentation mentions is not in the mirror, and PearPass, the reference
+                  implementation, does not use over-the-air updates on mobile at all. And an open
+                  model catalogue, where anyone can publish and any user can call any model, is a
+                  plausible store rejection that no amount of engineering retires.
+                </p>
+                <p class="unbuilt-body">
+                  What is deferred is delivery, not portability. The Bare worker is the same code a
+                  mobile worklet would run, so choosing this costs nothing structurally.
+                </p>
+                <dl class="facts">
+                  <dt>Recorded in</dt>
+                  <dd>ADR 0001, accepted 17 August 2026.</dd>
+                  <dt>Revisit when</dt>
+                  <dd>
+                    Desktop has shipped a signed release and applied at least one over-the-air
+                    update in the field, and there is usage data showing demand.
+                  </dd>
+                </dl>
+              </article>
+
+              <article class="unbuilt" id="roadmap-hardware-wallets">
+                <h2 class="unbuilt-title">
+                  <span class="unbuilt-status" data-tone="decided">Decided against, for now</span>
+                  Hardware wallets
+                </h2>
+                <p class="unbuilt-body">
+                  Investigated and turned down, and the transport was never the problem: WebHID
+                  works in this renderer under the sandbox and the content security policy, which
+                  was the part most likely to be impossible.
+                </p>
+                <p class="unbuilt-body">
+                  The reason not to build it is what the device would be asked to do. This
+                  application signs on every message, every rename and every writer grant, and a
+                  hardware wallet is built for a wallet that signs occasionally. Worse, it could
+                  not show what it was signing: a message commits to a hash of its text rather than
+                  to the text, deliberately, so that a newline cannot impersonate the field
+                  separators and claim a different author. The sentence being approved is the one
+                  field the reader cannot see, and no device can invert a hash to recover it.
+                  Shipping this would look like protection and would teach somebody to press
+                  Approve without reading.
+                </p>
+                <dl class="facts">
+                  <dt>Recorded in</dt>
+                  <dd>ADR 0006, 18 August 2026.</dd>
+                  <dt>Revisit when</dt>
+                  <dd>
+                    <code>packages/protocol</code> grows a session key for some other reason. That
+                    is most of the four to six weeks this would take, and it is a wire format that
+                    can never be migrated once it ships.
+                  </dd>
+                </dl>
+              </article>
+            </div>
+
+            <p class="unbuilt-footnote">
+              Taken from <code>ROADMAP.md</code>, the decision records in
+              <code>docs/decisions</code>, and this application's own README. No dates,
+              deliberately: a date on a list like this is read as a promise, and what holds these
+              up is a certificate nobody has bought, a machine nobody is running and a decision
+              nobody has taken.
+            </p>
           </div>
         </div>
       </section>
@@ -1692,15 +2443,292 @@
       </form>
     </dialog>
 
-    <dialog class="dialog" id="secure-dialog">
-      <div class="dialog-form">
-        <h2 class="dialog-title">How this room is protected</h2>
-        <dl class="facts" id="secure-facts"></dl>
-        <p class="dialog-note">
-          The encryption key never travels with the room key. A blind peer can hold this room and
-          keep it available without being able to read a word of it.
+    <!--
+      A reading page rather than a dialog body. COMPONENTS.md names the
+      encryption explanation as a `.page` case, and it is: four layers of prose
+      that will not fit in the 52ch box the other dialogs use.
+
+      The id must stay `secure-dialog`. The lock in the room header opens it by
+      that id and nothing else connects the two.
+
+      Every primitive named below was read out of the installed code, not
+      recalled. If one of them changes, verify against the source before editing
+      the text — a page naming the wrong cipher is worse than one naming none.
+      The sources, in the order the layers appear: node_modules/hypercore/lib/
+      default-encryption.js, node_modules/@hyperswarm/secret-stream,
+      packages/wallet/src/vault.ts, packages/protocol/src/message.ts.
+    -->
+    <dialog class="dialog secure-dialog" id="secure-dialog" aria-labelledby="secure-title">
+      <div class="page secure-page">
+        <header class="page-head">
+          <div class="page-head-main">
+            <h2 class="page-title" id="secure-title">How this room is protected</h2>
+            <p class="page-sub">
+              What each layer protects, what performs it, and where its specification is.
+            </p>
+          </div>
+          <div class="page-actions">
+            <button class="button button-sm" type="button" data-close="secure-dialog">Close</button>
+          </div>
+        </header>
+
+        <div class="verdict secure-verdict" id="secure-verdict" data-state="ok">
+          <span class="verdict-headline" id="secure-verdict-headline"></span>
+          <span class="verdict-detail" id="secure-verdict-detail"></span>
+        </div>
+
+        <p class="secure-lede">
+          A room has two keys. The room key says which room this is; the encryption key is what
+          reads it. They are handed over together in a pairing confirmation and never apart, which
+          is why a blind peer can hold this room and keep it available without being able to read a
+          word of it.
         </p>
-        <div class="dialog-actions">
+
+        <section class="kit-card secure-layer">
+          <header class="secure-layer-head">
+            <svg class="icon" aria-hidden="true"><use href="#i-storage" /></svg>
+            <h3 class="secure-layer-title">Where it sits on this disk</h3>
+            <span class="chip">XSalsa20</span>
+          </header>
+          <dl class="secure-terms">
+            <dt>Protects</dt>
+            <dd>
+              Everything ever said in this room, in the folder on this machine. Copying that folder
+              — or being the blind peer that holds it — gets you ciphertext.
+            </dd>
+            <dt>Mechanism</dt>
+            <dd>
+              Hypercore's default block encryption. Every block goes through libsodium's
+              <code>crypto_stream_xor</code>, which is XSalsa20, under a block key that BLAKE2b
+              derives from this room's encryption key and the core's public key. The eight bytes of
+              padding in front of each block are blinded under a second key derived from the first.
+            </dd>
+          </dl>
+          <p class="secure-caveat">
+            No authentication tag. A stream cipher conceals a block; it cannot tell you a byte
+            changed. Detection belongs to the layer above it — a BLAKE2b Merkle tree over the log,
+            with an Ed25519 signature over the root.
+          </p>
+          <div class="secure-refs">
+            <span class="secure-refs-label">Specifications</span>
+            <button
+              class="secure-ref"
+              type="button"
+              data-kit-focus
+              data-spec="https://doc.libsodium.org/advanced/stream_ciphers/xsalsa20"
+            >
+              libsodium — XSalsa20
+              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            </button>
+            <button
+              class="secure-ref"
+              type="button"
+              data-kit-focus
+              data-spec="https://www.blake2.net/"
+            >
+              BLAKE2
+              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            </button>
+            <button
+              class="secure-ref"
+              type="button"
+              data-kit-focus
+              data-spec="https://ed25519.cr.yp.to/"
+            >
+              Ed25519
+              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            </button>
+          </div>
+        </section>
+
+        <section class="kit-card secure-layer">
+          <header class="secure-layer-head">
+            <svg class="icon" aria-hidden="true"><use href="#i-routing" /></svg>
+            <h3 class="secure-layer-title">On the way to another peer</h3>
+            <span class="chip">Noise XX</span>
+          </header>
+          <dl class="secure-terms">
+            <dt>Protects</dt>
+            <dd>
+              Every byte that leaves this machine, including the replication traffic carrying the
+              room. A relay, a node on the DHT, or anything sitting between two peers, sees
+              ciphertext.
+            </dd>
+            <dt>Mechanism</dt>
+            <dd>
+              <code>@hyperswarm/secret-stream</code>. A connection opens with a Noise XX handshake
+              — ChaCha20-Poly1305 for the handshake messages, BLAKE2b for the hashing, Ed25519
+              static keys through <code>noise-curve-ed</code>. The session that follows runs on
+              XChaCha20-Poly1305 through libsodium's secretstream. It is a separate layer from the
+              one above: the room's own encryption is still underneath it.
+            </dd>
+          </dl>
+          <p class="secure-caveat">
+            A handshake proves the far end holds a particular key. It does not say who is holding
+            it. Which people belong in a room is settled by the invite that let them in, not by the
+            transport.
+          </p>
+          <div class="secure-refs">
+            <span class="secure-refs-label">Specifications</span>
+            <button
+              class="secure-ref"
+              type="button"
+              data-kit-focus
+              data-spec="https://noiseprotocol.org/noise.html"
+            >
+              The Noise Protocol Framework
+              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            </button>
+            <button
+              class="secure-ref"
+              type="button"
+              data-kit-focus
+              data-spec="https://doc.libsodium.org/secret-key_cryptography/secretstream"
+            >
+              libsodium — secretstream
+              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            </button>
+            <button
+              class="secure-ref"
+              type="button"
+              data-kit-focus
+              data-spec="https://www.rfc-editor.org/rfc/rfc8439"
+            >
+              RFC 8439 — ChaCha20-Poly1305
+              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            </button>
+          </div>
+        </section>
+
+        <section class="kit-card secure-layer">
+          <header class="secure-layer-head">
+            <svg class="icon" aria-hidden="true"><use href="#i-wallet" /></svg>
+            <h3 class="secure-layer-title">The wallet on this machine</h3>
+            <span class="chip">scrypt + AES-256-GCM</span>
+          </header>
+          <dl class="secure-terms">
+            <dt>Protects</dt>
+            <dd>
+              The recovery phrase this machine signs with — not the room. A stolen vault file is an
+              offline guessing problem, not a readable conversation.
+            </dd>
+            <dt>Mechanism</dt>
+            <dd>
+              scrypt stretches the password into a 32-byte key at N = 262,144, r = 8, p = 1, and
+              AES-256-GCM encrypts the phrase under it. Those parameters are written into the vault
+              rather than assumed, so they can be raised later without orphaning wallets that
+              already exist.
+            </dd>
+          </dl>
+          <p class="secure-caveat">
+            The password is the weak part, not the cipher. Nobody is going to break AES-256-GCM;
+            somebody holding the file will guess passwords offline, and all scrypt does is make
+            each guess cost memory.
+          </p>
+          <div class="secure-refs">
+            <span class="secure-refs-label">Specifications</span>
+            <button
+              class="secure-ref"
+              type="button"
+              data-kit-focus
+              data-spec="https://www.rfc-editor.org/rfc/rfc7914"
+            >
+              RFC 7914 — scrypt
+              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            </button>
+            <button
+              class="secure-ref"
+              type="button"
+              data-kit-focus
+              data-spec="https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf"
+            >
+              NIST SP 800-38D — GCM
+              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            </button>
+          </div>
+        </section>
+
+        <section class="kit-card secure-layer">
+          <header class="secure-layer-head">
+            <svg class="icon" aria-hidden="true"><use href="#i-shield" /></svg>
+            <h3 class="secure-layer-title">Who wrote what</h3>
+            <span class="chip">EIP-191</span>
+          </header>
+          <dl class="secure-terms">
+            <dt>Protects</dt>
+            <dd>
+              The name on a message. Encryption keeps strangers out of the room; it says nothing
+              about which member wrote a given line inside it.
+            </dd>
+            <dt>Mechanism</dt>
+            <dd>
+              An EIP-191 signature from the author's wallet, over a preimage naming this room's
+              key, the message id, the writer, the clock and a hash of the whole entry. This
+              machine recovers an address from that signature and compares it with the one the
+              message claims. Naming the room key is what stops a signature being lifted out of
+              this conversation and replayed into another.
+            </dd>
+          </dl>
+          <p class="secure-live" id="secure-signatures"></p>
+          <p class="secure-caveat">
+            A message with no signature is not a forgery. It predates signing, or came from a peer
+            with no wallet, so it is shown unattributed rather than thrown away.
+          </p>
+          <div class="secure-refs">
+            <span class="secure-refs-label">Specifications</span>
+            <button
+              class="secure-ref"
+              type="button"
+              data-kit-focus
+              data-spec="https://eips.ethereum.org/EIPS/eip-191"
+            >
+              EIP-191 — signed data standard
+              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            </button>
+          </div>
+        </section>
+
+        <!--
+          Last, and at the same weight as the four above it. A protection page
+          listing only what is covered tells you nothing about the decision you
+          are actually making.
+        -->
+        <section class="kit-card secure-layer secure-exposed">
+          <header class="secure-layer-head">
+            <svg class="icon" aria-hidden="true"><use href="#i-eye" /></svg>
+            <h3 class="secure-layer-title">What none of this hides</h3>
+          </header>
+          <p class="secure-exposed-lede">
+            Encryption protects what was said. It does not protect the shape of the conversation
+            around it, and the four things below are visible without decrypting anything.
+          </p>
+          <ul class="secure-exposures">
+            <li>
+              <strong>That this room exists.</strong> Peers find each other by announcing the
+              room's discovery key — a BLAKE2b hash of the room key — on a public DHT. The hash
+              does not give up the key, but anyone watching that topic learns a room is there and
+              that somebody is looking for it.
+            </li>
+            <li>
+              <strong>Who is connected to it.</strong> Connections are direct wherever they can be,
+              so a peer learns your IP address, and the DHT sees which addresses announce this
+              topic. None of that is anonymised. This is an encrypted tool, not an anonymity tool.
+            </li>
+            <li>
+              <strong>When each message was written.</strong> Entries land in an append-only log in
+              order. A blind peer that cannot read a single block still watches new blocks arrive,
+              and when.
+            </li>
+            <li>
+              <strong>Roughly how long each message was.</strong> The block cipher preserves length
+              and pads by a fixed eight bytes, so ciphertext size tracks plaintext size. A one-word
+              reply and a pasted document are distinguishable without reading either.
+            </li>
+          </ul>
+        </section>
+
+        <!-- Four screens above this, the Close in the page head is off screen. -->
+        <div class="dialog-actions secure-foot">
           <button class="button button-primary" type="button" data-close="secure-dialog">
             Close
           </button>

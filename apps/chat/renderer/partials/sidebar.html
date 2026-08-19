@@ -13,77 +13,187 @@
           </button>
         </div>
 
-        <!-- Grouped rather than one flat list, because the five sections are not
-             peers: three are things you do, two are machinery behind them. -->
-        <p class="sidebar-title">Workspace</p>
-        <ul class="sections">
-          <li>
-            <button
-              class="nav-item is-active"
-              type="button"
-              data-section="dashboard"
-              aria-current="page"
-            >
-              <svg class="nav-icon" aria-hidden="true"><use href="#i-dashboard" /></svg>
-              <span class="nav-label">Dashboard</span>
-            </button>
-          </li>
-          <li>
-            <button class="nav-item" type="button" data-section="chat">
-              <svg class="nav-icon" aria-hidden="true"><use href="#i-chat" /></svg>
-              <span class="nav-label">Chat</span>
-              <span class="nav-badge" id="rooms-badge" hidden></span>
-            </button>
-          </li>
-          <li>
-            <button class="nav-item" type="button" data-section="models">
-              <svg class="nav-icon" aria-hidden="true"><use href="#i-models" /></svg>
-              <span class="nav-label">Models</span>
-            </button>
-          </li>
-        </ul>
+        <!-- The brand row and the footer hold their place; only what is between
+             them scrolls. Without this a long room list pushes the account row
+             and the connection state off the bottom of a short window. -->
+        <div class="sidebar-body">
+          <!-- Grouped rather than one flat list, because the five sections are not
+               peers: three are things you do, two are machinery behind them.
 
-        <p class="sidebar-title">Network</p>
-        <ul class="sections">
-          <li>
-            <button class="nav-item" type="button" data-section="worker">
-              <svg class="nav-icon" aria-hidden="true"><use href="#i-worker" /></svg>
-              <span class="nav-label">Worker</span>
-            </button>
-          </li>
-          <li>
-            <button class="nav-item" type="button" data-section="wallet">
-              <svg class="nav-icon" aria-hidden="true"><use href="#i-wallet" /></svg>
-              <span class="nav-label">Wallet</span>
-            </button>
-          </li>
-        </ul>
+               The heading names the group to a screen reader as well as to the
+               eye, which a paragraph sitting above a list does not. -->
+          <div class="nav-group">
+            <h2 class="sidebar-title" id="nav-workspace">Workspace</h2>
+            <ul class="sections" aria-labelledby="nav-workspace">
+              <li>
+                <button
+                  class="nav-item is-active"
+                  type="button"
+                  data-section="dashboard"
+                  aria-current="page"
+                >
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-dashboard" /></svg>
+                  <span class="nav-label">Dashboard</span>
+                </button>
+              </li>
+              <li>
+                <button class="nav-item" type="button" data-section="chat">
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-chat" /></svg>
+                  <span class="nav-label">Chat</span>
+                  <span class="nav-badge" id="rooms-badge" hidden></span>
+                </button>
+              </li>
+              <li>
+                <button class="nav-item" type="button" data-section="models">
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-models" /></svg>
+                  <span class="nav-label">Models</span>
+                </button>
+              </li>
+            </ul>
+          </div>
 
-        <div class="sidebar-context" id="chat-context" hidden>
-          <p class="sidebar-title">Rooms</p>
-          <ul class="room-list" id="room-list"></ul>
-          <p class="sidebar-empty" id="sidebar-empty">No rooms yet.</p>
-          <div class="sidebar-actions">
-            <button class="button button-block" type="button" id="create-btn">
-              <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
-              <span class="nav-label">New room</span>
-            </button>
-            <button class="button button-block" type="button" id="join-btn">
-              <span class="nav-label">Join with an invite</span>
-            </button>
+          <div class="nav-group">
+            <h2 class="sidebar-title" id="nav-network">Network</h2>
+            <ul class="sections" aria-labelledby="nav-network">
+              <li>
+                <button class="nav-item" type="button" data-section="worker">
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-worker" /></svg>
+                  <span class="nav-label">Worker</span>
+                </button>
+              </li>
+              <li>
+                <button class="nav-item" type="button" data-section="wallet">
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-wallet" /></svg>
+                  <span class="nav-label">Wallet</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="nav-group">
+            <h2 class="sidebar-title" id="nav-next">What is next</h2>
+            <ul class="sections" aria-labelledby="nav-next">
+              <li>
+                <button class="nav-item" type="button" data-section="roadmap">
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-roadmap" /></svg>
+                  <span class="nav-label">Roadmap</span>
+                </button>
+              </li>
+            </ul>
+
+            <!-- Deliberately not a `.sections` list: showSection looks up a
+                 panel for every nav item it finds in one, and these have none,
+                 so it would dereference null on every section change.
+
+                 Dimmed and aria-disabled, but each still leads somewhere — to
+                 the roadmap entry explaining what it is waiting on. A dimmed
+                 row that swallows the click is the dead end just taken out of
+                 onboarding, wearing a different colour. -->
+            <ul class="nav-upcoming" aria-label="Not built yet">
+              <li>
+                <button
+                  class="nav-item nav-item-upcoming"
+                  type="button"
+                  aria-disabled="true"
+                  data-roadmap="roadmap-mobile"
+                >
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-mobile" /></svg>
+                  <span class="nav-label">Mobile</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  class="nav-item nav-item-upcoming"
+                  type="button"
+                  aria-disabled="true"
+                  data-roadmap="roadmap-hardware-wallets"
+                >
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-hardware" /></svg>
+                  <span class="nav-label">Hardware wallets</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  class="nav-item nav-item-upcoming"
+                  type="button"
+                  aria-disabled="true"
+                  data-roadmap="roadmap-direct-routing"
+                >
+                  <svg class="nav-icon" aria-hidden="true"><use href="#i-routing" /></svg>
+                  <span class="nav-label">Direct routing</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="sidebar-context" id="chat-context" hidden>
+            <h2 class="sidebar-title" id="nav-rooms">Rooms</h2>
+            <ul class="room-list" id="room-list" aria-labelledby="nav-rooms"></ul>
+            <p class="sidebar-empty" id="sidebar-empty">No rooms yet.</p>
+            <div class="sidebar-actions">
+              <button class="button button-block" type="button" id="create-btn">
+                <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
+                <span class="nav-label">New room</span>
+              </button>
+              <button class="button button-block" type="button" id="join-btn">
+                <span class="nav-label">Join with an invite</span>
+              </button>
+            </div>
           </div>
         </div>
 
         <div class="sidebar-foot">
-          <!-- The wallet is the identity, so it sits where an account does. -->
-          <button class="account" type="button" id="account-btn">
-            <svg class="logo account-logo" aria-hidden="true"><use href="#i-logo" /></svg>
-            <span class="account-text">
-              <span class="account-name" id="account-name">No wallet</span>
-              <span class="account-role" id="account-role">Set one up</span>
-            </span>
-            <svg class="icon account-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
-          </button>
-          <p class="version" id="version"></p>
+          <!-- The wallet is the identity, so it sits where an account does, and
+               the connection state rides on it: a dot on the mark while there is
+               nothing to say, the row above as a banner when there is. One
+               element does both because setStatus writes to one node. -->
+          <div class="sidebar-account">
+            <span class="sidebar-status" id="status" role="status" data-state="busy">starting</span>
+            <button class="account" type="button" id="account-btn" data-kit-focus>
+              <svg class="logo account-logo" aria-hidden="true"><use href="#i-logo" /></svg>
+              <span class="account-text">
+                <span class="account-name" id="account-name">No wallet</span>
+                <span class="account-role" id="account-role">Set one up</span>
+              </span>
+              <svg class="icon account-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+            </button>
+          </div>
+
+          <!-- Still named for the bar it used to live in. wallet.js finds it by
+               id and styles/settings.css by class, so renaming it is not a change
+               this file can make on its own. -->
+          <button
+            class="titlebar-balance"
+            type="button"
+            id="titlebar-balance"
+            title="Your wallet"
+            data-kit-focus
+            hidden
+          ></button>
+
+          <!-- What the window is, and the two switches that change how it looks
+               and behaves. Both were in the title bar, which is being stripped
+               back to the brand and somewhere to drag. -->
+          <div class="sidebar-tools">
+            <p class="version" id="version"></p>
+            <button
+              class="icon-button"
+              type="button"
+              id="theme-btn"
+              title="Theme"
+              aria-label="Theme"
+            >
+              <svg class="icon" aria-hidden="true"><use href="#i-sun" /></svg>
+            </button>
+            <button
+              class="icon-button"
+              type="button"
+              id="settings-btn"
+              title="Settings"
+              aria-label="Settings"
+            >
+              <svg class="icon" aria-hidden="true"><use href="#i-settings" /></svg>
+            </button>
+          </div>
         </div>
       </nav>

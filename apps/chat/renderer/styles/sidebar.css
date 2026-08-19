@@ -1,33 +1,82 @@
 /**
- * sidebar, its groups, the account row and the collapsed variant.
+ * The sidebar: its plane, its groups, the account row and the collapsed rail.
  *
  * Split out of app.css so this surface can be worked on without touching every
  * other one. app.css keeps what is genuinely shared.
+ *
+ * Two of the classes defined here are not this surface's alone. `.sidebar-title`
+ * is also used by the Settings overlay, the Models panel and the members list,
+ * and `.nav-item` by the Settings nav. They are kit components wearing this
+ * surface's name, which is the `wallet-head-actions` mistake again. Until they
+ * move, their shared declarations are left as they were and everything this
+ * redesign needs is scoped under `.sidebar`, so a change here cannot land on
+ * three panels nobody warned.
  */
 
+/* --- The plane ------------------------------------------------------------ */
+
+/**
+ * A surface of its own rather than a region of the window.
+ *
+ * The sidebar and the content beside it were one palette step apart and both
+ * near-black, so the window read as a single undifferentiated rectangle and
+ * nothing said where navigation ended and work began. This makes the step
+ * legible: a lighter plane under the dark theme, a darker one under the light
+ * theme, and in both a plane that is plainly chrome rather than page.
+ *
+ * The lift is a surface step and a hairline, not a shadow. A dark theme has no
+ * overhead light to cast one, so a drop shadow against a near-black background
+ * either does nothing or reads as a smudge — Linear's 2025 refresh moved
+ * elevation onto luminance and a hairline for exactly that reason. The same
+ * refresh made its sidebar dimmer rather than brighter, so navigation recedes
+ * once you have arrived somewhere; standing out means being a distinct plane,
+ * not a loud one.
+ */
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: var(--lc-space-xs);
+  gap: var(--lc-space-sm);
   width: 236px;
   padding: var(--lc-space-md) var(--lc-space-sm) var(--lc-space-sm);
   border-right: 1px solid var(--lc-rule);
-  background: var(--lc-bg-elevated);
+  background: var(--lc-bg-sidebar);
   flex: 0 0 auto;
   transition: width 160ms ease-out;
 }
 
+/**
+ * Light rather than a heavier fill, for everything that reacts to a pointer.
+ *
+ * The shared controls fill with `--lc-bg-elevated-2`, which is three units from
+ * this plane and so invisible on it. A translucent wash of the foreground is
+ * the same gesture in both themes without needing a second palette: it lightens
+ * a dark surface and darkens a light one.
+ */
+.sidebar .nav-item:hover,
+.sidebar .icon-button:hover,
+.sidebar .account:hover,
+.sidebar .titlebar-balance:hover {
+  color: var(--lc-fg);
+  background: color-mix(in srgb, var(--lc-fg) 8%, transparent);
+}
+
+/* --- Brand row ------------------------------------------------------------ */
+
+/* Named rather than branded. The wordmark is in the title bar and the mark is
+   on the account, and a third Lightchain logo on one screen is one too many. */
 .sidebar-head {
   display: flex;
   align-items: center;
   gap: var(--lc-space-sm);
-  padding: 0 var(--lc-space-sm) var(--lc-space-md);
+  min-height: var(--lc-control-md);
+  padding: 0 var(--lc-space-sm);
+  flex: 0 0 auto;
 }
 
 .sidebar-brand {
   font-size: var(--lc-text-sm);
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--lc-fg-dim);
 }
@@ -40,60 +89,43 @@
   transition: transform 160ms ease-out;
 }
 
-.sections {
+/* --- Navigation ----------------------------------------------------------- */
+
+/* The only part that scrolls. The brand row above it and the footer below it
+   are fixed, so neither a long room list nor a short window can take the
+   account row and the connection state off the screen. */
+.sidebar-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.nav-group {
+  flex: 0 0 auto;
+}
+
+.nav-group + .nav-group {
+  margin-top: var(--lc-space-md);
+}
+
+.sections,
+.nav-upcoming {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: 0 0 var(--lc-space-md);
+  margin: 0;
   padding: 0;
   list-style: none;
   flex: 0 0 auto;
 }
 
-/* --- Collapsed sidebar ----------------------------------------------------- */
-
-/* Icons only. The room list goes with the labels: a column of unlabelled keys
-   is not a navigable list, it is a puzzle. */
-.sidebar.is-collapsed {
-  width: 60px;
-}
-
-.sidebar.is-collapsed .nav-label,
-.sidebar.is-collapsed .nav-badge,
-.sidebar.is-collapsed .sidebar-title,
-.sidebar.is-collapsed .sidebar-brand,
-.sidebar.is-collapsed .sidebar-context,
-.sidebar.is-collapsed .account-text,
-.sidebar.is-collapsed .account-chevron,
-.sidebar.is-collapsed .version {
-  display: none;
-}
-
-.sidebar.is-collapsed .sidebar-collapse .icon {
-  transform: rotate(180deg);
-}
-
-.sidebar.is-collapsed .sidebar-head,
-.sidebar.is-collapsed .nav-item,
-.sidebar.is-collapsed .account {
-  justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.sidebar.is-collapsed .sidebar-foot {
-  align-items: center;
-}
-
-/* The contextual half of the sidebar. Only Chat has one; the others are a
-   single panel with nothing to list. */
-.sidebar-context {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  flex: 1 1 auto;
-  border-top: 1px solid var(--lc-rule);
-  padding-top: var(--lc-space-md);
+/* Continues the list above it rather than starting a new one, so the group's
+   heading covers both the built and the unbuilt. */
+.nav-upcoming {
+  margin-top: 2px;
 }
 
 .sidebar-title {
@@ -106,6 +138,209 @@
   color: var(--lc-fg-dim);
 }
 
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  appearance: none;
+  border: 0;
+  border-radius: var(--lc-radius-md);
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  font: inherit;
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-tight);
+  text-align: left;
+  color: var(--lc-fg-muted);
+  background: transparent;
+  cursor: default;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+/* A row you have to hit with a pointer, at the height every other control in
+   the app is. Room entries are two lines and grow past it on their own. */
+.sidebar .nav-item {
+  min-height: var(--lc-control-md);
+}
+
+.nav-item:hover {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+}
+
+.nav-item.is-active {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+  box-shadow: inset 2px 0 0 var(--lc-brand);
+}
+
+.sidebar .nav-item.is-active {
+  background: color-mix(in srgb, var(--lc-fg) 10%, transparent);
+}
+
+.nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-icon {
+  color: var(--lc-fg-dim);
+}
+
+.nav-item:hover .nav-icon,
+.nav-item.is-active .nav-icon {
+  color: var(--lc-brand);
+}
+
+/**
+ * Advertised, not yet available.
+ *
+ * `aria-disabled` rather than `disabled`, because it is still a control: it
+ * opens the roadmap at the entry saying what this one is waiting on. A dimmed
+ * row that swallows the click is the dead end just taken out of onboarding,
+ * wearing a different colour.
+ *
+ * Declared after the hover and active rules above, which it ties with on
+ * specificity, so that a row nobody can use yet does not light up in the brand
+ * colour as though it were about to do something.
+ */
+.nav-item-upcoming,
+.nav-item-upcoming .nav-icon {
+  color: var(--lc-fg-dim);
+}
+
+/* Up to where a live entry rests, and no further. The hover wash stays, since
+   this is still something to click. */
+.sidebar .nav-item-upcoming:hover,
+.nav-item-upcoming:hover .nav-icon {
+  color: var(--lc-fg-muted);
+}
+
+/* Brand-tinted rather than filled with the elevated surface, which this plane
+   has all but swallowed. */
+.nav-badge {
+  margin-left: auto;
+  min-width: var(--lc-space-lg);
+  padding: 0 var(--lc-space-xs);
+  border-radius: var(--lc-radius-pill);
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  line-height: var(--lc-leading-tight);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--lc-brand-ink);
+  background: color-mix(in srgb, var(--lc-brand) 24%, transparent);
+}
+
+/* A room entry stacks a key over a preview, so its two lines need a column of
+   their own inside what is otherwise a row. */
+.nav-item-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* A room is named by its key and described by its last message, and neither has
+   a length anyone controls. Both are given one line: a sidebar entry that grows
+   to three lines to fit somebody else's sentence pushes the rest of the list
+   around every time a message arrives. */
+.nav-item-name,
+.nav-item-sub {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-item-name {
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-item-sub {
+  margin-top: 2px;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+/* --- Rooms ---------------------------------------------------------------- */
+
+/**
+ * The contextual half of the sidebar. Only Chat has one; the others are a
+ * single panel with nothing to list. The rule is softer than the footer's
+ * because the heading under it is already doing most of the separating.
+ *
+ * It takes the space that is going, and never less than its rooms need. The
+ * room list used to be the one thing in the column allowed to shrink, so every
+ * group added above it came out of the rooms: with a third group the list was
+ * a thirty-pixel slot with an entry cut in half inside it. Refusing to shrink
+ * moves the overflow to the column's own scrollbar, where it is somebody's
+ * choice what to look at rather than a decision the layout made for them.
+ */
+.sidebar-context {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  margin-top: var(--lc-space-md);
+  border-top: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
+  padding-top: var(--lc-space-md);
+}
+
+.room-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sidebar-empty {
+  margin: var(--lc-space-sm);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+}
+
+/* At the foot of the list when the list is short, and held against the bottom
+   of the column when it is long — so making a room never means scrolling past
+   every room already joined to reach the button. The background is the plane's,
+   because the list passes underneath it. */
+.sidebar-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  margin-top: auto;
+  padding-top: var(--lc-space-md);
+  background: var(--lc-bg-sidebar);
+}
+
+/* The shared button fills with the elevated surface too, so on this plane it
+   would be a border around nothing. */
+.sidebar .button {
+  background: color-mix(in srgb, var(--lc-fg) 6%, transparent);
+}
+
+.sidebar .button:hover:not(:disabled) {
+  border-color: var(--lc-brand);
+  background: color-mix(in srgb, var(--lc-brand) 20%, transparent);
+}
+
+.sidebar .button:active:not(:disabled) {
+  background: color-mix(in srgb, var(--lc-brand) 30%, transparent);
+}
+
+/* --- Footer --------------------------------------------------------------- */
+
+/* Who you are, what you hold, and the two switches for the window. The rule
+   above it is the full weight: this is a different kind of thing from the
+   navigation, not another group of it. */
 .sidebar-foot {
   display: flex;
   flex-direction: column;
@@ -113,6 +348,11 @@
   margin-top: auto;
   padding-top: var(--lc-space-sm);
   border-top: 1px solid var(--lc-rule);
+  flex: 0 0 auto;
+}
+
+.sidebar-account {
+  position: relative;
 }
 
 .account {
@@ -133,17 +373,13 @@
   transition: background-color 120ms ease-out;
 }
 
-.account:hover {
-  background: var(--lc-bg-elevated-2);
-}
-
 /* The mark sits with the account rather than at the top of the sidebar, where
    it was the third Lightchain logo on one screen. A letter cut from the address
    said nothing an identicon would have said better, and nothing at all next to
    the address it was cut from. */
 .account-logo {
-  width: 26px;
-  height: 26px;
+  width: var(--lc-space-xl);
+  height: var(--lc-space-xl);
 }
 
 .account-text {
@@ -176,44 +412,26 @@
   color: var(--lc-fg-dim);
 }
 
-.room-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--lc-space-xs);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  overflow-y: auto;
-  min-height: 0;
-}
-
-.sidebar-empty {
-  margin: var(--lc-space-sm);
-  font-size: var(--lc-text-sm);
-  color: var(--lc-fg-dim);
-}
-
-.sidebar-actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--lc-space-xs);
-  margin-top: auto;
-  padding-top: var(--lc-space-md);
-}
-
-.nav-item {
+/**
+ * Both balances, under the account they belong to.
+ *
+ * The class still says title bar because wallet.js finds this button by id and
+ * styles/settings.css still styles it by class; renaming it is a change that
+ * has to happen in three files at once. Everything here is scoped under
+ * `.sidebar` so it outranks the rules left behind there.
+ */
+.sidebar .titlebar-balance {
   display: flex;
   align-items: center;
-  gap: 10px;
   width: 100%;
-  min-width: 0;
+  min-height: var(--lc-control-sm);
+  padding: 0 var(--lc-space-sm);
   appearance: none;
   border: 0;
   border-radius: var(--lc-radius-md);
-  padding: var(--lc-space-sm) var(--lc-space-md);
   font: inherit;
-  font-size: var(--lc-text-sm);
-  line-height: var(--lc-leading-tight);
+  font-size: var(--lc-text-xs);
+  font-variant-numeric: tabular-nums;
   text-align: left;
   color: var(--lc-fg-muted);
   background: transparent;
@@ -223,77 +441,190 @@
     color 120ms ease-out;
 }
 
-.nav-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* Not enough prepaid for even the cheapest job, which is the state that turns
+   into a refusal a minute later. */
+.sidebar .titlebar-balance.is-empty {
+  color: var(--lc-danger);
 }
 
-.nav-icon {
-  color: var(--lc-fg-dim);
-}
-
-.nav-item:hover .nav-icon,
-.nav-item.is-active .nav-icon {
-  color: var(--lc-brand);
-}
-
-.nav-badge {
-  margin-left: auto;
-  min-width: 20px;
-  padding: 0 5px;
-  border-radius: var(--lc-radius-pill);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 17px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  color: var(--lc-brand-ink);
-  background: var(--lc-bg-elevated-2);
-}
-
-/* A room entry stacks a key over a preview, so its two lines need a column of
-   their own inside what is otherwise a row. */
-.nav-item-body {
+.sidebar-tools {
   display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--lc-space-xs);
 }
 
-.nav-item:hover {
-  color: var(--lc-fg);
-  background: var(--lc-bg-elevated-2);
-}
-
-.nav-item.is-active {
-  color: var(--lc-fg);
-  background: var(--lc-bg-elevated-2);
-  box-shadow: inset 2px 0 0 var(--lc-brand);
-}
-
-/* A room is named by its key and described by its last message, and neither has
-   a length anyone controls. Both are given one line: a sidebar entry that grows
-   to three lines to fit somebody else's sentence pushes the rest of the list
-   around every time a message arrives. */
-.nav-item-name,
-.nav-item-sub {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.nav-item-name {
+/* The quietest thing in the window, so it takes the slack in the row rather
+   than a row of its own. */
+.sidebar-tools .version {
+  margin: 0 auto 0 0;
   font-variant-numeric: tabular-nums;
 }
 
-.nav-item-sub {
-  margin-top: 2px;
-  font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+/* --- Connection state ----------------------------------------------------- */
+
+/**
+ * Quiet when it is fine, loud when it is not.
+ *
+ * A permanent "connected" is a word that is correct every time it is read and
+ * therefore a word nobody reads, and it spends a row of chrome reporting that
+ * nothing happened. VS Code's remote indicator emphasises its entry only "when
+ * applicable" and its own guidance keeps a warning or error background for a
+ * last resort, given how prominent one is. Discord does the same in the panel
+ * this footer is shaped like: a dot while the call is fine, and the panel
+ * itself becomes the warning when it is not.
+ *
+ * So healthy is a dot on the account's mark, where every chat client puts
+ * presence, and trouble takes a banner across the footer. It is one element in
+ * all three states because setStatus writes text and a data-state to one node
+ * and lives in dom.js. The words are clipped rather than removed, and the
+ * element carries role="status", so a screen reader is told what the dot is
+ * worth and hears the change even when the eye only sees a colour.
+ */
+.sidebar-status {
+  position: absolute;
+  /* Anchored to the middle of the row and nudged down by half itself, because
+     the mark is centred against two lines of text whose height is the font's
+     to decide. Measuring from the top of the row puts the dot in the middle of
+     the mark on one theme and off the bottom of it on the next. */
+  top: 50%;
+  left: var(--lc-space-xl);
+  transform: translateY(var(--lc-space-xs));
+  z-index: 1;
+  width: var(--lc-space-sm);
+  height: var(--lc-space-sm);
+  border-radius: var(--lc-radius-pill);
+  color: var(--lc-success);
+  background: currentcolor;
+  /* A ring in the plane behind it, so the dot reads as sitting on the mark
+     rather than as part of the artwork. */
+  box-shadow: 0 0 0 2px var(--lc-bg-sidebar);
+  overflow: hidden;
+  text-indent: 100%;
+  white-space: nowrap;
 }
 
-/* Keyboard focus must stay visible. Removing outlines makes an app unusable
-   without a mouse, and it is the most common accessibility regression. */
+.sidebar-status[data-state='busy'] {
+  color: var(--lc-warning);
+  animation: sidebar-status-pulse 1.6s ease-in-out infinite;
+}
+
+.sidebar-status[data-state='bad'] {
+  color: var(--lc-danger);
+}
+
+/**
+ * The banner, for the two states worth interrupting for.
+ *
+ * Above the account rather than below it, because the nearest thing to the
+ * content is the thing that should be read first, and in flow rather than over
+ * anything, because a footer that covers its own account row to report a
+ * problem has created a second one.
+ */
+.sidebar:not(.is-collapsed) .sidebar-status[data-state='busy'],
+.sidebar:not(.is-collapsed) .sidebar-status[data-state='bad'] {
+  position: static;
+  display: flex;
+  /* Against the first line rather than the middle of the block, the way the
+     kit's alert sets its icon. A worker message runs to two lines and a marker
+     floating beside the seam between them belongs to neither. */
+  align-items: flex-start;
+  gap: var(--lc-space-sm);
+  width: auto;
+  height: auto;
+  transform: none;
+  margin-bottom: var(--lc-space-xs);
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--lc-text-xs);
+  line-height: var(--lc-leading-tight);
+  overflow: visible;
+  text-indent: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+  animation: none;
+}
+
+/* The dot survives into the banner. Colour is never the only signal, but the
+   word is not the thing that gets read at a glance either. */
+.sidebar:not(.is-collapsed) .sidebar-status[data-state='busy']::before,
+.sidebar:not(.is-collapsed) .sidebar-status[data-state='bad']::before {
+  content: '';
+  flex: 0 0 auto;
+  width: var(--lc-space-sm);
+  height: var(--lc-space-sm);
+  margin-top: var(--lc-space-xs);
+  border-radius: var(--lc-radius-pill);
+  background: currentcolor;
+}
+
+/* Busy is work in progress, so it is a hairline and a moving dot. Filling it
+   would give a reconnect the same weight as a failure. */
+.sidebar:not(.is-collapsed) .sidebar-status[data-state='busy'] {
+  border-color: color-mix(in srgb, var(--lc-warning) 45%, var(--lc-rule));
+}
+
+.sidebar:not(.is-collapsed) .sidebar-status[data-state='busy']::before {
+  animation: sidebar-status-pulse 1.6s ease-in-out infinite;
+}
+
+/* Bad is the one that has to interrupt, so it is filled and reads before its
+   own text does. */
+.sidebar:not(.is-collapsed) .sidebar-status[data-state='bad'] {
+  border-color: color-mix(in srgb, var(--lc-danger) 55%, var(--lc-rule));
+  background: color-mix(in srgb, var(--lc-danger) 14%, transparent);
+}
+
+/* Its own keyframes rather than the title bar's, which is being emptied out
+   and would take this with it. */
+@keyframes sidebar-status-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* --- Collapsed rail -------------------------------------------------------- */
+
+/* Icons only. The room list goes with the labels: a column of unlabelled keys
+   is not a navigable list, it is a puzzle. */
+.sidebar.is-collapsed {
+  width: 60px;
+}
+
+.sidebar.is-collapsed .nav-label,
+.sidebar.is-collapsed .nav-badge,
+.sidebar.is-collapsed .sidebar-title,
+.sidebar.is-collapsed .sidebar-brand,
+.sidebar.is-collapsed .sidebar-context,
+.sidebar.is-collapsed .account-text,
+.sidebar.is-collapsed .account-chevron,
+.sidebar.is-collapsed .titlebar-balance,
+.sidebar.is-collapsed .version {
+  display: none;
+}
+
+.sidebar.is-collapsed .sidebar-collapse .icon {
+  transform: rotate(180deg);
+}
+
+.sidebar.is-collapsed .sidebar-head,
+.sidebar.is-collapsed .nav-item,
+.sidebar.is-collapsed .account {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sidebar.is-collapsed .sidebar-tools {
+  flex-direction: column;
+}
+
+/* The rail has no room for a sentence, so trouble stays a dot and keeps its
+   colour and its pulse. Reading the words is what expanding is for. */
+.sidebar.is-collapsed .sidebar-status {
+  left: auto;
+  right: var(--lc-space-md);
+}
