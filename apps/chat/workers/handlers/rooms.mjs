@@ -85,7 +85,7 @@ function messageId(value, action) {
 }
 
 export function roomHandlers(ctx) {
-  const { attachmentsFor, rooms, swarm } = ctx
+  const { attachmentsFor, forgetAttachments, rooms, swarm } = ctx
 
   return {
     // The window can be reloaded while the worker keeps running, and `ready` is
@@ -469,6 +469,13 @@ export function roomHandlers(ctx) {
       return rooms.pair(invite)
     },
 
-    'room.leave': async (req) => ({ left: await rooms.leave(req.room) })
+    'room.leave': async (req) => {
+      const left = await rooms.leave(req.room)
+      // The room's attachment store is opened lazily and was never closed, so
+      // leaving released the room and kept its blobs open along with the swarm
+      // listener replicating them.
+      await forgetAttachments(req.room)
+      return { left }
+    }
   }
 }

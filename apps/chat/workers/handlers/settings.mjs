@@ -11,6 +11,32 @@ import { NETWORKS } from '@lcai-p2p/worker'
  * effective half is asked of the same code the worker uses rather than restated
  * here where it would drift.
  */
+/**
+ * Settings the interface is allowed to change.
+ *
+ * Every one of these has a control behind it. The list is deliberately closed
+ * rather than open: the worker reads a dozen settings and only these are ones a
+ * person sets from the app, so anything else arriving here is either a typo or
+ * something that should not be asking.
+ */
+const WRITABLE = new Set([
+  // Appearance, written by the window itself
+  'theme',
+  'sidebar',
+  // Network and availability
+  'network',
+  'blindPeers',
+  'hostRooms',
+  'hostTrusted',
+  'hostBudgetMb',
+  // The worker this machine can run
+  'workerPassword',
+  'keysDir',
+  'containerName',
+  'supportedModels',
+  'ollamaUrl'
+])
+
 export function settingsHandlers(ctx) {
   const {
     availability,
@@ -78,10 +104,28 @@ export function settingsHandlers(ctx) {
 
     'settings.write': (req) => {
       const patch = req.values && typeof req.values === 'object' ? req.values : {}
-      // Undefined clears a value back to the environment or the default,
-      // which is what an emptied field should mean.
+
       const next = { ...settings() }
       for (const [key, value] of Object.entries(patch)) {
+        // Named keys only. This handler took whatever it was given, and what it
+        // was given comes from a window whose whole job is rendering text
+        // written by strangers. Anything that got script running there could
+        // repoint the chain addresses, clear the worker's keystore password, or
+        // aim keysDir somewhere else entirely — none of which is an injection
+        // bug, all of which is a capability nobody meant to hand over.
+        if (!WRITABLE.has(key)) {
+          throw new Error(`${key} is not a setting this app writes`)
+        }
+
+        // A value must be a string. An object here would be written into
+        // settings.json and read back later by code expecting text, which is a
+        // crash at the next boot rather than at the call that caused it.
+        if (value !== null && typeof value !== 'string') {
+          throw new Error(`${key} has to be text`)
+        }
+
+        // Undefined clears a value back to the environment or the default,
+        // which is what an emptied field should mean.
         if (value === null || value === '') delete next[key]
         else next[key] = value
       }

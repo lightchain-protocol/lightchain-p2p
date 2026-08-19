@@ -855,7 +855,7 @@ const attachments = new Map()
 
 async function attachmentsFor(key) {
   const held = attachments.get(key)
-  if (held) return held
+  if (held) return held?.store ?? held
 
   const { encryptionKey } = rooms.credentials(key)
   const store = await Attachments.open({
@@ -863,11 +863,33 @@ async function attachmentsFor(key) {
     namespace: `attachments:${key}`,
     encryptionKey
   })
-  swarm.on('connection', (socket) => store.replicate(socket))
+
+  // Kept so leaving can take it off again. Adding a listener per room and never
+  // removing one means a long session that attaches in many rooms replicates
+  // every store it has ever opened on every new connection, including for rooms
+  // this machine has left.
+  const replicate = (socket) => store.replicate(socket)
+  swarm.on('connection', replicate)
   for (const socket of swarm.connections) store.replicate(socket)
 
-  attachments.set(key, store)
+  attachments.set(key, { store, replicate })
   return store
+}
+
+/**
+ * Lets go of a room's attachments.
+ *
+ * Leaving used to close the room and leave this behind: the store stayed open,
+ * its connection listener stayed attached, and both outlived any reason to
+ * exist. Nothing failed visibly, which is why it survived.
+ */
+async function forgetAttachments(key) {
+  const held = attachments.get(key)
+  if (!held) return
+
+  attachments.delete(key)
+  swarm.off('connection', held.replicate)
+  await held.store.close?.().catch(() => {})
 }
 
 /**
@@ -899,6 +921,7 @@ const localState = new SealedStore(fileByteStore(path.join(chatDir, 'local')), {
  */
 const ctx = {
   attachmentsFor,
+  forgetAttachments,
   availability,
   chatDir,
   chatStore,

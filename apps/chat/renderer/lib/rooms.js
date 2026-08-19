@@ -1379,6 +1379,10 @@ el.leaveBtn.addEventListener('click', async () => {
   // Before the room goes, not after: a popover left open over a conversation
   // that has been replaced is a menu standing on nothing.
   if (roomMenu?.matches(':popover-open')) roomMenu.hidePopover()
+  // Switching rooms stops the typing indicator; leaving one did not, so the
+  // interval kept firing `room.typing` at a room this peer had walked out of.
+  stopTyping()
+  clearComposerExtras()
   try {
     await request('room.leave', { room: key })
     rooms.delete(key)

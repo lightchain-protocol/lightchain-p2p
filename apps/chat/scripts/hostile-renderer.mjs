@@ -76,7 +76,53 @@ await evaluate(
   'new Promise((r) => document.readyState === "complete" ? r() : addEventListener("load", r))'
 )
 
-/** Talks to the worker the way the application does. */
+/** Talks to the worker the way the application does, inline so it runs in the window. */
+const asWorker = (name, fields = {}) =>
+  evaluate(
+    `(async () => { const ask = ${ASK}; return await ask(${JSON.stringify(name)}, ${JSON.stringify(fields)}) })()`
+  )
+
+// --- What a compromised window could ask the worker for -------------------------
+
+// Not injection. This window spends its life rendering text written by
+// strangers, and `settings.write` took whatever object it was handed — so
+// anything that got script running here could have repointed the chain
+// contracts or cleared the worker's keystore password. Those are capabilities
+// rather than payloads, and nothing here had ever tried to use one.
+for (const [what, values] of [
+  [
+    'repoint the AI config contract',
+    { aiConfigAddress: '0x0000000000000000000000000000000000000001' }
+  ],
+  [
+    'repoint the job registry',
+    { jobRegistryAddress: '0x0000000000000000000000000000000000000001' }
+  ],
+  ['aim the chain at a node of its own', { rpcUrl: 'http://127.0.0.1:1' }],
+  ['invent a setting', { somethingInvented: 'yes' }],
+  ['write something that is not text', { theme: { toString: 'no' } }]
+]) {
+  const reply = await asWorker('settings.write', { values })
+  report(`the worker refuses to ${what}`, Boolean(reply?.error), reply?.error?.slice(0, 58))
+}
+
+// One the interface genuinely owns still works, or the allowlist would be a way
+// of breaking the app rather than a guard on it.
+const permitted = await asWorker('settings.write', { values: { theme: 'dark' } })
+report('and still takes one the interface owns', !permitted?.error, permitted?.error ?? 'theme set')
+
+// Worth stating plainly rather than leaving as a gap somebody rediscovers: the
+// worker's keystore password IS writable from here, because the Settings form
+// legitimately sets it. The allowlist narrows what a compromised window can
+// reach from every setting the worker reads to the twelve the interface owns —
+// it does not make that window harmless.
+const ownsIt = await asWorker('settings.write', { values: { workerPassword: '' } })
+report(
+  'the keystore password stays writable, which the interface needs',
+  !ownsIt?.error,
+  'narrowed, not eliminated'
+)
+
 // --- The envelope holding up under load ---------------------------------------
 
 // Not hostility so much as ordinary traffic, but it belongs with the attacks
