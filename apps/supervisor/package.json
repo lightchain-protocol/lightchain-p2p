@@ -25,9 +25,11 @@
   "scripts": {
     "start": "bare bin.mjs --no-updates",
     "//make": "Builds run from the workspace root via scripts/make.mjs. Invoking bare-build from this directory produces a binary that crashes at startup.",
-    "make": "node ../../scripts/make.mjs supervisor"
+    "make": "node ../../scripts/make.mjs supervisor",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@lcai-p2p/chain": "workspace:*",
     "@lcai-p2p/host": "workspace:*",
     "@lcai-p2p/preflight": "workspace:*",
     "@lcai-p2p/wallet": "workspace:*",
@@ -45,7 +47,9 @@
     "which-runtime": "^1.4.0"
   },
   "devDependencies": {
+    "@lcai-p2p/vitest-config": "workspace:*",
     "bare-build": "^1.0.2",
-    "bare-runtime": "1.29.4"
+    "bare-runtime": "1.29.4",
+    "vitest": "^4.1.10"
   }
 }

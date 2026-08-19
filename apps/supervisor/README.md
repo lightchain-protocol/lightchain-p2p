@@ -35,8 +35,8 @@ so a current setup keeps working.
 | `NETWORK`              | `mainnet`                     |
 | `WORKER_PASSWORD`      | required                      |
 | `KEYS_DIR`             | `~/lightchain-worker/keys`    |
-| `AI_CONFIG_ADDRESS`    | required to `start`           |
-| `JOB_REGISTRY_ADDRESS` | required to `start`           |
+| `AI_CONFIG_ADDRESS`    | read from the registry        |
+| `JOB_REGISTRY_ADDRESS` | read from the registry        |
 | `SUPPORTED_MODELS`     | `llama3-8b`                   |
 | `OLLAMA_URL`           | platform-dependent, see below |
 | `CONTAINER_NAME`       | `lightchain-worker`           |
@@ -86,9 +86,13 @@ gateway on Windows automatically.
 **A tagged model name is rejected.** The worker matches jobs on `keccak256` of
 the `SUPPORTED_MODELS` string, so `llama3-8b:latest` silently resolves nothing.
 
-## Not yet wired
+## Contract addresses
 
-Contract address resolution. `AI_CONFIG_ADDRESS` and `JOB_REGISTRY_ADDRESS` must
-be supplied, where the toolkit reads them from the registry with `aiConfig()`
-and `jobRegistry()`. Until that is built, resolve them once with `cast` and set
-them in the environment.
+`start` reads `AI_CONFIG_ADDRESS` and `JOB_REGISTRY_ADDRESS` from the
+`WorkerRegistry` with `aiConfig()` and `jobRegistry()`, one round trip before
+the container is created. Nothing needs setting.
+
+Setting either by hand still wins, which is the escape hatch for a deployment
+the registry does not know about. If the registry cannot be reached and neither
+is set, `start` fails and says so rather than launching against defaults — a
+worker running on the wrong contracts accepts jobs it cannot settle.

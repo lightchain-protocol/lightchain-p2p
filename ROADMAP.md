@@ -111,11 +111,15 @@ scheme that was not `http` or `https`.
 The lifecycle is complete: `doctor`, `pull`, `import-key`, `keygen`, `register`,
 `start`, `status`, `stop`, `logs`.
 
-Two things remain. **Contract address resolution** — `AI_CONFIG_ADDRESS` and
-`JOB_REGISTRY_ADDRESS` are supplied by hand. This is no longer research:
-[`packages/chain`](packages/chain) resolves both from the registry in one call,
-verified against the live testnet, and wiring it into the supervisor is a small
-change. And **better keystore password storage**: the private key is stdin-only and never stored, but the password is
+**Contract address resolution is done.** `start` reads `AI_CONFIG_ADDRESS` and
+`JOB_REGISTRY_ADDRESS` from the `WorkerRegistry` before it creates the
+container, through [`packages/chain`](packages/chain), verified against the live
+testnet. Setting either by hand still wins, for a deployment the registry does
+not publish; an unreachable registry stops the start rather than falling back to
+a default, because a worker on the wrong contracts accepts jobs it cannot
+settle.
+
+One thing remains. **Better keystore password storage**: the private key is stdin-only and never stored, but the password is
 still an environment variable matching the toolkit's convention. The worker must
 survive unattended restarts so it has to be retrievable without a human, and Bare
 has no OS keychain binding today. A protected file or platform keychain would be

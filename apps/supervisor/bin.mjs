@@ -100,7 +100,7 @@ if (WORKER_COMMANDS.includes(subcommand)) {
         ok = worker.register(config, address)
         break
       case 'start':
-        ok = worker.start(config, address)
+        ok = await worker.start(config, address)
         break
     }
     Bare.exit(ok ? 0 : 1)

@@ -193,6 +193,9 @@ importers:
 
   apps/supervisor:
     dependencies:
+      '@lcai-p2p/chain':
+        specifier: workspace:*
+        version: link:../../packages/chain
       '@lcai-p2p/host':
         specifier: workspace:*
         version: link:../../packages/host
@@ -239,12 +242,18 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0
     devDependencies:
+      '@lcai-p2p/vitest-config':
+        specifier: workspace:*
+        version: link:../../packages/vitest-config
       bare-build:
         specifier: ^1.0.2
         version: 1.0.4(bare-buffer@3.7.0)(bare-bundle@1.10.0(bare-buffer@3.7.0)(bare-url@2.5.2))(bare-events@2.9.1)
       bare-runtime:
         specifier: 1.29.4
         version: 1.29.4(bare-buffer@3.7.0)(bare-url@2.5.2)
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.2.0)(vite@8.2.1(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))
 
   packages/blind:
     dependencies:

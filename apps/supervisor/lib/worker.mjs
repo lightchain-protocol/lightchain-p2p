@@ -21,6 +21,9 @@ import {
   stopWorker
 } from '@lcai-p2p/worker'
 import { encrypt } from '@lcai-p2p/wallet'
+import { withResolvedAddresses } from './addresses.mjs'
+
+export { withResolvedAddresses }
 
 /**
  * Executes the docker commands that @lcai-p2p/worker builds.
@@ -108,8 +111,23 @@ export function findKeystore(config, address) {
   return containerKeystorePath(selectKeystore(names, address).file)
 }
 
-export function start(config, address) {
+export async function start(config, address) {
   const keystore = findKeystore(config, address)
+
+  // Before the container, because a worker started against the wrong contracts
+  // takes jobs it cannot settle. Failing here costs one restart; failing later
+  // costs whatever it accepted in between.
+  let resolved
+  try {
+    resolved = await withResolvedAddresses(config)
+  } catch (err) {
+    console.error(`The contract addresses could not be read from the registry: ${err.message}`)
+    console.error(`Registry ${config.workerRegistryAddress} on ${config.rpcUrl}.`)
+    console.error('Set AI_CONFIG_ADDRESS and JOB_REGISTRY_ADDRESS to start without reaching it.')
+    return false
+  }
+
+  config = resolved
 
   // Removed first because --restart always means a stale container comes back
   // on its own and quietly shadows the one we are about to create.
