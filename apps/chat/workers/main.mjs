@@ -14,6 +14,8 @@ import { persistent } from 'bare-storage'
 import { isBareKit } from 'which-runtime'
 import { Attachments, RoomHost } from '@lcai-p2p/room'
 import { BlindRegistry, Priority } from '@lcai-p2p/blind'
+import BlindPeer from 'blind-peer'
+import RocksDB from 'rocksdb-native'
 import { NETWORKS, resolveConfig } from '@lcai-p2p/worker'
 import {
   Rpc,
@@ -222,6 +224,16 @@ function send(message) {
  * unlocked. Nothing else in the app does either.
  */
 const ROOM_KEY_PURPOSE = 'room registry'
+
+/**
+ * What this machine gives to other people's rooms when hosting, in megabytes.
+ *
+ * Upstream defaults to 100 GB, which is a number chosen for a server with a
+ * disk that exists for this. On somebody's laptop it is a promise to fill the
+ * drive. 512 MB holds a great many text rooms — they are messages, not media —
+ * and is small enough that nobody has to think about having agreed to it.
+ */
+const DEFAULT_HOST_MB = 512
 const legacyRegistryFile = path.join(chatDir, 'rooms.json')
 
 let registryKey = null
@@ -587,6 +599,74 @@ function blindPeers() {
 
 const availability = blindPeers()
 
+/**
+ * Holding other people's rooms, so somebody else's conversation outlives them.
+ *
+ * The other half of the arrangement above. `blindPeers` asks somebody to hold
+ * this machine's rooms; this holds theirs. Between them a room can survive
+ * everyone who is in it closing the app, without a foundation running anything.
+ *
+ * Off unless asked for, and that is not timidity. Turning it on means this
+ * machine stores bytes chosen by strangers and announces itself on a public
+ * network while doing it — which is a reasonable thing to consent to and an
+ * indefensible thing to assume.
+ *
+ * What is stored is ciphertext under a key that never leaves the room's
+ * members, so it cannot be read here. What is *not* hidden is that this machine
+ * is reachable at its address, and that some room exists. See the protection
+ * page in the app, which says the same thing to whoever is hosting.
+ */
+function hosting() {
+  if (setting('hostRooms', 'HOST_ROOMS') !== 'on') return null
+
+  const dir = path.join(chatDir, 'hosted')
+  fs.mkdirSync(dir, { recursive: true })
+
+  try {
+    const rocks = new RocksDB(path.join(dir, 'db'))
+    // Its own store. Hosted cores are other people's and must never land in the
+    // namespace this machine's own rooms and transcripts live in.
+    const store = new Corestore(path.join(dir, 'corestore'))
+
+    const peer = new BlindPeer(rocks, {
+      swarm,
+      store,
+      maxBytes: hostBudget(),
+      // The budget is enforced by eviction rather than refusal, so a full disk
+      // degrades to holding less rather than to failing.
+      enableGc: true,
+      // Nobody. `trustedPubKeys` grants the right to set `announce` and high
+      // priority, which together mean "store this and never collect it" —
+      // handing that to whoever asks is how one stranger fills the disk.
+      trustedPubKeys: []
+    })
+
+    return { peer, store, rocks, dir }
+  } catch (err) {
+    console.error('hosting rooms was asked for but could not start:', err.message)
+    return null
+  }
+}
+
+/** Bytes this machine will give to other people's rooms. */
+function hostBudget() {
+  const configured = Number(setting('hostBudgetMb', 'HOST_BUDGET_MB'))
+  const megabytes = Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_HOST_MB
+  return Math.round(megabytes) * 1024 * 1024
+}
+
+const host = hosting()
+
+if (host) {
+  await host.peer.ready()
+  // BlindPeer replicates a store it created. This one was supplied, so the
+  // wiring is ours — and forgetting it produces a peer that connects, holds
+  // everything and serves none of it.
+  swarm.on('connection', (socket) => host.store.replicate(socket))
+  await host.peer.listen()
+  console.log(`hosting rooms for others, up to ${Math.round(hostBudget() / 1024 / 1024)} MB`)
+}
+
 const rooms = await RoomHost.open({
   store: chatStore,
   swarm,
@@ -785,6 +865,7 @@ const ctx = {
   availability,
   chatDir,
   chatStore,
+  host,
   localState,
   rooms,
   send,
@@ -916,10 +997,19 @@ pipe.on('data', (data) => {
 
 goodbye(async () => {
   await rooms.close()
+  // Before the swarm, so hosted cores stop being served rather than being cut
+  // off mid-replication.
+  if (host) {
+    await host.peer.close().catch(() => {})
+  }
   await swarm.destroy()
   await pear.close()
   await chatStore.close()
   await pearStore.close()
+  if (host) {
+    await host.store.close().catch(() => {})
+    await host.rocks.close().catch(() => {})
+  }
 })
 
 console.log('storage:', pear.storage)

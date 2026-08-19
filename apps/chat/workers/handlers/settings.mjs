@@ -16,6 +16,7 @@ export function settingsHandlers(ctx) {
     availability,
     chatDir,
     forgetInference,
+    host,
     network,
     reconnectChain,
     saveSettings,
@@ -57,7 +58,21 @@ export function settingsHandlers(ctx) {
         // so trusting the latter silently produces a peer that stores rooms and
         // advertises none of them.
         dhtKey: ID.encode(swarm.dht.defaultKeyPair.publicKey),
-        storage: chatDir
+        storage: chatDir,
+        // What this machine is holding for other people, if it is. Somebody who
+        // has agreed to store strangers' data is owed a number rather than a
+        // reassurance, and without one the feature is a black box that quietly
+        // consumes a disk.
+        hosting: host
+          ? {
+              on: true,
+              key: ID.encode(host.peer.publicKey),
+              heldBytes: Number(host.peer.digest?.bytesAllocated ?? 0),
+              budgetBytes: Number(host.peer.maxBytes ?? 0),
+              cores: Number(host.peer.digest?.cores ?? 0),
+              evicting: Boolean(host.peer.needsGc?.())
+            }
+          : { on: false }
       }
     },
 

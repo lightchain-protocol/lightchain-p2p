@@ -10,7 +10,7 @@ importers:
     devDependencies:
       blind-peer:
         specifier: ^3.13.3
-        version: 3.13.3(bare-buffer@3.7.0)(bare-url@2.5.2)
+        version: 3.13.3(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
       corestore:
         specifier: ^7.12.0
         version: 7.12.0(bare-buffer@3.7.0)(bare-url@2.5.2)
@@ -80,6 +80,9 @@ importers:
       bare-storage:
         specifier: ^1.1.0
         version: 1.1.0(bare-buffer@3.7.0)(bare-url@2.5.2)
+      blind-peer:
+        specifier: ^3.13.3
+        version: 3.13.3(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
       corestore:
         specifier: ^7.12.0
         version: 7.12.0(bare-buffer@3.7.0)(bare-url@2.5.2)
@@ -92,6 +95,9 @@ importers:
       hypercore-crypto:
         specifier: ^3.6.2
         version: 3.7.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
+      hypercore-id-encoding:
+        specifier: ^1.3.0
+        version: 1.3.0
       hyperswarm:
         specifier: ^4.17.0
         version: 4.17.0(bare-buffer@3.7.0)(bare-url@2.5.2)
@@ -104,6 +110,9 @@ importers:
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
+      rocksdb-native:
+        specifier: ^3.17.4
+        version: 3.17.4(bare-url@2.5.2)
       which-runtime:
         specifier: ^1.3.2
         version: 1.4.0
@@ -260,7 +269,7 @@ importers:
         version: link:../vitest-config
       blind-peer:
         specifier: ^3.13.3
-        version: 3.13.3(bare-buffer@3.7.0)(bare-url@2.5.2)
+        version: 3.13.3(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
       corestore:
         specifier: ^7.12.0
         version: 7.12.0(bare-buffer@3.7.0)(bare-url@2.5.2)
@@ -575,7 +584,7 @@ importers:
         version: link:../vitest-config
       blind-peer:
         specifier: ^3.13.3
-        version: 3.13.3(bare-buffer@3.7.0)(bare-url@2.5.2)
+        version: 3.13.3(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
       eslint:
         specifier: ^10.8.1
         version: 10.8.1(jiti@2.7.0)
@@ -7100,9 +7109,9 @@ snapshots:
       - react-native-b4a
       - sodium-javascript
 
-  blind-peer-muxer@1.4.0(bare-buffer@3.7.0)(bare-url@2.5.2):
+  blind-peer-muxer@1.4.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2):
     dependencies:
-      blind-push: 1.0.2(bare-buffer@3.7.0)(bare-url@2.5.2)
+      blind-push: 1.0.2(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
       compact-encoding: 3.3.1
       hyperschema: 1.22.0(bare-buffer@3.7.0)
       protomux: 3.11.0
@@ -7114,13 +7123,13 @@ snapshots:
       - react-native-b4a
       - sodium-javascript
 
-  blind-peer@3.13.3(bare-buffer@3.7.0)(bare-url@2.5.2):
+  blind-peer@3.13.3(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2):
     dependencies:
       autobase: 7.28.1(bare-buffer@3.7.0)(bare-url@2.5.2)
       b4a: 1.8.1
       blind-peer-encodings: 3.3.1(bare-buffer@3.7.0)(bare-url@2.5.2)
-      blind-peer-muxer: 1.4.0(bare-buffer@3.7.0)(bare-url@2.5.2)
-      blind-push: 1.0.2(bare-buffer@3.7.0)(bare-url@2.5.2)
+      blind-peer-muxer: 1.4.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
+      blind-push: 1.0.2(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
       compact-encoding: 3.3.1
       corestore: 7.12.0(bare-buffer@3.7.0)(bare-url@2.5.2)
       hypercore: 11.35.1(bare-buffer@3.7.0)(bare-url@2.5.2)
@@ -7132,11 +7141,11 @@ snapshots:
       hyperswarm: 4.17.0(bare-buffer@3.7.0)(bare-url@2.5.2)
       ip-ban-list: 0.3.2(bare-buffer@3.7.0)(bare-url@2.5.2)
       protomux-rpc: 1.10.0
-      protomux-rpc-client: 2.4.0(bare-buffer@3.7.0)(bare-url@2.5.2)
+      protomux-rpc-client: 2.4.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
       protomux-rpc-client-pool: 2.3.0
       protomux-wakeup: 2.9.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
       ready-resource: 1.2.0
-      repl-swarm: 2.3.0(bare-buffer@3.7.0)(bare-url@2.5.2)
+      repl-swarm: 2.3.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
       resolve-reject-promise: 1.1.0
       rocksdb-native: 3.17.4(bare-url@2.5.2)
       safety-catch: 1.0.3
@@ -7152,7 +7161,7 @@ snapshots:
   blind-peering@2.6.3(bare-buffer@3.7.0)(bare-url@2.5.2):
     dependencies:
       b4a: 1.8.1
-      blind-peer-muxer: 1.4.0(bare-buffer@3.7.0)(bare-url@2.5.2)
+      blind-peer-muxer: 1.4.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
       hypercore-crypto: 3.7.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
       hypercore-id-encoding: 1.3.0
       hyperdht: 6.33.1(bare-buffer@3.7.0)(bare-url@2.5.2)
@@ -7167,7 +7176,7 @@ snapshots:
       - react-native-b4a
       - sodium-javascript
 
-  blind-push@1.0.2(bare-buffer@3.7.0)(bare-url@2.5.2):
+  blind-push@1.0.2(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2):
     dependencies:
       b4a: 1.8.1
       compact-encoding: 3.3.1
@@ -8556,7 +8565,7 @@ snapshots:
       - bare-buffer
       - react-native-b4a
 
-  hyperswarm-capability@1.1.1(bare-buffer@3.7.0)(bare-url@2.5.2):
+  hyperswarm-capability@1.1.1(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2):
     dependencies:
       b4a: 1.8.1
       hypercore-crypto: 3.7.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
@@ -9492,11 +9501,11 @@ snapshots:
     transitivePeerDependencies:
       - react-native-b4a
 
-  protomux-rpc-client@2.4.0(bare-buffer@3.7.0)(bare-url@2.5.2):
+  protomux-rpc-client@2.4.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2):
     dependencies:
       compact-encoding: 3.3.1
       hypercore-id-encoding: 1.3.0
-      hyperswarm-capability: 1.1.1(bare-buffer@3.7.0)(bare-url@2.5.2)
+      hyperswarm-capability: 1.1.1(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
       protomux-rpc: 1.10.0
       safety-catch: 1.0.3
       signal-promise: 1.0.3
@@ -9665,7 +9674,7 @@ snapshots:
   repeat-string@1.6.1:
     optional: true
 
-  repl-swarm@2.3.0(bare-buffer@3.7.0)(bare-url@2.5.2):
+  repl-swarm@2.3.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2):
     dependencies:
       hyperdht: 6.33.1(bare-buffer@3.7.0)(bare-url@2.5.2)
       sodium-universal: 5.0.1(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)
