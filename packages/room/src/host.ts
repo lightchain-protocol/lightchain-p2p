@@ -4,9 +4,15 @@ import z32 from 'z32'
 import Autobase from 'autobase'
 import BlindPairing from 'blind-pairing'
 import type Corestore from 'corestore'
-import { roomName, verifyAuthor, type ChatMessage, type ModelAnswer } from '@lcai-p2p/protocol'
+import {
+  resolveRoom,
+  verifyAuthor,
+  type ChatMessage,
+  type ModelAnswer,
+  type ResolvedMessage
+} from '@lcai-p2p/protocol'
 import { Presence, type PresenceState } from './presence.js'
-import { Room, RoomError, type Identity } from './room.js'
+import { Room, RoomError, type Identity, type SendOptions } from './room.js'
 
 /**
  * Every room a client is in, over one store and one swarm.
@@ -94,7 +100,39 @@ export interface RoomState {
    * one machine is the name everyone sees.
    */
   readonly name: string | null
+  /**
+   * Every entry, as written, with this peer's verdict on who wrote each.
+   *
+   * The log rather than the conversation: edits appear as separate messages,
+   * withdrawn text is still here, and reactions are individual entries. Use
+   * {@link conversation} to show a room; use this to inspect one.
+   */
   readonly messages: readonly AttributedMessage[]
+  /**
+   * The same room, with its events applied — the thing to render.
+   *
+   * Edits have replaced the text they rewrote, withdrawn messages are empty
+   * and carry `deletedAt`, reactions are gathered onto the messages they
+   * belong to, and the entries that did all of that are gone, because showing
+   * "reacted with a thumbs up" beside the thumbs up says it twice.
+   */
+  readonly conversation: readonly ResolvedAttributedMessage[]
+  /**
+   * What people have chosen to be called, by proven address.
+   *
+   * Only covers members whose signature checked out, because a name attached to
+   * an unproven identity is two claims where the first one has already failed.
+   * An address missing here has no name, and the address is what to show.
+   */
+  readonly names: Readonly<Record<string, string>>
+  /** Ids of pinned messages, in display order. */
+  readonly pinned: readonly string[]
+}
+
+/** A resolved message that also carries this peer's verdict on its author. */
+export interface ResolvedAttributedMessage extends ResolvedMessage {
+  readonly verified?: boolean
+  readonly answered?: boolean
 }
 
 /** The part of a Hyperswarm topic session a host uses. */
@@ -145,6 +183,14 @@ export interface RoomHostOptions {
   readonly verify?: AuthorChecks
   /** Called when the peers or typers in a room change. Nothing is persisted. */
   readonly onPresence?: (key: string, state: PresenceState) => void
+  /**
+   * Publish read receipts in every room.
+   *
+   * Off unless set, because a receipt tells other people when you read what
+   * they wrote and nobody agreed to that by opening a chat. Changed later
+   * through {@link RoomHost.setReceipts}.
+   */
+  readonly receipts?: boolean
 }
 
 /** A room that could not be reopened, and why. */
@@ -156,7 +202,7 @@ export interface FailedRoom {
 interface Entry {
   readonly room: Room
   readonly namespace: string
-  /** Typing and peer count. Nothing here is written anywhere. */
+  /** Typing, peer count, roster and receipts. Nothing here is written anywhere. */
   readonly presence: Presence
   discovery: DiscoveryLike | null
   unsubscribe: (() => void) | null
@@ -220,6 +266,8 @@ export class RoomHost {
   readonly #verify: AuthorChecks | null
   readonly #availability: RoomAvailability | null
   readonly #onPresence: ((key: string, state: PresenceState) => void) | null
+  /** Not readonly: a person can change their mind about receipts mid-session. */
+  #receipts: boolean
   #identity: Identity | null = null
   #pairing: BlindPairing | null = null
   #reattach: ReturnType<typeof setInterval> | null = null
@@ -253,6 +301,7 @@ export class RoomHost {
     this.#verify = opts.verify ?? null
     this.#availability = opts.availability ?? null
     this.#onPresence = opts.onPresence ?? null
+    this.#receipts = opts.receipts === true
     this.#settle = opts.settle ?? 50
     this.#announceTimeout = opts.announceTimeout ?? 10_000
     this.#rediscoverAfter = opts.rediscoverAfter ?? REDISCOVER_AFTER
@@ -534,9 +583,44 @@ export class RoomHost {
     return this.#pairing
   }
 
-  async send(key: string, text: string): Promise<RoomState> {
+  async send(key: string, text: string, options: SendOptions = {}): Promise<RoomState> {
     const room = this.#require(key)
-    await room.send(text)
+    await room.send(text, options)
+    return this.#stateOf(room)
+  }
+
+  /** Adds a reaction to a message, or takes one back. */
+  async react(key: string, target: string, emoji: string, on = true): Promise<RoomState> {
+    const room = this.#require(key)
+    await room.react(target, emoji, on)
+    return this.#stateOf(room)
+  }
+
+  /** Rewrites one of this peer's own messages. Refused on read if it is not. */
+  async edit(key: string, target: string, text: string): Promise<RoomState> {
+    const room = this.#require(key)
+    await room.edit(target, text)
+    return this.#stateOf(room)
+  }
+
+  /** Withdraws one of this peer's own messages. Does not erase it; nothing can. */
+  async deleteMessage(key: string, target: string): Promise<RoomState> {
+    const room = this.#require(key)
+    await room.deleteMessage(target)
+    return this.#stateOf(room)
+  }
+
+  /** Pins a message to the room, or unpins it. */
+  async pin(key: string, target: string, on = true): Promise<RoomState> {
+    const room = this.#require(key)
+    await room.pin(target, on)
+    return this.#stateOf(room)
+  }
+
+  /** Says what this peer would like to be called in a room. */
+  async nameSelf(key: string, name: string): Promise<RoomState> {
+    const room = this.#require(key)
+    await room.nameSelf(name)
     return this.#stateOf(room)
   }
 
@@ -553,8 +637,31 @@ export class RoomHost {
     if (typing) entry.presence.refresh()
   }
 
+  /**
+   * Says how far this peer has read in a room.
+   *
+   * Recorded whether or not receipts are on, and only published when they are,
+   * so that switching them on has something to say. Like typing, it goes over
+   * the presence channel and is written nowhere.
+   */
+  setRead(key: string, messageId: string | null): void {
+    this.#rooms.get(key)?.presence.setRead(messageId)
+  }
+
+  /**
+   * Publishes read receipts, or stops, in every room at once.
+   *
+   * One switch rather than one per room: it is a decision about what this
+   * person is prepared to publish about themselves, not about any particular
+   * conversation. Rooms opened afterwards inherit it.
+   */
+  setReceipts(enabled: boolean): void {
+    this.#receipts = enabled
+    for (const entry of this.#rooms.values()) entry.presence.setReceipts(enabled)
+  }
+
   presenceOf(key: string): PresenceState {
-    return this.#rooms.get(key)?.presence.state ?? { peers: 0, typing: 0 }
+    return this.#rooms.get(key)?.presence.state ?? { peers: 0, typing: 0, roster: [] }
   }
 
   /**
@@ -593,6 +700,18 @@ export class RoomHost {
   async addWriter(key: string, writerKey: string): Promise<RoomState> {
     const room = this.#require(key)
     await room.addWriter(writerKey.trim())
+    return this.#stateOf(room)
+  }
+
+  /**
+   * Takes write access away from a peer.
+   *
+   * Any writer may do this, because any writer can already add an accomplice.
+   * It is not moderation and must not be presented as though it were.
+   */
+  async removeWriter(key: string, writerKey: string): Promise<RoomState> {
+    const room = this.#require(key)
+    await room.removeWriter(writerKey.trim())
     return this.#stateOf(room)
   }
 
@@ -665,19 +784,48 @@ export class RoomHost {
    */
   useIdentity(identity: Identity | null): void {
     this.#identity = identity
-    for (const entry of this.#rooms.values()) entry.room.useIdentity(identity)
+    for (const entry of this.#rooms.values()) {
+      entry.room.useIdentity(identity)
+      // The roster carries whatever address this peer claims, so unlocking a
+      // wallet has to reach the people who are already connected rather than
+      // only the ones who arrive afterwards.
+      entry.presence.setAddress(identity?.address ?? null)
+    }
   }
 
   async #stateOf(room: Room): Promise<RoomState> {
     const messages = await room.messages()
+    const attributed = this.#verify
+      ? messages.map((m) => this.#attribute(room.key, m))
+      : (messages as AttributedMessage[])
+
+    // Resolving happens here rather than in whatever is displaying the room.
+    // Two clients that applied edits, withdrawals and reactions differently
+    // would show different conversations to people who are in the same one, and
+    // the rules are subtle enough — last write wins, per author, per emoji,
+    // withdrawal beating rewrite — that nobody should be reimplementing them.
+    //
+    // Authorship comes from this host's own verification and nowhere else. A
+    // message is only allowed to rewrite or withdraw another when its signature
+    // checked out, so `verified` is the whole gate: without it, anybody in the
+    // room could delete anybody's message by writing an address in a field.
+    const resolved = resolveRoom(attributed, {
+      authorOf: (message) =>
+        (message as AttributedMessage).verified === true ? (message.author ?? null) : null
+    })
 
     return {
       key: room.key,
       writerKey: room.writerKey,
       writable: room.writable,
       // From the same messages already in hand, rather than a second read.
-      name: roomName(messages),
-      messages: this.#verify ? messages.map((m) => this.#attribute(room.key, m)) : messages
+      name: resolved.name,
+      messages: attributed,
+      conversation: resolved.messages as readonly ResolvedAttributedMessage[],
+      // A plain object because this crosses into the view as JSON, and a Map
+      // arrives there as `{}`.
+      names: Object.fromEntries(resolved.names),
+      pinned: resolved.pinned
     }
   }
 
@@ -740,7 +888,10 @@ export class RoomHost {
       namespace: record.namespace,
       presence: new Presence({
         topic: room.discoveryKey,
-        onChange: (state) => this.#onPresence?.(room.key, state)
+        onChange: (state) => this.#onPresence?.(room.key, state),
+        writerKey: room.writerKey,
+        address: this.#identity?.address ?? null,
+        receipts: this.#receipts
       }),
       discovery: null,
       unsubscribe: null,

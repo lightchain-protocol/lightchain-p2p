@@ -50,6 +50,25 @@ export const SCRYPT_P = 1
 /** The standard Ethereum account path. A phrase saved here restores anywhere. */
 export const ACCOUNT_PATH = "m/44'/60'/0'/0"
 
+/**
+ * The highest account this wallet will derive.
+ *
+ * BIP-32 offers a little over two billion children at this level, and almost
+ * none of them are reachable. A phrase restored somewhere else is searched by
+ * walking forward from zero and stopping after a run of unused accounts —
+ * twenty of them, by BIP-44's convention — so an account at index nine million
+ * is not a high-numbered account, it is one no other wallet will ever show its
+ * owner again. The cap sits far above any plausible use and far below the
+ * numbers that arrive by accident: a timestamp, a balance in wei, or a value
+ * that was meant to be a length.
+ */
+export const MAX_ACCOUNT_INDEX = 999
+
+/** Whether a number names an account. Useful to an interface before it asks. */
+export function isAccountIndex(index: number): boolean {
+  return Number.isInteger(index) && index >= 0 && index <= MAX_ACCOUNT_INDEX
+}
+
 export interface Vault {
   readonly version: 1
   readonly kdf: 'scrypt'
@@ -168,8 +187,10 @@ function validate(value: unknown): Vault {
  * first address here is the first address anywhere else the phrase is restored.
  */
 export function derivePrivateKey(phrase: string, index = 0): string {
-  if (!Number.isInteger(index) || index < 0) {
-    throw new VaultError(`account index must be a non-negative integer, got ${index}`)
+  if (!isAccountIndex(index)) {
+    throw new VaultError(
+      `account index must be a whole number between 0 and ${MAX_ACCOUNT_INDEX}, got ${index}`
+    )
   }
 
   const clean = normalise(phrase)

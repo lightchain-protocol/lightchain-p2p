@@ -34,6 +34,8 @@ declare module 'autobase' {
   export interface ApplyHost {
     addWriter(key: Uint8Array, opts?: { indexer?: boolean; isIndexer?: boolean }): Promise<void>
     removeWriter(key: Uint8Array): Promise<void>
+    /** False for the last indexer, which Autobase will not let go. */
+    removeable(key: Uint8Array): boolean
   }
 
   export interface ApplyNode {
@@ -90,6 +92,35 @@ declare module 'z32' {
   export default z32
 }
 
+/**
+ * Taken from hyperblobs 2.12.1 rather than from memory.
+ *
+ * Two details are easy to get wrong and both matter. `put` resolves to the id
+ * of what it wrote, which is the only way to find the bytes again. And `get`
+ * can resolve to null as well as reject — an unavailable block and an expired
+ * wait are different failures, and a caller that only catches will treat the
+ * first as success and hand back nothing.
+ */
+declare module 'hyperblobs' {
+  import type { HypercoreLike } from 'corestore'
+
+  /** Where a blob sits inside the core. Four numbers, and the whole address. */
+  export interface BlobId {
+    blockOffset: number
+    blockLength: number
+    byteOffset: number
+    byteLength: number
+  }
+
+  export default class Hyperblobs {
+    constructor(core: HypercoreLike, opts?: { blockSize?: number })
+    readonly core: HypercoreLike
+    put(blob: Uint8Array, opts?: { blockSize?: number }): Promise<BlobId>
+    get(id: BlobId, opts?: { wait?: boolean; timeout?: number }): Promise<Buffer | null>
+    close(): Promise<void>
+  }
+}
+
 declare module 'blind-pairing' {
   /** What a host receives when someone presents an invite. */
   export interface Candidate {
@@ -130,12 +161,26 @@ declare module 'blind-pairing' {
 }
 
 declare module 'protomux' {
+  import type { Encoding } from 'compact-encoding'
+
   export interface ProtomuxMessage<T> {
     send(value: T): void
   }
 
   export interface ProtomuxChannel {
-    addMessage<T>(opts: { encoding: unknown; onmessage: (value: T) => void }): ProtomuxMessage<T>
+    /**
+     * Registers one message type on the channel.
+     *
+     * **The order these are called in is the wire format.** The type that
+     * prefixes every frame is the index the message was registered at, and a
+     * frame whose type is past the end of the local list is discarded rather
+     * than rejected — which is what lets a channel gain messages without
+     * breaking the peers that predate them.
+     */
+    addMessage<T>(opts: {
+      encoding: Encoding<T>
+      onmessage: (value: T) => void
+    }): ProtomuxMessage<T>
     open(handshake?: unknown): void
     close(): void
   }
@@ -170,11 +215,30 @@ declare module 'protomux' {
 }
 
 declare module 'compact-encoding' {
+  /** The cursor an encoding measures into, writes into, and reads out of. */
+  export interface EncodingState {
+    buffer: Uint8Array | null
+    start: number
+    end: number
+  }
+
+  /**
+   * A codec, in the two-pass form the whole Holepunch stack uses: `preencode`
+   * measures so the caller can allocate exactly once, then `encode` fills the
+   * buffer it allocated. A composite encoding is written by calling the parts
+   * in the same order in both passes, which is why they are declared together.
+   */
+  export interface Encoding<T> {
+    preencode(state: EncodingState, value: T): void
+    encode(state: EncodingState, value: T): void
+    decode(state: EncodingState): T
+  }
+
   const c: {
-    readonly bool: unknown
-    readonly string: unknown
-    readonly uint: unknown
-    readonly json: unknown
+    readonly bool: Encoding<boolean>
+    readonly string: Encoding<string>
+    readonly uint: Encoding<number>
+    readonly json: Encoding<unknown>
   }
   export default c
 }

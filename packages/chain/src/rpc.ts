@@ -76,6 +76,59 @@ export interface Receipt {
 export interface WaitOptions {
   readonly timeout?: number
   readonly interval?: number
+  /**
+   * How deep to wait before returning.
+   *
+   * One is the default and returns at the first receipt: the including block
+   * counts as the first confirmation, which is what explorers and every other
+   * client mean by the word. Six waits until five further blocks sit on top.
+   *
+   * Depth is not finality. A block that has already been built on can still be
+   * reorganised away, taking the receipt with it, and each further confirmation
+   * only makes that less likely rather than impossible. How much depth is worth
+   * having depends on the chain's consensus, so the number belongs to the
+   * caller rather than to a default chosen here.
+   */
+  readonly confirmations?: number
+}
+
+/**
+ * A transaction as a node holds it, whether mined or still in the mempool.
+ *
+ * Not the `Transaction` in `account.ts`, which is the thing that gets signed.
+ * The two overlap and are not the same shape: this one has been broadcast, so
+ * it has a hash, a recovered sender, and either a block or nothing.
+ */
+export interface TransactionDetails {
+  readonly hash: string
+  /**
+   * Recovered from the signature by the node, and lowercase as it reports it.
+   * The same is true of `to`. Compare case-insensitively, or run either through
+   * `toChecksumAddress` before showing it to anyone.
+   */
+  readonly from: string
+  /** Null for a contract creation, which is the only transaction with no recipient. */
+  readonly to: string | null
+  readonly nonce: bigint
+  readonly value: bigint
+  /** Call data. Named as the JSON-RPC field is, which is `input` and not `data`. */
+  readonly input: string
+  /** The limit that was signed, not what was used. The receipt has that. */
+  readonly gas: bigint
+  /** Null on a legacy transaction, which has a `gasPrice` and neither of these. */
+  readonly maxFeePerGas: bigint | null
+  readonly maxPriorityFeePerGas: bigint | null
+  /**
+   * What the sender is actually paying. Nodes report the fee cap here while a
+   * type 2 transaction is pending and the effective price once it is mined, so
+   * it is worth reading only alongside `blockNumber`.
+   */
+  readonly gasPrice: bigint | null
+  /** Null while pending. */
+  readonly blockNumber: bigint | null
+  readonly blockHash: string | null
+  /** 2 for EIP-1559, which is all this package signs. */
+  readonly type: number
 }
 
 interface RawReceipt {
@@ -86,6 +139,22 @@ interface RawReceipt {
   readonly status: string
   readonly contractAddress?: string | null
   readonly logs?: readonly Log[]
+}
+
+interface RawTransaction {
+  readonly hash: string
+  readonly from: string
+  readonly to?: string | null
+  readonly nonce: string
+  readonly value: string
+  readonly input?: string
+  readonly gas: string
+  readonly gasPrice?: string | null
+  readonly maxFeePerGas?: string | null
+  readonly maxPriorityFeePerGas?: string | null
+  readonly blockNumber?: string | null
+  readonly blockHash?: string | null
+  readonly type?: string
 }
 
 export class Rpc {
@@ -236,7 +305,42 @@ export class Rpc {
   }
 
   /**
-   * Waits for inclusion.
+   * A transaction as the node has it, mined or pending. Null when it has never
+   * seen the hash.
+   *
+   * Worth having alongside the receipt because a receipt exists only once a
+   * transaction is mined, which leaves three quite different situations looking
+   * identical: still queued, dropped from the mempool, and never broadcast at
+   * all. This tells them apart — null for a hash the node does not know, a null
+   * `blockNumber` for one it is holding, a number for one it has mined — and
+   * that is the difference between a wallet that can say what is happening and
+   * one that can only show a spinner.
+   */
+  async transactionByHash(hash: string): Promise<TransactionDetails | null> {
+    const raw = await this.send<RawTransaction | null>('eth_getTransactionByHash', [hash])
+    if (!raw) return null
+
+    return {
+      hash: raw.hash,
+      from: raw.from,
+      to: raw.to ?? null,
+      nonce: fromQuantity(raw.nonce),
+      value: fromQuantity(raw.value),
+      input: raw.input ?? '0x',
+      gas: fromQuantity(raw.gas),
+      gasPrice: raw.gasPrice ? fromQuantity(raw.gasPrice) : null,
+      maxFeePerGas: raw.maxFeePerGas ? fromQuantity(raw.maxFeePerGas) : null,
+      maxPriorityFeePerGas: raw.maxPriorityFeePerGas
+        ? fromQuantity(raw.maxPriorityFeePerGas)
+        : null,
+      blockNumber: raw.blockNumber ? fromQuantity(raw.blockNumber) : null,
+      blockHash: raw.blockHash ?? null,
+      type: raw.type ? Number(fromQuantity(raw.type)) : 0
+    }
+  }
+
+  /**
+   * Waits for inclusion, and optionally for depth on top of it.
    *
    * Timing out does not mean the transaction failed — it may still be pending,
    * and it may still be mined afterwards. The distinction matters because
@@ -244,17 +348,38 @@ export class Rpc {
    */
   async waitForReceipt(
     hash: string,
-    { timeout = 120_000, interval = 1_500 }: WaitOptions = {}
+    { timeout = 120_000, interval = 1_500, confirmations = 1 }: WaitOptions = {}
   ): Promise<Receipt> {
+    if (!Number.isInteger(confirmations) || confirmations < 1) {
+      throw new RpcError(
+        `confirmations must be a whole number of at least 1, got ${confirmations}. Inclusion is one confirmation; there is nothing shallower to wait for.`
+      )
+    }
+
     const deadline = Date.now() + timeout
+    const depth = BigInt(confirmations)
 
     for (;;) {
+      // Read afresh every round rather than keeping the first answer. A reorg
+      // can move a transaction into a different block or drop it back into the
+      // mempool, and depth counted from a block that no longer contains it is
+      // worse than no count at all — it is a confident wrong answer.
       const receipt = await this.transactionReceipt(hash)
-      if (receipt) return receipt
+
+      if (receipt && confirmations === 1) return receipt
+      if (receipt) {
+        // The including block is itself the first confirmation, so a head at
+        // the same height is already one deep.
+        const head = await this.blockNumber()
+        if (head - receipt.blockNumber + 1n >= depth) return receipt
+      }
 
       if (Date.now() >= deadline) {
+        const seconds = Math.round(timeout / 1000)
         throw new RpcError(
-          `${hash} was not mined within ${Math.round(timeout / 1000)}s. It may still be pending; do not resend it without checking the nonce.`
+          receipt
+            ? `${hash} was mined in block ${receipt.blockNumber} but had not reached ${confirmations} confirmations within ${seconds}s. It is included and the nonce is spent, so resending would be a second transaction rather than a retry.`
+            : `${hash} was not mined within ${seconds}s. It may still be pending; do not resend it without checking the nonce.`
         )
       }
       await new Promise((resolve) => setTimeout(resolve, interval))

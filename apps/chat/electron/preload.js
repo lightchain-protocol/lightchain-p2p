@@ -26,6 +26,21 @@ contextBridge.exposeInMainWorld('bridge', {
   notify: (title, body) => ipcRenderer.invoke('app:notify', { title, body }),
   /** The module grid for a QR code: `{ size, data }`, or null if it would not fit. */
   qr: (text) => ipcRenderer.invoke('app:qr', text),
+  /**
+   * Opens a file picker and returns what was chosen, as bytes.
+   *
+   * The renderer is sandboxed and has no filesystem, which is the right way
+   * round: it never learns a path, only the name and the contents, so nothing
+   * it does can be steered at a location on disk.
+   */
+  chooseFiles: (opts) => ipcRenderer.invoke('app:chooseFiles', opts),
+  /**
+   * Saves bytes somewhere the person chooses.
+   *
+   * The suggested name is scrubbed in the main process before it reaches the
+   * dialog, because it came from whoever sent the attachment.
+   */
+  saveFile: (request) => ipcRenderer.invoke('app:saveFile', request),
   /** The `lightchain://` link that started the app, if one did. Consumed once. */
   takeDeepLink: () => ipcRenderer.invoke('app:takeDeepLink'),
   onDeepLink: (listener) => {

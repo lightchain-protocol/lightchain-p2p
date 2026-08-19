@@ -81,6 +81,34 @@ moment it is created. An unlocked wallet holds a **derived `Account` and not the
 phrase** — it can sign, which is what unlocked is for, but it cannot hand over
 the thing that opens every account forever.
 
+## More than one account
+
+One phrase holds many accounts and exactly one of them is active. `unlock` takes
+an index, `switchAccount` moves between them, and both default to the first —
+the account every other wallet calls "Account 1" — so nothing that never
+mentions an index behaves differently than it did. `WalletStatus` reports which
+account is in use and the full path it came from.
+
+Switching costs the password, unavoidably: an unlocked wallet holds a derived
+account and not the phrase, so there is nothing in memory a second account could
+come from. Locking forgets which account was active, because there is nowhere to
+remember it that survives a restart and half-remembering would mean coming back
+to account three this afternoon and to account zero tomorrow.
+
+**Switching changes every derived key.** Room keys and transcripts are sealed
+under a signature by the active account, so after a switch the room list is
+empty, history is empty and local state is back to its defaults. Nothing has
+been deleted and switching back returns all of it. That is what a second account
+is for — a separate identity with its own rooms rather than a second address for
+the same ones — and it is also the most surprising thing this package does, so
+an interface offering the switch should say so beforehand.
+
+Indices stop at 999. BIP-32 offers two billion and almost none of them can be
+found again, because a wallet restoring this phrase elsewhere walks forward from
+zero and gives up after a run of empty accounts. An account at index nine
+million is not a high-numbered account, it is a lost one — and the cap is what
+turns a timestamp arriving where an index was meant into an error.
+
 ## Changing the password
 
 `changePassword` reseals the vault and moves nothing else. The phrase is what
@@ -109,6 +137,42 @@ Both `create` and `importPhrase` reopen what they just wrote before reporting
 success. A vault that cannot be opened is otherwise discovered when the user
 needs it, which is the worst possible moment.
 
+## Local state, sealed with the wallet
+
+`SealedStore` is a keyed document store for what an application keeps that must
+never reach a peer: unread markers, half-typed drafts, muted and blocked people,
+notification preferences, archived rooms, an address book, a local record of
+what was spent. Documents are JSON, sealed under the derived keys above, and the
+bytes go wherever an injected `ByteStore` puts them — a directory in the worker,
+a map in the tests. It generalises what `apps/chat` already does for its room
+list.
+
+**A key per document, not one per store.** A seal authenticates the bytes it
+covers and says nothing about which document they are, so under a single key the
+drafts file opens perfectly well as the preferences file, and anyone able to
+write in the directory could copy one over the other. Deriving the key from the
+document's name as well makes a swapped file simply fail to open. It is no
+defence against a document being replaced by an older copy of itself; that needs
+a counter the attacker cannot write, and there is nowhere to put one.
+
+**A prefix per identity.** Two accounts of one phrase are two identities with
+two sets of documents, and their bytes must not land on the same name —
+otherwise the second identity to write replaces a file the first can still open,
+and "switch back and it returns" stops being true. The prefix is a hash of a
+derived key rather than of the address, so a directory listing does not
+enumerate which accounts this machine holds.
+
+**Damage is reported, not raised.** A document that will not open degrades to
+the empty value the caller named, because a damaged preferences file must not be
+what stops the application starting. Silence would be worse than a crash, so
+`damaged()` lists the documents that would not open and `onDamaged` fires as it
+happens. The report has to arrive before the next write replaces the unreadable
+bytes, which is the whole reason it exists.
+
+**No key, no store.** Locked, it reads as empty, lists nothing and writes nothing
+at all — writing would mean inventing a key. `write` and `delete` return whether
+they did anything, so a caller can tell saved from locked.
+
 ## What this does not do
 
 **It does not protect against this machine.** An unlocked wallet holds a key in
@@ -117,5 +181,6 @@ password at leisure — half a second per guess, on their hardware, for as long 
 they like. A long password is the whole defence.
 
 There is no auto-lock on inactivity yet, no passphrase-protected phrase
-(BIP-39's 25th word), no hardware wallet, and only account 0 is used — later
-indices can be derived and their addresses read, but not switched to.
+(BIP-39's 25th word), and no hardware wallet. Nothing here enumerates the
+accounts a phrase has actually been used with either: an interface that wants to
+list them reads `addressAt` at each index and decides for itself where to stop.

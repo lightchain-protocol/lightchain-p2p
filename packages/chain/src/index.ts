@@ -41,12 +41,23 @@ export {
   RpcError,
   type CallRequest,
   type FeeEstimate,
+  type Log,
   type Receipt,
   type RpcOptions,
+  type TransactionDetails,
   type WaitOptions
 } from './rpc.js'
 
-export { sendTransaction, upfrontCost, type SendRequest, type SentTransaction } from './send.js'
+export {
+  FEE_PER_GAS_CEILING,
+  REPLACEMENT_BUMP_PERCENT,
+  cancel,
+  sendTransaction,
+  speedUp,
+  upfrontCost,
+  type SendRequest,
+  type SentTransaction
+} from './send.js'
 
 export {
   WORKER_REGISTRY_ADDRESS,

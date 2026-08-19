@@ -11,27 +11,56 @@ with the longest lead times are procurement and infrastructure rather than code.
 
 ## Built and verified
 
-|                             | Tests | Notes                                                                                         |
-| --------------------------- | ----- | --------------------------------------------------------------------------------------------- |
-| `packages/chain`            | 103   | Reads Lightchain and signs for it, every byte checked against viem.                           |
-| `packages/wallet`           | 68    | BIP-39 phrase, BIP-32 accounts, matched to viem. Keystore V3 export checked against Foundry.  |
-| `packages/inference`        | 48    | The session handshake, the prompt and the relay. Runs under Bare.                             |
-| `packages/protocol`         | 44    | Model references, manifests and room entries. A reference is a key **and** a version.         |
-| `packages/room`             | 30    | Multi-writer rooms on Autobase, and the host that keeps several of them.                      |
-| `packages/worker`           | 30    | Network profiles, config validation, Docker orchestration, container state.                   |
-| `packages/ui`               | 31    | Design tokens and platform conventions, held to WCAG contrast in tests.                       |
-| `packages/preflight`        | 28    | Host readiness with actionable remedies.                                                      |
-| `packages/host`             | 15    | Probes the machine a worker would run on: Docker, Ollama, GPU, memory, disk.                  |
-| `packages/inference-crypto` | 15    | ECDH P-256 and AES-256-GCM as the deployed workers speak it, under Bare.                      |
-| `packages/safety`           | 10    | Refusal-list decision logic.                                                                  |
-| `packages/drive`            | 9     | Publish a model, resolve it, range-read weights. Survives the publisher going offline.        |
-| `packages/seed`             | 6     | Holds and serves drives after the publisher leaves.                                           |
-| `packages/testkit`          | 6     | Two-machine harness with a negative control.                                                  |
-| `packages/blind`            | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server. |
+|                             | Tests | Notes                                                                                                               |
+| --------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------- |
+| `packages/chain`            | 135   | Reads Lightchain and signs for it, every byte checked against viem. Fees, replacement and confirmation depth.       |
+| `packages/room`             | 112   | Multi-writer rooms on Autobase, the host that keeps several, presence, attachments, and a suite of abuses.          |
+| `packages/wallet`           | 100   | BIP-39 phrase, BIP-32 accounts at any index, a sealed store for local state, Keystore V3 checked against Foundry.   |
+| `packages/protocol`         | 78    | Model references, manifests, room entries and the rules for resolving them. A reference is a key **and** a version. |
+| `packages/ui`               | 57    | Design tokens and identicons, held to WCAG contrast in tests.                                                       |
+| `packages/inference`        | 48    | The session handshake, the prompt and the relay. Runs under Bare.                                                   |
+| `packages/worker`           | 30    | Network profiles, config validation, Docker orchestration, container state.                                         |
+| `packages/preflight`        | 28    | Host readiness with actionable remedies.                                                                            |
+| `packages/host`             | 15    | Probes the machine a worker would run on: Docker, Ollama, GPU, memory, disk.                                        |
+| `packages/inference-crypto` | 15    | ECDH P-256 and AES-256-GCM as the deployed workers speak it, under Bare.                                            |
+| `packages/safety`           | 10    | Refusal-list decision logic.                                                                                        |
+| `packages/drive`            | 9     | Publish a model, resolve it, range-read weights. Survives the publisher going offline.                              |
+| `packages/seed`             | 6     | Holds and serves drives after the publisher leaves.                                                                 |
+| `packages/testkit`          | 6     | Two-machine harness with a negative control.                                                                        |
+| `packages/blind`            | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server.                       |
 
-**447 tests.** CI green on every push. The six-platform build matrix compiles a
+**653 tests.** CI green on every push. The six-platform build matrix compiles a
 standalone supervisor binary for Windows, macOS and Linux on x64 and arm64, and
 every runner executes the binary it produced.
+
+### The fork that was one feature away
+
+Worth recording, because it is the kind of mistake this stack punishes
+permanently and it was found by adding the first feature that would have
+triggered it.
+
+A room's Autobase view is a Hypercore that indexers sign and every peer must
+agree on byte for byte. `apply` decided what to put in it by calling
+`isValidEntry` — which runs the **full parser**. So the first client to
+understand one more event kind would have appended an entry that every older
+client skipped, produced a different view, and forked the room away from
+everybody still on the old build. Forked permanently, because the entries are
+already signed and an append-only log cannot be migrated.
+
+The same mistake had been made once before at a different level and fixed:
+`apply` used to append the parser's _output_, so a client that understood one
+more optional field wrote a different view from one that did not. Appending the
+raw value fixed what went in. It did not fix the decision to go in at all.
+
+Both halves are now closed. `entryAction` decides using only facts that can
+never change — is this an object, does it have a `type`, is that type one of the
+two Autobase must act on — and never consults the parser. Unknown event kinds
+are dropped on read while the message survives, because every event rides an
+ordinary message whose text is written to stand alone. Four tests write entries
+this build cannot read and prove they replicate intact.
+
+Nothing is published, so this cost nothing to fix. After a release it would have
+been unfixable.
 
 `apps/supervisor` has the full worker lifecycle — `doctor`, `pull`, `import-key`,
 `keygen`, `register`, `start`, `status`, `stop`, `logs` — running from the
@@ -58,6 +87,7 @@ those are the ones nobody has looked at.
 | `scripts/change-password.mjs`     | 9 checks that a password change moves the vault and nothing else.                                                                                |
 | `scripts/reconnects.mjs`          | 5 checks that a restarted instance is found again by the peer that stayed up, and does not return as a second writer.                            |
 | `scripts/drive-two-instances.mjs` | The whole conversation through the real interface, 16 steps.                                                                                     |
+| `scripts/conversation-check.mjs`  | 11 checks on replying, reacting, editing and withdrawing, clicked rather than called.                                                            |
 | `scripts/wsl-soak.mjs`            | Four writers, concurrent bursts, clock skew, restart and catch-up.                                                                               |
 
 Five real defects came out of the first run and are fixed: invites were served
@@ -317,6 +347,7 @@ locally.
    protection cannot be enabled until they are real handles.
 
 Mobile is decided: deferred, see [ADR 0001](docs/decisions/0001-defer-mobile.md).
+Hardware wallets are decided: not now, see [ADR 0006](docs/decisions/0006-hardware-wallets.md).
 
 ---
 

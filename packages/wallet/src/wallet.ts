@@ -8,9 +8,11 @@ import {
 import { encrypt as encryptKeystore, type KeystoreV3 } from './keystore.js'
 import {
   ACCOUNT_PATH,
+  MAX_ACCOUNT_INDEX,
   VaultError,
   derivePrivateKey,
   generatePhrase,
+  isAccountIndex,
   isValidPhrase,
   normalise,
   open,
@@ -29,6 +31,11 @@ import {
  * That is deliberate: an unlocked wallet can sign, which is what it is for, but
  * it cannot hand over the thing that would let someone drain every account
  * derived from it.
+ *
+ * One phrase holds many accounts and exactly one of them is active — the first,
+ * unless something asked for another. They are separate identities rather than
+ * separate addresses for one, which matters more than it sounds: see
+ * `switchAccount`.
  */
 
 export class WalletError extends Error {
@@ -49,6 +56,11 @@ export interface WalletStatus {
   readonly unlocked: boolean
   /** Only known while unlocked: the address lives in the phrase, not beside it. */
   readonly address: string | null
+  /**
+   * Which account of the phrase is in use. Zero unless something switched it,
+   * and zero again whenever the wallet is locked.
+   */
+  readonly accountIndex: number
   /** The derivation path, so a user can restore elsewhere without guessing. */
   readonly path: string
 }
@@ -72,9 +84,24 @@ export function memoryVaultStore(initial: Vault | null = null): VaultStore {
   }
 }
 
+/**
+ * Refuses an index before anything expensive happens.
+ *
+ * Opening the vault costs half a second of scrypt, and there is no sense
+ * spending it to discover that the caller passed a fraction or a timestamp.
+ */
+function requireAccountIndex(index: number): void {
+  if (!isAccountIndex(index)) {
+    throw new WalletError(
+      `account index must be a whole number between 0 and ${MAX_ACCOUNT_INDEX}, got ${index}`
+    )
+  }
+}
+
 export class Wallet {
   readonly #store: VaultStore
   #account: Account | null = null
+  #index = 0
 
   constructor(store: VaultStore) {
     this.#store = store
@@ -85,8 +112,15 @@ export class Wallet {
       exists: this.#store.read() !== null,
       unlocked: this.#account !== null,
       address: this.#account?.address ?? null,
-      path: `${ACCOUNT_PATH}/0`
+      accountIndex: this.#index,
+      path: `${ACCOUNT_PATH}/${this.#index}`
     }
+  }
+
+  /** Derivation and the record of what was derived, kept together. */
+  #use(phrase: string, index: number): void {
+    this.#account = fromPrivateKey(derivePrivateKey(phrase, index))
+    this.#index = index
   }
 
   /**
@@ -116,7 +150,7 @@ export class Wallet {
     }
 
     this.#store.write(vault)
-    this.#account = fromPrivateKey(derivePrivateKey(phrase, 0))
+    this.#use(phrase, 0)
     return { status: this.status(), phrase }
   }
 
@@ -145,21 +179,66 @@ export class Wallet {
     }
 
     this.#store.write(vault)
-    this.#account = fromPrivateKey(derivePrivateKey(clean, 0))
+    this.#use(clean, 0)
     return this.status()
   }
 
-  unlock(password: string): WalletStatus {
+  /**
+   * Opens the vault and derives an account from the phrase inside.
+   *
+   * `index` chooses which account, and defaults to the first — the one every
+   * other wallet calls "Account 1", so a caller that never mentions an index
+   * gets what it has always got. Anything else is a deliberate choice of
+   * identity, with the consequences described on `switchAccount`.
+   */
+  unlock(password: string, index = 0): WalletStatus {
+    requireAccountIndex(index)
+
     const vault = this.#store.read()
     if (!vault) throw new WalletError('there is no wallet to unlock')
 
-    const phrase = open(vault, password)
-    this.#account = fromPrivateKey(derivePrivateKey(phrase, 0))
+    this.#use(open(vault, password), index)
     return this.status()
   }
 
+  /**
+   * Moves to another account of the same phrase.
+   *
+   * It costs the password even though the wallet is already unlocked, and
+   * unavoidably so: an unlocked wallet holds a derived account rather than the
+   * phrase, so there is nothing in memory a second account could come from.
+   * That is the same reason `addressAt` asks for one.
+   *
+   * **Everything sealed under the old account stops opening.** `deriveKey`
+   * takes its key from a signature by whichever account is active, so the room
+   * registry, the transcript log and every sealed document belong to the
+   * account that wrote them. After switching, the room list is empty, history
+   * is empty, and local preferences are back to their defaults. Nothing has
+   * been lost and nothing has been deleted — switch back and all of it
+   * returns. This is what a second account is meant to be: a separate identity
+   * with its own rooms and its own conversations, rather than a second address
+   * for the same ones. It is also the single most surprising thing this wallet
+   * does, so an interface offering the switch should say so beforehand rather
+   * than leave someone to conclude their history was destroyed.
+   */
+  switchAccount(password: string, index: number): WalletStatus {
+    return this.unlock(password, index)
+  }
+
+  /**
+   * Forgets the account, and with it which account was active.
+   *
+   * The index returns to zero rather than being kept. There is nowhere to keep
+   * it that survives the process — a fresh `Wallet` always starts at zero — so
+   * a lock that remembered would come back to account three this afternoon and
+   * to account zero tomorrow, and the difference is which identity's rooms and
+   * history appear. Predictable beats convenient when that is what is at
+   * stake; a caller that wants to return to the same account passes the index
+   * to `unlock`.
+   */
   lock(): WalletStatus {
     this.#account = null
+    this.#index = 0
     return this.status()
   }
 
@@ -189,7 +268,7 @@ export class Wallet {
     return open(vault, password)
   }
 
-  /** The address of any account, without unlocking into it. */
+  /** The address of any account, without switching to it. */
   addressAt(password: string, index: number): string {
     const phrase = this.revealPhrase(password)
     return fromPrivateKey(derivePrivateKey(phrase, index)).address
@@ -244,6 +323,7 @@ export class Wallet {
     open(vault, password)
     this.#store.clear()
     this.#account = null
+    this.#index = 0
     return this.status()
   }
 }

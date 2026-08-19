@@ -10,47 +10,29 @@ import os from 'bare-os'
 import process from 'bare-process'
 import b4a from 'b4a'
 import crypto from 'hypercore-crypto'
-import ID from 'hypercore-id-encoding'
 import { persistent } from 'bare-storage'
 import { isBareKit } from 'which-runtime'
-import { RoomHost } from '@lcai-p2p/room'
+import { Attachments, RoomHost } from '@lcai-p2p/room'
 import { BlindRegistry, Priority } from '@lcai-p2p/blind'
-import { probeAll, runAsync } from '@lcai-p2p/host'
-import { runChecks, summarize } from '@lcai-p2p/preflight'
-import {
-  NETWORKS,
-  containerKeystorePath,
-  inspectWorker,
-  isHealthy,
-  logsWorker,
-  parseContainerState,
-  pullImage,
-  register as registerWorker,
-  resolveConfig,
-  runWorker,
-  selectKeystore,
-  stopWorker
-} from '@lcai-p2p/worker'
+import { NETWORKS, resolveConfig } from '@lcai-p2p/worker'
 import {
   Rpc,
-  WORKER_REGISTRY_ADDRESS,
-  decodeBool,
-  decodeUint256,
-  depositAndAuthorize,
-  encodeCall,
   hashMessageForSigning,
   keccak256,
   lightchainErrors,
   recoverAddress,
-  prepaidBalance,
   resolveAddresses,
-  sendTransaction,
   toBytes,
-  toHex,
-  withdrawBalance
+  toHex
 } from '@lcai-p2p/chain'
-import { Wallet, deriveKey, openJson, sealJson } from '@lcai-p2p/wallet'
-import { Api, Conversation, History, isAnswerVerified } from '@lcai-p2p/inference'
+import { SealedStore, Wallet, deriveKey, openJson, sealJson } from '@lcai-p2p/wallet'
+import { Api, History, isAnswerVerified } from '@lcai-p2p/inference'
+import { roomHandlers } from './handlers/rooms.mjs'
+import { walletHandlers } from './handlers/wallet.mjs'
+import { aiHandlers } from './handlers/ai.mjs'
+import { workerHandlers } from './handlers/worker.mjs'
+import { settingsHandlers } from './handlers/settings.mjs'
+import { localHandlers } from './handlers/local.mjs'
 
 /**
  * The data plane.
@@ -61,7 +43,9 @@ import { Api, Conversation, History, isAnswerVerified } from '@lcai-p2p/inferenc
  *
  * The room logic itself is in `@lcai-p2p/room`, where it is tested against a
  * real second peer. What is left here is wiring: a storage layout, a registry
- * file, and a translation between JSON frames and method calls.
+ * file, and a translation between JSON frames and method calls. The requests
+ * themselves are answered in `handlers/`, which this module hands a context
+ * object holding everything below.
  *
  * ## The wire format
  *
@@ -193,8 +177,9 @@ const pear = new PearRuntime({ ...config, swarm, store: pearStore })
 const chatDir = path.join(config.dir, 'chat')
 const chatStore = new Corestore(path.join(chatDir, 'corestore'))
 // Not `.json`: it is ciphertext, and a name promising otherwise invites
-// somebody to open it in an editor and conclude the file is corrupt.
-const registryFile = path.join(chatDir, 'rooms.sealed')
+// somebody to open it in an editor and conclude the file is corrupt. Kept only
+// to be migrated: room lists are now one file per account, see registryPathFor.
+const unscopedRegistryFile = path.join(chatDir, 'rooms.sealed')
 
 function send(message) {
   pipe.write(JSON.stringify(message))
@@ -221,6 +206,27 @@ const ROOM_KEY_PURPOSE = 'room registry'
 const legacyRegistryFile = path.join(chatDir, 'rooms.json')
 
 let registryKey = null
+let registryFor = null
+
+/**
+ * Where this account's room list lives.
+ *
+ * One file per identity, named by a hash of the derived key rather than by the
+ * address, so the filename says nothing about who uses this machine.
+ *
+ * The scoping is not tidiness. A wallet can now unlock at any account index,
+ * and each index derives different keys — so the moment a second account saved
+ * anything, a single shared file would be resealed under a key the first
+ * account cannot produce. That does not merely lose a list. Each record holds
+ * the **namespace** a room reopens on, which is what decides which writer core
+ * it comes back as, so losing it costs the write access every one of those
+ * rooms granted this peer. No invite brings that back; somebody has to be added
+ * again, by somebody who is still a writer.
+ */
+function registryPathFor(key) {
+  const scope = b4a.toString(crypto.hash(Buffer.from(key)), 'hex').slice(0, 16)
+  return path.join(chatDir, `rooms.${scope}.sealed`)
+}
 
 function usableRecords(parsed) {
   if (!Array.isArray(parsed)) return []
@@ -246,7 +252,7 @@ const registry = {
     if (!registryKey) return []
 
     try {
-      return usableRecords(openJson(registryKey, fs.readFileSync(registryFile)))
+      return usableRecords(openJson(registryKey, fs.readFileSync(registryFor)))
     } catch {
       // Absent on first run, and a damaged file should not stop the app
       // starting: it costs the room list, and the rooms are still on disk.
@@ -258,7 +264,7 @@ const registry = {
 
     try {
       fs.mkdirSync(chatDir, { recursive: true })
-      fs.writeFileSync(registryFile, Buffer.from(sealJson(registryKey, records)), { mode: 0o600 })
+      fs.writeFileSync(registryFor, Buffer.from(sealJson(registryKey, records)), { mode: 0o600 })
     } catch (err) {
       console.error('could not record the room list:', err.message)
     }
@@ -268,31 +274,55 @@ const registry = {
 /**
  * Unlocks the registry, bringing across anything left in the clear.
  *
- * The old plaintext file is read once, rewritten sealed and then deleted.
- * Skipping the migration would silently orphan every room somebody already had
- * — they would still be on disk, and nothing would know how to open them.
+ * Two migrations run once each and then never again. The oldest installations
+ * have a plaintext `rooms.json`; the ones after that have a single sealed
+ * `rooms.sealed` written before accounts could be switched. Both are read,
+ * rewritten into this account's own file and deleted. Skipping either would
+ * silently orphan every room somebody already had — still on disk, and nothing
+ * left that knows how to open them.
  */
 async function unlockRegistry() {
   if (registryKey) return
 
   registryKey = deriveKey(wallet.account(), ROOM_KEY_PURPOSE)
+  registryFor = registryPathFor(registryKey)
 
   let carried = []
+  let carriedFrom = null
+
   try {
     carried = usableRecords(JSON.parse(fs.readFileSync(legacyRegistryFile, 'utf8')))
+    if (carried.length > 0) carriedFrom = legacyRegistryFile
   } catch {
     // Nothing to bring across, which is the normal case.
   }
 
-  if (carried.length > 0) {
-    registry.write(carried)
-    console.log(`sealed ${carried.length} room(s) that were stored in the clear`)
+  // The unscoped sealed file, from before one wallet could hold several
+  // accounts. It only opens under the key that wrote it, so whichever account
+  // that was adopts it and the rest correctly see nothing.
+  if (carried.length === 0 && !fs.existsSync(registryFor)) {
+    try {
+      carried = usableRecords(openJson(registryKey, fs.readFileSync(unscopedRegistryFile)))
+      if (carried.length > 0) carriedFrom = unscopedRegistryFile
+    } catch {
+      // Either absent, or sealed under a different account's key.
+    }
   }
 
-  try {
-    fs.unlinkSync(legacyRegistryFile)
-  } catch {
-    // Already gone.
+  if (carried.length > 0) {
+    registry.write(carried)
+    console.log(`moved ${carried.length} room(s) into this account's own list`)
+  }
+
+  // The plaintext one goes: it is a secret sitting in the open. The unscoped
+  // sealed one stays, because another account on this machine may still be the
+  // one able to read it, and deleting it would take their rooms with it.
+  if (carriedFrom === legacyRegistryFile) {
+    try {
+      fs.unlinkSync(legacyRegistryFile)
+    } catch {
+      // Already gone.
+    }
   }
 
   for (const room of await rooms.reload(registry.read())) send({ t: 'room', room })
@@ -301,6 +331,7 @@ async function unlockRegistry() {
 /** Locking closes the registry too: its key is the wallet's. */
 function lockRegistry() {
   registryKey = null
+  registryFor = null
 }
 
 /**
@@ -369,10 +400,17 @@ let settings = readSettings()
  */
 let api = null
 let apiFor = null
-let conversation = null
-let conversationId = null
 let history = null
 let historyFor = null
+
+/**
+ * The conversation currently open, if there is one.
+ *
+ * A holder rather than two variables in the inference handlers, because locking
+ * the wallet and changing the network both have to end a conversation and
+ * neither of those arrives as an inference request.
+ */
+const session = { conversation: null, id: null }
 
 /**
  * The transcript log, encrypted under a key only this wallet can derive.
@@ -429,111 +467,13 @@ async function inference() {
 }
 
 function forgetInference() {
-  conversation?.close()
-  conversation = null
-  conversationId = null
+  session.conversation?.close()
+  session.conversation = null
+  session.id = null
   api = null
   apiFor = null
   history = null
   historyFor = null
-}
-
-/** A model's fee, from the chain, by id rather than by name. */
-async function modelFee(aiConfig, id) {
-  return decodeUint256(
-    await rpc.call({
-      to: aiConfig,
-      data: encodeCall('calculateJobFee(bytes32)', ['bytes32'], [id])
-    })
-  )
-}
-
-/**
- * How many workers are registered and staked for a model.
- *
- * Not the same as how many are answering — eligibility is registration plus
- * stake — but zero here is a definite no, which is worth showing before
- * someone waits out a draw that cannot succeed.
- */
-/** One Docker action at a time, so a start cannot race a stop. */
-let busyWith = null
-
-/**
- * Whether the worker's own address can afford to register.
- *
- * Registering stakes `AIConfig.getMinWorkerStake()` as the transaction's value,
- * and LCAI is the native token, so the same balance pays the gas. Nothing else
- * in the tooling mentions this: the supervisor shells out to the Go binary,
- * which queries the minimum and sends it, and an underfunded address fails at
- * the transaction with an error that never names the amount.
- *
- * Reported rather than enforced. This cannot stop anybody registering, and it
- * should not — it can only make sure the requirement is seen first.
- */
-async function stakeProbe(config) {
-  let address
-  try {
-    address = selectKeystore(fs.readdirSync(path.join(config.keysDir, 'eth-keystore'))).address
-  } catch {
-    // No keystore yet, so there is no address to fund and nothing useful to
-    // say. The container section already explains what is missing.
-    return {}
-  }
-
-  const account = `0x${address}`
-
-  try {
-    const registry = WORKER_REGISTRY_ADDRESS
-    const registered = decodeBool(
-      await rpc.call({
-        to: registry,
-        data: encodeCall('isWorkerRegistered(address)', ['address'], [account])
-      })
-    )
-    if (registered) return { address: account, registered: true }
-
-    const { aiConfig } = await resolveAddresses(rpc)
-    const [minimum, balance] = await Promise.all([
-      rpc
-        .call({ to: aiConfig, data: encodeCall('getMinWorkerStake()') })
-        .then((raw) => decodeUint256(raw)),
-      rpc.balanceOf(account)
-    ])
-
-    return { address: account, minimum, balance }
-  } catch {
-    return { address: account, unreachable: true }
-  }
-}
-
-/**
- * Which keystore the container should open.
- *
- * The same selection the supervisor makes: the directory may hold several, and
- * picking the wrong one starts a worker that registers as somebody else.
- * `selectKeystore` throws with a message written for an operator when there is
- * no obvious answer, which is better than choosing for them.
- */
-function keystoreFor(config) {
-  let names = []
-  try {
-    names = fs.readdirSync(path.join(config.keysDir, 'eth-keystore'))
-  } catch {
-    // selectKeystore has the better message for a missing or empty directory.
-  }
-  return containerKeystorePath(selectKeystore(names).file)
-}
-
-async function eligibleWorkerCount(id) {
-  const raw = await rpc.call({
-    to: WORKER_REGISTRY_ADDRESS,
-    data: encodeCall('getEligibleWorkers(bytes32)', ['bytes32'], [id])
-  })
-
-  const bytes = toBytes(raw)
-  if (bytes.length < 64) return 0
-  const offset = Number(decodeUint256(toHex(bytes.slice(0, 32))))
-  return Number(decodeUint256(toHex(bytes.slice(offset, offset + 32))))
 }
 
 /** A setting, then the environment, then nothing. */
@@ -547,7 +487,20 @@ function setting(key, envName) {
 const networkOf = () => (setting('network', 'NETWORK') === 'testnet' ? 'testnet' : 'mainnet')
 
 let network = networkOf()
-let rpc = new Rpc({ url: NETWORKS[network].rpcUrl, errors: lightchainErrors() })
+let rpc = null
+
+/**
+ * Records the settings and adopts them in the same breath.
+ *
+ * The network is derived from this file rather than stored beside it, so it has
+ * to be recomputed here — otherwise the process keeps talking to whichever
+ * chain it happened to start on.
+ */
+function saveSettings(next) {
+  writeSettings(next)
+  settings = next
+  network = networkOf()
+}
 
 /**
  * What checking a relayed model answer needs: the chain it was signed against
@@ -568,7 +521,20 @@ async function resolveAnswerChecks() {
   }
 }
 
-void resolveAnswerChecks()
+/**
+ * Points the chain client at whichever network is configured now.
+ *
+ * Called at boot and again whenever the setting changes. Nothing derived from
+ * the old chain survives it: an answer proved against one registry proves
+ * nothing about another, so the checks are dropped and resolved again.
+ */
+function reconnectChain() {
+  rpc = new Rpc({ url: NETWORKS[network].rpcUrl, errors: lightchainErrors() })
+  answerChecks = null
+  void resolveAnswerChecks()
+}
+
+reconnectChain()
 
 /**
  * Where rooms are lodged so they outlive everyone closing the app.
@@ -697,815 +663,154 @@ function workerConfig(overrides = {}) {
 }
 
 /**
- * Totals and a month-by-month series over the transcript log.
+ * A directory of sealed documents, for {@link SealedStore} to write into.
  *
- * A job id is the honest measure of what was paid for: a turn can be asked and
- * fail before it ever reaches the chain, so counting questions would overstate
- * spend and counting answers would understate the attempt.
+ * Names arrive already scoped and validated by the store, which refuses
+ * anything that is not a plain word — so nothing reaching here can walk out of
+ * this directory. Mode 0600 for the same reason the vault has it: these are
+ * ciphertext, but on a shared machine there is no reason for anybody else to
+ * hold a copy to work on.
  */
-function summariseInference(conversations, months) {
-  const now = new Date()
-  // The first of the month `months - 1` ago, so the series always covers the
-  // same span and empty months are drawn rather than dropped.
-  const series = []
-  for (let i = months - 1; i >= 0; i--) {
-    const at = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    series.push({ month: at.toISOString().slice(0, 7), asked: 0, answered: 0, jobs: 0 })
-  }
-  const index = new Map(series.map((bucket, i) => [bucket.month, i]))
-
-  const byModel = new Map()
-  let asked = 0
-  let answered = 0
-  let jobs = 0
-
-  for (const conversation of conversations) {
-    const use = byModel.get(conversation.model) ?? { conversations: 0, jobs: 0 }
-    use.conversations += 1
-
-    for (const turn of conversation.turns) {
-      if (turn.role === 'you') asked += 1
-      else answered += 1
-      if (turn.jobId) {
-        jobs += 1
-        use.jobs += 1
-      }
-
-      const bucket = series[index.get(new Date(turn.at).toISOString().slice(0, 7)) ?? -1]
-      if (!bucket) continue
-      if (turn.role === 'you') bucket.asked += 1
-      else bucket.answered += 1
-      if (turn.jobId) bucket.jobs += 1
-    }
-
-    byModel.set(conversation.model, use)
-  }
-
-  // This month against the one before it. Reported as counts rather than a
-  // percentage: going from one question to three is not "200% growth" in any
-  // sense worth printing, and at these volumes a percentage is noise dressed as
-  // a measurement.
-  const current = series.at(-1)
-  const previous = series.at(-2)
+function fileByteStore(dir) {
+  const at = (name) => path.join(dir, `${name}.sealed`)
 
   return {
-    conversations: conversations.length,
-    asked,
-    answered,
-    jobs,
-    series,
-    change: previous
-      ? { asked: current.asked - previous.asked, jobs: current.jobs - previous.jobs }
-      : null,
-    models: [...byModel.entries()]
-      .map(([name, use]) => ({ name, ...use }))
-      .sort((a, b) => b.conversations - a.conversations)
+    read(name) {
+      try {
+        return fs.readFileSync(at(name))
+      } catch {
+        // Absent is the ordinary state of a first run, not a failure.
+        return null
+      }
+    },
+    write(name, bytes) {
+      fs.mkdirSync(dir, { recursive: true })
+      fs.writeFileSync(at(name), Buffer.from(bytes), { mode: 0o600 })
+    },
+    delete(name) {
+      try {
+        fs.unlinkSync(at(name))
+      } catch {
+        // Already gone, which is what was wanted.
+      }
+    },
+    list() {
+      try {
+        return fs
+          .readdirSync(dir)
+          .filter((file) => file.endsWith('.sealed'))
+          .map((file) => file.slice(0, -'.sealed'.length))
+      } catch {
+        return []
+      }
+    }
   }
 }
 
-/** The newest handful of things that happened, from both halves of the app. */
-function recentActivity(conversations, states) {
-  const entries = []
-
-  for (const conversation of conversations ?? []) {
-    const last = conversation.turns.at(-1)
-    const first = conversation.turns.find((turn) => turn.role === 'you')
-    if (!last) continue
-    entries.push({
-      kind: 'model',
-      label: conversation.model,
-      proven: Boolean(conversation.turns.some((turn) => turn.jobId)),
-      text: first?.text ?? last.text,
-      at: last.at,
-      id: conversation.id
-    })
-  }
-
-  for (const room of states) {
-    const last = room.messages.at(-1)
-    if (!last) continue
-    entries.push({
-      kind: 'room',
-      label: room.key.slice(0, 8),
-      proven: last.verified === true,
-      text: last.text,
-      at: last.at,
-      id: room.key
-    })
-  }
-
-  return entries.sort((a, b) => b.at - a.at).slice(0, 6)
-}
-
 /**
- * The URL scheme invites travel as. Matches `electron/main.js`, which registers
- * it with the operating system; the two have to agree.
- */
-const INVITE_SCHEME = 'lightchain'
-
-/**
- * The invite inside whatever someone pasted.
+ * Files that ride alongside a room's messages, one store per room.
  *
- * People paste the link, the bare string, or the link with a trailing full stop
- * a chat client helpfully appended. Accepting all of them costs four lines;
- * refusing them costs someone the join and tells them nothing useful.
+ * Opened lazily and kept, because a room's blob core has to exist before an
+ * attachment can be put in it and has to stay open for anyone to fetch one
+ * back. Sealed with the room's own encryption key, so the blind peers that hold
+ * a room for us can no more read its files than its conversation.
  */
-function inviteFrom(value) {
-  if (typeof value !== 'string') return ''
+const attachments = new Map()
 
-  let text = value.trim()
-  const prefix = `${INVITE_SCHEME}://`
-  if (text.toLowerCase().startsWith(prefix)) {
-    // A path segment is tolerated so an earlier `lightchain://room/<invite>`
-    // keeps working, but is not what this produces.
-    text = text.slice(prefix.length).replace(/^(?:join|room|invite)\//i, '')
-  }
+async function attachmentsFor(key) {
+  const held = attachments.get(key)
+  if (held) return held
 
-  // Anything after a separator belongs to the URL, not the invite. z32 has no
-  // uppercase, so trailing punctuation cannot be part of one.
-  return text.split(/[/?#\s]/)[0].replace(/[.,;:)\]}'"]+$/, '')
+  const { encryptionKey } = rooms.credentials(key)
+  const store = await Attachments.open({
+    store: chatStore,
+    namespace: `attachments:${key}`,
+    encryptionKey
+  })
+  swarm.on('connection', (socket) => store.replicate(socket))
+  for (const socket of swarm.connections) store.replicate(socket)
+
+  attachments.set(key, store)
+  return store
+}
+
+/**
+ * Everything one person keeps to themselves.
+ *
+ * Unread marks, drafts, muted rooms, blocked participants, notification
+ * preferences, an address book and a ledger of this wallet's own transactions.
+ * None of it is anybody else's business and none of it is replicated: it is
+ * sealed under the account, in files beside the room list, and a peer never
+ * learns any of it exists.
+ */
+const localState = new SealedStore(fileByteStore(path.join(chatDir, 'local')), {
+  purpose: 'local state',
+  // Asked afresh every time rather than held, so locking, unlocking and
+  // switching account all take effect without anybody having to remember to
+  // rebuild this.
+  account: () => (wallet.status().unlocked ? wallet.account() : null),
+  onDamaged: (name, reason) => console.error(`local state "${name}" is unreadable: ${reason}`)
+})
+
+/**
+ * Everything the handlers are allowed to reach.
+ *
+ * The mutable pieces are accessors rather than values. `network` and `rpc` are
+ * both replaced when the network setting changes, and a handler that had
+ * destructured either at startup would go on talking to the chain the process
+ * booted on — silently, and only for some requests. A call is the signal that
+ * the answer is read fresh.
+ */
+const ctx = {
+  attachmentsFor,
+  availability,
+  chatDir,
+  chatStore,
+  localState,
+  rooms,
+  send,
+  session,
+  swarm,
+  wallet,
+  network: () => network,
+  rpc: () => rpc,
+  settings: () => settings,
+  forgetInference,
+  inference,
+  reconnectChain,
+  saveSettings,
+  setting,
+  transcripts,
+  useWalletInRooms,
+  workerConfig,
+  // The dashboard reports balances, which the wallet already answers for. The
+  // alternative is a second copy of that arithmetic, and two copies of a
+  // balance is how a screen ends up disagreeing with itself.
+  handle: (req) => handle(req)
+}
+
+/**
+ * Every request the renderer can make, by name.
+ *
+ * The null prototype is load-bearing. Without it `{ t: 'toString' }` would find
+ * `Object.prototype.toString` and be dispatched as though it were a handler,
+ * which turns a typo — or anything the renderer is talked into sending — into a
+ * confusing failure well inside the reply path.
+ */
+const handlers = {
+  __proto__: null,
+  ...roomHandlers(ctx),
+  ...walletHandlers(ctx),
+  ...aiHandlers(ctx),
+  ...workerHandlers(ctx),
+  ...settingsHandlers(ctx),
+  ...localHandlers(ctx)
 }
 
 async function handle(req) {
-  switch (req.t) {
-    // --- Worker -----------------------------------------------------------
-    //
-    // Read-only. Everything that changes the worker's state — pull, start,
-    // register, key import — stays in the supervisor CLI for now: the private
-    // key is stdin-only by design, and a pull holds the connection open for
-    // minutes with no way yet to report progress here.
-
-    case 'worker.doctor': {
-      // The stake needs a resolved config to know where the keystore is, and
-      // there may not be one. A host with no worker configured still deserves
-      // its hardware checked.
-      const { config } = workerConfig({ keystorePassword: 'unset' })
-
-      const [probes, stake] = await Promise.all([
-        probeAll(),
-        config ? stakeProbe(config) : Promise.resolve(undefined)
-      ])
-
-      const results = runChecks({ ...probes, stake })
-      return { results, totals: summarize(results) }
-    }
-
-    case 'worker.status': {
-      const { config, problem } = workerConfig()
-      if (!config) return { configured: false, problem }
-
-      const res = await runAsync('docker', inspectWorker(config).argv, { timeout: 15_000 })
-      const state = parseContainerState(res.ok ? res.stdout : null)
-
-      // Named fields rather than the whole config: it carries the keystore
-      // password, and the renderer has no business holding that.
-      return {
-        configured: true,
-        network: config.network,
-        chainId: config.chainId,
-        containerName: config.containerName,
-        models: config.supportedModels,
-        ollamaUrl: config.ollamaUrl,
-        runnable: Boolean(config.aiConfigAddress && config.jobRegistryAddress),
-        healthy: isHealthy(state),
-        state
-      }
-    }
-
-    // --- Wallet -----------------------------------------------------------
-    //
-    // `wallet.status` is the only one that returns without doing work. The
-    // rest run scrypt at roughly half a second, which is the cost that makes a
-    // stolen keystore expensive to attack rather than a delay to apologise for.
-
-    // --- Settings ---------------------------------------------------------
-
-    case 'settings.read': {
-      const net = networkOf()
-
-      // resolveConfig refuses without a keystore password, which is exactly the
-      // state someone is in when they first open this panel and most need to
-      // see the defaults. So it is asked with a placeholder password purely to
-      // learn them, rather than restating them here where they would drift.
-      const { config } = workerConfig()
-      const shown = config ?? workerConfig({ keystorePassword: 'unset' }).config
-
-      return {
-        // The password is never sent back, only whether one is set. Round
-        // tripping a secret through a view to redisplay it is how they leak.
-        values: { ...settings, workerPassword: undefined },
-        workerPasswordSet: Boolean(setting('workerPassword', 'WORKER_PASSWORD')),
-        effective: {
-          network: net,
-          keysDir: shown.keysDir,
-          containerName: shown.containerName,
-          supportedModels: shown.supportedModels,
-          ollamaUrl: shown.ollamaUrl,
-          rpcUrl: NETWORKS[net].rpcUrl,
-          chainId: NETWORKS[net].chainId
-        },
-        blindPeerCount: availability?.peerCount ?? 0,
-        // The key a blind peer operator has to trust before it will announce
-        // anything for us. Deliberately the DHT default key and not the swarm
-        // key: they are different, and `blind-peering` connects with the former,
-        // so trusting the latter silently produces a peer that stores rooms and
-        // advertises none of them.
-        dhtKey: ID.encode(swarm.dht.defaultKeyPair.publicKey),
-        storage: chatDir
-      }
-    }
-
-    case 'settings.write': {
-      const patch = req.values && typeof req.values === 'object' ? req.values : {}
-      // Undefined clears a value back to the environment or the default,
-      // which is what an emptied field should mean.
-      const next = { ...settings }
-      for (const [key, value] of Object.entries(patch)) {
-        if (value === null || value === '') delete next[key]
-        else next[key] = value
-      }
-
-      const before = network
-      writeSettings(next)
-      settings = next
-      network = networkOf()
-
-      // Only the network justifies tearing any of this down, and only when it
-      // actually changed. A session's token, its worker and its prepaid balance
-      // all belong to the chain it was opened on — but the theme and the
-      // container name do not, and dropping a conversation someone has paid for
-      // because they changed a preference is a bill for nothing.
-      if (network !== before) {
-        rpc = new Rpc({ url: NETWORKS[network].rpcUrl, errors: lightchainErrors() })
-        answerChecks = null
-        void resolveAnswerChecks()
-        forgetInference()
-      }
-
-      return { ok: true }
-    }
-
-    case 'wallet.status':
-      return { ...wallet.status(), network }
-
-    // The one reply that carries a secret. The phrase has to reach a screen so
-    // it can be written down, and it is not stored anywhere the renderer can
-    // reach afterwards — seeing it again costs the password.
-    case 'wallet.create': {
-      const { status, phrase } = wallet.create(String(req.password ?? ''))
-      useWalletInRooms()
-      return { ...status, network, phrase }
-    }
-
-    case 'wallet.import': {
-      const status = wallet.importPhrase(String(req.phrase ?? ''), String(req.password ?? ''))
-      useWalletInRooms()
-      return { ...status, network }
-    }
-
-    case 'wallet.reveal':
-      return { phrase: wallet.revealPhrase(String(req.password ?? '')) }
-
-    /**
-     * Reseals under a new password. Nothing else moves.
-     *
-     * The transcript log and the room registry are sealed with keys derived
-     * from the account's signature rather than from the password, so both stay
-     * readable — which is why they were derived that way.
-     */
-    case 'wallet.changePassword':
-      return {
-        ...wallet.changePassword(String(req.current ?? ''), String(req.next ?? '')),
-        network
-      }
-
-    case 'wallet.unlock': {
-      const status = wallet.unlock(String(req.password ?? ''))
-      useWalletInRooms()
-      return { ...status, network }
-    }
-
-    case 'wallet.lock':
-      // Locking has to end the conversation too. The session was opened by this
-      // address and is paid for by it, and leaving it live would be a locked
-      // wallet still spending.
-      forgetInference()
-      const locked = wallet.lock()
-      useWalletInRooms()
-      return { ...locked, network }
-
-    case 'wallet.remove': {
-      const status = wallet.remove(String(req.password ?? ''))
-      forgetInference()
-      useWalletInRooms()
-      return { ...status, network }
-    }
-
-    case 'wallet.balances': {
-      const { address } = wallet.status()
-      if (!address) return { address: null }
-
-      // Balances are public, so they are readable while locked. Only signing
-      // needs the key.
-      const [native, addresses] = await Promise.all([
-        rpc.balanceOf(address),
-        resolveAddresses(rpc).catch(() => null)
-      ])
-
-      const prepaid = addresses
-        ? await prepaidBalance(rpc, addresses.jobRegistry, address).catch(() => null)
-        : null
-
-      // Serialised as strings: wei does not survive JSON as a number.
-      return {
-        address,
-        network,
-        chainId: NETWORKS[network].chainId,
-        native: native.toString(),
-        prepaid: prepaid === null ? null : prepaid.toString()
-      }
-    }
-
-    // --- Inference ----------------------------------------------------------
-    //
-    // The wallet must be unlocked: signing in proves control of the address,
-    // and the delegate spends against that address's prepaid balance.
-
-    case 'ai.models': {
-      const models = await (await inference()).models()
-      const addresses = await resolveAddresses(rpc).catch(() => null)
-
-      // Priced from the chain rather than from the service, so what is shown
-      // is what the contract will take.
-      const priced = await Promise.all(
-        models.map(async (model) => ({
-          ...model,
-          fee: addresses
-            ? await modelFee(addresses.aiConfig, model.id)
-                .then((f) => f.toString())
-                .catch(() => null)
-            : null,
-          workers: await eligibleWorkerCount(model.id).catch(() => null)
-        }))
-      )
-
-      return { models: priced, network }
-    }
-
-    case 'ai.status': {
-      const api = await inference()
-      const balance = await api.balance()
-      return {
-        network,
-        balance: balance.balance.toString(),
-        delegate: balance.delegate,
-        delegateAuthorized: balance.delegateAuthorized,
-        conversation: conversation
-          ? {
-              model: conversation.model.name,
-              sessionId: conversation.sessionId,
-              worker: conversation.worker
-            }
-          : null
-      }
-    }
-
-    /** Deposits and authorises in one transaction, which is what the service asks for. */
-    case 'ai.fund': {
-      const account = wallet.account()
-      const api = await inference()
-      const { delegate } = await api.balance()
-      const { jobRegistry } = await resolveAddresses(rpc)
-
-      const sent = await sendTransaction(rpc, account, {
-        to: jobRegistry,
-        value: BigInt(req.amount ?? 0),
-        data: depositAndAuthorize(delegate)
-      })
-      const receipt = await sent.wait()
-      if (!receipt.status) throw new Error(`the deposit reverted (${sent.hash})`)
-
-      return { hash: sent.hash, block: receipt.blockNumber.toString() }
-    }
-
-    /**
-     * Brings prepaid LCAI back to the wallet.
-     *
-     * The counterpart to `ai.fund`, and the reason the Wallet panel could claim
-     * you can withdraw at any time: it was true of the contract and there was no
-     * control anywhere that did it.
-     */
-    case 'ai.withdraw': {
-      const account = wallet.account()
-      const { jobRegistry } = await resolveAddresses(rpc)
-
-      const sent = await sendTransaction(rpc, account, {
-        to: jobRegistry,
-        data: withdrawBalance(BigInt(req.amount ?? 0))
-      })
-      const receipt = await sent.wait()
-      if (!receipt.status) throw new Error(`the withdrawal reverted (${sent.hash})`)
-
-      return { hash: sent.hash, block: receipt.blockNumber.toString() }
-    }
-
-    /**
-     * Sends LCAI from this wallet to another address.
-     *
-     * A plain value transfer, with nothing clever around it. The recipient is
-     * whatever the caller passes, and the caller got it from a message this
-     * machine verified the signature on — which is the only reason an address
-     * in a chat room is safe to pay: it was proven, not typed.
-     */
-    case 'wallet.send': {
-      const to = String(req.to ?? '')
-      if (!/^0x[0-9a-fA-F]{40}$/.test(to)) throw new Error('that is not an address')
-
-      const account = wallet.account()
-      if (to.toLowerCase() === account.address.toLowerCase()) {
-        throw new Error('that is your own address')
-      }
-
-      const sent = await sendTransaction(rpc, account, { to, value: BigInt(req.amount ?? 0) })
-      const receipt = await sent.wait()
-      if (!receipt.status) throw new Error(`the transfer reverted (${sent.hash})`)
-
-      return { hash: sent.hash, block: receipt.blockNumber.toString() }
-    }
-
-    case 'ai.start': {
-      const api = await inference()
-      const models = await api.models()
-      const model = models.find((m) => m.id === req.modelId || m.name === req.model)
-      if (!model) throw new Error(`no model called ${req.model ?? req.modelId}`)
-
-      conversation?.close()
-      conversation = new Conversation({
-        api,
-        relayUrl: NETWORKS[network].relayUrl,
-        model,
-        // Deployments without sortition expect the caller to send the
-        // createSession transaction, so the wallet has to come along.
-        chain: { rpc, account: wallet.account() }
-      })
-
-      // A draw takes most of a minute, so progress is pushed rather than
-      // awaited in silence.
-      await conversation.start((progress) => send({ t: 'ai.progress', ...progress }))
-
-      conversationId = `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-      await (await transcripts()).opened(conversationId, model.name)
-
-      return {
-        sessionId: conversation.sessionId,
-        worker: conversation.worker,
-        model: model.name,
-        conversation: conversationId
-      }
-    }
-
-    case 'ai.ask': {
-      if (!conversation?.open) throw new Error('no conversation is open')
-      const prompt = String(req.prompt ?? '')
-      const log = await transcripts()
-      const model = conversation.model.name
-
-      // Written before the answer, so a question that is never answered is
-      // still in the transcript rather than vanishing with the failure.
-      await log.said(conversationId, model, 'you', prompt)
-
-      const answer = await conversation.ask(prompt, (progress) =>
-        send({ t: 'ai.progress', ...progress })
-      )
-
-      await log.said(conversationId, model, 'model', answer.text, answer.jobId)
-
-      // Asked afterwards, not before replying. The registry takes a few seconds
-      // to reach `completed`, and holding the answer back to check something
-      // that has never yet gone wrong would make every reply feel slow.
-      void conversation
-        .commitment(answer.jobId)
-        .then((commitment) => send({ t: 'ai.commitment', jobId: answer.jobId, ...commitment }))
-        .catch(() => {
-          // A chain that cannot be read leaves the answer unconfirmed, which is
-          // the truthful state rather than an error worth interrupting for.
-        })
-
-      return { jobId: answer.jobId, text: answer.text }
-    }
-
-    /** Only possible where the worker signed one answer and recorded another. */
-    case 'ai.dispute': {
-      if (!conversation) throw new Error('no conversation is open')
-      return { hash: await conversation.dispute(String(req.jobId ?? '')) }
-    }
-
-    case 'ai.cancel':
-      return { stopped: conversation?.cancel() ?? false }
-
-    case 'ai.history':
-      return { conversations: await (await transcripts()).transcripts() }
-
-    /**
-     * Everything the dashboard shows, in one reply.
-     *
-     * Assembled here rather than in the renderer because it is arithmetic over
-     * wei and over the transcript log, and both belong to the data plane. A view
-     * that does its own totals is a second implementation of them, and the two
-     * drift.
-     *
-     * Every field is derived from something this machine already holds. Nothing
-     * is estimated: where there is no data the field is null, and the interface
-     * says so rather than drawing a zero that looks like a measurement.
-     */
-    case 'dashboard.read': {
-      const { address, unlocked } = wallet.status()
-      const months = Math.min(24, Math.max(1, Number(req.months) || 12))
-
-      // Balances are public, so they survive a locked wallet. Transcripts do
-      // not: the key that opens them is derived from the wallet.
-      const balances = address ? await handle({ t: 'wallet.balances' }).catch(() => null) : null
-
-      const conversations = unlocked
-        ? await (await transcripts()).transcripts().catch(() => [])
-        : null
-
-      const states = await rooms.states()
-
-      return {
-        network,
-        address,
-        unlocked,
-        balances: balances && { native: balances.native, prepaid: balances.prepaid },
-        rooms: {
-          total: states.length,
-          writable: states.filter((room) => room.writable).length,
-          messages: states.reduce((n, room) => n + room.messages.length, 0)
-        },
-        inference: conversations && summariseInference(conversations, months),
-        recent: recentActivity(conversations, states)
-      }
-    }
-
-    case 'ai.forget': {
-      await (await transcripts()).deleted(String(req.conversation ?? ''))
-      return { ok: true }
-    }
-
-    /**
-     * Asks a model on behalf of a room, and posts the answer back into it.
-     *
-     * The person who asks pays: their session, their prepaid balance, their
-     * fee. Everyone else reads a quotation, which is why the answer carries the
-     * worker's signature, the ciphertext it covers and the key that opens it —
-     * so the room can check the model really said this rather than trusting
-     * whoever pasted it.
-     *
-     * The session key is published into the room, which is safe here and
-     * nowhere else: the room is already encrypted to its members and the answer
-     * is going into it regardless. It does mean a room session must never be
-     * reused for anything private, so this makes its own.
-     */
-    case 'room.ask': {
-      const roomKey = String(req.key ?? '')
-      const prompt = String(req.prompt ?? '')
-      const api = await inference()
-
-      const models = await api.models()
-      const model = models.find((m) => m.name === req.model)
-      if (!model) throw new Error(`no model called ${req.model}`)
-
-      send({ t: 'ai.progress', phase: 'drawing' })
-
-      const asking = new Conversation({
-        api,
-        relayUrl: NETWORKS[network].relayUrl,
-        model,
-        chain: { rpc, account: wallet.account() }
-      })
-
-      try {
-        await asking.start((progress) => send({ t: 'ai.progress', ...progress }))
-        const answer = await asking.ask(prompt, (progress) =>
-          send({ t: 'ai.progress', ...progress })
-        )
-
-        const evidence = asking.evidence()
-        if (!evidence) {
-          throw new Error(
-            'this answer arrived in several signed pieces, and cannot yet be quoted into a room with proof attached'
-          )
-        }
-
-        await rooms.relay(roomKey, answer.text, {
-          model: model.name,
-          jobId: String(answer.jobId),
-          sessionId: String(asking.sessionId),
-          worker: String(asking.worker),
-          ...evidence
-        })
-
-        return { jobId: answer.jobId }
-      } finally {
-        asking.close()
-      }
-    }
-
-    case 'ai.stop': {
-      conversation?.close()
-      conversation = null
-      conversationId = null
-      return { ok: true }
-    }
-
-    /**
-     * The things an operator does repeatedly: fetch the image, start it, stop
-     * it.
-     *
-     * Importing a key and generating one stay in `lcai-supervisor`. Not an
-     * oversight — the supervisor reads a private key from stdin precisely so it
-     * never reaches argv, an environment variable or a log, and routing it
-     * through an Electron IPC channel to get a button would undo the reason
-     * that decision was made.
-     */
-    case 'worker.pull':
-    case 'worker.register':
-    case 'worker.start':
-    case 'worker.stop': {
-      const { config, problem } = workerConfig()
-      if (!config) throw new Error(problem ?? 'the worker is not configured')
-
-      if (busyWith) throw new Error(`already ${busyWith}`)
-      busyWith = {
-        'worker.pull': 'pulling',
-        'worker.register': 'registering',
-        'worker.start': 'starting',
-        'worker.stop': 'stopping'
-      }[req.t]
-      send({ t: 'worker.busy', doing: busyWith })
-
-      try {
-        const command =
-          req.t === 'worker.pull'
-            ? pullImage(config)
-            : req.t === 'worker.stop'
-              ? stopWorker(config)
-              : // Registering is not a key ceremony. It opens a keystore already
-                // on disk and sends a transaction, which is the same shape as
-                // starting — unlike import-key, which reads a private key from
-                // stdin so it never reaches argv, the environment or a log.
-                req.t === 'worker.register'
-                ? registerWorker(config, keystoreFor(config))
-                : runWorker(config, keystoreFor(config))
-
-        let streamed = false
-        const res = await runAsync('docker', command.argv, {
-          // No limit. A pull is minutes on a cold host, and killing it halfway
-          // leaves a partial image that fails in a less obvious way.
-          timeout: 0,
-          onOutput: (chunk) => {
-            streamed = true
-            send({ t: 'worker.output', text: chunk })
-          }
-        })
-
-        if (!res.ok) {
-          // Docker's own words already reached the log as they were written, so
-          // repeating them here prints the same failure twice. When nothing was
-          // streamed they are all there is.
-          throw new Error(
-            streamed
-              ? `docker exited ${res.status}`
-              : res.stderr.trim() || res.stdout.trim() || `docker exited ${res.status}`
-          )
-        }
-
-        return { ok: true }
-      } finally {
-        busyWith = null
-        send({ t: 'worker.busy', doing: null })
-      }
-    }
-
-    case 'worker.logs': {
-      const { config, problem } = workerConfig()
-      if (!config) return { configured: false, problem }
-
-      const res = await runAsync('docker', logsWorker(config, { tail: 200 }).argv, {
-        timeout: 20_000
-      })
-      return { configured: true, text: (res.stdout || res.stderr || '').trimEnd() }
-    }
-
-    // The window can be reloaded while the worker keeps running, and `ready` is
-    // only pushed once at boot. Without a way to ask, a reloaded renderer shows
-    // an empty room list over a worker that is still in every room.
-    case 'room.list':
-      return rooms.states()
-
-    case 'room.create':
-      return rooms.create()
-
-    /**
-     * Opens a room from its two keys, without anybody being online to invite.
-     *
-     * The invite flow needs the creator running, which is precisely the case a
-     * blind peer removes — so a room lodged with one can only actually be
-     * reached this way. Both keys are required: the room key alone reads
-     * nothing.
-     */
-    case 'room.join':
-      if (typeof req.key !== 'string' || typeof req.encryptionKey !== 'string') {
-        throw new Error('joining takes both the room key and its encryption key')
-      }
-      return rooms.join(req.key, req.encryptionKey)
-
-    /** Both halves, for a backup or for handing a room over where an invite will not do. */
-    case 'room.credentials':
-      if (typeof req.key !== 'string') throw new Error('which room?')
-      return rooms.credentials(req.key)
-
-    case 'room.send':
-      if (typeof req.text !== 'string' || req.text.trim() === '') {
-        throw new Error('nothing to send')
-      }
-      return rooms.send(req.room, req.text)
-
-    /**
-     * Grants write access to a peer by their writer key.
-     *
-     * The manual path, and the reason it exists: an invite needs both people
-     * running at the same moment, and when it fails the joiner is left able to
-     * read and never able to write, with nothing in the interface to fix it.
-     * A writer key can be sent over anything, at any time.
-     */
-    case 'room.addWriter':
-      return rooms.addWriter(req.room, String(req.writerKey ?? '').trim())
-
-    /** Names the room for everyone in it, not just on this machine. */
-    case 'room.rename':
-      return rooms.rename(req.room, String(req.name ?? ''))
-
-    /**
-     * Typing, over a channel that stores nothing.
-     *
-     * Not a room entry, and it must never become one: entries are signed and
-     * replicated to every member forever, and a signal that changes several
-     * times a sentence would bury the conversation it belongs to in noise that
-     * can never be pruned.
-     */
-    case 'room.typing':
-      rooms.setTyping(req.room, req.typing === true)
-      return { ok: true }
-
-    /**
-     * Who is on the other end right now.
-     *
-     * Asked when a room is opened, because presence is only pushed when it
-     * changes — a renderer that relied on the push alone would show nobody
-     * until the next keystroke anywhere in the room.
-     */
-    case 'room.presence':
-      return { ...rooms.presenceOf(req.room), connections: rooms.connections }
-
-    /**
-     * Whether this machine can reach anybody at all.
-     *
-     * Separate from a room's presence, because the interesting case is having
-     * rooms open and no connections anywhere — which means something local is
-     * in the way rather than the rooms being quiet.
-     */
-    case 'net.status':
-      return {
-        connections: rooms.connections,
-        rooms: (await rooms.states()).length,
-        dhtKey: ID.encode(swarm.dht.defaultKeyPair.publicKey)
-      }
-
-    /**
-     * An invite, and the same invite as something clickable.
-     *
-     * Both, because they are for different places. The bare string survives
-     * being pasted into anything; the link opens the app directly and is what
-     * most people will send. The app accepts either on the way back in.
-     */
-    case 'room.invite': {
-      const invite = await rooms.invite(req.room)
-      return { invite, link: `${INVITE_SCHEME}://${invite}` }
-    }
-
-    case 'room.pair': {
-      const invite = inviteFrom(req.invite)
-      if (invite === '') throw new Error('paste an invite')
-      return rooms.pair(invite)
-    }
-
-    case 'room.leave':
-      return { left: await rooms.leave(req.room) }
-
-    default:
-      throw new Error(`unknown request: ${String(req.t)}`)
-  }
+  const handler = handlers[req.t]
+  if (!handler) throw new Error(`unknown request: ${String(req.t)}`)
+  return handler(req)
 }
 
 pear.updater.on('error', console.error)

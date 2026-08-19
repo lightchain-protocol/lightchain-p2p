@@ -50,6 +50,55 @@ Reproduce it with `node scripts/dev-key.mjs` to get an address, a claim from
 [lightfaucet.ai](https://lightfaucet.ai), then `node scripts/broadcast.mjs`. The
 key lands in `.tmp`, which is gitignored.
 
+## Choosing a fee, and replacing what is already pending
+
+`sendTransaction` accepts `maxFeePerGas`, `maxPriorityFeePerGas` and `nonce`,
+and asks the node only for whichever of them is absent. What is given is checked
+and never adjusted: a tip above the ceiling it is paid out of is refused, and so
+is anything above `FEE_PER_GAS_CEILING`, which is 10,000 gwei. Refusing rather
+than clamping is the whole point — quietly signing a different number than the
+one somebody typed puts a transaction on chain that is not the one they
+approved, even when the change is downwards.
+
+The bound is deliberately loose. This network prices blocks in single-digit wei,
+so 10,000 gwei is more headroom than a real fee market has ever asked for, and
+it still catches the mistake that actually happens: a figure meant as gwei
+entered as wei. The node's own numbers face the same check, because a proxy
+answering for the wrong chain empties an account exactly as thoroughly as a typo
+and nobody is watching for it.
+
+A pending transaction is replaced by sending another at the same nonce for more
+money. `speedUp` repeats it exactly — same recipient, value, call data and gas
+limit — and `cancel` replaces it with an empty transfer to your own address at a
+fixed 21,000. Both raise each cap by ten percent, geth's default price bump,
+**rounded up**: ten percent of fifteen wei is one and a half, and a node compares
+with integer arithmetic, so rounding down would produce a replacement it drops.
+
+Two things neither can do. They refuse to replace something already mined, and
+that check is a race by nature — the original can be mined between the receipt
+coming back and the node accepting the replacement. And a cancel undoes nothing.
+It races the original for one nonce, exactly one of the two will be mined, and
+waiting on what comes back is the only way to learn which.
+
+## Knowing where a transaction has got to
+
+`wait({ confirmations })` waits for depth, counting the including block as the
+first, which is the arithmetic every explorer uses. It re-reads the receipt on
+every poll rather than counting from the block it first saw: a reorg can move a
+transaction or put it back in the mempool, and depth measured from a block that
+no longer holds it is a confident wrong answer. Depth is not finality in any
+case — more of it only makes being wrong less likely.
+
+`transactionByHash` is the other half of reporting state honestly. A receipt is
+null for a transaction that is still queued, for one the mempool dropped, and
+for a hash that was never broadcast at all; a wallet that cannot tell those
+apart can only show a spinner. This returns null for the last, a null
+`blockNumber` for the first, and a number for one that has been mined.
+
+None of this has been put in front of a live node. The bytes are checked against
+viem and the flow against a server that answers like one, but whether a real
+mempool accepts a replacement at the bump computed here is still an open claim.
+
 ## The payment path, walked in both directions
 
 `depositAndAuthorize` has been executed against the live testnet and reversed:
@@ -176,13 +225,23 @@ right and work nowhere.
 
 ## What is not verified
 
-**No transaction has ever been broadcast.** Every signature is checked against
-viem and recovered back to its signer, and `eth_sendRawTransaction` is
-implemented and untested against a real node. Signing correctly and being
-_accepted_ are different claims, and only the first is supported by evidence
-here. A funded testnet account and one cheap transaction closes it.
+Broadcasting is settled — a transaction was accepted and mined, and a contract
+write was made and reversed, both linked above. What follows is what those runs
+did **not** cover.
 
-Writes are also not wrapped in anything convenient — there is no
-`deposit(amount)` that fills in nonce, gas and fees. That is deliberate for now:
-the call data builders are the tested part, and assembling a transaction around
-them is where defaults quietly become policy.
+**Replacement has never been tried against a node.** `speedUp` and `cancel`
+raise each fee cap by ten percent because that is the bump geth asks for, and
+that number is read from its source rather than observed. A node started with a
+higher `--txpool.pricebump` will drop the replacement, and a client that is not
+geth may want something else entirely. The arithmetic is tested; the rule it
+implements is not.
+
+**Confirmation depth counts the way ethers counts.** One confirmation means
+included, with the including block counted as the first. That matches what
+explorers and most clients mean and is one different from reading it as "N
+blocks on top", so a caller wanting real depth should ask for one more than it
+first appears.
+
+**Addresses come back from a node in lowercase.** `transactionByHash` reports
+them as the node does, while `account.address` is checksummed, so comparing the
+two without lowering both will silently never match.

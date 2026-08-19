@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts'
 import {
   ACCOUNT_PATH,
+  MAX_ACCOUNT_INDEX,
   VaultError,
   derivePrivateKey,
   generatePhrase,
+  isAccountIndex,
   isValidPhrase,
   normalise,
   open,
@@ -46,6 +48,26 @@ describe('derivation', () => {
   it('refuses an index that is not one', () => {
     expect(() => derivePrivateKey(PHRASE, -1)).toThrow(VaultError)
     expect(() => derivePrivateKey(PHRASE, 1.5)).toThrow(VaultError)
+    expect(() => derivePrivateKey(PHRASE, Number.NaN)).toThrow(VaultError)
+  })
+
+  it('refuses an index nothing could ever find again', () => {
+    // Another wallet restoring this phrase walks forward from zero and gives
+    // up after a run of empty accounts, so an account out here is not a high
+    // account, it is a lost one. The cap is also what catches a timestamp or a
+    // balance arriving where an index was meant to.
+    expect(() => derivePrivateKey(PHRASE, MAX_ACCOUNT_INDEX + 1)).toThrow(/between 0 and/)
+    expect(() => derivePrivateKey(PHRASE, Date.now())).toThrow(/between 0 and/)
+
+    expect(derivePrivateKey(PHRASE, MAX_ACCOUNT_INDEX)).toMatch(/^0x[0-9a-f]{64}$/)
+  })
+
+  it('says which numbers name an account, so an interface can ask first', () => {
+    expect(isAccountIndex(0)).toBe(true)
+    expect(isAccountIndex(MAX_ACCOUNT_INDEX)).toBe(true)
+    expect(isAccountIndex(-1)).toBe(false)
+    expect(isAccountIndex(2.5)).toBe(false)
+    expect(isAccountIndex(MAX_ACCOUNT_INDEX + 1)).toBe(false)
   })
 })
 

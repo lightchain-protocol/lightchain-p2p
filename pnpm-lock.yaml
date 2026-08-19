@@ -533,6 +533,9 @@ importers:
       corestore:
         specifier: ^7.12.0
         version: 7.12.0(bare-buffer@3.7.0)(bare-url@2.5.2)
+      hyperblobs:
+        specifier: ^2.12.1
+        version: 2.12.1(bare-buffer@3.7.0)(bare-url@2.5.2)
       hypercore-crypto:
         specifier: ^3.7.0
         version: 3.7.0(bare-buffer@3.7.0)(bare-events@2.9.1)(bare-url@2.5.2)

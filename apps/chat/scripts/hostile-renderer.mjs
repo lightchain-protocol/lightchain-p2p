@@ -88,24 +88,43 @@ const ASK = `(t, fields) => new Promise((resolve) => {
 
 // --- A room to shout into ----------------------------------------------------
 
+// A room of its own, named uniquely. Picking "the last one" and clicking "the
+// last nav item" quietly assumed those were the same room, which they stop
+// being the moment the instance has more than one.
+const label = `hostile ${Date.now().toString(36)}`
+
 const roomKey = await evaluate(`(async () => {
   const ask = ${ASK}
-  let rooms = await ask('room.list')
-  if (!Array.isArray(rooms) || rooms.length === 0) {
-    await ask('room.create')
-    rooms = await ask('room.list')
-  }
-  return rooms[rooms.length - 1].key
+  const created = await ask('room.create')
+  await ask('room.rename', { room: created.key, name: ${JSON.stringify(label)} })
+  return created.key
 })()`)
 
 // Selecting through the interface rather than around it: the render path under
-// test is the one a click produces.
-await evaluate(`(() => {
+// test is the one a click produces. Found by its name, so it is certainly the
+// room the payloads are being sent to.
+//
+// Waited for, because the host coalesces room changes before telling the view
+// about them. Clicking immediately raced that and found a sidebar that had not
+// heard about this room yet.
+const findAndClick = `(() => {
   const items = [...document.querySelectorAll('#room-list .nav-item')]
-  const target = items[items.length - 1]
-  if (target) target.click()
+  const target = items.find((item) => item.textContent.includes(${JSON.stringify(label)}))
+  if (!target) return false
+  target.click()
   return true
-})()`)
+})()`
+
+let selected = false
+for (let attempt = 0; attempt < 40 && !selected; attempt++) {
+  selected = await evaluate(findAndClick)
+  if (!selected) await new Promise((r) => setTimeout(r, 250))
+}
+
+if (!selected) {
+  console.log(`FAIL  the room named ${label} never appeared in the sidebar`)
+  process.exit(1)
+}
 
 // A tripwire. Anything that manages to execute sets this, and nothing in the
 // application ever writes it.
@@ -261,6 +280,20 @@ if (csp === null) {
 } else {
   const unsafe = /unsafe-inline|unsafe-eval/.test(csp)
   report('a content security policy is set', !unsafe, unsafe ? `permits ${csp}` : csp)
+
+  // `img-src 'self' blob:` is deliberate and is what lets an attachment be
+  // shown. Anything beyond it is not: a network origin in any directive gives a
+  // room member a way to make somebody else's window fetch a URL, which reports
+  // that they opened the message and to whom.
+  const remote = /https?:|\/\/|data:/.test(csp)
+  report('the policy reaches no network origin', !remote, remote ? csp : 'local only')
+
+  const images = /img-src ([^;]*)/.exec(csp)
+  report(
+    'images are limited to this document and its own blobs',
+    images !== null && images[1].trim() === "'self' blob:",
+    images ? images[1].trim() : 'no img-src, so images fall back to default-src'
+  )
 }
 
 // --- Errors the window logged while all of that happened ------------------------------

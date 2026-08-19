@@ -194,6 +194,65 @@ describe('changing the password', () => {
   })
 })
 
+describe('more than one account', () => {
+  const wallet = new Wallet(memoryVaultStore())
+  const created = wallet.create(PASSWORD)
+  const firstAccountKey = deriveKey(wallet.account(), 'room registry')
+
+  it('starts on the one every other wallet calls the first', () => {
+    expect(wallet.status()).toMatchObject({ accountIndex: 0, path: "m/44'/60'/0'/0/0" })
+    expect(wallet.status().address).toBe(mnemonicToAccount(created.phrase).address)
+  })
+
+  it('switches to another account, and says which one it is on', () => {
+    const status = wallet.switchAccount(PASSWORD, 3)
+
+    expect(status).toMatchObject({ unlocked: true, accountIndex: 3, path: "m/44'/60'/0'/0/3" })
+    expect(status.address).toBe(mnemonicToAccount(created.phrase, { addressIndex: 3 }).address)
+  })
+
+  it('takes every derived key with it, and brings them back on the way home', () => {
+    // The surprising part, and the reason switching says so in its own
+    // documentation: rooms and transcripts are sealed under a signature by
+    // whichever account is active, so a switch hides them rather than carrying
+    // them across. Nothing is lost, which is what the second half proves.
+    expect(deriveKey(wallet.account(), 'room registry')).not.toEqual(firstAccountKey)
+
+    wallet.switchAccount(PASSWORD, 0)
+    expect(deriveKey(wallet.account(), 'room registry')).toEqual(firstAccountKey)
+  })
+
+  it('refuses an index that is not one, and stays where it was', () => {
+    for (const index of [-1, 1.5, Number.NaN, 1_000_000]) {
+      expect(() => wallet.switchAccount(PASSWORD, index)).toThrow(WalletError)
+      expect(() => wallet.unlock(PASSWORD, index)).toThrow(/between 0 and/)
+    }
+
+    expect(wallet.status()).toMatchObject({ accountIndex: 0, unlocked: true })
+  })
+
+  it('does not move on a wrong password', () => {
+    expect(() => wallet.switchAccount('nearly right', 1)).toThrow(/wrong password/)
+    expect(wallet.status().address).toBe(mnemonicToAccount(created.phrase).address)
+  })
+
+  it('unlocks straight into a chosen account', () => {
+    wallet.lock()
+    const status = wallet.unlock(PASSWORD, 2)
+
+    expect(status.accountIndex).toBe(2)
+    expect(status.address).toBe(mnemonicToAccount(created.phrase, { addressIndex: 2 }).address)
+  })
+
+  it('forgets which account it was on when it locks', () => {
+    // There is nowhere to remember it that survives a restart, so remembering
+    // it here would mean coming back to account two this afternoon and to
+    // account zero tomorrow — with a different set of rooms each time.
+    expect(wallet.lock()).toMatchObject({ accountIndex: 0, path: "m/44'/60'/0'/0/0" })
+    expect(wallet.unlock(PASSWORD).address).toBe(mnemonicToAccount(created.phrase).address)
+  })
+})
+
 describe('passwords', () => {
   it('must be long enough for the derivation cost to matter', () => {
     const wallet = new Wallet(memoryVaultStore())

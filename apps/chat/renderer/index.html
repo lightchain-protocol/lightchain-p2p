@@ -2,13 +2,30 @@
 <html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      `img-src` is the only relaxation, and it is the narrowest one that lets an
+      attachment be displayed. An image arrives as bytes over IPC and becomes a
+      `blob:` URL in this document; `default-src 'self'` alone blocks that, and
+      the alternatives are worse — a `data:` URL is a script vector in an
+      `<img>` fallback, and any remote scheme would let a message pull a URL and
+      tell a stranger's server when it was read.
+
+      Nothing here permits a network origin. If a future change adds `http:`,
+      `https:` or `data:` to this line, a room member gains a way to phone home
+      from inside somebody else's window.
+    -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; style-src 'self'; script-src 'self'"
+      content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' blob:"
     />
     <title>Lightchain</title>
     <link rel="stylesheet" href="tokens.css" />
     <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="styles/conversation.css" />
+    <link rel="stylesheet" href="styles/reactions.css" />
+    <link rel="stylesheet" href="styles/members.css" />
+    <link rel="stylesheet" href="styles/attachments.css" />
+    <link rel="stylesheet" href="styles/search.css" />
   </head>
   <body>
     <!-- One definition per icon, referenced by `<use>` wherever it appears. An
@@ -695,13 +712,21 @@
                 <button class="button button-sm" type="button" id="invite-btn">
                   Invite someone
                 </button>
+                <button class="button button-sm" type="button" id="members-btn">Members</button>
                 <button class="button button-sm" type="button" id="leave-btn">Leave</button>
               </div>
             </header>
 
-            <!-- Announced to screen readers as messages arrive, since they
-                 appear without the user having done anything. -->
-            <ol class="messages" id="messages" aria-live="polite"></ol>
+            <div class="room-body">
+              <!-- Announced to screen readers as messages arrive, since they
+                   appear without the user having done anything. -->
+              <ol class="messages" id="messages" aria-live="polite"></ol>
+
+              <!-- Who is in the room, filled in by the members module. Hidden
+                   by default because a conversation is what somebody came for
+                   and a roster beside it is a choice they can make. -->
+              <aside class="room-members" id="members" hidden></aside>
+            </div>
 
             <p class="typing" id="typing" hidden>
               <span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span>
@@ -1176,6 +1201,6 @@
 
     <p class="toast" id="toast" hidden></p>
 
-    <script type="module" src="app.js"></script>
+    <script type="module" src="./lib/main.js"></script>
   </body>
 </html>

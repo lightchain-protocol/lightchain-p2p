@@ -4,14 +4,18 @@ import crypto from 'hypercore-crypto'
 import type Corestore from 'corestore'
 import type { HypercoreLike } from 'corestore'
 import {
+  MAX_DISPLAY_NAME_LENGTH,
   MAX_NAME_LENGTH,
+  MAX_REACTION_LENGTH,
   MAX_TEXT_LENGTH,
   MESSAGE_VERSION,
   authorPreimage,
+  entryAction,
   isValidEntry,
   orderMessages,
   parseEntry,
   roomName,
+  type Attachment,
   type ChatMessage,
   type ModelAnswer
 } from '@lcai-p2p/protocol'
@@ -48,6 +52,20 @@ export class RoomError extends Error {
 
 interface View extends HypercoreLike {
   readonly length: number
+}
+
+/** What can travel alongside a message. */
+export interface SendOptions {
+  /** The `id` of the message being replied to. */
+  readonly replyTo?: string
+  /**
+   * A file, already written to the room's blob store.
+   *
+   * The reference only. The bytes are put in place first, because a message
+   * pointing at a blob that was never written is a broken attachment that every
+   * member keeps forever.
+   */
+  readonly attachment?: Attachment
 }
 
 export interface RoomOptions {
@@ -126,23 +144,37 @@ export class Room {
       },
       async apply(nodes, view, host) {
         for (const node of nodes) {
-          // Auto-ack appends null nodes to help indexers converge. Skipping
-          // anything unparseable also means a malformed entry cannot wedge
-          // apply, which would stop the room for everyone.
-          if (!isValidEntry(node.value)) continue
-          const entry = parseEntry(node.value)
+          // Every decision here comes from entryAction, which is deliberately
+          // ignorant: it looks at the shape of an entry and never at whether
+          // this build can make sense of it. The view is a Hypercore that
+          // indexers sign and every peer must agree on byte for byte, so a
+          // decision that depended on how much this build understood would fork
+          // the room the first time two peers were on different versions.
+          //
+          // That has been got wrong twice in different ways. Appending the
+          // parsed entry made the view the parser's *output*. Gating on whether
+          // the entry parsed made the view depend on the parser's *verdict*.
+          // Both fork, and a forked room cannot be repaired because the entries
+          // are already signed.
+          const action = entryAction(node.value)
 
-          if (entry.type === 'add-writer') {
-            await host.addWriter(b4a.from(entry.key, 'hex'), { indexer: true })
+          if (action.do === 'skip') continue
+
+          if (action.do === 'add-writer') {
+            await host.addWriter(b4a.from(action.key, 'hex'), { indexer: true })
             continue
           }
 
-          // The raw value, not the parsed one. The view is a Hypercore that
-          // indexers sign and every peer must agree on byte for byte, so
-          // anything that goes into it must not depend on this build's parser.
-          // Appending `entry` made the view the parser's *output*: a client
-          // that understood one more optional field wrote a different view from
-          // one that did not, and the two forked. Reading re-parses anyway.
+          if (action.do === 'remove-writer') {
+            // Autobase refuses to remove the last indexer, and asking anyway
+            // throws in here, which would wedge apply for everybody. Checking
+            // first turns "the room stops working" into "that removal did
+            // nothing", and the entry stays in the log either way.
+            const key = b4a.from(action.key, 'hex')
+            if (host.removeable(key)) await host.removeWriter(key)
+            continue
+          }
+
           await view.append(node.value)
         }
       },
@@ -241,13 +273,23 @@ export class Room {
     }
   }
 
-  async send(text: string): Promise<ChatMessage> {
+  /**
+   * Signs one message and appends it.
+   *
+   * Every write goes through here. A path that built its own entry would sooner
+   * or later forget the signature, and an unsigned entry is not rejected — it
+   * is shown as unattributed, which looks like an older peer rather than like a
+   * bug.
+   */
+  async #write(
+    fields: Omit<ChatMessage, 'type' | 'v' | 'id' | 'from' | 'at'>
+  ): Promise<ChatMessage> {
     if (!this.writable) {
       throw new RoomError(
         'not a writer in this room yet. An existing writer must add this peer\u2019s writerKey first.'
       )
     }
-    this.#checkLength(text)
+    this.#checkLength(fields.text)
 
     const signed = this.#sign({
       type: 'message',
@@ -255,11 +297,92 @@ export class Room {
       id: b4a.toString(crypto.randomBytes(12), 'hex'),
       from: this.writerKey,
       at: Date.now(),
-      text
+      ...fields
     })
 
     await this.#base.append(signed)
     return signed
+  }
+
+  async send(text: string, options: SendOptions = {}): Promise<ChatMessage> {
+    return this.#write({
+      text,
+      ...(options.replyTo === undefined ? {} : { replyTo: options.replyTo }),
+      ...(options.attachment === undefined ? {} : { attachment: options.attachment })
+    })
+  }
+
+  /**
+   * Adds a reaction, or takes one back.
+   *
+   * One entry per press. There is nowhere to keep a counter that every peer
+   * would agree on without writing down how it got there, so the log records
+   * the presses and the reader adds them up — last press wins, per person, per
+   * message, per reaction.
+   */
+  async react(target: string, emoji: string, on = true): Promise<ChatMessage> {
+    if (emoji.trim() === '') throw new RoomError('a reaction needs a reaction')
+    if (emoji.length > MAX_REACTION_LENGTH) {
+      throw new RoomError(`a reaction may not exceed ${MAX_REACTION_LENGTH} characters`)
+    }
+
+    return this.#write({
+      text: on ? `reacted with ${emoji}` : `took back a ${emoji}`,
+      event: { kind: 'reacted', target, emoji, ...(on ? {} : { removed: true }) }
+    })
+  }
+
+  /**
+   * Rewrites one of your own messages.
+   *
+   * The replacement is this entry's text, and the event only says which message
+   * it replaces. Nothing here can stop somebody writing an edit against another
+   * person's message — anyone can append anything to their own core — so the
+   * check that matters happens when the room is read, where a signature can be
+   * tested. See `resolveRoom` in the protocol package.
+   */
+  async edit(target: string, text: string): Promise<ChatMessage> {
+    return this.#write({ text, event: { kind: 'edited', target } })
+  }
+
+  /**
+   * Withdraws one of your own messages.
+   *
+   * Withdrawn, not erased, and the difference is not a quibble: the original
+   * entry is signed and has already been replicated to everybody in the room.
+   * This asks every reader to stop showing it. Readers that understand the
+   * request comply, readers that predate it carry on, and anybody who kept a
+   * copy keeps it. An interface must not describe this as deleting.
+   */
+  async deleteMessage(target: string): Promise<ChatMessage> {
+    return this.#write({ text: 'withdrew a message', event: { kind: 'deleted', target } })
+  }
+
+  /** Pins a message to the room, or unpins it. Anyone who can write may do either. */
+  async pin(target: string, on = true): Promise<ChatMessage> {
+    return this.#write({
+      text: on ? 'pinned a message' : 'unpinned a message',
+      event: { kind: 'pinned', target, ...(on ? {} : { removed: true }) }
+    })
+  }
+
+  /**
+   * Says what you would like to be called here.
+   *
+   * About yourself and nobody else. A name others could set is a way to relabel
+   * a person as somebody they are not, and only the address underneath has been
+   * proven. An empty name clears it.
+   */
+  async nameSelf(name: string): Promise<ChatMessage> {
+    const trimmed = name.trim()
+    if (trimmed.length > MAX_DISPLAY_NAME_LENGTH) {
+      throw new RoomError(`a name may not exceed ${MAX_DISPLAY_NAME_LENGTH} characters`)
+    }
+
+    return this.#write({
+      text: trimmed === '' ? 'cleared their name' : `is now known as ${trimmed}`,
+      event: { kind: 'named-self', name: trimmed }
+    })
   }
 
   /**
@@ -354,17 +477,60 @@ export class Room {
     }
     await this.#base.append({ type: 'add-writer', v: MESSAGE_VERSION, key: writerKey })
 
-    await this.#base.append(
-      this.#sign({
-        type: 'message',
-        v: MESSAGE_VERSION,
-        id: b4a.toString(crypto.randomBytes(12), 'hex'),
-        from: this.writerKey,
-        at: Date.now(),
-        text: `added ${writerKey.slice(0, 8)}… to the room`,
-        event: { kind: 'joined', writer: writerKey }
+    await this.#write({
+      text: `added ${writerKey.slice(0, 8)}… to the room`,
+      event: { kind: 'joined', writer: writerKey }
+    })
+  }
+
+  /**
+   * Takes write access away from a peer.
+   *
+   * Any writer may do this, which is the trust model the room already has:
+   * anyone who can write can add an accomplice, so a removal is not a power
+   * they lacked before. It is not a moderation system and should not be sold as
+   * one.
+   *
+   * It does not erase what they wrote. Their entries are signed and replicated
+   * and stay in the history, which is honest — they did write them.
+   *
+   * Autobase refuses to remove the last indexer, so a room cannot be left with
+   * nobody able to write. That refusal happens inside `apply`, where throwing
+   * would stop the room for everybody, so `apply` checks first and the removal
+   * simply does nothing. This is the one case where the command is written and
+   * has no effect.
+   */
+  async removeWriter(writerKey: string): Promise<void> {
+    if (!/^[0-9a-f]{64}$/.test(writerKey)) {
+      throw new RoomError(`writer key must be 32 bytes of lowercase hex, got "${writerKey}"`)
+    }
+    if (!this.writable) {
+      throw new RoomError('only a writer can remove another')
+    }
+
+    // The announcement goes first, which is the opposite of `addWriter` and
+    // deliberate. Removing somebody can cost the remover their own access —
+    // two people removing each other at the same moment is the obvious way,
+    // and removing yourself is another — and once that has happened there is
+    // no way to append the sentence explaining it. Writing it first means the
+    // worst outcome is a room that says somebody was removed when they were
+    // not, which somebody can read and correct, rather than a room where
+    // access silently changed and nothing says why.
+    //
+    // Both appends are guarded, because `writable` can go false between the
+    // check above and either write. Autobase reports that as "Not writable",
+    // which tells the person who asked nothing at all about what happened.
+    try {
+      await this.#write({
+        text: `removed ${writerKey.slice(0, 8)}… from the room`,
+        event: { kind: 'removed', writer: writerKey }
       })
-    )
+      await this.#base.append({ type: 'remove-writer', v: MESSAGE_VERSION, key: writerKey })
+    } catch (err) {
+      throw new RoomError(
+        `the removal could not be written: ${(err as Error).message}. This peer may have lost write access while the request was in flight, which happens when two people remove each other at once.`
+      )
+    }
   }
 
   /**

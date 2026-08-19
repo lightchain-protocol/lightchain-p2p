@@ -1,4 +1,5 @@
-const { app, BrowserWindow, Notification, ipcMain, shell } = require('electron')
+const { app, BrowserWindow, Notification, dialog, ipcMain, shell } = require('electron')
+const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const PearRuntime = require('pear-runtime')
@@ -167,6 +168,33 @@ async function createWindow() {
 
   win.once('ready-to-show', () => win.show())
 
+  // Denied by default, and the default is the point. Electron grants most
+  // permissions to a renderer that asks, and this one displays text written by
+  // strangers — so geolocation, notifications requested from the page, MIDI,
+  // pointer lock and the rest are refused outright rather than left to whatever
+  // Chromium decides. The camera is the single exception, because scanning an
+  // invite from a QR code needs it, and even that is only allowed for the
+  // application's own page rather than for anything that manages to navigate.
+  win.webContents.session.setPermissionRequestHandler((contents, permission, callback) => {
+    if (permission !== 'media') return callback(false)
+    const url = contents.getURL()
+    callback(url.startsWith('file://') || url === process.env.PEAR_DEV_SERVER_URL)
+  })
+
+  // Asked before a device is opened rather than when the page requests access,
+  // and not covered by the handler above.
+  win.webContents.session.setPermissionCheckHandler((_contents, permission) => {
+    return permission === 'media'
+  })
+
+  // Nothing in this application should ever navigate away or open a second
+  // window. A link goes through `app:openExternal`, which allows only http and
+  // https, and anything else reaching here is a bug or an attempt.
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  win.webContents.on('will-navigate', (evt, url) => {
+    if (url !== win.webContents.getURL()) evt.preventDefault()
+  })
+
   const devServerUrl = process.env.PEAR_DEV_SERVER_URL
 
   if (devServerUrl) {
@@ -317,6 +345,75 @@ ipcMain.handle('app:openExternal', (evt, url) => {
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false
   void shell.openExternal(parsed.href)
+  return true
+})
+
+/**
+ * Strips a filename down to something that cannot escape the folder it is
+ * saved into.
+ *
+ * The name on an attachment was chosen by whoever sent it, and a save dialog
+ * pre-filled with `..\..\Windows\System32\evil.exe` is a way to put a file
+ * somewhere it was not meant to go. Windows also reserves a handful of device
+ * names that behave very strangely when written to, and refuses names ending
+ * in a dot or a space.
+ */
+function safeFileName(name) {
+  const stripped = String(name ?? '')
+    .replace(/[\\/]/g, '_')
+    .replace(/^[a-zA-Z]:/, '')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f<>:"|?*]/g, '_')
+    .replace(/^\.+/, '')
+    .replace(/[. ]+$/, '')
+    .slice(0, 255)
+
+  if (stripped === '') return 'attachment'
+  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(stripped)) return `_${stripped}`
+  return stripped
+}
+
+/** Picks files to attach. Returns their bytes, because the renderer cannot read disk. */
+ipcMain.handle('app:chooseFiles', async (evt, opts) => {
+  const win = BrowserWindow.fromWebContents(evt.sender)
+  if (!win) return []
+
+  const picked = await dialog.showOpenDialog(win, {
+    properties: ['openFile', 'multiSelections'],
+    title: 'Attach files'
+  })
+  if (picked.canceled) return []
+
+  const limit = Number(opts?.maxBytes) || 25 * 1024 * 1024
+  const files = []
+
+  for (const filePath of picked.filePaths) {
+    const stat = await fs.promises.stat(filePath).catch(() => null)
+    // Refused here rather than after reading it, because reading a very large
+    // file to then reject it is the same denial of service with extra steps.
+    if (!stat || !stat.isFile() || stat.size > limit) {
+      files.push({ name: path.basename(filePath), size: stat ? stat.size : 0, tooLarge: true })
+      continue
+    }
+    const bytes = await fs.promises.readFile(filePath)
+    files.push({ name: path.basename(filePath), size: stat.size, bytes: [...bytes] })
+  }
+
+  return files
+})
+
+/** Saves an attachment somewhere the person chooses, under a name that cannot wander. */
+ipcMain.handle('app:saveFile', async (evt, request) => {
+  const win = BrowserWindow.fromWebContents(evt.sender)
+  if (!win || !Array.isArray(request?.bytes)) return false
+
+  const chosen = await dialog.showSaveDialog(win, {
+    title: 'Save attachment',
+    defaultPath: safeFileName(request.name)
+  })
+  if (chosen.canceled || !chosen.filePath) return false
+
+  await fs.promises.writeFile(chosen.filePath, Buffer.from(request.bytes))
   return true
 })
 

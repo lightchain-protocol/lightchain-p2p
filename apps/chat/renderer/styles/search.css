@@ -1,0 +1,198 @@
+/* Searching every room at once. Everything here belongs to `lib/search.js`.
+
+   The renderer's policy is `default-src 'self'; style-src 'self'`, which covers
+   the inline `style` attribute as well as `<style>` blocks, so this file is the
+   only place any of it can live. It loads after `app.css`, where the dialog,
+   the field and the note this is built out of are defined: everything below is
+   either new or a deliberate override of one of those, and every value is a
+   token so that a result follows a theme switch along with the rest of the
+   window. */
+
+/* --- The surface ---------------------------------------------------------- */
+
+/* Anchored near the top rather than centred, because the list grows downwards
+   out of the field and a centred dialog moves its own input every time the
+   number of results changes — the field ends up somewhere different for two
+   matches than for forty, while somebody is still typing into it.
+
+   Bounded so the results scroll inside the dialog instead of running it off the
+   bottom of a short window. */
+.search-dialog {
+  margin-top: 10vh;
+  margin-bottom: auto;
+  max-height: 78vh;
+}
+
+/* Only while it is open. A `display` declaration on the dialog itself outranks
+   the user agent's `dialog:not([open]) { display: none }` whatever its
+   specificity, because an author rule beats a user agent one — so without the
+   `[open]` the closed dialog is drawn over the application. It is the same trap
+   the `[hidden]` rule at the top of `app.css` was written for. */
+.search-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.search-body {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+/* Prose, not a key. The monospace face `.input` carries is right for hex and
+   for an address; it is wrong for half a sentence somebody is trying to
+   remember. */
+.search-input {
+  font-family: inherit;
+  font-size: var(--lc-text-md);
+}
+
+/* Empty, searching, counted or failed — one line, so the surface never has two
+   things to say at once and never quietly says nothing. */
+.search-status {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+.search-status[data-tone='error'] {
+  color: var(--lc-danger);
+}
+
+/* --- Results -------------------------------------------------------------- */
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-lg);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+/* An empty list still takes its share of the column gap, which reads as a
+   missing panel under the empty state. */
+.search-results:empty {
+  display: none;
+}
+
+.search-group {
+  min-width: 0;
+}
+
+/* Which room you are reading is the first thing that stops making sense when a
+   list of matches from six of them scrolls, so the name stays put at the top of
+   its own group. The background has to be opaque or the rows travel visibly
+   underneath it. */
+.search-group-name {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 0 var(--lc-space-xs);
+  padding: var(--lc-space-xs) var(--lc-space-sm);
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--lc-fg-dim);
+  background: var(--lc-bg-elevated);
+}
+
+.search-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.search-result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  border-radius: var(--lc-radius-md);
+  cursor: default;
+}
+
+.search-result:hover {
+  background: var(--lc-bg-elevated-2);
+}
+
+/* Follows the arrow keys as well as the pointer, and has to be the louder of
+   the two: this is the row Enter acts on, and the pointer may be resting
+   somewhere else entirely while somebody types. The same wash the mention
+   picker uses, because it is the same idea. */
+.search-result.is-active {
+  background: color-mix(in srgb, var(--lc-brand) 20%, transparent);
+}
+
+/* Two lines. The snippet has already been cut down to the part around the
+   match, and this is what stops a message made of one very long word from
+   deciding how wide the dialog is. Line breaks are left collapsed rather than
+   preserved the way `.message-text` preserves them: a result is a reference to
+   a message, not the message. */
+.search-result-text {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* A user agent paints `<mark>` as black on yellow, which in a dark window is a
+   hazard stripe through the middle of a sentence. */
+.search-mark {
+  padding: 0 1px;
+  border-radius: 2px;
+  color: var(--lc-fg);
+  background: color-mix(in srgb, var(--lc-brand) 38%, transparent);
+}
+
+.search-result-meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--lc-space-sm);
+  min-width: 0;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+.search-result-author {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+}
+
+/* The same red the conversation gives a signature that does not match. It is
+   the same claim and it is no more true for being in a list. */
+.search-result-author.is-unverified {
+  font-family: inherit;
+  color: var(--lc-danger);
+}
+
+.search-result-when {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Footnote ------------------------------------------------------------- */
+
+/* The keys are worth stating once, quietly, where they will be read by whoever
+   is looking for them and ignored by everybody else. */
+.search-foot {
+  padding-top: var(--lc-space-md);
+  border-top: 1px solid var(--lc-rule);
+  flex: 0 0 auto;
+}

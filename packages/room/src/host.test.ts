@@ -245,6 +245,115 @@ describe('invites', () => {
   })
 })
 
+describe('the conversation a host hands to a view', () => {
+  // The production path for every rule about editing, withdrawing and
+  // reacting. `resolveRoom` is where the rules live and this is where they are
+  // handed the only thing that can enforce them: a signature this host checked.
+
+  const ALICE = '0x' + '11'.repeat(20)
+  const BOB = '0x' + '22'.repeat(20)
+
+  /** A signature scheme with no curve, but the right shape and a real check. */
+  const identityFor = (address: string) => ({
+    address,
+    hashText: (text: string) => `hash(${text})`,
+    sign: () => ('0x' + address.slice(2).toLowerCase()).padEnd(132, '0')
+  })
+
+  const checks = {
+    recover: (_preimage: string, signature: string) => '0x' + signature.slice(2, 42),
+    hashText: (text: string) => `hash(${text})`
+  }
+
+  it('applies an author\u2019s own edit and refuses everybody else\u2019s', async () => {
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const bob = await net.createPeer('bob')
+
+    const aliceHost = await hostFor(alice, { verify: checks })
+    const bobHost = await hostFor(bob, { verify: checks })
+    aliceHost.useIdentity(identityFor(ALICE))
+    bobHost.useIdentity(identityFor(BOB))
+
+    const created = await aliceHost.create()
+    const joined = await bobHost.join(created.key, aliceHost.credentials(created.key).encryptionKey)
+    await net.connect()
+    await aliceHost.addWriter(created.key, joined.writerKey)
+    await waitFor(async () => (await bobHost.state(created.key)).writable, 'bob to write')
+
+    await aliceHost.send(created.key, 'as written')
+    const target = (await aliceHost.state(created.key)).conversation.find(
+      (m) => m.text === 'as written'
+    )
+    expect(target).toBeDefined()
+
+    await aliceHost.edit(created.key, target!.id, 'as corrected')
+    await waitFor(
+      async () =>
+        (await bobHost.state(created.key)).conversation.some((m) => m.text === 'as corrected'),
+      'bob to see the correction'
+    )
+
+    // Bob now tries to rewrite it. His signature recovers to Bob, the message
+    // was signed by Alice, so the rewrite is refused on every peer including
+    // his own — the check is in reading, not in writing.
+    await bobHost.edit(created.key, target!.id, 'as bob would prefer')
+    await waitFor(
+      async () =>
+        (await aliceHost.state(created.key)).messages.filter((m) => m.event?.kind === 'edited')
+          .length === 2,
+      'the forgery to replicate'
+    )
+
+    for (const host of [aliceHost, bobHost]) {
+      const conversation = (await host.state(created.key)).conversation
+      expect(conversation.find((m) => m.id === target!.id)?.text).toBe('as corrected')
+    }
+  })
+
+  it('gathers reactions and names onto the state the view reads', async () => {
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const aliceHost = await hostFor(alice, { verify: checks })
+    aliceHost.useIdentity(identityFor(ALICE))
+
+    const created = await aliceHost.create()
+    await aliceHost.send(created.key, 'a thing')
+    const target = (await aliceHost.state(created.key)).conversation.find(
+      (m) => m.text === 'a thing'
+    )!
+
+    await aliceHost.react(created.key, target.id, '👍')
+    await aliceHost.pin(created.key, target.id)
+    await aliceHost.nameSelf(created.key, 'Alice')
+
+    const state = await aliceHost.state(created.key)
+    const resolved = state.conversation.find((m) => m.id === target.id)
+
+    expect(resolved?.reactions).toEqual([{ emoji: '👍', by: [ALICE] }])
+    expect(resolved?.pinned).toBe(true)
+    expect(state.pinned).toEqual([target.id])
+    expect(state.names).toEqual({ [ALICE]: 'Alice' })
+  })
+
+  it('survives being serialised to the view, which a Map would not', async () => {
+    // RoomState crosses an IPC boundary as JSON. A Map arrives as `{}` and the
+    // names would silently vanish.
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const aliceHost = await hostFor(alice, { verify: checks })
+    aliceHost.useIdentity(identityFor(ALICE))
+
+    const created = await aliceHost.create()
+    await aliceHost.nameSelf(created.key, 'Alice')
+
+    const state = await aliceHost.state(created.key)
+    const round = JSON.parse(JSON.stringify(state)) as typeof state
+
+    expect(round.names).toEqual({ [ALICE]: 'Alice' })
+  })
+})
+
 describe('several rooms at once', () => {
   it('keeps them separate and lists them', async () => {
     net = await createTestNetwork()

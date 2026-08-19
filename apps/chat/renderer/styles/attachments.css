@@ -1,0 +1,215 @@
+/**
+ * Attachments: the control that adds one, the chip holding it before it is
+ * sent, and what one looks like once it has arrived.
+ *
+ * Every value comes from a token, as everywhere else. Nothing here is set from
+ * script either: an image is capped by this file rather than by a measurement
+ * taken in the renderer, so a picture from a stranger cannot arrive at a size
+ * of its own choosing.
+ */
+
+/* --- Attaching ------------------------------------------------------------ */
+
+/* Square, and the same height as everything else on the composer row. It
+   carries `.button` as well, so the border, the radius, the hover and the
+   focus ring are the ones every other control already has. */
+.attach-btn {
+  width: var(--lc-control-md);
+  padding: 0;
+  flex: 0 0 auto;
+  color: var(--lc-fg-muted);
+}
+
+.attach-btn:hover:not(:disabled) {
+  color: var(--lc-fg);
+}
+
+/* The composer with a file held over it. An outline rather than a border,
+   because a border takes part in layout and the whole conversation would jump
+   two pixels every time something was dragged across the window. */
+.attachment-dropping {
+  outline: 2px dashed var(--lc-brand);
+  outline-offset: -3px;
+  background: color-mix(in srgb, var(--lc-brand) 8%, transparent);
+}
+
+/* --- Waiting to be sent --------------------------------------------------- */
+
+/* Somewhere to put the chips. Its horizontal padding is the composer's, so the
+   chips line up with the text box under them rather than sitting proud of it. */
+.attachment-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lc-space-sm);
+  padding: var(--lc-space-sm) var(--lc-space-lg) 0;
+  flex: 0 0 auto;
+}
+
+.attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  max-width: 42ch;
+  height: var(--lc-control-sm);
+  padding: 0 var(--lc-space-xs) 0 var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-pill);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-muted);
+  background: var(--lc-bg-elevated);
+}
+
+/* A filename has whatever length its author felt like. One line, and the chip
+   gives way before the size and the remove button do — those are fixed and
+   small, and a chip that pushed them off the end would be a chip you cannot
+   take off again. */
+.attachment-chip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-chip-size {
+  flex: 0 0 auto;
+  color: var(--lc-fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.attachment-chip-remove {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  padding: 0;
+  appearance: none;
+  border: 0;
+  border-radius: var(--lc-radius-pill);
+  font: inherit;
+  font-size: var(--lc-text-sm);
+  line-height: 1;
+  color: var(--lc-fg-dim);
+  background: transparent;
+  cursor: default;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.attachment-chip-remove:hover {
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+}
+
+.attachment-chip-remove:focus-visible {
+  outline: 2px solid var(--lc-brand);
+  outline-offset: 2px;
+}
+
+/* --- Arrived in a message ------------------------------------------------- */
+
+.attachment {
+  min-width: 0;
+  margin-top: var(--lc-space-sm);
+}
+
+/* Everything that is not an image takes this shape — loading, failed, and an
+   ordinary file — so the three read as one thing in three states rather than
+   as three unrelated blocks that happen to appear in the same place. */
+.attachment-row {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-md);
+  min-width: 0;
+  padding: var(--lc-space-sm) var(--lc-space-sm) var(--lc-space-sm) var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg);
+}
+
+.attachment-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* Shortened in script before it ever gets here, because an ellipsis on the
+   right hides the extension. This is the second line of defence: whatever
+   arrives, it takes one line and the button beside it keeps its place. */
+.attachment-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--lc-text-sm);
+  user-select: text;
+}
+
+.attachment-meta {
+  margin-top: 2px;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.attachment-meta[data-tone='error'] {
+  color: var(--lc-danger);
+}
+
+/* The same slow fade the titlebar uses for a connection in progress, and the
+   same keyframe from app.css rather than a second one that drifts from it. A
+   file comes from whichever peer has it, which can take a moment or forever. */
+.attachment-loading .attachment-meta {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.attachment-row .button {
+  flex: 0 0 auto;
+}
+
+/* --- An image ------------------------------------------------------------- */
+
+.attachment-figure {
+  min-width: 0;
+  margin: 0;
+}
+
+/* Capped in both directions. A panorama and a portrait are two different ways
+   for one message to fill the whole scrollback, and scrolling past somebody's
+   photograph to find the next sentence is the thing this exists to prevent.
+   `width` and `height` are set on the element from what the image turned out
+   to be, and `auto` here lets the caps scale it while keeping that ratio. */
+.attachment-image {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  width: auto;
+  height: auto;
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg);
+}
+
+.attachment-caption {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  min-width: 0;
+  margin-top: var(--lc-space-xs);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+}
+
+.attachment-caption .attachment-name {
+  flex: 1 1 auto;
+}
+
+.attachment-caption .attachment-meta {
+  margin-top: 0;
+  flex: 0 0 auto;
+}
+
+.attachment-caption .button {
+  flex: 0 0 auto;
+}

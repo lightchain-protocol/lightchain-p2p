@@ -97,10 +97,27 @@ describe('room events', () => {
     expect(parseEntry(message())).not.toHaveProperty('event')
   })
 
-  it('refuses an event it cannot describe rather than rendering it blindly', () => {
-    expect(() => parseEntry(message({ event: { kind: 'exploded' } } as never))).toThrow(
-      MessageError
-    )
+  it('drops an event it cannot describe and keeps the sentence beside it', () => {
+    // This used to reject the whole entry, on the reasoning that a client which
+    // cannot say what an event did should not render it. The reasoning was
+    // right and the consequence was not: rejecting meant `isValidEntry` said
+    // no, which meant `apply` skipped the entry, which meant a build that knew
+    // one more event kind put something in the view that an older build did
+    // not — and a view two peers disagree about is a forked room, permanently,
+    // because the entries are already signed.
+    //
+    // So an unknown kind now costs the structure and keeps the message. Every
+    // event's `text` is written to stand alone for exactly this moment.
+    const parsed = parseEntry(
+      message({ text: 'did something new', event: { kind: 'exploded' } } as never)
+    ) as ChatMessage
+
+    expect(parsed.text).toBe('did something new')
+    expect(parsed).not.toHaveProperty('event')
+  })
+
+  it('still refuses a known event whose data is wrong', () => {
+    expect(() => parseEntry(message({ event: { kind: 'renamed' } } as never))).toThrow(MessageError)
   })
 
   it('refuses a name longer than the limit', () => {

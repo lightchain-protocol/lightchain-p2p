@@ -1,0 +1,213 @@
+/**
+ * Reactions on a message, and the picker that adds one.
+ *
+ * Every value comes from a token, the same rule the rest of the stylesheet
+ * keeps: a hex code here is a value that drifts away from the design system the
+ * first time anybody changes it. The pills borrow the control heights, radii
+ * and hover treatment from `.button` and `.badge` in `app.css` rather than
+ * inventing quieter versions of them, so a room with reactions in it looks like
+ * the room without.
+ */
+
+/* --- The bar under a message ---------------------------------------------- */
+
+.reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lc-space-xs);
+  margin: var(--lc-space-sm) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Lighter than the bubble it sits on rather than darker, the way `.chip` sits
+   on the hero: a pill in the same tone as the surface behind it disappears on
+   an own message, where the bubble is already the elevated colour. */
+.reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: var(--lc-control-sm);
+  padding: 0 var(--lc-space-sm);
+  appearance: none;
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-pill);
+  font: inherit;
+  font-size: var(--lc-text-xs);
+  line-height: 1;
+  color: var(--lc-fg-muted);
+  background: var(--lc-bg);
+  cursor: default;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.reaction:hover:not(:disabled) {
+  border-color: var(--lc-brand);
+  color: var(--lc-fg);
+  background: color-mix(in srgb, var(--lc-brand) 14%, var(--lc-bg-elevated-2));
+}
+
+.reaction:active:not(:disabled) {
+  background: color-mix(in srgb, var(--lc-brand) 22%, var(--lc-bg-elevated-2));
+}
+
+.reaction:focus-visible {
+  outline: 2px solid var(--lc-brand);
+  outline-offset: 2px;
+}
+
+/* A read-only member can see what a room thinks and cannot add to it. */
+.reaction:disabled {
+  opacity: 0.45;
+}
+
+/* One this peer is behind. It carries the brand fill and a brand border rather
+   than the fill alone, because at thirteen pixels a tinted background is a
+   difference some people cannot see and the border is a difference in shape. */
+.reaction.is-mine {
+  border-color: color-mix(in srgb, var(--lc-brand) 60%, transparent);
+  color: var(--lc-brand-ink);
+  background: color-mix(in srgb, var(--lc-brand) 16%, transparent);
+}
+
+.reaction.is-mine:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--lc-brand) 26%, transparent);
+}
+
+/* Bounded rather than trusted. A reaction is other people's text, and the
+   protocol lets it be twenty-four characters of anything; unchecked, one member
+   could put a sentence wearing a button under everybody's messages. */
+.reaction-emoji {
+  max-width: 8ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--lc-text-sm);
+}
+
+.reaction-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- The picker ------------------------------------------------------------ */
+
+/* Put on whatever opened the picker, for as long as it is open. Anchor
+   positioning is the only way to tie a panel in the top layer to an element in
+   the page: the two are in different containing blocks, so `position: absolute`
+   has nothing to resolve against, and anything computed in script would have to
+   be written back as an inline style the content security policy forbids. */
+.is-emoji-anchor {
+  anchor-name: --lc-emoji-anchor;
+}
+
+/* The UA stylesheet gives a popover a border, a padding, system colours and
+   `inset: 0` with automatic margins to centre it. All of that is replaced —
+   the insets in particular, or the panel would be centred inside the strip of
+   viewport above the anchor rather than sat against it. */
+.emoji-picker {
+  position: fixed;
+  position-anchor: --lc-emoji-anchor;
+  position-area: block-start span-inline-start;
+  /* Above by preference, below when the anchor is near the top of the window,
+     and the same two flipped when it is near the inline edge. */
+  position-try-fallbacks:
+    flip-block,
+    flip-inline,
+    flip-block flip-inline;
+  inset: auto;
+  margin: var(--lc-space-sm) 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-sm);
+  width: min(21rem, 92vw);
+  max-height: min(22rem, 60vh);
+  padding: var(--lc-space-sm);
+  overflow: hidden;
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-lg);
+  color: var(--lc-fg);
+  background: var(--lc-bg-elevated-2);
+  box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.6);
+}
+
+/* The field is `.input`, which is monospaced for the keys and addresses that
+   fill every other one in the app. A shortcode is nearer prose than data, and
+   the placeholder is a sentence. */
+.emoji-search {
+  height: var(--lc-control-sm);
+  font-family: inherit;
+  font-size: var(--lc-text-sm);
+}
+
+.emoji-empty {
+  margin: 0;
+  padding: var(--lc-space-sm) var(--lc-space-xs);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+}
+
+/* The panel is capped and this is the part that gives: the field and the
+   shortcode stay put while the grid scrolls under them. */
+.emoji-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+.emoji-group-title {
+  margin: 0 0 var(--lc-space-xs);
+  padding: 0 var(--lc-space-xs);
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lc-fg-dim);
+}
+
+/* Eight across, and `COLUMNS` in `lib/reactions.js` has to say eight as well:
+   it is the distance Up and Down move through the flattened list, and a grid
+   that disagreed with it would send the selection diagonally. */
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.emoji-option {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-height: var(--lc-control-sm);
+  border-radius: var(--lc-radius-md);
+  font-size: var(--lc-text-lg);
+  line-height: 1;
+  cursor: default;
+}
+
+.emoji-option:hover {
+  background: var(--lc-bg-elevated);
+}
+
+/* The selection, which is the keyboard's and the pointer's alike. Focus stays
+   in the search field the whole time, so this is the only thing on screen
+   saying what Enter would choose — the same treatment the `@model` list uses
+   for the same reason. */
+.emoji-option.is-active {
+  background: color-mix(in srgb, var(--lc-brand) 20%, transparent);
+}
+
+.emoji-hint {
+  margin: 0;
+  padding: 0 var(--lc-space-xs);
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-size: var(--lc-text-xs);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-fg-dim);
+}

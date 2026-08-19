@@ -1,0 +1,279 @@
+/* Members, avatars, and the control for naming yourself.
+   Everything here belongs to `lib/members.js`.
+
+   The renderer's policy is `default-src 'self'; style-src 'self'`, which covers
+   the inline `style` attribute as well as `<style>` blocks, so this file is the
+   only place any of it can live. Values come from `tokens.css` rather than as
+   hex, so a member row follows a theme switch along with everything else. The
+   one exception is the ink an identicon is painted in, which is a `fill`
+   presentation attribute set in JavaScript and has to be theme-invariant — see
+   the note above `IDENTICON_INK` for why it cannot be a token. */
+
+/* --- The panel ------------------------------------------------------------ */
+
+/* Sized and bordered like `.ai-models`, which is the other column of this
+   shape in the application. Both are overridable by whatever the panel is
+   dropped into: a dialog wants the content and not the sidebar. */
+.members {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  flex: 0 0 auto;
+  min-height: 0;
+  border-left: 1px solid var(--lc-rule);
+  background: var(--lc-bg-elevated);
+}
+
+.members-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--lc-space-sm);
+  padding: var(--lc-space-md) var(--lc-space-md) var(--lc-space-sm);
+}
+
+/* The heading's own bottom margin is for standing alone above a list. Sharing a
+   row with the count, it lifts the two off a common baseline. */
+.members-head .members-title {
+  margin: 0;
+}
+
+.members-count {
+  font-size: var(--lc-text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--lc-fg-dim);
+}
+
+.members-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0 var(--lc-space-sm) var(--lc-space-sm);
+  list-style: none;
+}
+
+/* Not a disclaimer in small print at the bottom. What the list means cannot be
+   inferred from the list, and a reader who works it out for themselves works it
+   out wrongly, so it is the last thing in the column rather than a tooltip. */
+.members-note {
+  margin: 0;
+  padding: var(--lc-space-md) var(--lc-space-md) 0;
+  font-size: var(--lc-text-xs);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-fg-muted);
+}
+
+.members-note:first-of-type {
+  border-top: 1px solid var(--lc-rule);
+}
+
+.members-note:last-of-type {
+  padding-bottom: var(--lc-space-md);
+}
+
+/* --- A row ---------------------------------------------------------------- */
+
+.member {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lc-space-sm);
+  min-width: 0;
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  border-radius: var(--lc-radius-md);
+}
+
+/* The actions only appear on approach. A column with a Pay and a Remove button
+   printed on every line reads as a list of things to do to people. */
+.member:hover,
+.member:focus-within {
+  background: var(--lc-bg-elevated-2);
+}
+
+.member-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* One line, always. A name is up to 32 characters somebody else chose, and a
+   row that grows to three lines to fit one pushes the rest of the list off the
+   bottom of the column. */
+.member-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-tight);
+  color: var(--lc-fg);
+}
+
+/* `.key` already handles the monospace and the selectability. This only has to
+   stop it reserving 32 characters inside a 260px column. */
+.member-id {
+  max-width: 100%;
+}
+
+.member-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lc-space-xs);
+  margin-top: 2px;
+}
+
+/* Tones `.tag` does not already own, scoped to a row so that adding them here
+   cannot change what a tag means anywhere else in the application. */
+.member .tag[data-tone='you'] {
+  color: var(--lc-fg-muted);
+  background: var(--lc-bg-elevated-2);
+}
+
+.member .tag[data-tone='writer'] {
+  color: var(--lc-brand);
+  background: color-mix(in srgb, var(--lc-brand) 16%, transparent);
+}
+
+.member .tag[data-tone='reader'] {
+  color: var(--lc-fg-dim);
+  background: color-mix(in srgb, var(--lc-fg-dim) 14%, transparent);
+}
+
+/* Amber rather than red. Nothing has gone wrong and nobody is accused of
+   anything — the identity simply has not been checked, and a danger colour
+   would say something this panel has no evidence for. It still has to be the
+   loudest thing in the row, because a row that looks proven until you read it
+   closely is the failure the panel exists to prevent. */
+.member .tag[data-tone='unproven'] {
+  color: var(--lc-warning);
+  background: color-mix(in srgb, var(--lc-warning) 18%, transparent);
+}
+
+/* The word is the detail and the dot beside it is what gets read at a glance,
+   which is the pairing the title bar's status already uses. */
+.member-presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--lc-text-xs);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--lc-fg-dim);
+}
+
+.member-presence::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-fg-dim);
+}
+
+.member-presence[data-state='on']::before {
+  background: var(--lc-success);
+}
+
+.member-typing {
+  font-size: var(--lc-text-xs);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--lc-brand);
+}
+
+/* Faded out rather than hidden, and that is the whole reason it is opacity.
+   `visibility: hidden` and `display: none` both take a control out of the tab
+   order, which would leave Pay and Remove reachable by mouse only; opacity
+   leaves the buttons focusable, so tabbing into one trips the `:focus-within`
+   below and reveals the row it belongs to. It also costs the layout nothing, so
+   a row does not change width when a pointer crosses it. */
+.member-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-xs);
+  flex: 0 0 auto;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.member:hover .member-actions,
+.member:focus-within .member-actions {
+  opacity: 1;
+}
+
+/* Not a danger button. Removal is a capability every writer already has and it
+   erases nothing, so painting it red would claim a severity the action does not
+   have — the confirmation says what it does instead. */
+.member-remove:hover:not(:disabled) {
+  border-color: var(--lc-warning);
+  background: color-mix(in srgb, var(--lc-warning) 14%, var(--lc-bg-elevated-2));
+}
+
+/* --- Avatars -------------------------------------------------------------- */
+
+/* Painted straight onto whatever surface the row sits on, with no tile behind
+   it: the three inks are chosen to hold up against every surface token in both
+   themes, and a plate under them would only introduce a fourth. */
+.identicon {
+  display: block;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  border-radius: var(--lc-radius-sm);
+}
+
+/* --- Naming yourself ------------------------------------------------------ */
+
+.name-self {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-sm);
+  padding: var(--lc-space-md);
+  border-top: 1px solid var(--lc-rule);
+}
+
+.name-self-row {
+  display: flex;
+  /* The label sits above the field, so the button lines up with the bottom of
+     the pair rather than with the middle of both. */
+  align-items: flex-end;
+  gap: var(--lc-space-sm);
+  min-width: 0;
+}
+
+.name-self-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The name is prose, not a key. Every other input in the application is
+   monospace because it holds something that was copied rather than composed;
+   this one holds a word somebody chose. */
+.name-self-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--lc-control-sm);
+  font-family: inherit;
+  font-size: var(--lc-text-sm);
+}
+
+.name-self-count {
+  align-self: flex-end;
+  font-size: var(--lc-text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--lc-fg-dim);
+}
+
+.name-self-note {
+  margin: 0;
+  font-size: var(--lc-text-xs);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-fg-muted);
+}
+
+.name-self-error {
+  margin: 0;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-danger);
+}

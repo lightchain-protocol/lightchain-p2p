@@ -23,4 +23,12 @@ export {
   type Rgb
 } from './contrast.js'
 
+export {
+  IDENTICON_INK,
+  IDENTICON_SIZE,
+  identicon,
+  identiconSvg,
+  type Identicon
+} from './identicon.js'
+
 export { conventions, shortcut, type Platform, type PlatformConventions } from './platform.js'
