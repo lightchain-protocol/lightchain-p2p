@@ -10,6 +10,8 @@
  * Needs an instance running with --remote-debugging-port.
  */
 
+import { unlockForHarness } from './harness.mjs'
+
 const port = Number(process.argv[2] ?? 9331)
 
 const results = []
@@ -97,16 +99,7 @@ async function until(expression, what, timeout = 20_000) {
 // and proof means a signature. Without a wallet nothing is signed, every edit
 // is correctly refused, and this would look like a rendering bug rather than
 // the fail-closed rule working exactly as intended.
-const status = await ask('wallet.status')
-if (!status?.exists) {
-  const made = await ask('wallet.create', { password: 'conversation check password' })
-  if (made?.error) throw new Error(`could not create a wallet: ${made.error}`)
-} else if (!status.unlocked) {
-  const opened = await ask('wallet.unlock', { password: 'conversation check password' })
-  if (opened?.error) throw new Error(`could not unlock the wallet: ${opened.error}`)
-}
-
-const signing = await ask('wallet.status')
+const signing = await unlockForHarness(ask)
 report('there is an unlocked wallet to sign with', signing?.unlocked === true, signing?.address)
 
 // --- A room of its own, selected through the sidebar -------------------------
@@ -213,6 +206,75 @@ const textGone = await evaluate(
   `[...document.querySelectorAll('#messages .message-text')].some((n) => n.textContent === 'the corrected line')`
 )
 report('the withdrawn text is no longer shown', !textGone, 'hidden')
+
+// --- An answer arriving, without buying one --------------------------------------
+
+// The pushes are faked rather than paid for. A real answer needs a funded
+// balance and a live worker, and a preview that is only exercised when both
+// exist is a preview nobody has tested. These travel the real route: the same
+// `ai.progress` shape the worker sends, through the handler the window
+// registered.
+const fakeAsk = `fake-${Date.now().toString(36)}`
+
+const push = (fields) =>
+  evaluate(`(() => {
+    window.__lcaiProgress(${JSON.stringify({ room: created.key, ask: fakeAsk, ...fields })})
+    return true
+  })()`)
+
+// Reached through the module the window actually loaded, so this cannot pass
+// against a handler that was never wired up.
+const reachable = await evaluate(`(async () => {
+  const mod = await import('./lib/rooms.js')
+  if (typeof mod.receiveAiProgress !== 'function') return false
+  window.__lcaiProgress = mod.receiveAiProgress
+  return true
+})()`)
+
+report('the room has somewhere for progress to arrive', reachable === true)
+
+if (reachable === true) {
+  await push({ phase: 'drawing' })
+  await wait(300)
+
+  const appeared = await evaluate(
+    `document.querySelectorAll('#messages .message').length >= ${await evaluate(
+      `document.querySelectorAll('#messages .message').length`
+    )}`
+  )
+  report('a question in flight shows something', appeared === true)
+
+  await push({ phase: 'token', text: 'A Merkle tree ' })
+  await push({ phase: 'token', text: 'summarises a dataset.' })
+  await wait(300)
+
+  const streamed = await evaluate(
+    `[...document.querySelectorAll('#messages')].some((n) => n.textContent.includes('A Merkle tree summarises a dataset.'))`
+  )
+  report('tokens accumulate in order', streamed === true, 'both fragments, joined')
+
+  // Nothing partial may reach the log. This is the property that matters: an
+  // entry per token would be permanent and unprunable on every member's disk.
+  const inRoom = await ask('room.list')
+  const written = (inRoom.find((r) => r.key === created.key)?.messages ?? []).some((m) =>
+    m.text.includes('A Merkle tree')
+  )
+  report(
+    'and none of it is written to the room',
+    !written,
+    written ? 'a fragment was stored' : 'nothing stored'
+  )
+
+  // A room update mid-stream must not wipe the preview, because the whole
+  // conversation is redrawn on every push.
+  await ask('room.send', { room: created.key, text: 'something else happening meanwhile' })
+  await wait(800)
+
+  const survived = await evaluate(
+    `[...document.querySelectorAll('#messages')].some((n) => n.textContent.includes('A Merkle tree summarises a dataset.'))`
+  )
+  report('a room update mid-answer does not wipe it', survived === true)
+}
 
 // --- The controls exist and are keyboard reachable ------------------------------
 

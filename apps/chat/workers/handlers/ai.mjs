@@ -87,6 +87,19 @@ function spending(localState) {
      */
     check(fee) {
       const { perJob, daily, spent } = read()
+      const limited = perJob !== null || daily !== null
+
+      // An unknown fee is refused when a limit is set, and allowed when none
+      // is. Treating "the chain would not answer" as "this is free" would let
+      // a cap be walked past by a broken RPC — which is one of the situations
+      // somebody sets a cap for. Somebody who has set no cap has said they do
+      // not want to be stopped, and is not stopped by this either.
+      if (fee === null) {
+        if (!limited) return
+        throw new Error(
+          'the fee for this job could not be read from the chain, and you have a spending limit set. Nothing was submitted. Check the network in Settings, or clear the limit if you want to go ahead regardless.'
+        )
+      }
 
       if (perJob !== null && fee > perJob) {
         throw new Error(
@@ -112,6 +125,11 @@ function spending(localState) {
      * confirm.
      */
     record(fee) {
+      // Nothing to add up. The job was paid for, but a figure that was never
+      // read cannot be invented, and guessing one would make the daily total a
+      // number nobody could reconcile.
+      if (fee === null) return
+
       const held = localState.read(LIMITS, {})
       const day = held.day === today() ? held : { day: today(), spent: '0' }
       localState.write(LIMITS, {
@@ -323,11 +341,18 @@ export function aiHandlers(ctx) {
   /** Whether a room has asked for its conversation to be sent with questions. */
   const contextEnabled = (roomKey) => localState.read(ROOM_CONTEXT, []).includes(roomKey)
 
-  /** What a job will cost, from the chain rather than from the service. */
+  /**
+   * What a job will cost, from the chain rather than from the service.
+   *
+   * Null when the chain could not be read. That is not the same as free, and
+   * conflating the two is how a limit gets bypassed at exactly the moment it
+   * matters — an RPC that is down, wrong or lying is the case somebody set a
+   * cap for. See `limits.check`.
+   */
   const feeFor = async (model) => {
     const addresses = await resolveAddresses(rpc()).catch(() => null)
-    if (!addresses) return 0n
-    return modelFee(rpc(), addresses.aiConfig, model.id)
+    if (!addresses) return null
+    return modelFee(rpc(), addresses.aiConfig, model.id).catch(() => null)
   }
 
   return {

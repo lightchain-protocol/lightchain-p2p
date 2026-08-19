@@ -10,6 +10,8 @@
  *     node scripts/inference-check.mjs [port]
  */
 
+import { unlockForHarness } from './harness.mjs'
+
 const port = Number(process.argv[2] ?? 9371)
 
 const results = []
@@ -71,9 +73,7 @@ await evaluate(
 
 // --- A wallet, since all of this is sealed under one ---------------------------
 
-const status = await ask('wallet.status')
-if (!status?.exists) await ask('wallet.create', { password: 'inference check password' })
-else if (!status.unlocked) await ask('wallet.unlock', { password: 'inference check password' })
+await unlockForHarness(ask)
 
 report('there is an unlocked wallet', (await ask('wallet.status'))?.unlocked === true)
 
@@ -138,6 +138,48 @@ report(
 
 const cleared = await ask('ai.setLimits', { perJob: null, daily: null })
 report('a limit can be cleared', cleared.perJob === null && cleared.daily === null)
+
+// --- A limit that actually refuses ----------------------------------------------------
+
+// Pointed at a network that will not answer, so the fee cannot be read. That is
+// deliberately the interesting case: an unknown fee used to be treated as free,
+// which meant a broken or hostile RPC walked straight past a spending cap — one
+// of the situations somebody sets a cap for in the first place.
+const settings = await ask('settings.read')
+const restore = settings?.values?.network ?? null
+
+await ask('settings.write', { network: 'testnet' })
+await ask('ai.setLimits', { perJob: '1', daily: '1' })
+
+const refused = await ask('room.ask', { key: room, model: 'llama3-8b', prompt: 'hello' })
+report(
+  'a job past the limit is refused',
+  Boolean(refused?.error),
+  refused?.error?.slice(0, 90) ?? 'it went ahead'
+)
+
+// Two refusals are correct here and which one fires depends on whether the
+// chain answered: the fee was read and exceeded the cap, or it could not be
+// read at all and an unknown fee is not treated as free. Asserting one sentence
+// would make this test pass or fail on whether the network was up.
+report(
+  'and it names a reason somebody can act on',
+  typeof refused?.error === 'string' &&
+    /per-job limit|daily limit|could not be read from the chain/i.test(refused.error),
+  refused?.error?.slice(0, 70)
+)
+
+// With no limit set, the same unreadable fee is not a reason to stop somebody:
+// they have said they do not want to be stopped.
+await ask('ai.setLimits', { perJob: null, daily: null })
+const unlimited = await ask('room.ask', { key: room, model: 'llama3-8b', prompt: 'hello' })
+report(
+  'and is not refused on a fee alone when no limit is set',
+  !/spending limit/i.test(String(unlimited?.error ?? '')),
+  unlimited?.error ? unlimited.error.slice(0, 60) : 'it proceeded past the fee check'
+)
+
+if (restore !== null) await ask('settings.write', { network: restore })
 
 // --- Regenerating something that is not an answer -----------------------------------
 
