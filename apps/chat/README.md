@@ -103,6 +103,21 @@ the same either way.
 Still thin above that: one conversation at a time, since `ai.start` closes
 whichever was open.
 
+**The wallet shows what it has done.** Every deposit, withdrawal and payment is
+recorded and reconciled against the chain it was signed for, and now listed —
+it was all being kept and none of it shown. A transaction that has not landed
+can be bid higher or raced with an empty one at the same nonce. The second is
+not called "cancel", because it is not one: either it wins and the original
+never happens, or it loses and the original happens exactly as sent.
+
+**A room can pin a message**, and anybody in it can. The resolver decided that,
+not the interface: a pin from any member applies and the latest wins, unlike an
+edit or a withdrawal, which only their author can make.
+
+**A half-written message stays in the room it was written for.** The composer is
+one box shared by every room; until recently a line typed in one was still there
+after switching to another, and Enter sent it to whoever was in front of you.
+
 **The wallet is the identity, and it pays.** The key that pays is the key that
 signs: a message carries an EIP-191 signature over its own contents, and a
 reader recovers the address rather than trusting a claim. The Autobase writer

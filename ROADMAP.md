@@ -19,7 +19,8 @@ Nothing below is waiting on an engineering decision that has not been made.
 | `packages/wallet`           | 109   | BIP-39 phrase, BIP-32 accounts at any index, a sealed store for local state, Keystore V3 checked against Foundry.                 |
 | `packages/protocol`         | 92    | Model references, manifests, room entries and the rules for resolving them. A reference is a key **and** a version.               |
 | `packages/ui`               | 57    | Design tokens and identicons, held to WCAG contrast in tests.                                                                     |
-| `packages/inference`        | 73    | The session handshake, the prompt and the relay. Transcripts, their search, and the turns a model is shown. Runs under Bare.      |
+| `packages/inference`        | 77    | The session handshake, the prompt and the relay. Transcripts, their search, and the turns a model is shown. Runs under Bare.      |
+| `apps/chat`                 | 49    | The name an attachment is saved under, and what a notification says when a message is only a file.                                |
 | `packages/worker`           | 33    | Network profiles, config validation, Docker orchestration, container state.                                                       |
 | `packages/preflight`        | 28    | Host readiness with actionable remedies.                                                                                          |
 | `apps/supervisor`           | 17    | Contract addresses resolved from the registry, and the keystore password's file. Two skip on Windows, where the mode is advisory. |
@@ -31,9 +32,17 @@ Nothing below is waiting on an engineering decision that has not been made.
 | `packages/testkit`          | 6     | Two-machine harness with a negative control.                                                                                      |
 | `packages/blind`            | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server.                                     |
 
-**725 tests.** CI green on every push. The six-platform build matrix compiles a
+**778 tests.** CI green on every push. The six-platform build matrix compiles a
 standalone supervisor binary for Windows, macOS and Linux on x64 and arm64, and
 every runner executes the binary it produced.
+
+Both applications are linted as of this week, which they had never been: every
+package had a `lint` script and no app did, so 12,835 lines — the Electron main
+process, the preload, the renderer and both Bare workers — were outside the
+loop. That is how a file declaring a name it also imported once reached a
+renderer that could not load a single module, with `build` and `lint` both
+green. An Electron app is written in three runtimes at once, so the shared
+config now has a block for each.
 
 ### The fork that was one feature away
 
@@ -81,22 +90,22 @@ somebody is trying to break it, and each one reports every failure rather than
 stopping at the first — a suite that halts on failure one hides the rest, and
 those are the ones nobody has looked at.
 
-| Harness                            | What it does                                                                                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `scripts/wsl-adversarial.mjs`      | 19 abuses of a live room from a second machine: forged signatures, spent invites, oversize text, concurrent renames, a peer killed mid-sentence. |
-| `scripts/hostile-renderer.mjs`     | 48 attempts to turn message text into markup, spend a capability the window should not have, or hand the main process something oversized.       |
-| `scripts/onboarding-check.mjs`     | 32 checks over create, recover and reset, including that no two elements share an id.                                                            |
-| `scripts/inference-check.mjs`      | 17 checks on room context and spending caps, without spending anything.                                                                          |
-| `scripts/conversation-check.mjs`   | 25 checks on replying, reacting, editing, withdrawing, naming yourself and drafts, clicked rather than called.                                   |
-| `scripts/surfaces-check.mjs`       | 18 checks that Dashboard, Wallet, Models, Worker and the roadmap agree with the worker rather than only looking right.                           |
-| `scripts/drive-two-instances.mjs`  | The whole conversation through the real interface, 16 steps.                                                                                     |
-| `scripts/survives-restart.mjs`     | 12 checks either side of a kill: sealed rooms, wallet, DHT identity, write access, history.                                                      |
-| `scripts/review.mjs`               | 11 structural checks over every surface in both themes: duplicate ids, unlabelled buttons, misnested panels, `[object Object]`.                  |
-| `scripts/transcript-search.mjs`    | 11 checks that model history is searchable and stays separate from room history when the wallet is locked.                                       |
-| `scripts/change-password.mjs`      | 9 checks that a password change moves the vault and nothing else.                                                                                |
-| `scripts/hosted-room-survives.mjs` | Three instances: a room outlives its author because another user was hosting it.                                                                 |
-| `scripts/reconnects.mjs`           | 5 checks that a restarted instance is found again by the peer that stayed up, and does not return as a second writer.                            |
-| `scripts/wsl-soak.mjs`             | Four writers, concurrent bursts, clock skew, restart and catch-up.                                                                               |
+| Harness                            | What it does                                                                                                                                                                                        |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/wsl-adversarial.mjs`      | 19 abuses of a live room from a second machine: forged signatures, spent invites, oversize text, concurrent renames, a peer killed mid-sentence.                                                    |
+| `scripts/hostile-renderer.mjs`     | 62 attempts to turn message text into markup, spend a capability the window should not have, aim a transaction replacement at a hash this wallet never sent, or name a file so it reads as another. |
+| `scripts/onboarding-check.mjs`     | 33 checks over create, recover and reset, including that no two elements share an id and that the phrase check asks for distinct words.                                                             |
+| `scripts/conversation-check.mjs`   | 31 checks on replying, reacting, editing, withdrawing, pinning, naming yourself and drafts, clicked rather than called.                                                                             |
+| `scripts/surfaces-check.mjs`       | 21 checks that Dashboard, Wallet, Models, Worker and the roadmap agree with the worker rather than only looking right.                                                                              |
+| `scripts/drive-two-instances.mjs`  | The whole conversation through the real interface, 17 steps.                                                                                                                                        |
+| `scripts/inference-check.mjs`      | 17 checks on room context and spending caps, without spending anything.                                                                                                                             |
+| `scripts/survives-restart.mjs`     | 12 checks either side of a kill: sealed rooms, wallet, DHT identity, write access, history.                                                                                                         |
+| `scripts/review.mjs`               | 12 structural checks over every surface in both themes, and over the pickers that only exist once a button is pressed.                                                                              |
+| `scripts/transcript-search.mjs`    | 11 checks that model history is searchable and stays separate from room history when the wallet is locked.                                                                                          |
+| `scripts/change-password.mjs`      | 9 checks that a password change moves the vault and nothing else.                                                                                                                                   |
+| `scripts/hosted-room-survives.mjs` | Three instances: a room outlives its author because another user was hosting it.                                                                                                                    |
+| `scripts/reconnects.mjs`           | 5 checks that a restarted instance is found again by the peer that stayed up, and does not return as a second writer.                                                                               |
+| `scripts/wsl-soak.mjs`             | Four writers, concurrent bursts, clock skew, restart and catch-up.                                                                                                                                  |
 
 Five real defects came out of the first run and are fixed: invites were served
 to every comer rather than spent once, `send` wrote over-length messages that

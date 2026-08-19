@@ -82,7 +82,7 @@ last said so — what is still missing is a signed release, not the code.
 | Blind peer infrastructure   | **Not started** | There is no public fleet; we must operate our own servers or nothing stays available                             |
 | `packages/seed`             | **Real**        | Holds and serves drives, 6 tests                                                                                 |
 | `apps/seeder`               | **Real**        | Always-on seeding; verified holding a real Pear-staged release                                                   |
-| `apps/chat`                 | **Real**        | Rooms, wallet-signed messages, paid inference, OTA updates; 162 checks over seven harnesses                      |
+| `apps/chat`                 | **Real**        | Rooms, wallet-signed messages, paid inference, OTA updates; 49 unit tests and 187 checks over seven harnesses    |
 | Code signing                | **Not started** | Longest external lead time; blocks release on four platforms                                                     |
 | iOS, Android                | **Deferred**    | By decision — see [ADR 0001](docs/decisions/0001-defer-mobile.md)                                                |
 
