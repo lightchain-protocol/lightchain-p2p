@@ -1,7 +1,7 @@
 # Roadmap
 
 What exists, what does not, and who each remaining item is waiting on. Updated
-18 August 2026.
+19 August 2026.
 
 The short version: **the data plane works and nothing operates it.** Fifteen
 packages are real and tested, both applications are built, and the items with
@@ -12,25 +12,26 @@ Nothing below is waiting on an engineering decision that has not been made.
 
 ## Built and verified
 
-|                             | Tests | Notes                                                                                                               |
-| --------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------- |
-| `packages/chain`            | 139   | Reads Lightchain and signs for it, every byte checked against viem. Fees, replacement and confirmation depth.       |
-| `packages/room`             | 112   | Multi-writer rooms on Autobase, the host that keeps several, presence, attachments, and a suite of abuses.          |
-| `packages/wallet`           | 109   | BIP-39 phrase, BIP-32 accounts at any index, a sealed store for local state, Keystore V3 checked against Foundry.   |
-| `packages/protocol`         | 92    | Model references, manifests, room entries and the rules for resolving them. A reference is a key **and** a version. |
-| `packages/ui`               | 57    | Design tokens and identicons, held to WCAG contrast in tests.                                                       |
-| `packages/inference`        | 56    | The session handshake, the prompt and the relay. Runs under Bare.                                                   |
-| `packages/worker`           | 33    | Network profiles, config validation, Docker orchestration, container state.                                         |
-| `packages/preflight`        | 28    | Host readiness with actionable remedies.                                                                            |
-| `packages/host`             | 15    | Probes the machine a worker would run on: Docker, Ollama, GPU, memory, disk.                                        |
-| `packages/inference-crypto` | 15    | ECDH P-256 and AES-256-GCM as the deployed workers speak it, under Bare.                                            |
-| `packages/safety`           | 10    | Refusal-list decision logic.                                                                                        |
-| `packages/drive`            | 9     | Publish a model, resolve it, range-read weights. Survives the publisher going offline.                              |
-| `packages/seed`             | 6     | Holds and serves drives after the publisher leaves.                                                                 |
-| `packages/testkit`          | 6     | Two-machine harness with a negative control.                                                                        |
-| `packages/blind`            | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server.                       |
+|                             | Tests | Notes                                                                                                                             |
+| --------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/chain`            | 139   | Reads Lightchain and signs for it, every byte checked against viem. Fees, replacement and confirmation depth.                     |
+| `packages/room`             | 112   | Multi-writer rooms on Autobase, the host that keeps several, presence, attachments, and a suite of abuses.                        |
+| `packages/wallet`           | 109   | BIP-39 phrase, BIP-32 accounts at any index, a sealed store for local state, Keystore V3 checked against Foundry.                 |
+| `packages/protocol`         | 92    | Model references, manifests, room entries and the rules for resolving them. A reference is a key **and** a version.               |
+| `packages/ui`               | 57    | Design tokens and identicons, held to WCAG contrast in tests.                                                                     |
+| `packages/inference`        | 73    | The session handshake, the prompt and the relay. Transcripts, their search, and the turns a model is shown. Runs under Bare.      |
+| `packages/worker`           | 33    | Network profiles, config validation, Docker orchestration, container state.                                                       |
+| `packages/preflight`        | 28    | Host readiness with actionable remedies.                                                                                          |
+| `apps/supervisor`           | 17    | Contract addresses resolved from the registry, and the keystore password's file. Two skip on Windows, where the mode is advisory. |
+| `packages/host`             | 15    | Probes the machine a worker would run on: Docker, Ollama, GPU, memory, disk.                                                      |
+| `packages/inference-crypto` | 15    | ECDH P-256 and AES-256-GCM as the deployed workers speak it, under Bare.                                                          |
+| `packages/safety`           | 10    | Refusal-list decision logic.                                                                                                      |
+| `packages/drive`            | 9     | Publish a model, resolve it, range-read weights. Survives the publisher going offline.                                            |
+| `packages/seed`             | 6     | Holds and serves drives after the publisher leaves.                                                                               |
+| `packages/testkit`          | 6     | Two-machine harness with a negative control.                                                                                      |
+| `packages/blind`            | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server.                                     |
 
-**691 tests.** CI green on every push. The six-platform build matrix compiles a
+**725 tests.** CI green on every push. The six-platform build matrix compiles a
 standalone supervisor binary for Windows, macOS and Linux on x64 and arm64, and
 every runner executes the binary it produced.
 
@@ -86,7 +87,8 @@ those are the ones nobody has looked at.
 | `scripts/hostile-renderer.mjs`     | 48 attempts to turn message text into markup, spend a capability the window should not have, or hand the main process something oversized.       |
 | `scripts/onboarding-check.mjs`     | 32 checks over create, recover and reset, including that no two elements share an id.                                                            |
 | `scripts/inference-check.mjs`      | 17 checks on room context and spending caps, without spending anything.                                                                          |
-| `scripts/conversation-check.mjs`   | 16 checks on replying, reacting, editing and withdrawing, clicked rather than called.                                                            |
+| `scripts/conversation-check.mjs`   | 25 checks on replying, reacting, editing, withdrawing, naming yourself and drafts, clicked rather than called.                                   |
+| `scripts/surfaces-check.mjs`       | 18 checks that Dashboard, Wallet, Models, Worker and the roadmap agree with the worker rather than only looking right.                           |
 | `scripts/drive-two-instances.mjs`  | The whole conversation through the real interface, 16 steps.                                                                                     |
 | `scripts/survives-restart.mjs`     | 12 checks either side of a kill: sealed rooms, wallet, DHT identity, write access, history.                                                      |
 | `scripts/review.mjs`               | 11 structural checks over every surface in both themes: duplicate ids, unlabelled buttons, misnested panels, `[object Object]`.                  |

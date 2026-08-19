@@ -60,36 +60,42 @@ Be skeptical of anything not listed as verified. The foundation is real and
 proven in CI. The applications are real too, and were scaffolds when this line
 last said so — what is still missing is a signed release, not the code.
 
-| Component                   | State           | Notes                                                                                 |
-| --------------------------- | --------------- | ------------------------------------------------------------------------------------- |
-| Workspace, CI, build matrix | **Verified**    | Green on Linux; six-target matrix builds and runs its own binaries                    |
-| `packages/safety`           | **Real**        | Refusal-list decision logic, 10 tests                                                 |
-| `packages/testkit`          | **Real**        | Two-machine harness, 6 tests including a negative control                             |
-| `packages/protocol`         | **Real**        | Model references, manifests, room entries and the rules for resolving them, 92 tests  |
-| `packages/drive`            | **Real**        | Publish, resolve and range-read a model drive, 9 tests including publisher-offline    |
-| `packages/blind`            | **Real**        | Blind-peer registration, 4 tests against a real server with every holder offline      |
-| `packages/room`             | **Real**        | Multi-writer rooms, presence, attachments and a suite of abuses, 112 tests            |
-| `packages/wallet`           | **Real**        | BIP-39 phrase, BIP-32 accounts, a sealed local store, Keystore V3, 109 tests          |
-| `packages/inference`        | **Real**        | The session handshake, the prompt and the relay, under Bare, 56 tests                 |
-| `packages/inference-crypto` | **Real**        | ECDH P-256 and AES-256-GCM as the deployed workers speak it, 15 tests                 |
-| `packages/host`             | **Real**        | Probes the machine a worker would run on, 15 tests                                    |
-| `packages/ui`               | **Real**        | Design tokens and identicons, held to WCAG contrast, 57 tests                         |
-| `packages/preflight`        | **Real**        | Host readiness checks with actionable remedies, 28 tests                              |
-| `packages/worker`           | **Real**        | Network profiles, config validation, Docker orchestration, 33 tests                   |
-| `apps/supervisor`           | **Real**        | Full worker lifecycle; contract address resolution still supplied by hand             |
-| `packages/chain`            | **Real**        | Signing, fees, nonces, replacement and a chain-id guard, 139 tests                    |
-| `packages/da`               | **Not started** | Referenced in CODEOWNERS so ownership is settled before the code exists               |
-| Blind peer infrastructure   | **Not started** | There is no public fleet; we must operate our own servers or nothing stays available  |
-| `packages/seed`             | **Real**        | Holds and serves drives, 6 tests                                                      |
-| `apps/seeder`               | **Real**        | Always-on seeding; verified holding a real Pear-staged release                        |
-| `apps/chat`                 | **Real**        | Rooms, wallet-signed messages, paid inference, OTA updates; five end-to-end harnesses |
-| Code signing                | **Not started** | Longest external lead time; blocks release on four platforms                          |
-| iOS, Android                | **Deferred**    | By decision — see [ADR 0001](docs/decisions/0001-defer-mobile.md)                     |
+| Component                   | State           | Notes                                                                                                            |
+| --------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Workspace, CI, build matrix | **Verified**    | Green on Linux; six-target matrix builds and runs its own binaries                                               |
+| `packages/safety`           | **Real**        | Refusal-list decision logic, 10 tests                                                                            |
+| `packages/testkit`          | **Real**        | Two-machine harness, 6 tests including a negative control                                                        |
+| `packages/protocol`         | **Real**        | Model references, manifests, room entries and the rules for resolving them, 92 tests                             |
+| `packages/drive`            | **Real**        | Publish, resolve and range-read a model drive, 9 tests including publisher-offline                               |
+| `packages/blind`            | **Real**        | Blind-peer registration, 4 tests against a real server with every holder offline                                 |
+| `packages/room`             | **Real**        | Multi-writer rooms, presence, attachments and a suite of abuses, 112 tests                                       |
+| `packages/wallet`           | **Real**        | BIP-39 phrase, BIP-32 accounts, a sealed local store, Keystore V3, 109 tests                                     |
+| `packages/inference`        | **Real**        | The session handshake, the prompt, the relay and what a model is shown of the conversation, under Bare, 73 tests |
+| `packages/inference-crypto` | **Real**        | ECDH P-256 and AES-256-GCM as the deployed workers speak it, 15 tests                                            |
+| `packages/host`             | **Real**        | Probes the machine a worker would run on, 15 tests                                                               |
+| `packages/ui`               | **Real**        | Design tokens and identicons, held to WCAG contrast, 57 tests                                                    |
+| `packages/preflight`        | **Real**        | Host readiness checks with actionable remedies, 28 tests                                                         |
+| `packages/worker`           | **Real**        | Network profiles, config validation, Docker orchestration, 33 tests                                              |
+| `apps/supervisor`           | **Real**        | Full worker lifecycle, contract addresses read from the registry, 17 tests                                       |
+| `packages/chain`            | **Real**        | Signing, fees, nonces, replacement and a chain-id guard, 139 tests                                               |
+| `packages/da`               | **Not started** | Referenced in CODEOWNERS so ownership is settled before the code exists                                          |
+| Blind peer infrastructure   | **Not started** | There is no public fleet; we must operate our own servers or nothing stays available                             |
+| `packages/seed`             | **Real**        | Holds and serves drives, 6 tests                                                                                 |
+| `apps/seeder`               | **Real**        | Always-on seeding; verified holding a real Pear-staged release                                                   |
+| `apps/chat`                 | **Real**        | Rooms, wallet-signed messages, paid inference, OTA updates; 162 checks over seven harnesses                      |
+| Code signing                | **Not started** | Longest external lead time; blocks release on four platforms                                                     |
+| iOS, Android                | **Deferred**    | By decision — see [ADR 0001](docs/decisions/0001-defer-mobile.md)                                                |
 
-Two placeholders in `apps/supervisor` will bite you if you assume otherwise: it
-still depends on `hello-pear-worker`, and its `upgrade` link in `package.json` is
-the template's, not ours. A real link comes from `pear touch`. An app will not
-boot without a valid one.
+One placeholder in `apps/supervisor` will bite you if you assume otherwise: its
+Bare worker is still `hello-pear-worker`, the template's, required verbatim by
+`workers/main.js`.
+
+Its `upgrade` link is its own now, from `pear touch`. It was not the template's
+but something worse: the same link the chat client uses, which would have made
+staging either one push it to the other's installs. `scripts/check-links.mjs`
+fails the build if that recurs. Both links are still development ones, whose
+secret keys sit on a single machine — a release needs one under the multisig
+policy.
 
 ---
 
@@ -207,12 +213,14 @@ Two workflows.
 `main`: install, format check, lint, typecheck, test, build. Single Ubuntu
 runner, about a minute.
 
-It also runs five checks for faults that produce no error and no visible
+It also runs seven checks for faults that produce no error and no visible
 symptom, and so cannot be caught by review: a design token nothing defines, a
 surface stylesheet redeclaring a shared component, `index.html` not matching the
 partials it is assembled from, an icon sprite edited by hand rather than
-generated, and a deep link scheme that disagrees between the four places it is
-declared. Each was added after the fault it describes shipped unnoticed.
+generated, a deep link scheme that disagrees between the four places it is
+declared, a CSS class styled and worn by nothing, and two apps sharing one
+`pear://` upgrade link. Each was added after the fault it describes had already
+happened here unnoticed.
 
 [`build-matrix.yml`](.github/workflows/build-matrix.yml) runs on
 `workflow_dispatch` or a `v*` tag. Six native runners, each building **and
@@ -353,15 +361,17 @@ In rough order of leverage:
    development, so it should be running in the background from day one.
 2. **Full publish round trip** on a throwaway link: `pear touch`, stage, seed,
    install, publish an update, observe it apply. Unsigned-to-signed is where most
-   surprises live, and the supervisor still carries the template's `upgrade` link.
+   surprises live. The links are at least distinct now — both apps shared one
+   until recently, which would have made staging either overwrite the other.
 3. **Operate a blind-peer fleet.** The code is finished and tested against a real
    server with every holder offline; what does not exist is a machine running
    one. Until somebody does, a room stops being available the moment its last
    member closes the app.
-4. **Finish the supervisor's two loose ends** — resolving contract addresses
-   from the registry instead of by hand, which `packages/chain` already does in
-   one call, and storing the keystore password somewhere better than an
-   environment variable.
+4. ~~**Finish the supervisor's two loose ends.**~~ Both done: contract addresses
+   are read from the `WorkerRegistry` before the container is created, and the
+   keystore password lives in a `0600` file rather than the environment. What is
+   left is not ours — the worker image accepts the password only as
+   `WORKER_KEYSTORE_PASSWORD`, so it stays visible in `docker inspect`.
 
 Two decisions from the delivery plan are still open: whether to ship a
 conventional Windows `.exe` installer alongside MSIX, and who holds the signing
