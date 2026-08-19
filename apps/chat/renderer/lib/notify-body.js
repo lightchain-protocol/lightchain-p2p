@@ -22,7 +22,16 @@ export function bodyFor(message) {
   const text = typeof message?.text === 'string' ? message.text.trim() : ''
   if (text !== '') return text.replace(UNSAFE, '')
 
-  const name = typeof message?.attachment?.name === 'string' ? message.attachment.name : ''
+  const attachment = message?.attachment
+  if (attachment === undefined || attachment === null) {
+    // Nothing to say. Callers filter these out before they get here — see
+    // `hasSomethingToShow` — and this does not claim a file it cannot see,
+    // because the message that reaches this line is most likely a control
+    // event from a newer version whose kind this one dropped.
+    return 'New activity'
+  }
+
+  const name = typeof attachment.name === 'string' ? attachment.name : ''
   const cleaned = name.replace(UNSAFE, '').trim()
 
   return cleaned === '' ? 'Sent an attachment' : `Sent ${cleaned}`

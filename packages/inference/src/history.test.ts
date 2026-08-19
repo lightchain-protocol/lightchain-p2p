@@ -183,6 +183,64 @@ describe('searching what was said', () => {
   })
 })
 
+// A newer version writing a kind this one has never heard of is the case that
+// cannot be tested by running one version against itself, and `history.ts` says
+// the log is meant to replicate between a person's own devices — so version
+// skew is expected rather than hypothetical.
+describe('a log written by a newer version', () => {
+  const unknown = (conversation: string, at: number) =>
+    ({ kind: 'pinned', conversation, at }) as unknown as Record
+
+  it('does not let an unknown record decide what the model was', async () => {
+    const log = memoryLog()
+    log.records.push(unknown('c1', 1))
+
+    const history = new History(log)
+    await history.said('c1', 'llama3-8b', 'you', 'hello')
+    await history.said('c1', 'llama3-8b', 'model', 'hi')
+
+    const [transcript] = await history.transcripts()
+    expect(transcript!.model).toBe('llama3-8b')
+    expect(transcript!.turns).toHaveLength(2)
+  })
+
+  it('does not invent a conversation out of one', async () => {
+    const log = memoryLog()
+    log.records.push(unknown('nothing-else-here', 1))
+
+    expect(await new History(log).transcripts()).toEqual([])
+  })
+
+  it('still honours a tombstone it does understand', async () => {
+    const log = memoryLog()
+    const history = new History(log)
+    await history.said('c1', 'llama3-8b', 'you', 'hello')
+    log.records.push(unknown('c1', 2))
+    await history.deleted('c1')
+
+    expect(await history.transcripts()).toEqual([])
+  })
+
+  // The opening record is where the model name usually comes from, so a log
+  // that starts mid-conversation has to take it from a turn instead.
+  it('takes the model from a turn when there is no opening record', async () => {
+    const log = memoryLog()
+    log.records.push(unknown('c1', 1))
+    log.records.push({
+      kind: 'turn',
+      conversation: 'c1',
+      role: 'you',
+      text: 'hello',
+      model: 'mistral-7b',
+      jobId: null,
+      at: 2
+    })
+
+    const [transcript] = await new History(log).transcripts()
+    expect(transcript!.model).toBe('mistral-7b')
+  })
+})
+
 describe('giving a model the conversation so far', () => {
   const turn = (role: 'you' | 'model', text: string, at = 0) => ({ role, text, jobId: null, at })
 

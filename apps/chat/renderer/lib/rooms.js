@@ -17,7 +17,7 @@ import { addressedToModel, ensureModels, listModels } from './models.js'
 import { myAddress, openPay } from './wallet.js'
 import { closeEmojiPicker, emojiPicker, reactionBar } from './reactions.js'
 import { memberList, nameSelfControl } from './members.js'
-import { announcement } from './notify-body.js'
+import { announcement, bodyFor } from './notify-body.js'
 import { acceptDrops, attachButton, attachmentView, pendingAttachment } from './attachments.js'
 
 /**
@@ -94,7 +94,28 @@ function announce(before, after) {
  */
 function said(room) {
   const shown = room.conversation ?? room.messages ?? []
-  return shown.filter((m) => m.deletedAt === undefined && m.event === undefined)
+  return shown.filter(
+    (m) => m.deletedAt === undefined && m.event === undefined && hasSomethingToShow(m)
+  )
+}
+
+/**
+ * Whether a message says anything at all.
+ *
+ * `event === undefined` is not enough on its own, and the reason is a version
+ * newer than this one. `parseEvent` returns undefined for a kind it does not
+ * know, which drops the event rather than keeping it — so a control event from
+ * a later release arrives here looking exactly like an ordinary message with no
+ * text, and the check above waves it through. It then becomes an empty line in
+ * the sidebar and a desktop notification about nothing.
+ *
+ * Asking what the message actually carries covers that without needing to know
+ * what the newer version was doing, and covers an empty message from any other
+ * cause at the same time.
+ */
+function hasSomethingToShow(message) {
+  if (typeof message.text === 'string' && message.text.trim() !== '') return true
+  return message.attachment !== undefined && message.attachment !== null
 }
 
 /** A room the worker pushed because something in it changed. */
@@ -144,7 +165,10 @@ function renderRooms() {
     const last = shown[shown.length - 1]
     // Message text is written by other people. Every path it takes into the
     // document is textContent; none is innerHTML.
-    sub.textContent = last ? last.text : room.writable ? 'No messages yet' : 'Read only'
+    //
+    // Through the same rule the notification uses, because a file sent without
+    // a caption has no text and this line used to go blank for it.
+    sub.textContent = last ? bodyFor(last) : room.writable ? 'No messages yet' : 'Read only'
 
     body.append(name, sub)
     button.append(body)

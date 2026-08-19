@@ -105,6 +105,17 @@ export class History {
     const byId = new globalThis.Map<string, { model: string; at: number; turns: Turn[] }>()
 
     for (const record of await this.#log.read()) {
+      // A kind this version does not know is skipped rather than folded in. It
+      // used to fall through to the branch below and create the conversation
+      // with `model: undefined`, which every real turn afterwards then joined —
+      // so one record from a newer release left a whole conversation listed as
+      // `undefined` and unable to be continued. This log is meant to replicate
+      // between one person's own devices, which makes that the expected case
+      // rather than a hypothetical.
+      if (record.kind !== 'opened' && record.kind !== 'turn' && record.kind !== 'deleted') {
+        continue
+      }
+
       // Everything before a tombstone is forgotten, and anything after it
       // starts a new conversation that happens to reuse the id.
       if (record.kind === 'deleted') {
@@ -120,6 +131,13 @@ export class History {
           turns: record.kind === 'turn' ? [toTurn(record)] : []
         })
         continue
+      }
+
+      // Taken from whichever record carries one rather than only the first, so
+      // a conversation whose opening record was lost or skipped still knows
+      // what it was talking to.
+      if (typeof existing.model !== 'string' && typeof record.model === 'string') {
+        existing.model = record.model
       }
 
       if (record.kind === 'turn') existing.turns.push(toTurn(record))

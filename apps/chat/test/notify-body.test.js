@@ -16,8 +16,14 @@ describe('what a desktop notification says', () => {
 
   it('says something even when the file has no usable name', () => {
     expect(bodyFor(said('', { name: '' }))).toBe('Sent an attachment')
-    expect(bodyFor(said(''))).toBe('Sent an attachment')
-    expect(bodyFor({})).toBe('Sent an attachment')
+  })
+
+  // A message with neither is a control event from a version newer than this
+  // one, whose kind `parseEvent` dropped. Claiming a file would be inventing
+  // one; callers filter these out before they reach a notification at all.
+  it('does not claim a file when there is no attachment either', () => {
+    expect(bodyFor(said(''))).toBe('New activity')
+    expect(bodyFor({})).toBe('New activity')
   })
 
   it('prefers the caption over the filename when both are there', () => {
