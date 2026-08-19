@@ -351,6 +351,87 @@ report(
   String(shown)
 )
 
+// --- A half-written line belongs to the room it was written in --------------------
+
+// The composer is one box shared by every room. Before drafts were wired, text
+// typed in one room was still sitting there after switching to another, and
+// Enter sent it to whoever was in front of you. That is the bug these cover;
+// surviving a restart is the smaller half.
+
+const second = await ask('room.create')
+const otherLabel = `elsewhere ${Date.now().toString(36)}`
+await ask('room.rename', { room: second.key, name: otherLabel })
+
+await until(
+  `(() => [...document.querySelectorAll('#room-list .nav-item')].some((i) => i.textContent.includes(${JSON.stringify(otherLabel)})))()`,
+  'the second room to reach the sidebar'
+)
+
+const carry = await evaluate(`(async () => {
+  const pick = (label) => {
+    const found = [...document.querySelectorAll('#room-list .nav-item')].find((i) =>
+      i.textContent.includes(label)
+    )
+    if (found) found.click()
+    return Boolean(found)
+  }
+
+  const input = document.getElementById('composer-input') ?? document.querySelector('.composer-input')
+  if (!input) return { noInput: true }
+
+  pick(${JSON.stringify(label)})
+  await new Promise((r) => setTimeout(r, 300))
+  input.value = 'meant for the first room'
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  await new Promise((r) => setTimeout(r, 300))
+
+  pick(${JSON.stringify(otherLabel)})
+  await new Promise((r) => setTimeout(r, 500))
+  const inTheOther = input.value
+
+  pick(${JSON.stringify(label)})
+  await new Promise((r) => setTimeout(r, 500))
+  return { inTheOther, backAgain: input.value }
+})()`)
+
+report(
+  'a half-written line does not follow you into the next room',
+  carry?.inTheOther === '',
+  carry?.noInput ? 'no composer' : `the other room showed ${JSON.stringify(carry?.inTheOther)}`
+)
+
+report(
+  'and is still there when you come back to the room it was for',
+  carry?.backAgain === 'meant for the first room',
+  JSON.stringify(carry?.backAgain)
+)
+
+// Kept where a restart can find it, rather than only in the window.
+const stored = await ask('local.drafts')
+report(
+  'the draft is written to the sealed store, not just held in the window',
+  stored?.drafts?.[created.key] === 'meant for the first room',
+  JSON.stringify(stored?.drafts ?? {})
+)
+
+// Sending is what makes a draft stop being one.
+const sent = await evaluate(`(async () => {
+  const input = document.getElementById('composer-input') ?? document.querySelector('.composer-input')
+  input.value = 'this one is going'
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  await new Promise((r) => setTimeout(r, 300))
+  input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+  await new Promise((r) => setTimeout(r, 1200))
+  return input.value
+})()`)
+
+const afterSend = await ask('local.drafts')
+report(
+  'sending clears the draft rather than leaving it to reappear',
+  sent === '' && afterSend?.drafts?.[created.key] === undefined,
+  `composer ${JSON.stringify(sent)}, stored ${JSON.stringify(afterSend?.drafts ?? {})}`
+)
+
 // --- Nothing broke on the way ----------------------------------------------------
 
 report(
