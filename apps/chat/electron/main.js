@@ -223,7 +223,17 @@ ipcMain.handle('pear:applyUpdate', () => {
     pipe.write('pear:applyUpdate')
   })
 })
+/**
+ * Starts the worker. The one worker, by name.
+ *
+ * `getWorker` resolves whatever it is given against this package and spawns it
+ * with the trust of the main process, and the renderer — which spends its life
+ * displaying text written by strangers — could ask for anything. The allowlist
+ * is the whole guard: there is exactly one worker, its path is known here, and
+ * a request for anything else is a bug or an attempt.
+ */
 ipcMain.handle('pear:startWorker', (evt, filename) => {
+  if (filename !== mainWorkerSpecifier) return false
   getWorker(filename)
   return true
 })

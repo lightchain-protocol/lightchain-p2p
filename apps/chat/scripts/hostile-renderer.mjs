@@ -268,6 +268,34 @@ for (const [name, url, expected] of [
   }
 }
 
+// --- The other thing the renderer can reach into the main process -------------------
+
+// `pear:startWorker` resolves a path against the application package and spawns
+// it with the main process's trust. The renderer must be able to start the one
+// worker and nothing else.
+for (const [name, specifier] of [
+  ['a path traversal', '/../../../../etc/passwd'],
+  ['another file in the package', '/electron/main.js'],
+  ['a node module', '/node_modules/electron/index.js'],
+  ['an absolute path', 'C:/Windows/System32/calc.exe'],
+  ['nothing at all', '']
+]) {
+  try {
+    const started = await evaluate(
+      `window.bridge.startWorker(${JSON.stringify(specifier)})`,
+      10_000
+    )
+    report(`startWorker refuses ${name}`, started === false, `returned ${JSON.stringify(started)}`)
+  } catch (err) {
+    // A rejection is also a refusal, and a safe one.
+    report(`startWorker refuses ${name}`, true, err.message.slice(0, 60))
+  }
+}
+
+// And still starts the real one, or the guard has broken the application.
+const real = await evaluate(`window.bridge.startWorker('/workers/main.mjs')`, 10_000)
+report('startWorker still starts the worker that exists', real === true, `returned ${real}`)
+
 // --- The policy that is supposed to make all of the above moot ----------------------
 
 const csp = await evaluate(`(() => {
