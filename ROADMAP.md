@@ -1,11 +1,12 @@
 # Roadmap
 
 What exists, what does not, and who each remaining item is waiting on. Updated
-17 August 2026.
+18 August 2026.
 
-The short version: **the data plane works and nothing operates it.** Eleven
-packages are real and tested, the applications are partly built, and the items
-with the longest lead times are procurement and infrastructure rather than code.
+The short version: **the data plane works and nothing operates it.** Fifteen
+packages are real and tested, both applications are built, and the items with
+the longest lead times are procurement and infrastructure rather than code.
+Nothing below is waiting on an engineering decision that has not been made.
 
 ---
 
@@ -13,13 +14,13 @@ with the longest lead times are procurement and infrastructure rather than code.
 
 |                             | Tests | Notes                                                                                                               |
 | --------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------- |
-| `packages/chain`            | 135   | Reads Lightchain and signs for it, every byte checked against viem. Fees, replacement and confirmation depth.       |
+| `packages/chain`            | 139   | Reads Lightchain and signs for it, every byte checked against viem. Fees, replacement and confirmation depth.       |
 | `packages/room`             | 112   | Multi-writer rooms on Autobase, the host that keeps several, presence, attachments, and a suite of abuses.          |
-| `packages/wallet`           | 100   | BIP-39 phrase, BIP-32 accounts at any index, a sealed store for local state, Keystore V3 checked against Foundry.   |
-| `packages/protocol`         | 78    | Model references, manifests, room entries and the rules for resolving them. A reference is a key **and** a version. |
+| `packages/wallet`           | 109   | BIP-39 phrase, BIP-32 accounts at any index, a sealed store for local state, Keystore V3 checked against Foundry.   |
+| `packages/protocol`         | 92    | Model references, manifests, room entries and the rules for resolving them. A reference is a key **and** a version. |
 | `packages/ui`               | 57    | Design tokens and identicons, held to WCAG contrast in tests.                                                       |
-| `packages/inference`        | 48    | The session handshake, the prompt and the relay. Runs under Bare.                                                   |
-| `packages/worker`           | 30    | Network profiles, config validation, Docker orchestration, container state.                                         |
+| `packages/inference`        | 56    | The session handshake, the prompt and the relay. Runs under Bare.                                                   |
+| `packages/worker`           | 33    | Network profiles, config validation, Docker orchestration, container state.                                         |
 | `packages/preflight`        | 28    | Host readiness with actionable remedies.                                                                            |
 | `packages/host`             | 15    | Probes the machine a worker would run on: Docker, Ollama, GPU, memory, disk.                                        |
 | `packages/inference-crypto` | 15    | ECDH P-256 and AES-256-GCM as the deployed workers speak it, under Bare.                                            |
@@ -29,7 +30,7 @@ with the longest lead times are procurement and infrastructure rather than code.
 | `packages/testkit`          | 6     | Two-machine harness with a negative control.                                                                        |
 | `packages/blind`            | 4     | Blind-peer registration. Survives _every_ holder going offline. Tested against a real server.                       |
 
-**653 tests.** CI green on every push. The six-platform build matrix compiles a
+**691 tests.** CI green on every push. The six-platform build matrix compiles a
 standalone supervisor binary for Windows, macOS and Linux on x64 and arm64, and
 every runner executes the binary it produced.
 
@@ -213,6 +214,36 @@ which takes 20–45 seconds and times out where no worker is running that model)
 and the older `/api/sessions/select` path now rejects the very token the service
 issues. Ten models are configured, from 0.005 to 0.2 LCAI a job.
 
+**The interface has been rebuilt**, and the interesting part is what that
+turned up rather than how it looks. Five design tokens were referenced and
+defined nowhere, so ten declarations silently did nothing — including two focus
+rings that therefore did not exist. CSS has no error for that: the declaration
+is dropped and the element keeps whatever it had. Three surface stylesheets were
+redeclaring shared components and, loading after the kit, replacing them across
+the whole application. A partial that closed tags it never opened swallowed the
+page after it into a hidden subtree. None of these produced an error, a warning,
+or a symptom on the page at fault.
+
+So the guards matter more than the pixels, and CI now refuses each class: a
+token nothing defines, a surface hijacking a shared component, markup that does
+not match its partials, an icon sprite edited by hand, and a deep link scheme
+that disagrees between the four places it is declared. A sixth lives in the
+harness — two elements sharing an id, which had bound the Settings password form
+to the onboarding one and produced a password that silently never changed.
+
+Underneath, `index.html` is assembled from per-surface partials and the
+stylesheet is split to match, so the window is no longer one 1,600-line file
+that everybody has to edit at once. Icons come from Lucide rather than being
+drawn by hand on a 16px grid. What each shared component is for, and the rule
+for adding to it, is in [docs/design/COMPONENTS.md](docs/design/COMPONENTS.md).
+
+First run was rebuilt for a different reason: it had no way out. The unlock
+screen was terminal, removing a wallet required the password somebody had just
+said they had lost, and the only remove button sat behind the overlay that would
+not lift — so a forgotten password left the application with no reachable state
+at all. Every screen now leads somewhere, and a harness asserts it rather than
+trusting that somebody remembered.
+
 Invites use `blind-pairing` as the proposal specifies: one string that carries
 no room key, and the joiner arrives able to write. Rooms are encrypted, so a
 room key alone reads nothing and the blind peers we will rely on to hold rooms
@@ -226,13 +257,18 @@ costs the password rather than access to the directory. An older installation's
 plaintext registry is carried across once and deleted, verified against a real
 one rather than an invented record.
 
-The **graphical interface and install experience for every platform** remains the
-largest single piece of work, and it is more than packaging. It is the first
-thing a user sees and where most of them are lost: an unsigned binary warning, an
-MSIX sideload prompt, an AppImage with no obvious way to run it. It also
-interacts with decisions that harden early — the MSIX Publisher CN is permanent,
-and the Linux artifact choice determines whether users can receive peer-to-peer
-updates at all.
+The **install experience for every platform** remains the largest single piece of
+work, and it is more than packaging. The interface half of this is now done —
+see the section above — but installing is where most users are still lost: an
+unsigned binary warning, an MSIX sideload prompt that wants developer mode
+enabled, an AppImage with no obvious way to run it. It also interacts with
+decisions that harden early — the MSIX Publisher CN is permanent, and the Linux
+artifact choice determines whether users can receive peer-to-peer updates at
+all.
+
+Nothing here is blocked on code. CI already builds a DMG, an MSIX and an
+AppImage per tag. They are unsigned, which is procurement, and the first-run
+friction above is design work nobody has started.
 
 ### Smaller pieces
 

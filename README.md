@@ -57,26 +57,32 @@ repository removes the install-and-update problem, not the inference dependency.
 ## Status today
 
 Be skeptical of anything not listed as verified. The foundation is real and
-proven in CI; the applications are scaffolds.
+proven in CI. The applications are real too, and were scaffolds when this line
+last said so — what is still missing is a signed release, not the code.
 
 | Component                   | State           | Notes                                                                                 |
 | --------------------------- | --------------- | ------------------------------------------------------------------------------------- |
 | Workspace, CI, build matrix | **Verified**    | Green on Linux; six-target matrix builds and runs its own binaries                    |
 | `packages/safety`           | **Real**        | Refusal-list decision logic, 10 tests                                                 |
 | `packages/testkit`          | **Real**        | Two-machine harness, 6 tests including a negative control                             |
-| `packages/protocol`         | **Real**        | Model reference and manifest schema, 17 tests                                         |
+| `packages/protocol`         | **Real**        | Model references, manifests, room entries and the rules for resolving them, 92 tests  |
 | `packages/drive`            | **Real**        | Publish, resolve and range-read a model drive, 9 tests including publisher-offline    |
 | `packages/blind`            | **Real**        | Blind-peer registration, 4 tests against a real server with every holder offline      |
-| `packages/room`             | **Real**        | Multi-writer chat rooms on Autobase, 7 tests including creator-offline                |
-| `packages/preflight`        | **Real**        | Host readiness checks with actionable remedies, 19 tests                              |
-| `packages/worker`           | **Real**        | Network profiles, config validation, Docker orchestration, 23 tests                   |
+| `packages/room`             | **Real**        | Multi-writer rooms, presence, attachments and a suite of abuses, 112 tests            |
+| `packages/wallet`           | **Real**        | BIP-39 phrase, BIP-32 accounts, a sealed local store, Keystore V3, 109 tests          |
+| `packages/inference`        | **Real**        | The session handshake, the prompt and the relay, under Bare, 56 tests                 |
+| `packages/inference-crypto` | **Real**        | ECDH P-256 and AES-256-GCM as the deployed workers speak it, 15 tests                 |
+| `packages/host`             | **Real**        | Probes the machine a worker would run on, 15 tests                                    |
+| `packages/ui`               | **Real**        | Design tokens and identicons, held to WCAG contrast, 57 tests                         |
+| `packages/preflight`        | **Real**        | Host readiness checks with actionable remedies, 28 tests                              |
+| `packages/worker`           | **Real**        | Network profiles, config validation, Docker orchestration, 33 tests                   |
 | `apps/supervisor`           | **Real**        | Full worker lifecycle; contract address resolution still supplied by hand             |
-| `packages/chain`            | **Real**        | Signing, fees, nonces, replacement and a chain-id guard, 122 tests                    |
+| `packages/chain`            | **Real**        | Signing, fees, nonces, replacement and a chain-id guard, 139 tests                    |
 | `packages/da`               | **Not started** | Referenced in CODEOWNERS so ownership is settled before the code exists               |
 | Blind peer infrastructure   | **Not started** | There is no public fleet; we must operate our own servers or nothing stays available  |
 | `packages/seed`             | **Real**        | Holds and serves drives, 6 tests                                                      |
 | `apps/seeder`               | **Real**        | Always-on seeding; verified holding a real Pear-staged release                        |
-| `apps/chat`                 | **Real**        | Rooms, wallet-signed messages, paid inference, OTA updates; four end-to-end harnesses |
+| `apps/chat`                 | **Real**        | Rooms, wallet-signed messages, paid inference, OTA updates; five end-to-end harnesses |
 | Code signing                | **Not started** | Longest external lead time; blocks release on four platforms                          |
 | iOS, Android                | **Deferred**    | By decision — see [ADR 0001](docs/decisions/0001-defer-mobile.md)                     |
 
@@ -200,6 +206,13 @@ Two workflows.
 [`ci.yml`](.github/workflows/ci.yml) runs on every push and pull request to
 `main`: install, format check, lint, typecheck, test, build. Single Ubuntu
 runner, about a minute.
+
+It also runs five checks for faults that produce no error and no visible
+symptom, and so cannot be caught by review: a design token nothing defines, a
+surface stylesheet redeclaring a shared component, `index.html` not matching the
+partials it is assembled from, an icon sprite edited by hand rather than
+generated, and a deep link scheme that disagrees between the four places it is
+declared. Each was added after the fault it describes shipped unnoticed.
 
 [`build-matrix.yml`](.github/workflows/build-matrix.yml) runs on
 `workflow_dispatch` or a `v*` tag. Six native runners, each building **and
@@ -341,10 +354,14 @@ In rough order of leverage:
 2. **Full publish round trip** on a throwaway link: `pear touch`, stage, seed,
    install, publish an update, observe it apply. Unsigned-to-signed is where most
    surprises live, and the supervisor still carries the template's `upgrade` link.
-3. **`packages/blind`** — blind-peer registration, so a model stays available
-   when neither the publisher nor any worker holding it is online.
-4. **Replace the supervisor scaffold** with real install-and-supervise logic,
-   composing `packages/drive` to fetch what it installs.
+3. **Operate a blind-peer fleet.** The code is finished and tested against a real
+   server with every holder offline; what does not exist is a machine running
+   one. Until somebody does, a room stops being available the moment its last
+   member closes the app.
+4. **Finish the supervisor's two loose ends** — resolving contract addresses
+   from the registry instead of by hand, which `packages/chain` already does in
+   one call, and storing the keystore password somewhere better than an
+   environment variable.
 
 Two decisions from the delivery plan are still open: whether to ship a
 conventional Windows `.exe` installer alongside MSIX, and who holds the signing
@@ -353,11 +370,19 @@ key sets protecting different things and both need custody rules.
 
 ### A workstream that is larger than it looks
 
-Every desktop platform gets a **graphical interface**, and the install experience
-is part of the product rather than a packaging detail. It is the first thing a
-user sees and the point at which most of them are lost — an unsigned binary
-warning, an MSIX sideload prompt, or an AppImage with no obvious way to run it
-each cost more users than any feature gains.
+The **install experience** is part of the product rather than a packaging
+detail. It is the first thing a user sees and the point at which most of them
+are lost — an unsigned binary warning, an MSIX sideload prompt that wants
+developer mode enabled, or an AppImage with no obvious way to run it each cost
+more users than any feature gains.
+
+The graphical interface itself is built and is no longer the open half of this.
+What that work found is worth carrying into the install experience: five design
+tokens defined nowhere, three stylesheets silently replacing shared components
+across the whole app, and a partial that swallowed the page after it into a
+hidden subtree — none of which produced an error or a symptom on the page at
+fault. Each now has a check in CI, because that class of fault is invisible to
+review by construction.
 
 This deserves dedicated design time rather than being treated as the last step
 before release, and it interacts with decisions made much earlier: the MSIX
