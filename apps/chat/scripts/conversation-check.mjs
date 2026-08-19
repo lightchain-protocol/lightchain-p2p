@@ -353,6 +353,103 @@ report(
   String(shown)
 )
 
+// --- Dropping a file on the composer -----------------------------------------------
+
+// Attaching by drop had no coverage at all. It is easy to break silently: the
+// drop only reaches the listener if `dragover` calls preventDefault, and
+// without that Chromium handles it by navigating the window to the file.
+const dropped = await evaluate(`(async () => {
+  const composer = document.getElementById('composer')
+  if (!composer) return { missing: true }
+
+  const fire = (type, files) => {
+    const dt = new DataTransfer()
+    for (const f of files) dt.items.add(f)
+    const evt = new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt })
+    composer.dispatchEvent(evt)
+    return evt.defaultPrevented
+  }
+
+  const file = new File([new Uint8Array([137, 80, 78, 71])], 'dropped.png', { type: 'image/png' })
+
+  fire('dragenter', [file])
+  const lit = composer.classList.contains('attachment-dropping')
+  const overPrevented = fire('dragover', [file])
+  fire('drop', [file])
+  await new Promise((r) => setTimeout(r, 700))
+
+  return {
+    lit,
+    overPrevented,
+    chip: document.querySelector('.attachment-chip-name')?.textContent ?? null,
+    stillLit: composer.classList.contains('attachment-dropping')
+  }
+})()`)
+
+report(
+  'dragging a file over the composer says it will be taken',
+  dropped?.lit === true,
+  dropped?.missing ? 'no composer' : `highlighted: ${dropped?.lit}`
+)
+
+// The one that matters. Chromium handles a drop nothing prevented by opening
+// the file, which in an Electron window means navigating away from the app.
+report(
+  'and the drop is claimed rather than left to the browser',
+  dropped?.overPrevented === true,
+  `dragover preventDefault: ${dropped?.overPrevented}`
+)
+
+report(
+  'the file becomes an attachment waiting to be sent',
+  dropped?.chip === 'dropped.png',
+  JSON.stringify(dropped?.chip)
+)
+
+report(
+  'and the highlight goes away afterwards',
+  dropped?.stillLit === false,
+  `still lit: ${dropped?.stillLit}`
+)
+
+// Refused before it is read, not after: pulling a 400 MB file into the renderer
+// to then reject it is the same denial of service with extra steps.
+const oversized = await evaluate(`(async () => {
+  const composer = document.getElementById('composer')
+  const dt = new DataTransfer()
+  // Declared large without allocating it: size is what the check reads.
+  const huge = new File([new Uint8Array(8)], 'enormous.bin', { type: 'application/octet-stream' })
+  Object.defineProperty(huge, 'size', { value: 26 * 1024 * 1024 })
+  dt.items.add(huge)
+
+  composer.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }))
+  await new Promise((r) => setTimeout(r, 600))
+
+  return [...document.querySelectorAll('.attachment-chip-name')].map((n) => n.textContent)
+})()`)
+
+report(
+  'a file over the size cap is refused rather than attached',
+  Array.isArray(oversized) && !oversized.includes('enormous.bin'),
+  JSON.stringify(oversized)
+)
+
+// Dragging a line of text into a text box should still do what it looks like.
+const textDrag = await evaluate(`(() => {
+  const composer = document.getElementById('composer')
+  const dt = new DataTransfer()
+  dt.setData('text/plain', 'just some words')
+  const evt = new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt })
+  composer.dispatchEvent(evt)
+  return { prevented: evt.defaultPrevented, lit: composer.classList.contains('attachment-dropping') }
+})()`)
+
+report(
+  'dragging text is left alone, so the composer still accepts it',
+  textDrag?.prevented === false && textDrag?.lit === false,
+  `prevented: ${textDrag?.prevented}`
+)
+
 // --- Two Enters do not send two messages -------------------------------------------
 
 // `submitMessage` has no explicit reentrancy guard. What stops a double press
