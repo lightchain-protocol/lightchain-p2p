@@ -22,6 +22,16 @@ import { announcement, bodyFor } from './notify-body.js'
 import { clearQr, drawQr } from './qr.js'
 import { chooseMention, closeMentions, mentionState, moveMention, offerModels } from './mentions.js'
 import {
+  connectPresence,
+  forgetPresence,
+  iAmTyping,
+  presenceFor,
+  receivePresence as takePresence,
+  refreshPresence,
+  renderTyping,
+  stopTyping as endTyping
+} from './presence.js'
+import {
   connectAnswering,
   discardPreviews,
   previewItem,
@@ -53,6 +63,11 @@ connectAnswering({
 connectDrafts({
   isActive: (key) => key === activeKey,
   isEditing: () => editing !== null
+})
+
+connectPresence({
+  isActive: (key) => key === activeKey,
+  onChange: () => renderPresence()
 })
 import { acceptDrops, attachButton, attachmentView, pendingAttachment } from './attachments.js'
 
@@ -162,13 +177,17 @@ export function receiveRoom(msg) {
   if (msg.room.key === activeKey) renderRoom()
 }
 
-/** Who is around, pushed whenever it changes. */
+/**
+ * Who is around, pushed whenever it changes.
+ *
+ * Re-exported rather than pointed at directly, because `main.js` wires every
+ * push from one place and the roster's owner is an implementation detail of
+ * this surface. The roster travels with the counts and has to be kept: dropping
+ * it — which this did while nothing read it — leaves the member list drawing
+ * everybody as offline, which is not a missing feature but a wrong answer.
+ */
 export function receivePresence(msg) {
-  // The roster travels with the counts and has to be kept. Dropping it — which
-  // this did while nothing read it — leaves the member list drawing everybody
-  // as offline, which is not a missing feature but a wrong answer.
-  presence.set(msg.key, { peers: msg.peers, typing: msg.typing, roster: msg.roster ?? [] })
-  if (msg.key === activeKey) renderPresence()
+  takePresence(msg)
 }
 
 function renderRooms() {
@@ -747,7 +766,7 @@ function select(key) {
   const changed = activeKey !== key
 
   // Leaving a room mid-sentence should not leave the indicator on behind you.
-  if (activeKey && changed) stopTyping()
+  if (activeKey && changed) endTyping(activeKey)
   // Nor should it carry a half-finished reply or an attachment into the next
   // room, where the reply points at a message nobody there can see. The text
   // itself is kept, but for the room it was written in rather than the next.
@@ -768,20 +787,7 @@ function select(key) {
   if (rooms.get(key)?.writable) el.composerInput.focus()
 }
 
-// --- Typing -----------------------------------------------------------------
-
-/**
- * Who is around and who is typing, per room.
- *
- * A plain Map with no persistence, mirroring a channel that stores nothing.
- * Reload the window and it is empty until peers say otherwise, which is correct
- * — nothing here is a fact about the past.
- */
-const presence = new Map()
-
-const typingEl = document.getElementById('typing')
-const typingText = document.getElementById('typing-text')
-const peersEl = document.getElementById('room-peers')
+// --- Who is here -------------------------------------------------------------
 
 /**
  * Everything that changes when who is here changes.
@@ -790,7 +796,7 @@ const peersEl = document.getElementById('room-peers')
  * together — separating them is how one of them ends up a beat behind.
  */
 function renderPresence() {
-  renderTyping()
+  renderTyping(activeKey)
   renderMembers()
 }
 
@@ -801,6 +807,10 @@ function renderPresence() {
  * now, so somebody offline is still a member. The panel is rebuilt whole on
  * every change for the same reason the conversation is: a diff against this
  * would be a second opinion about who is in the room.
+ *
+ * Left here rather than moved into `presence.js`, because it reads the room's
+ * own membership, this wallet's address and the name control, and borrows only
+ * the connected count from presence.
  */
 function renderMembers() {
   const holder = document.getElementById('members')
@@ -813,7 +823,7 @@ function renderMembers() {
   }
 
   const children = [
-    memberList(room, presence.get(activeKey) ?? null, {
+    memberList(room, presenceFor(activeKey), {
       onPay: (address) => openPay(address),
       onRemove: (writerKey) => request('room.removeWriter', { room: room.key, writerKey })
     })
@@ -840,80 +850,6 @@ function renderMembers() {
   }
 
   holder.replaceChildren(...children)
-}
-
-function renderTyping() {
-  const state = presence.get(activeKey)
-  const typing = state?.typing ?? 0
-  const peers = state?.peers ?? 0
-
-  // Connections, not members. Someone in the room who is offline is not here,
-  // and a blind peer holding the room is a connection rather than a person, so
-  // this says "connected" — which is the thing it actually knows.
-  peersEl.hidden = peers === 0
-  peersEl.textContent = peers === 1 ? '1 connected' : `${peers} connected`
-
-  typingEl.hidden = typing === 0
-  // No names. A peer can claim any identity over this channel, and a name on
-  // screen that anyone can forge is worse than no name at all. A count cannot
-  // be forged: the channel is per-connection, so one peer is one vote.
-  typingText.textContent = typing === 1 ? 'Someone is typing' : `${typing} people are typing`
-}
-
-/**
- * Asks who is here, because presence is only pushed when it changes.
- *
- * A window opened after everyone stopped typing would otherwise show an empty
- * room until the next keystroke anywhere in it.
- */
-async function refreshPresence(key) {
-  if (!key) return
-  const state = await request('room.presence', { room: key }).catch(() => null)
-  if (!state) return
-  presence.set(key, state)
-  if (key === activeKey) renderPresence()
-}
-
-/**
- * Tells the room this peer is typing, and stops saying so when they stop.
- *
- * Renewed on a timer because the signal expires at the other end — a peer that
- * vanishes mid-word must not leave the indicator on forever. Stopped on submit,
- * on blur, and after a pause, so it does not persist past the actual typing.
- */
-let typingUntil = 0
-let typingTimer = null
-
-function iAmTyping(typing) {
-  const key = activeKey
-  if (!key) return
-
-  if (!typing) {
-    typingUntil = 0
-    void request('room.typing', { room: key, typing: false }).catch(() => {})
-    return
-  }
-
-  typingUntil = Date.now() + 4_000
-  // Re-sent at an interval rather than on every keystroke: the worker call is
-  // cheap but not free, and the remote's expiry is measured in seconds.
-  if (typingTimer) return
-  void request('room.typing', { room: key, typing: true }).catch(() => {})
-  typingTimer = setInterval(() => {
-    if (Date.now() < typingUntil) {
-      void request('room.typing', { room: key, typing: true }).catch(() => {})
-      return
-    }
-    clearInterval(typingTimer)
-    typingTimer = null
-    void request('room.typing', { room: key, typing: false }).catch(() => {})
-  }, 2_000)
-}
-
-function stopTyping() {
-  if (typingTimer) clearInterval(typingTimer)
-  typingTimer = null
-  iAmTyping(false)
 }
 
 // --- Naming a room ----------------------------------------------------------
@@ -1172,7 +1108,7 @@ el.leaveBtn.addEventListener('click', async () => {
   if (roomMenu?.matches(':popover-open')) roomMenu.hidePopover()
   // Switching rooms stops the typing indicator; leaving one did not, so the
   // interval kept firing `room.typing` at a room this peer had walked out of.
-  stopTyping()
+  endTyping(activeKey)
   clearComposerExtras()
   try {
     await request('room.leave', { room: key })
@@ -1180,6 +1116,10 @@ el.leaveBtn.addEventListener('click', async () => {
     // An answer still arriving for a room nobody is in any more has nowhere to
     // land, and a bubble waiting for it would outlive the conversation.
     discardPreviews(key)
+    // Who was connected to a room this peer has left is not a fact about
+    // anything. Without this the entry stayed for the life of the window: the
+    // only collection in the renderer that never removed anything.
+    forgetPresence(key)
     activeKey = rooms.keys().next().value ?? null
     renderRooms()
     renderRoom()
@@ -1226,7 +1166,7 @@ async function submitMessage() {
   clearPending()
   stopReplying()
   resizeComposer()
-  stopTyping()
+  endTyping(activeKey)
   forgetDraft(from)
 
   try {
@@ -1342,13 +1282,13 @@ el.composerInput.addEventListener('input', () => {
   resizeComposer()
   // An empty box is not typing. Clearing it back to nothing should stop the
   // indicator rather than keep it alive on the last keystroke.
-  iAmTyping(el.composerInput.value !== '')
+  iAmTyping(activeKey, el.composerInput.value !== '')
   keepDraft(activeKey)
   void offerModels()
 })
 
 el.composerInput.addEventListener('blur', () => {
-  stopTyping()
+  endTyping(activeKey)
   // Deferred, or clicking an entry in the list dismisses it before the click
   // is delivered.
   setTimeout(closeMentions, 150)
