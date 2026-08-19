@@ -84,11 +84,21 @@ export async function openSettings(page = settingsPage) {
   document.getElementById('set-ollama').value = state.values.ollamaUrl ?? ''
   document.getElementById('set-ollama').placeholder = state.effective.ollamaUrl ?? ''
 
-  document.getElementById('set-blind-peers').value = state.values.blindPeers ?? ''
+  // Two different facts, and conflating them is how this told people something
+  // untrue. The field is what is *saved*; the count is what the worker is
+  // actually using, which it built at boot and does not rebuild. Saving keys
+  // and reading "0 in use" is correct rather than broken, and the sentence has
+  // to say so or the next person assumes a bug.
+  const saved = state.values.blindPeers ?? ''
+  const inUse = state.blindPeerCount ?? 0
+  document.getElementById('set-blind-peers').value = saved
+
   document.getElementById('blind-status').textContent =
-    state.blindPeerCount > 0
-      ? `${state.blindPeerCount} blind peer${state.blindPeerCount === 1 ? '' : 's'} in use. Rooms opened from now on are lodged with them.`
-      : 'No blind peers. Rooms live only while someone who has them is online.'
+    inUse > 0
+      ? `${inUse} blind peer${inUse === 1 ? '' : 's'} in use. Rooms opened since this app started are lodged with them.`
+      : saved.trim() !== ''
+        ? 'Saved, but not in use yet. The app has to restart before it will lodge anything.'
+        : 'No blind peers. Rooms live only while someone who has them is online.'
 
   document.getElementById('dht-key').textContent = state.dhtKey ?? ''
 
@@ -122,9 +132,12 @@ document.getElementById('blind-form').addEventListener('submit', async (evt) => 
     await request('settings.write', {
       values: { blindPeers: document.getElementById('set-blind-peers').value.trim() }
     })
-    // Rooms are lodged as they open, so existing ones are unaffected until the
-    // app restarts. Saying so beats letting someone believe otherwise.
-    toast('Saved. Restart to lodge rooms you already have.')
+    // The worker builds its blind-peer registry once, at boot, so saving keys
+    // changes nothing at all until it restarts — not even for rooms opened
+    // afterwards. The previous wording promised those would be lodged, which
+    // was the sentence somebody would have trusted right up until a room they
+    // thought was safe disappeared with its last member.
+    toast('Saved. Restart the app before this takes effect.')
     void openSettings()
   } catch (err) {
     error.textContent = err.message

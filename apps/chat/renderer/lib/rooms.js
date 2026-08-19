@@ -64,8 +64,13 @@ export function adopt(states) {
 function announce(before, after) {
   if (!before) return
 
-  const seen = new Set(before.messages.map((m) => m.id))
-  const arrived = after.messages.filter((m) => !seen.has(m.id) && m.from !== after.writerKey)
+  // The resolved conversation, not the log. The log carries every edit,
+  // reaction and withdrawal as its own entry, so diffing it announced "3 new
+  // messages" when somebody reacted with a thumb — and worse, a withdrawn
+  // message keeps its original text there, so the words somebody took back
+  // could arrive as a desktop notification after they took them back.
+  const seen = new Set(said(before).map((m) => m.id))
+  const arrived = said(after).filter((m) => !seen.has(m.id) && m.from !== after.writerKey)
   if (arrived.length === 0) return
 
   const room = after.name ?? `Room ${short(after.key)}`
@@ -74,6 +79,19 @@ function announce(before, after) {
     arrived.length === 1 ? last.text : `${arrived.length} new messages. Latest: ${last.text}`
 
   void bridge.notify(room, body.slice(0, 240)).catch(() => {})
+}
+
+/**
+ * What a room actually shows, as opposed to everything written into it.
+ *
+ * `conversation` is the resolved view: edits applied, reactions folded away,
+ * withdrawn text removed. `messages` is the raw log and is for inspecting a
+ * room rather than displaying one — the package says so, and reading it by
+ * accident is how withdrawn words reach a notification.
+ */
+function said(room) {
+  const shown = room.conversation ?? room.messages ?? []
+  return shown.filter((m) => m.deletedAt === undefined && m.event === undefined)
 }
 
 /** A room the worker pushed because something in it changed. */
@@ -116,7 +134,11 @@ function renderRooms() {
 
     const sub = document.createElement('span')
     sub.className = 'nav-item-sub'
-    const last = room.messages[room.messages.length - 1]
+    // The conversation rather than the log, for the same reason as `announce`:
+    // the last entry in the log is often a reaction, and a withdrawn message
+    // still carries the text it was written with.
+    const shown = said(room)
+    const last = shown[shown.length - 1]
     // Message text is written by other people. Every path it takes into the
     // document is textContent; none is innerHTML.
     sub.textContent = last ? last.text : room.writable ? 'No messages yet' : 'Read only'
