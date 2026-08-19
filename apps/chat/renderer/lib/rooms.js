@@ -355,6 +355,18 @@ function renderRoom() {
       meta.append(edited)
     }
 
+    // Said in words as well as marked with an icon, because a pin is a claim
+    // about the message rather than decoration, and anybody in the room can
+    // have made it — not only whoever wrote the line.
+    if (message.pinned === true) {
+      const pin = el2('span', 'message-pinned', '')
+      const mark = svg('svg', { class: 'icon', 'aria-hidden': 'true' })
+      mark.append(svg('use', { href: '#i-pin' }))
+      pin.append(mark, el2('span', '', 'pinned'))
+      pin.title = 'Pinned by somebody in this room. Anybody here can unpin it.'
+      meta.append(pin)
+    }
+
     const body = document.createElement('div')
     body.className = 'message-body'
 
@@ -792,6 +804,22 @@ function messageActions(message, room) {
       document.body.append(picker)
     })
   )
+
+  // Pinning is the room's, not the author's: the resolver applies a pin from
+  // anybody and lets the latest win, which is the one place this differs from
+  // editing and withdrawing. A withdrawn message is not offered — pinning
+  // something the room has agreed to stop showing would put an empty line at
+  // the top of it.
+  if (message.deletedAt === undefined) {
+    const pinned = message.pinned === true
+    actions.append(
+      act(pinned ? 'Unpin' : 'Pin', 'i-pin', () => {
+        void request('room.pin', { room: room.key, target: message.id, on: !pinned }).catch((err) =>
+          toast(err.message, 'error')
+        )
+      })
+    )
+  }
 
   // Only on an answer, and only while it is still showing. Asking again on a
   // withdrawn one would spend money to replace something this room has already

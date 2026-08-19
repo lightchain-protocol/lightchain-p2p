@@ -353,8 +353,10 @@
    it is carrying a verdict on the message — which always earns its space.
    "Edited" is one of those: a line that was changed after it was written is
    not the same line, and hiding that because the previous message happened to
-   be from the same person would be hiding it at random. */
-.message.is-run .message-meta:not(:has(.message-proof, .message-warning, .message-edited)) {
+   be from the same person would be hiding it at random. A pin is the same
+   argument: somebody marked that line and not the one above it. */
+.message.is-run
+  .message-meta:not(:has(.message-proof, .message-warning, .message-edited, .message-pinned)) {
   display: none;
 }
 

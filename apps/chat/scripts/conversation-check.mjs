@@ -351,6 +351,88 @@ report(
   String(shown)
 )
 
+// --- Pinning ----------------------------------------------------------------------
+
+// Pinning differs from editing and withdrawing in who may do it: the resolver
+// applies a pin from anybody in the room and lets the latest win. That is the
+// rule these check, rather than only that the button exists.
+
+// A message of its own rather than whichever is first: by this point earlier
+// steps have withdrawn one, and a withdrawn message is deliberately not
+// offered a pin.
+const pinTarget = `pin me ${Date.now().toString(36)}`
+await ask('room.send', { room: created.key, text: pinTarget })
+await until(
+  `(() => document.getElementById('messages').textContent.includes(${JSON.stringify(pinTarget)}))()`,
+  'the message to pin to arrive'
+)
+
+const pinning = await evaluate(`(async () => {
+  const item = [...document.querySelectorAll('#messages .message')].find((m) =>
+    m.textContent.includes(${JSON.stringify(pinTarget)})
+  )
+  if (!item) return { missing: true, why: 'the message never rendered' }
+
+  const button = [...item.querySelectorAll('.message-action')].find(
+    (b) => b.getAttribute('aria-label') === 'Pin'
+  )
+  if (!button) {
+    return {
+      missing: true,
+      why: [...item.querySelectorAll('.message-action')]
+        .map((b) => b.getAttribute('aria-label'))
+        .join(', ')
+    }
+  }
+
+  button.click()
+  await new Promise((r) => setTimeout(r, 1200))
+
+  const after = [...document.querySelectorAll('#messages .message')].find((m) =>
+    m.textContent.includes(${JSON.stringify(pinTarget)})
+  )
+  return {
+    marked: Boolean(after?.querySelector('.message-pinned')),
+    // The same control flips rather than a second one appearing beside it.
+    nowSays: [...after.querySelectorAll('.message-action')]
+      .map((b) => b.getAttribute('aria-label'))
+      .filter((l) => l === 'Pin' || l === 'Unpin')
+  }
+})()`)
+
+report(
+  'a message can be pinned from its own controls',
+  pinning?.missing !== true && pinning?.marked === true,
+  pinning?.missing ? `no Pin control among: ${pinning.why}` : `marked: ${pinning?.marked}`
+)
+
+report(
+  'and the control becomes Unpin rather than doubling up',
+  JSON.stringify(pinning?.nowSays) === JSON.stringify(['Unpin']),
+  JSON.stringify(pinning?.nowSays)
+)
+
+// The room's own history, not a local flag — which is the whole point of
+// putting it in the log rather than in a setting.
+const pinnedState = await ask('room.list')
+const holding = (Array.isArray(pinnedState) ? pinnedState : []).find((r) => r.key === created.key)
+report(
+  'the pin is in the room, so everyone in it sees the same one',
+  Array.isArray(holding?.pinned) && holding.pinned.length === 1,
+  JSON.stringify(holding?.pinned ?? null)
+)
+
+const unpinned = await evaluate(`(async () => {
+  const button = [...document.querySelectorAll('#messages .message .message-action')].find(
+    (b) => b.getAttribute('aria-label') === 'Unpin'
+  )
+  button.click()
+  await new Promise((r) => setTimeout(r, 900))
+  return Boolean(document.querySelector('#messages .message .message-pinned'))
+})()`)
+
+report('and unpinning takes the mark off again', unpinned === false, `still marked: ${unpinned}`)
+
 // --- A half-written line belongs to the room it was written in --------------------
 
 // The composer is one box shared by every room. Before drafts were wired, text

@@ -198,6 +198,21 @@
   font-style: italic;
 }
 
+/* Brand rather than dim: a pin is somebody deliberately marking this line,
+   unlike "edited", which is a fact the reader is owed rather than a choice. */
+.message-pinned {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lc-space-xs);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-brand);
+}
+
+.message-pinned .icon {
+  width: 0.85em;
+  height: 0.85em;
+}
+
 /* Withdrawn text is styled as absent rather than as text, because it is not
    what anybody wrote — it is this client declining to show what they did. */
 .message-withdrawn {
