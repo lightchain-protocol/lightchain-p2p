@@ -1,0 +1,388 @@
+/**
+ * The pieces every surface is built from.
+ *
+ * Before this, each panel invented its own. There were three card treatments
+ * that differed by a few pixels, two empty states, and a page header
+ * copy-pasted between Models and Worker under a class called
+ * `wallet-head-actions` — named for the panel it was taken from, which is how
+ * you can tell it was a copy. None of that is visible in a screenshot of one
+ * panel. All of it is visible when you look at two.
+ *
+ * The rule for adding to this file: a component belongs here when a second
+ * surface needs it. A component that only one surface uses belongs in that
+ * surface's stylesheet, where it can be changed without a survey.
+ *
+ * See docs/design/COMPONENTS.md for what each of these is for and when to
+ * reach for it.
+ */
+
+/* --- Page archetypes ------------------------------------------------------ */
+
+/**
+ * Two kinds of page, named, because the app already had both and no rule about
+ * which was which. The Worker page was a reading page holding a diagnostic
+ * checklist, a facts list and a log, which is why it had empty margins on both
+ * sides and a scrollbar at the same time.
+ *
+ * A reading page is for prose. Its measure is what makes paragraphs readable
+ * and it is the wrong shape for anything tabular.
+ *
+ * A console page is for status, tables and logs. It fills the width it is
+ * given, and its panes scroll rather than the page.
+ */
+.page {
+  width: 100%;
+  max-width: 74ch;
+  margin: 0 auto;
+  padding: var(--lc-space-xxl);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.console {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--lc-space-xl) var(--lc-space-xxl);
+  gap: var(--lc-space-xl);
+}
+
+/* The part of a console page that scrolls. The page does not: a log growing
+   by a line must not move the heading that says what you are looking at. */
+.console-body {
+  display: grid;
+  gap: var(--lc-space-lg);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.console-body-split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+/* One column below this, and the page scrolls again. An honest fallback beats
+   a two-column grid squeezed until neither column works. */
+@media (max-width: 1100px) {
+  .console-body-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .console {
+    overflow-y: auto;
+  }
+}
+
+/* --- Page head ------------------------------------------------------------ */
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--lc-space-md) var(--lc-space-lg);
+}
+
+.page-head-main {
+  flex: 1 1 30ch;
+  min-width: 0;
+}
+
+.page-title {
+  margin: 0;
+  font-size: var(--lc-text-xxl);
+  font-weight: 600;
+  line-height: var(--lc-leading-tight);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.page-sub {
+  margin: var(--lc-space-xs) 0 0;
+  color: var(--lc-fg-muted);
+  text-wrap: pretty;
+}
+
+/* Right of the title rather than wrapped underneath it, which is what happens
+   when four buttons and a subtitle share a reading-width column. */
+.page-actions {
+  display: flex;
+  gap: var(--lc-space-sm);
+  align-items: center;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+/* --- Cards ---------------------------------------------------------------- */
+
+.kit-card {
+  padding: var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-lg);
+  background: var(--lc-bg-elevated);
+  min-width: 0;
+}
+
+/* A card that holds a scrolling pane. The padding moves inside so the scrollbar
+   sits against the border rather than floating in a gutter. */
+.kit-card-flush {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.kit-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--lc-space-md);
+  padding: var(--lc-space-md) var(--lc-space-lg);
+  border-bottom: 1px solid var(--lc-rule);
+}
+
+.kit-card-title {
+  margin: 0;
+  font-size: var(--lc-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lc-fg-dim);
+}
+
+.kit-card-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding: var(--lc-space-md) var(--lc-space-lg);
+}
+
+/* --- Status rows ---------------------------------------------------------- */
+
+/**
+ * A check, its result, and what to do about it.
+ *
+ * The Worker readiness list, the wallet's authorisation notes and the model
+ * list's availability all have this shape. The remedy line is the point: a
+ * failure that does not say what to do next is a failure somebody has to search
+ * for.
+ */
+.status-row {
+  display: grid;
+  grid-template-columns: 5.5ch minmax(0, 1fr);
+  gap: var(--lc-space-sm) var(--lc-space-md);
+  padding: var(--lc-space-sm) 0;
+  align-items: baseline;
+}
+
+.status-row + .status-row {
+  border-top: 1px solid color-mix(in srgb, var(--lc-rule) 55%, transparent);
+}
+
+.status-state {
+  font-size: var(--lc-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.status-state[data-state='ok'] {
+  color: var(--lc-success);
+}
+
+.status-state[data-state='warn'] {
+  color: var(--lc-warning);
+}
+
+.status-state[data-state='fail'] {
+  color: var(--lc-danger);
+}
+
+.status-line {
+  min-width: 0;
+  text-wrap: pretty;
+}
+
+.status-remedy {
+  grid-column: 2;
+  margin: var(--lc-space-xs) 0 0;
+  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-sm);
+  text-wrap: pretty;
+}
+
+/* --- Verdicts ------------------------------------------------------------- */
+
+/* The answer, above the evidence. A summary underneath the detail it summarises
+   is a summary nobody reads, and it is the reason the page was opened. */
+.verdict {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-md);
+  padding: var(--lc-space-md) var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-left-width: 3px;
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated);
+}
+
+.verdict[data-state='ok'] {
+  border-left-color: var(--lc-success);
+}
+
+.verdict[data-state='warn'] {
+  border-left-color: var(--lc-warning);
+}
+
+.verdict[data-state='fail'] {
+  border-left-color: var(--lc-danger);
+}
+
+.verdict-headline {
+  font-weight: 600;
+}
+
+.verdict-detail {
+  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-sm);
+}
+
+/* --- Alerts --------------------------------------------------------------- */
+
+/**
+ * Where a failure goes.
+ *
+ * Every surface needs one place to put an error, or errors end up written into
+ * whatever text slot is nearest. The Models panel did exactly that: a chain
+ * error was assigned to the session subtitle, so it rendered in muted grey
+ * under the model's name and read as a description of the model.
+ *
+ * An alert is never a caption. It has a border, it has a tone, and it sits
+ * where the thing that failed is.
+ */
+.alert {
+  display: flex;
+  gap: var(--lc-space-md);
+  align-items: flex-start;
+  padding: var(--lc-space-md) var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated);
+  color: var(--lc-fg);
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
+  text-wrap: pretty;
+}
+
+.alert .icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.alert[data-tone='info'] {
+  border-color: color-mix(in srgb, var(--lc-brand) 45%, var(--lc-rule));
+}
+
+.alert[data-tone='info'] .icon {
+  color: var(--lc-brand);
+}
+
+.alert[data-tone='warn'] {
+  border-color: color-mix(in srgb, var(--lc-warning) 45%, var(--lc-rule));
+}
+
+.alert[data-tone='warn'] .icon {
+  color: var(--lc-warning);
+}
+
+.alert[data-tone='error'] {
+  border-color: color-mix(in srgb, var(--lc-danger) 55%, var(--lc-rule));
+}
+
+.alert[data-tone='error'] .icon {
+  color: var(--lc-danger);
+}
+
+.alert-body {
+  min-width: 0;
+}
+
+.alert-title {
+  display: block;
+  font-weight: 600;
+}
+
+/* --- Chips ---------------------------------------------------------------- */
+
+/* A fact about the thing on screen, not a control. Chips do not get borders
+   heavy enough to be mistaken for buttons, which is what went wrong in the room
+   header where three status badges sat in a row of four buttons. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lc-space-xs);
+  padding: 2px var(--lc-space-sm);
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-bg-elevated-2);
+  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-xs);
+  white-space: nowrap;
+}
+
+.chip .icon {
+  width: 13px;
+  height: 13px;
+}
+
+.chip[data-tone='ok'] {
+  background: color-mix(in srgb, var(--lc-success) 16%, transparent);
+  color: var(--lc-success);
+}
+
+.chip[data-tone='warn'] {
+  background: color-mix(in srgb, var(--lc-warning) 16%, transparent);
+  color: var(--lc-warning);
+}
+
+.chip[data-tone='danger'] {
+  background: color-mix(in srgb, var(--lc-danger) 16%, transparent);
+  color: var(--lc-danger);
+}
+
+/* --- Facts ---------------------------------------------------------------- */
+
+/* Label and value, aligned down a column so values can be compared by eye
+   rather than read one at a time. */
+.facts {
+  display: grid;
+  grid-template-columns: minmax(0, 12ch) minmax(0, 1fr);
+  gap: var(--lc-space-sm) var(--lc-space-lg);
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--lc-fg-dim);
+  font-size: var(--lc-text-sm);
+}
+
+.facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* --- Focus ---------------------------------------------------------------- */
+
+/* One rule for everything focusable that the base stylesheet does not already
+   name. Focus was previously declared per component, which is why each new
+   control arrived without a ring until somebody noticed. */
+.kit-card a:focus-visible,
+.chip:focus-visible,
+.status-row a:focus-visible,
+.alert a:focus-visible,
+[data-kit-focus]:focus-visible {
+  outline: 2px solid var(--lc-brand);
+  outline-offset: 2px;
+}
