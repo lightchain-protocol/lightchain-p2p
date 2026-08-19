@@ -40,3 +40,9 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      # The deep link scheme is written down in four places that nothing else
+      # makes agree, and when they disagreed the only symptom was an installed
+      # release ignoring invite links. Not something any other check would see.
+      - name: Deep link scheme
+        run: node apps/chat/scripts/check-scheme.mjs

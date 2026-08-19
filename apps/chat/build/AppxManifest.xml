@@ -50,6 +50,23 @@
         Square44x44Logo="build\icon.png"
         BackgroundColor="transparent"
       />
+      <!--
+        An MSIX registers its URL schemes here and nowhere else: what the
+        running process asks for with setAsDefaultProtocolClient is not what
+        Windows reads when it decides who owns lightchain://. Without this an
+        installed build simply never receives an invite link.
+
+        The scheme must match the one in electron/main.js and forge.config.js.
+        There is a test that checks all three still agree, because the way this
+        broke in the first place was one of them being derived differently.
+      -->
+      <Extensions>
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="lightchain">
+            <uap:DisplayName>Lightchain invite</uap:DisplayName>
+          </uap:Protocol>
+        </uap:Extension>
+      </Extensions>
     </Application>
   </Applications>
 </Package>

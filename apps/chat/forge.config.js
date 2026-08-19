@@ -5,6 +5,16 @@ const plink = require('pear-link')
 const pkg = require('./package.json')
 const appName = pkg.productName ?? pkg.name
 
+/**
+ * The URL scheme, spelled out rather than derived.
+ *
+ * This used to be `pkg.name`, which is `@lcai-p2p/chat` — not the wrong scheme
+ * so much as not a legal one, so `lightchain://` invites could not open the
+ * packaged macOS application at all. It has to match the literal the main
+ * process registers and the links the app itself hands out.
+ */
+const protocol = 'lightchain'
+
 function getWindowsKitVersion() {
   const programFiles = process.env['PROGRAMFILES(X86)'] || process.env.PROGRAMFILES
   if (!programFiles) return undefined
@@ -27,7 +37,7 @@ function getWindowsKitVersion() {
 
 let packagerConfig = {
   icon: 'build/icon',
-  protocols: [{ name: appName, schemes: [pkg.name] }],
+  protocols: [{ name: appName, schemes: [protocol] }],
   derefSymlinks: true
 }
 
