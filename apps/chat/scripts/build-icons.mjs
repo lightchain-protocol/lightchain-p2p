@@ -85,8 +85,37 @@ const ICONS = {
   'i-external': 'external-link',
   'i-refresh': 'refresh-cw',
   'i-close': 'x',
+  'i-more': 'ellipsis',
 
-  // Things the roadmap pages point at
+  // On a message. These replace four unicode characters from four different
+  // corners of the standard — an arrow, a smiling face, a pencil and a
+  // multiplication sign — two of which Windows rendered through the emoji font,
+  // in colour, at a size nothing else on the row used.
+  'i-reply': 'corner-up-left',
+  'i-react': 'smile-plus',
+  'i-edit': 'pencil',
+  'i-withdraw': 'trash-2',
+  'i-again': 'rotate-cw',
+  'i-pin': 'pin',
+  'i-attach': 'paperclip',
+  'i-send': 'arrow-up',
+
+  // In a room
+  'i-members': 'users',
+  'i-leave': 'log-out',
+  'i-rename': 'square-pen',
+  'i-invite': 'user-plus',
+
+  // Worker and wallet
+  'i-play': 'play',
+  'i-stop': 'square',
+  'i-container': 'box',
+  'i-terminal': 'terminal',
+  'i-cpu': 'cpu',
+  'i-key': 'key',
+  'i-shield': 'shield-check',
+
+  // Things the roadmap points at
   'i-mobile': 'smartphone',
   'i-hardware': 'usb',
   'i-routing': 'route',

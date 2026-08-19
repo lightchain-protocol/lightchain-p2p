@@ -111,6 +111,10 @@ body {
   overflow: hidden;
 }
 
+/* Lucide is drawn on a 24 grid at a 2px stroke, and the two numbers go
+   together: the weight is a proportion of the grid, not an absolute. 1.3 was
+   right for the 16-grid icons these replaced and renders the new ones at about
+   0.9px, which is thin enough to look faded rather than light. */
 .icon,
 .nav-icon {
   width: var(--lc-control-icon);
@@ -118,7 +122,7 @@ body {
   flex: 0 0 auto;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.3;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
