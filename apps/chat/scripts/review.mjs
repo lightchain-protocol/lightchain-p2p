@@ -179,6 +179,76 @@ note(
       : `${panels.total} panels, all siblings`
 )
 
+// --- Using it without a mouse --------------------------------------------------
+
+// This document holds six panels and six dialogs and shows one at a time, which
+// is exactly the shape that leaves controls in the tab order after they have
+// gone off screen. Somebody tabbing then lands on a button they cannot see, in a
+// panel they did not open.
+//
+// Asked by trying: `focus()` each candidate and see whether `activeElement`
+// actually moved. Checking `offsetParent` instead looks like it works and does
+// not — an element that is not rendered is also not focusable, so that test
+// reports the absence of the fault as its presence.
+const FOCUSABLE =
+  'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"]), [contenteditable]'
+
+const focus = await evaluate(`(() => {
+  const all = [...document.querySelectorAll(${JSON.stringify(FOCUSABLE)})]
+  const held = document.activeElement
+  const invisible = []
+
+  for (const node of all) {
+    if (node.disabled) continue
+    node.focus()
+    if (document.activeElement !== node) continue
+
+    const box = node.getBoundingClientRect()
+    if (box.width === 0 || box.height === 0) {
+      invisible.push(node.id || node.className || node.tagName)
+    }
+  }
+
+  held?.focus?.()
+  return { total: all.length, invisible }
+})()`)
+
+note(
+  focus.invisible.length === 0 && focus.total >= FLOOR.buttons,
+  'nothing off screen can take focus',
+  focus.invisible.length
+    ? focus.invisible.slice(0, 4).join(', ')
+    : `${focus.total} focusable candidates, none of them invisible`
+)
+
+// A dialog that does not give focus back leaves a keyboard user at the top of
+// the document, having lost their place.
+const restores = await evaluate(`(async () => {
+  const anchor = document.querySelector('[data-section="wallet"]')
+  if (!anchor) return { missing: true }
+  anchor.focus()
+  const before = document.activeElement
+
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
+  await new Promise((r) => setTimeout(r, 300))
+
+  const dialog = document.getElementById('search-dialog')
+  const moved = dialog?.open === true && document.activeElement !== before
+
+  dialog?.close()
+  await new Promise((r) => setTimeout(r, 300))
+
+  return { missing: false, moved, restored: document.activeElement === before }
+})()`)
+
+note(
+  restores.missing !== true && restores.moved && restores.restored,
+  'search takes focus and gives it back',
+  restores.missing
+    ? 'no wallet nav item to focus first'
+    : `moved in: ${restores.moved}, restored: ${restores.restored}`
+)
+
 // --- Every surface, in both themes --------------------------------------------
 
 fs.mkdirSync(outdir, { recursive: true })
