@@ -53,6 +53,7 @@ const DRAFTS = 'drafts'
 const MODERATION = 'moderation'
 const NOTIFICATIONS = 'notifications'
 const CONTACTS = 'contacts'
+const TEMPLATES = 'templates'
 
 /**
  * Documents `local.write` may not replace.
@@ -67,7 +68,19 @@ const CONTACTS = 'contacts'
  * overwritten from here is gone for good. Sharing one sealed store between two
  * handlers means the names have to be shared too.
  */
-const OWNED = new Set([UNREAD, DRAFTS, MODERATION, NOTIFICATIONS, CONTACTS, 'transactions'])
+const OWNED = new Set([
+  UNREAD,
+  DRAFTS,
+  MODERATION,
+  NOTIFICATIONS,
+  CONTACTS,
+  TEMPLATES,
+  // Owned by the AI handler rather than this one, and reserved here for the
+  // same reason as the ledger: one sealed store, so the names have to be shared.
+  'limits',
+  'roomcontext',
+  'transactions'
+])
 
 /**
  * A room key is a hypercore key as hex and an address is an address.
@@ -103,6 +116,7 @@ const UNREAD_CEILING = 1_000_000
 const ROOMS_TRACKED = 1_000
 const ADDRESSES_BLOCKED = 1_000
 const CONTACTS_HELD = 1_000
+const TEMPLATES_HELD = 100
 const DOCUMENT_LENGTH = 128 * 1024
 const DOCUMENTS_HELD = 64
 
@@ -364,6 +378,38 @@ const contactList = (contacts) =>
   Object.entries(contacts)
     .map(([address, label]) => ({ address, label }))
     .sort((a, b) => a.label.localeCompare(b.label) || a.address.localeCompare(b.address))
+
+/**
+ * Templates as something to draw, dropping anything that is not one.
+ *
+ * Validated on the way out as well as in, like every other document here: this
+ * was written by a renderer, possibly an older one, and a name that has become
+ * a number should cost one row rather than the whole list.
+ */
+const templateList = (held) =>
+  Object.entries(held)
+    .filter(
+      ([id, template]) =>
+        /^[a-z0-9]{1,32}$/i.test(id) &&
+        template !== null &&
+        typeof template === 'object' &&
+        typeof template.name === 'string' &&
+        typeof template.body === 'string'
+    )
+    .map(([id, template]) => ({
+      id,
+      name: template.name.slice(0, LABEL_LENGTH),
+      body: template.body.slice(0, DRAFT_LENGTH)
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
+
+/** An id nothing else is using. Short, because it only has to be unique here. */
+function freshTemplateId(held) {
+  for (;;) {
+    const id = Math.random().toString(36).slice(2, 10)
+    if (!Object.hasOwn(held, id)) return id
+  }
+}
 
 export function localHandlers(ctx) {
   const { localState } = ctx
@@ -654,6 +700,52 @@ export function localHandlers(ctx) {
 
       const written = localState.write(NOTIFICATIONS, next)
       return { written, preferences: written ? next : shapePreferences({}) }
+    },
+
+    /**
+     * Text somebody keeps to put in front of a prompt.
+     *
+     * A system prompt in practice, and personal rather than shared: it is one
+     * person's way of asking, applied to their own questions, and putting it in
+     * a room would make one member's instructions govern everyone else's
+     * answers without their knowing.
+     */
+    'local.templates': () => ({ templates: templateList(localState.read(TEMPLATES, {})) }),
+
+    'local.saveTemplate': (req) => {
+      const name = String(req.name ?? '').trim()
+      const body = String(req.body ?? '')
+
+      if (name === '') throw new Error('a template needs a name')
+      if (name.length > LABEL_LENGTH) {
+        throw new Error(`a template name may not exceed ${LABEL_LENGTH} characters`)
+      }
+      if (body.trim() === '') throw new Error('a template needs something in it')
+      if (body.length > DRAFT_LENGTH) {
+        throw new Error(`a template may not exceed ${DRAFT_LENGTH} characters`)
+      }
+
+      const held = localState.read(TEMPLATES, {})
+      const id = typeof req.id === 'string' && held[req.id] ? req.id : freshTemplateId(held)
+
+      if (!held[id] && Object.keys(held).length >= TEMPLATES_HELD) {
+        throw new Error(`there is room for ${TEMPLATES_HELD} templates. Remove one first.`)
+      }
+
+      const next = { ...held, [id]: { name, body } }
+      const written = localState.write(TEMPLATES, next)
+      return { written, templates: templateList(written ? next : {}) }
+    },
+
+    'local.removeTemplate': (req) => {
+      const id = String(req.id ?? '')
+      const held = localState.read(TEMPLATES, {})
+      if (!held[id]) return { written: false, templates: templateList(held) }
+
+      const next = { ...held }
+      delete next[id]
+      const written = localState.write(TEMPLATES, next)
+      return { written, templates: templateList(written ? next : held) }
     },
 
     'local.contacts': () => ({ contacts: contactList(contacts()) }),
