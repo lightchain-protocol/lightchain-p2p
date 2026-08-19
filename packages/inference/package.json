@@ -54,6 +54,8 @@
   },
   "devDependencies": {
     "@lcai-p2p/eslint-config": "workspace:*",
-    "@lcai-p2p/typescript-config": "workspace:*"
+    "@lcai-p2p/typescript-config": "workspace:*",
+    "@lcai-p2p/vitest-config": "workspace:*",
+    "vitest": "^4.1.10"
   }
 }
