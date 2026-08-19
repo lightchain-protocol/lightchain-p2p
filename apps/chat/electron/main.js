@@ -481,6 +481,8 @@ function safeFileName(name) {
   return stripped
 }
 
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
+
 /** Picks files to attach. Returns their bytes, because the renderer cannot read disk. */
 ipcMain.handle('app:chooseFiles', async (evt, opts) => {
   const win = BrowserWindow.fromWebContents(evt.sender)
@@ -492,7 +494,11 @@ ipcMain.handle('app:chooseFiles', async (evt, opts) => {
   })
   if (picked.canceled) return []
 
-  const limit = Number(opts?.maxBytes) || 25 * 1024 * 1024
+  // The renderer may ask for a smaller limit but never a larger one: it is the
+  // untrusted side, and raising this would let it read a file of any size into
+  // memory. Mirrors MAX_ATTACHMENT_SIZE in @lcai-p2p/protocol.
+  const requested = Number(opts?.maxBytes)
+  const limit = requested > 0 ? Math.min(requested, MAX_ATTACHMENT_BYTES) : MAX_ATTACHMENT_BYTES
   const files = []
 
   for (const filePath of picked.filePaths) {
@@ -514,6 +520,7 @@ ipcMain.handle('app:chooseFiles', async (evt, opts) => {
 ipcMain.handle('app:saveFile', async (evt, request) => {
   const win = BrowserWindow.fromWebContents(evt.sender)
   if (!win || !Array.isArray(request?.bytes)) return false
+  if (request.bytes.length > MAX_ATTACHMENT_BYTES) return false
 
   const chosen = await dialog.showSaveDialog(win, {
     title: 'Save attachment',

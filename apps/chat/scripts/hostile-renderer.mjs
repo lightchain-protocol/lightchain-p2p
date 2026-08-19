@@ -123,6 +123,26 @@ report(
   'narrowed, not eliminated'
 )
 
+// --- What a compromised window could ask the main process for -------------------
+
+// `saveFile` and `chooseFiles` are the only two places the window reaches disk,
+// and both took a size from the window itself. Refusing an oversized write
+// before the dialog opens is what makes this testable at all — a check that
+// happened after would need somebody to click Save.
+const oversized = await evaluate(
+  `window.bridge.saveFile({ name: 'x.bin', bytes: new Array(26 * 1024 * 1024).fill(0) })`
+)
+report(
+  'the main process refuses to write more than the attachment ceiling',
+  oversized === false,
+  oversized === false ? 'refused before any dialog' : `returned ${JSON.stringify(oversized)}`
+)
+
+// The matching clamp on `chooseFiles` — where the window names the limit it
+// wants and main used it as written, so asking for a larger one raised the
+// ceiling — is not reachable from here: it sits behind a native picker nothing
+// can click. It is covered by reading main.js, not by this suite.
+
 // --- The envelope holding up under load ---------------------------------------
 
 // Not hostility so much as ordinary traffic, but it belongs with the attacks
