@@ -10,7 +10,7 @@ import {
   withdrawBalance
 } from '@lcai-p2p/chain'
 import { NETWORKS } from '@lcai-p2p/worker'
-import { Conversation } from '@lcai-p2p/inference'
+import { Conversation, withHistory } from '@lcai-p2p/inference'
 import { recordTransaction } from './wallet.mjs'
 
 /**
@@ -530,6 +530,26 @@ export function aiHandlers(ctx) {
       const model = models.find((m) => m.id === req.modelId || m.name === req.model)
       if (!model) throw new Error(`no model called ${req.model ?? req.modelId}`)
 
+      const log = await transcripts()
+
+      // Picking up an earlier conversation rather than beginning one. The chain
+      // session cannot be reopened — its key is ephemeral and is discarded on
+      // close — but nothing of value is lost by making a new one: `createSession`
+      // is payable and rejects any value, and on a sortition deployment the
+      // service sends the transaction, so this costs nothing beyond the
+      // per-question fee that is paid either way. What continuity actually
+      // needs is the earlier turns, and those are on disk.
+      //
+      // Resolved before the session is opened. Discovering afterwards that
+      // there is nothing to resume would mean a session created for a
+      // conversation that does not exist.
+      const resuming = typeof req.continue === 'string' ? req.continue : null
+      const earlier = resuming
+        ? (await log.transcripts()).find((t) => t.id === resuming)
+        : undefined
+
+      if (resuming && !earlier) throw new Error('that conversation is no longer in the history')
+
       session.conversation?.close()
       session.conversation = new Conversation({
         api,
@@ -544,14 +564,18 @@ export function aiHandlers(ctx) {
       // awaited in silence.
       await session.conversation.start((progress) => send({ t: 'ai.progress', ...progress }))
 
-      session.id = `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-      await (await transcripts()).opened(session.id, model.name)
+      session.id =
+        earlier?.id ?? `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+
+      if (!earlier) await log.opened(session.id, model.name)
 
       return {
         sessionId: session.conversation.sessionId,
         worker: session.conversation.worker,
         model: model.name,
-        conversation: session.id
+        conversation: session.id,
+        resumed: Boolean(earlier),
+        turns: earlier?.turns.length ?? 0
       }
     },
 
@@ -561,12 +585,17 @@ export function aiHandlers(ctx) {
       const log = await transcripts()
       const model = session.conversation.model.name
 
+      // Read before this turn is written, so the question is not handed back to
+      // the model as context for itself.
+      const earlier = (await log.transcripts()).find((t) => t.id === session.id)
+
       // Written before the answer, so a question that is never answered is
       // still in the transcript rather than vanishing with the failure.
       await log.said(session.id, model, 'you', prompt)
 
-      const answer = await session.conversation.ask(prompt, (progress) =>
-        send({ t: 'ai.progress', ...progress })
+      const answer = await session.conversation.ask(
+        withHistory(earlier?.turns ?? [], prompt, CONTEXT_BUDGET),
+        (progress) => send({ t: 'ai.progress', ...progress })
       )
 
       await log.said(session.id, model, 'model', answer.text, answer.jobId)

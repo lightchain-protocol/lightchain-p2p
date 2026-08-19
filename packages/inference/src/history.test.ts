@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { History, type Log, type Record } from './index.js'
+import { History, withHistory, type Log, type Record } from './index.js'
 
 function memoryLog(): Log & { records: Record[] } {
   const records: Record[] = []
@@ -180,6 +180,69 @@ describe('searching what was said', () => {
       'question 4',
       'question 3'
     ])
+  })
+})
+
+describe('giving a model the conversation so far', () => {
+  const turn = (role: 'you' | 'model', text: string, at = 0) => ({ role, text, jobId: null, at })
+
+  it('sends the prompt alone when there is nothing before it', () => {
+    expect(withHistory([], 'who are you?')).toBe('who are you?')
+  })
+
+  // Without this a conversation is a column of unrelated questions: the worker
+  // runs the model on exactly one prompt and keeps nothing between jobs.
+  it('carries the earlier turns, labelled by who said them', () => {
+    const built = withHistory(
+      [turn('you', 'my name is Ford'), turn('model', 'Hello Ford.')],
+      'what is my name?'
+    )
+
+    expect(built).toContain('User: my name is Ford')
+    expect(built).toContain('Assistant: Hello Ford.')
+    expect(built.endsWith('what is my name?')).toBe(true)
+  })
+
+  it('keeps them in the order they were said', () => {
+    const built = withHistory(
+      [turn('you', 'first'), turn('model', 'second'), turn('you', 'third')],
+      'next'
+    )
+
+    expect(built.indexOf('first')).toBeLessThan(built.indexOf('second'))
+    expect(built.indexOf('second')).toBeLessThan(built.indexOf('third'))
+  })
+
+  // The last exchange is nearly always what the next question is about, so the
+  // oldest is what goes when there is not room for everything.
+  it('drops the oldest first when the budget bites', () => {
+    const built = withHistory(
+      [turn('you', 'A'.repeat(80)), turn('model', 'B'.repeat(80)), turn('you', 'C'.repeat(20))],
+      'next',
+      120
+    )
+
+    expect(built).toContain('C'.repeat(20))
+    expect(built).not.toContain('A'.repeat(80))
+  })
+
+  it('still sends the prompt when nothing fits at all', () => {
+    expect(withHistory([turn('you', 'x'.repeat(500))], 'next', 10)).toBe('next')
+  })
+
+  it('ignores an empty turn rather than emitting a bare label', () => {
+    const built = withHistory([turn('you', '   '), turn('model', 'something')], 'next')
+
+    expect(built).not.toContain('User:')
+    expect(built).toContain('Assistant: something')
+  })
+
+  // The transcript holds what the person typed; only what is sent to the worker
+  // is wrapped. A prompt that came back wrapped would be stored wrapped next
+  // time and grow on every turn.
+  it('does not alter the prompt it was given', () => {
+    const prompt = 'what is my name?'
+    expect(withHistory([turn('you', 'earlier')], prompt).endsWith(prompt)).toBe(true)
   })
 })
 

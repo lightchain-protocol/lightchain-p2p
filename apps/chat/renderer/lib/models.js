@@ -445,7 +445,9 @@ function showTranscript(transcript) {
   ai.messages.hidden = false
   ai.foot.hidden = true
   ai.model.textContent = transcript.model
-  ai.session.textContent = `${transcript.turns.length} turns · session ended`
+  // Not "session ended", which read as though the conversation itself were
+  // over and could not be picked up.
+  ai.session.textContent = `${transcript.turns.length} turns · not live`
   ai.messages.replaceChildren()
 
   renderNotices()
@@ -453,9 +455,50 @@ function showTranscript(transcript) {
   for (const t of transcript.turns)
     turn(t.role === 'you' ? 'you' : transcript.model, t.text, t.role === 'you')
 
+  offerToContinue(transcript)
+
   showControls()
   renderModels()
   renderConversations()
+}
+
+/**
+ * The offer to pick a past conversation back up.
+ *
+ * Only where the model it was held with is still published — resuming against
+ * a model nobody is running would draw for a minute and fail, and an offer
+ * that cannot be taken is worse than no offer.
+ *
+ * Appended to the thread rather than placed in the footer, which is hidden
+ * while a transcript is showing, and which is where the composer lives when
+ * one is not.
+ */
+function offerToContinue(transcript) {
+  const model = listModels().find((m) => m.name === transcript.model)
+
+  const note = document.createElement('div')
+  note.className = 'message message-preview-note'
+
+  if (!model) {
+    note.textContent = `${transcript.model} is not published at the moment, so this cannot be continued.`
+    ai.messages.append(note)
+    return
+  }
+
+  const text = document.createElement('span')
+  text.className = 'message-preview-status'
+  // Said plainly because the obvious assumption is the opposite one.
+  text.textContent = 'Continuing opens a new session, which costs nothing on its own.'
+
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'button button-sm'
+  button.textContent = 'Continue this conversation'
+  button.addEventListener('click', () => void startConversation(model, { resume: transcript }))
+
+  note.append(text, button)
+  ai.messages.append(note)
+  ai.messages.scrollTop = ai.messages.scrollHeight
 }
 
 /**
@@ -560,7 +603,16 @@ export async function refreshModels() {
 
 // --- A session ----------------------------------------------------------------
 
-async function startConversation(model) {
+/**
+ * Opens a session against `model`, optionally picking up an earlier
+ * conversation.
+ *
+ * Continuing does not reopen the old session — that key was ephemeral and is
+ * gone — it opens a new one against the same transcript, so the turns already
+ * on disk become the context for the next question. It is not a second charge:
+ * a session takes no fee, and the per-question fee is the same either way.
+ */
+async function startConversation(model, { resume = null } = {}) {
   if (streaming) return
 
   openModel = model
@@ -586,7 +638,20 @@ async function startConversation(model) {
   showControls()
 
   try {
-    const session = await request('ai.start', { modelId: model.id })
+    const session = await request('ai.start', {
+      modelId: model.id,
+      ...(resume ? { continue: resume.id } : {})
+    })
+
+    // The earlier turns are drawn before the new ones so the thread reads as
+    // one conversation, which is what it now is to the model as well.
+    if (session.resumed) {
+      ai.messages.replaceChildren()
+      ai.messages.hidden = false
+      for (const t of resume.turns)
+        turn(t.role === 'you' ? 'you' : model.name, t.text, t.role === 'you')
+    }
+
     ai.session.textContent = `session ${session.sessionId} · worker ${short(session.worker)}`
     showState(readyState(model.name), false)
     ai.foot.hidden = false

@@ -168,6 +168,50 @@ export class History {
   }
 }
 
+/**
+ * The earlier turns of a conversation, folded into the next prompt.
+ *
+ * A job carries one prompt and nothing else — the worker runs the model on
+ * exactly what was submitted — so without this a "conversation" is a column of
+ * unrelated questions that only looks like one because they are drawn under
+ * each other. Tell it your name in the first turn and it cannot answer for it
+ * in the second.
+ *
+ * There is no disclosure to weigh of the kind room context has: these are the
+ * same person's own turns with the same model, and the only thing reaching the
+ * worker is what that worker already answered.
+ *
+ * Oldest dropped first when the budget bites, because the last exchange is
+ * nearly always what the next question is about. The budget is in characters
+ * rather than turns: ten one-word replies and ten essays are not the same
+ * thing to pay for.
+ */
+export function withHistory(turns: readonly Turn[], prompt: string, budget = 6000): string {
+  const lines: string[] = []
+  let left = budget
+
+  for (let i = turns.length - 1; i >= 0; i--) {
+    const turn = turns[i]
+    if (typeof turn?.text !== 'string' || turn.text.trim() === '') continue
+
+    const line = `${turn.role === 'you' ? 'User' : 'Assistant'}: ${turn.text}`
+    if (line.length > left) break
+    left -= line.length
+    lines.unshift(line)
+  }
+
+  if (lines.length === 0) return prompt
+
+  return [
+    'This is an ongoing conversation between you and the user, for context.',
+    '',
+    ...lines,
+    '',
+    'Continue it. Answer the following:',
+    prompt
+  ].join('\n')
+}
+
 function toTurn(record: Extract<Record, { kind: 'turn' }>): Turn {
   return { role: record.role, text: record.text, jobId: record.jobId, at: record.at }
 }

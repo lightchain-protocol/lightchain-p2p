@@ -88,8 +88,20 @@ logs and stay that way: transcripts are encrypted under a key only an unlocked
 wallet derives, so a locked one searches rooms and says why the rest is missing
 rather than quietly returning less.
 
-Still thin above that: one session at a time, and no way to continue an old
-conversation without paying for a new one.
+**A conversation now remembers itself.** A job carries one prompt and nothing
+else — the worker runs the model on exactly what was submitted and keeps nothing
+between jobs — so until recently a "conversation" was a column of unrelated
+questions that only looked like one. The earlier turns are folded into the next
+prompt, oldest dropped first against a character budget.
+
+An old conversation can be picked up from the history. That opens a new session
+rather than reviving the old one, whose key was ephemeral and is gone, and it is
+not a second charge: `createSession` is payable and rejects any value, and on a
+sortition deployment the service sends the transaction. The per-question fee is
+the same either way.
+
+Still thin above that: one conversation at a time, since `ai.start` closes
+whichever was open.
 
 **The wallet is the identity, and it pays.** The key that pays is the key that
 signs: a message carries an EIP-191 signature over its own contents, and a

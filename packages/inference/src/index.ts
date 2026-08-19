@@ -14,6 +14,7 @@ export { KeyEncodingError, decodeKey, encodeSealed } from './keys.js'
 
 export {
   History,
+  withHistory,
   type Log,
   type Match,
   type Record,
