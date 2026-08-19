@@ -141,6 +141,31 @@ The renderer repeats those strings rather than importing them, because a
 sandboxed renderer cannot import from the workspace. **The two sides have to be
 changed together**, and nothing will catch it if they are not.
 
+## How the renderer is put together
+
+**`renderer/index.html` is generated. Do not edit it.** It is assembled by
+`scripts/build-markup.mjs` from `renderer/partials/`, one file per surface, and
+anything written into it directly survives until the next build. The manifest at
+the top of that script records what each partial is for.
+
+The reason is not tidiness. The window was one 1,600-line file, which made it the
+one thing everybody had to edit and nobody could edit at the same time. A change
+to the sidebar and a change to the Worker page now touch different files.
+
+Stylesheets follow the same split: `app.css` holds the reset, the shell layout,
+icons, buttons, inputs, dialogs and the toast, `styles/kit.css` holds the shared
+components, and `styles/<surface>.css` holds one surface each. What each
+component is for, and the rule for adding to the kit, is in
+[`docs/design/COMPONENTS.md`](../../docs/design/COMPONENTS.md).
+
+One trap worth knowing: **Prettier repairs an unbalanced HTML fragment rather
+than merely reformatting it.** Given a partial whose closing tags live in the
+next partial, it adds them, and the assembled document then carries both sets —
+which produced a page with seven spurious closing tags the first time this was
+tried. There is no setting for "reformat but do not balance", so
+`renderer/partials/` and the generated `index.html` are both in
+`.prettierignore` and the fragments are hand-formatted.
+
 ## Design tokens
 
 The renderer's stylesheet is generated, not written:
@@ -148,6 +173,13 @@ The renderer's stylesheet is generated, not written:
 [`@lcai-p2p/ui`](../../packages/ui). A hand-copied hex value is one that will
 eventually disagree with the design system and with the other platforms, so
 `app.css` contains no literal colours or spacing.
+
+`scripts/check-tokens.mjs` fails the build when a stylesheet reads a token that
+nothing defines. CSS has no error for this: `color: var(--lc-typo)` is not
+invalid, the declaration is simply dropped, and the element keeps whatever it
+would have had. Five names were dead across ten declarations before this
+existed, including two focus rings that therefore did not exist. A token written
+with a fallback is deliberate and passes.
 
 Brand identity is identical on every platform. Platform conventions deliberately
 are not: window controls sit left on macOS and right elsewhere, `Cmd` against
@@ -158,12 +190,28 @@ vertical padding. Padding plus line height resolves differently for every font
 and font size, which is how a button and the field beside it end up a few pixels
 apart in a way nobody can see the cause of.
 
-Icons are defined once in an SVG sprite at the top of `index.html` and referenced
-with `<use href="#i-name">`. An icon pasted into the markup twice is one that
-gets corrected once. The logomark lives there too, taken from the brand pack
-rather than redrawn, and it keeps its own gradient tokens: the mark is more
-saturated than anything the interface should use for text or a button, where the
-softer pair is what the contrast tests hold.
+Icons come from [Lucide](https://lucide.dev) (ISC), generated into
+`renderer/partials/sprite.html` by `scripts/build-icons.mjs` and referenced with
+`<use href="#i-name">`. Adding one is a line in the map at the top of that
+script, not an afternoon in a path editor.
+
+They were drawn by hand once, on a 16px grid nothing else in the world uses.
+That is the most reliable way to make an application look homemade: every icon
+sits slightly off from every other in weight, in optical size and in how a
+corner is rounded, and no amount of care fixes it because the errors are not
+individually visible. Lucide is one family on a 24px grid at a 2px stroke, and
+those two numbers go together — the stroke is a proportion of the grid, so a
+weight tuned for a 16px grid renders the 24px icons at about 0.9px, which reads
+as faded rather than light.
+
+Never use a Unicode character as an icon. The message hover row used four, from
+four corners of the standard, two of which Windows renders through the emoji
+font in colour at a size nothing else on the row uses.
+
+The logomark is the exception: taken from the brand pack rather than redrawn,
+and it keeps its own gradient tokens, because the mark is more saturated than
+anything the interface should use for text or a button, where the softer pair is
+what the contrast tests hold.
 
 **Two traps in that sprite**, both of which fail silently:
 
