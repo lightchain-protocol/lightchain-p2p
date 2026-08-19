@@ -91,7 +91,7 @@ reader recovers the address rather than trusting a claim. The Autobase writer
 key still says which peer wrote a block, but it is no longer what a person is
 identified by.
 
-What that does not extend to is a peer's *name*. A nickname is a local label,
+What that does not extend to is a peer's _name_. A nickname is a local label,
 not a claim anybody can check, and the interface never shows one in place of an
 address that was actually signed for.
 
