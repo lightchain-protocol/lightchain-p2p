@@ -384,7 +384,7 @@ locally.
    the image accepts something else.
 2. **The production `pear://` link and its multisig quorum.** The current
    `upgrade` links are development ones whose secret keys sit on one machine.
-   Both apps carried the *same* link until this was noticed, which would have
+   Both apps carried the _same_ link until this was noticed, which would have
    made staging either one push it to the other's installs; they are distinct
    now and `scripts/check-links.mjs` fails the build if that recurs.
 3. **Custody**: signing certificates and the release multisig are different key

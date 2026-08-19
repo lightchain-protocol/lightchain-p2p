@@ -652,7 +652,9 @@ export function aiHandlers(ctx) {
      * says so rather than drawing a zero that looks like a measurement.
      */
     'dashboard.read': async (req) => {
-      const { address, unlocked } = wallet.status()
+      // `exists` as well as `unlocked`, because the address is null while
+      // locked and a panel cannot otherwise tell "no wallet" from "shut one".
+      const { address, unlocked, exists } = wallet.status()
       const months = Math.min(24, Math.max(1, Number(req.months) || 12))
 
       // Balances are public, so they survive a locked wallet. Transcripts do
@@ -669,6 +671,7 @@ export function aiHandlers(ctx) {
         network: network(),
         address,
         unlocked,
+        exists,
         balances: balances && { native: balances.native, prepaid: balances.prepaid },
         rooms: {
           total: states.length,

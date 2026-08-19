@@ -172,7 +172,11 @@ export async function refreshDashboard() {
   dash.error.hidden = true
   latest = summary
   dash.network.textContent = summary.network
-  dash.locked.hidden = !summary.address || summary.unlocked
+  // Not `!summary.address || summary.unlocked`, which could never be false: the
+  // address comes from the in-memory account, so a locked wallet reports none
+  // and the notice explaining the gap was the one thing that never appeared in
+  // it. What matters is whether a wallet exists and is shut.
+  dash.locked.hidden = summary.unlocked || summary.exists !== true
 
   renderAccount({ address: summary.address, unlocked: summary.unlocked, network: summary.network })
   renderHero(summary)
