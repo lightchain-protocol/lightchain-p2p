@@ -1,13 +1,7 @@
 import { el, setStatus, showSection } from './dom.js'
 import { bridge, onPush, request, startWorker } from './ipc.js'
-import {
-  adopt,
-  openInvite,
-  openMessage,
-  receiveAiProgress,
-  receivePresence,
-  receiveRoom
-} from './rooms.js'
+import { adopt, openInvite, openMessage, receivePresence, receiveRoom } from './rooms.js'
+import { receiveAiProgress } from './answering.js'
 import { bindSearchShortcut } from './search.js'
 import { onAiProgress, onCommitment, openTranscript, refreshModels } from './models.js'
 import { appendWorkerOutput, refreshWorker, setWorkerBusy } from './worker.js'

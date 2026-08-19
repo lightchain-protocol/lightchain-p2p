@@ -92,6 +92,18 @@ export function svg(name, attributes) {
   return node
 }
 
+/**
+ * Whether the conversation is scrolled to the end.
+ *
+ * Asked before anything is appended and honoured afterwards, so a room that was
+ * being read from the bottom keeps following and one being read further up is
+ * not yanked away from what somebody was looking at. Forty pixels of slack,
+ * because a reader who is a line short of the end still means "the end".
+ */
+export function atBottom() {
+  return el.messages.scrollHeight - el.messages.scrollTop - el.messages.clientHeight < 40
+}
+
 export function el2(tag, className, text) {
   const node = document.createElement(tag)
   if (className) node.className = className

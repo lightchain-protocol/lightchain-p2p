@@ -210,9 +210,11 @@ const push = (fields) =>
   })()`)
 
 // Reached through the module the window actually loaded, so this cannot pass
-// against a handler that was never wired up.
+// against a handler that was never wired up. It lives in `answering.js` rather
+// than `rooms.js` since the preview state machine was split out; this check
+// failing is how that move was noticed.
 const reachable = await evaluate(`(async () => {
-  const mod = await import('./lib/rooms.js')
+  const mod = await import('./lib/answering.js')
   if (typeof mod.receiveAiProgress !== 'function') return false
   window.__lcaiProgress = mod.receiveAiProgress
   return true
