@@ -27,5 +27,12 @@
     "rocksdb-native": "^3.17.4",
     "turbo": "^2.10.10",
     "typescript": "^5.9.3"
+  },
+  "//pnpm": "tar reaches this tree only through @electron-forge/cli and carries a critical advisory plus eleven more. Nothing at runtime uses it — pnpm audit --prod is clean — but a build dependency ends up in what ships, so it is pinned forward rather than waited on. Forge does not constrain the major.",
+  "pnpm": {
+    "overrides": {
+      "tar": "^7.5.22",
+      "tmp": "^0.2.6"
+    }
   }
 }

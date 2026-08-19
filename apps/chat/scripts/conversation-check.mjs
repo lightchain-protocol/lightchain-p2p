@@ -280,6 +280,77 @@ report(
   `${actions.count} controls`
 )
 
+// --- Choosing what the room calls you --------------------------------------------
+
+// This control was written, styled and validated, and then imported by nothing
+// for long enough that only an audit found it. What makes it worth its own
+// checks is the rule underneath: a name is keyed by a proven address, so it
+// attaches to a member only once that member has signed something in the room.
+
+const naming = await evaluate(`(async () => {
+  document.getElementById('members-btn')?.click()
+  await new Promise((r) => setTimeout(r, 400))
+
+  const form = document.querySelector('form.name-self')
+  if (!form) return { missing: true }
+
+  const input = form.querySelector('.name-self-input')
+  input.value = 'Ford Prefect'
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  const counted = form.querySelector('.name-self-count')?.textContent
+
+  form.querySelector('button[type=submit]').click()
+  await new Promise((r) => setTimeout(r, 900))
+
+  const error = form.querySelector('.name-self-error')
+  return {
+    counted,
+    max: input.maxLength,
+    failed: error && !error.hidden ? error.textContent : null
+  }
+})()`)
+
+report(
+  'a writer is offered a name for the room',
+  naming?.missing !== true,
+  naming?.missing ? 'the control never rendered' : 'present'
+)
+
+report(
+  'the field counts against the same cap the room enforces',
+  naming?.counted === `12/${naming?.max}` && naming?.max === 32,
+  `${naming?.counted}, maxlength ${naming?.max}`
+)
+
+report('and saving it reports no error', !naming?.failed, naming?.failed ?? 'saved')
+
+// The point of the whole feature: it is in the room's history rather than on
+// this machine, so it survives every member going offline.
+const named = await ask('room.list')
+const entry = (Array.isArray(named) ? named : []).find((r) => r.key === created.key)
+const chosen = Object.values(entry?.names ?? {})
+
+report(
+  'the name is written into the room, not kept locally',
+  chosen.includes('Ford Prefect'),
+  JSON.stringify(entry?.names ?? {})
+)
+
+await evaluate(`document.getElementById('members-btn')?.click()`)
+await new Promise((r) => setTimeout(r, 150))
+await evaluate(`document.getElementById('members-btn')?.click()`)
+await new Promise((r) => setTimeout(r, 400))
+
+const shown = await evaluate(
+  `JSON.stringify([...document.querySelectorAll('.members-list .member-name')].map((n) => n.textContent))`
+)
+
+report(
+  'and the member list shows it, because this address has signed something here',
+  String(shown).includes('Ford Prefect'),
+  String(shown)
+)
+
 // --- Nothing broke on the way ----------------------------------------------------
 
 report(

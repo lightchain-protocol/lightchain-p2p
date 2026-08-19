@@ -16,7 +16,7 @@ import { renderText } from './format.js'
 import { addressedToModel, ensureModels, listModels } from './models.js'
 import { myAddress, openPay } from './wallet.js'
 import { closeEmojiPicker, emojiPicker, reactionBar } from './reactions.js'
-import { memberList } from './members.js'
+import { memberList, nameSelfControl } from './members.js'
 import { acceptDrops, attachButton, attachmentView, pendingAttachment } from './attachments.js'
 
 /**
@@ -988,12 +988,34 @@ function renderMembers() {
     return
   }
 
-  holder.replaceChildren(
+  const children = [
     memberList(room, presence.get(activeKey) ?? null, {
       onPay: (address) => openPay(address),
       onRemove: (writerKey) => request('room.removeWriter', { room: room.key, writerKey })
     })
-  )
+  ]
+
+  // Only where a name would mean something. The room keys names by proven
+  // address and readers ignore one that is not signed, so offering the field to
+  // a locked wallet is offering to write something nobody will honour — and a
+  // reader cannot write to the room's history at all.
+  const me = myAddress()
+  if (me && room.writable) {
+    children.push(
+      nameSelfControl({
+        current: room.names?.[me] ?? '',
+        // A rejection here is shown against the field by the control itself,
+        // which is why nothing is caught: swallowing it would leave the form
+        // looking as though it had saved.
+        onSubmit: async (name) => {
+          await request('room.nameSelf', { room: room.key, name })
+          toast(name.trim() === '' ? 'Name cleared.' : 'Name saved.')
+        }
+      })
+    )
+  }
+
+  holder.replaceChildren(...children)
 }
 
 function renderTyping() {
