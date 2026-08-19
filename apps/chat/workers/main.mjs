@@ -16,6 +16,7 @@ import { Attachments, RoomHost } from '@lcai-p2p/room'
 import { BlindRegistry, Priority } from '@lcai-p2p/blind'
 import BlindPeer from 'blind-peer'
 import RocksDB from 'rocksdb-native'
+import ID from 'hypercore-id-encoding'
 import { NETWORKS, resolveConfig } from '@lcai-p2p/worker'
 import {
   Rpc,
@@ -635,10 +636,20 @@ function hosting() {
       // The budget is enforced by eviction rather than refusal, so a full disk
       // degrades to holding less rather than to failing.
       enableGc: true,
-      // Nobody. `trustedPubKeys` grants the right to set `announce` and high
-      // priority, which together mean "store this and never collect it" —
-      // handing that to whoever asks is how one stranger fills the disk.
-      trustedPubKeys: []
+      // Who may ask for their room to be *announced* rather than merely stored.
+      //
+      // This is the whole difference between hosting and hoarding. An
+      // unannounced core is held and never served: the peer does not join its
+      // topic, so nobody can find it, and the room dies with its members
+      // anyway. Upstream forces `announce` to false for any key not listed
+      // here (index.js:774).
+      //
+      // The cost of listing a key is that announced cores are exempt from
+      // eviction (index.js:484), so the budget above does not bound them. That
+      // is upstream's admission rather than a policy — "we do no book keeping
+      // on the cleared length of announced cores" — and it is why this is a
+      // setting rather than a default.
+      trustedPubKeys: hostTrusted()
     })
 
     return { peer, store, rocks, dir }
@@ -646,6 +657,32 @@ function hosting() {
     console.error('hosting rooms was asked for but could not start:', err.message)
     return null
   }
+}
+
+/**
+ * Whose rooms this machine will announce, as opposed to merely store.
+ *
+ * Named keys only. There is no "everyone" here on purpose: upstream exempts
+ * announced cores from eviction, so trusting every peer that connects would
+ * hand any stranger a way to place bytes on this disk that the budget cannot
+ * reclaim. Naming a key is saying "I will keep this person's rooms reachable",
+ * which is a sentence somebody should mean.
+ */
+function hostTrusted() {
+  const configured = setting('hostTrusted', 'HOST_TRUSTED')
+  if (!configured) return []
+
+  const keys = []
+  for (const raw of configured.split(',')) {
+    const key = raw.trim()
+    if (key === '') continue
+    try {
+      keys.push(ID.decode(key))
+    } catch {
+      console.error(`ignoring an unreadable key in hostTrusted: ${key.slice(0, 16)}…`)
+    }
+  }
+  return keys
 }
 
 /** Bytes this machine will give to other people's rooms. */

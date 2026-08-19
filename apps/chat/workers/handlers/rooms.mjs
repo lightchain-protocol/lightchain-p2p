@@ -116,6 +116,17 @@ export function roomHandlers(ctx) {
       return rooms.credentials(req.key)
     },
 
+    /**
+     * Rooms that were opened but not lodged anywhere.
+     *
+     * `RoomHost` has recorded these since availability existed and nothing ever
+     * read them, so a room that failed to lodge looked exactly like one that
+     * succeeded. That is the worst shape for this particular failure: everything
+     * works until the last member closes the app, which is the one moment the
+     * blind peer was there for.
+     */
+    'room.lodgingFailures': () => rooms.lodgingFailures.map(({ key, reason }) => ({ key, reason })),
+
     'room.send': (req) => {
       // A file on its own is a message. Requiring text as well would mean
       // somebody sending a photograph has to write something first, and the
