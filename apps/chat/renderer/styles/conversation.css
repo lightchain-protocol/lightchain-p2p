@@ -26,6 +26,9 @@
 .room-members {
   flex: 0 0 260px;
   overflow-y: auto;
+  /* As with the conversation: one axis set to `auto` promotes the other away
+     from `visible`, and a track appears under a column that never scrolls. */
+  overflow-x: hidden;
   border-left: 1px solid var(--lc-rule);
 }
 
@@ -162,6 +165,43 @@
   100% {
     box-shadow: inset 0 0 0 1px var(--lc-rule);
   }
+}
+
+/* An answer being drawn as it arrives, before any of it is in the room.
+
+   Outlined rather than filled, and dashed rather than the hairline every other
+   bubble carries: that hairline is what says "this is in the log", and this is
+   not, yet. The difference has to survive a glance, because the whole point of
+   the bubble is that it is showing something only this window can see. */
+.message.is-preview {
+  border: 1px dashed color-mix(in srgb, var(--lc-brand) 55%, transparent);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Italic, matching the "edited" mark, because both are the interface talking
+   about a message rather than anything anybody wrote. */
+.message-preview-note {
+  font-style: italic;
+}
+
+/* Where the answer has got to, or why it stopped. Kept out of the text so that
+   a phase or an error can never be mistaken for something the model said. */
+.message-preview-status {
+  margin: 0;
+  font-size: var(--lc-text-xs);
+  line-height: var(--lc-leading-tight);
+  color: var(--lc-fg-dim);
+}
+
+/* A question that failed may already have been paid for, which is worth more
+   than the dim grey a status line usually gets. */
+.message.is-preview.is-failed {
+  border-color: var(--lc-danger);
+}
+
+.message.is-preview.is-failed .message-preview-status {
+  color: var(--lc-danger);
 }
 
 /* What the next message is carrying, above the composer. Hidden entirely when

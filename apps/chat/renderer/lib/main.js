@@ -1,6 +1,13 @@
 import { el, setStatus, showSection } from './dom.js'
 import { bridge, onPush, request, startWorker } from './ipc.js'
-import { adopt, openInvite, openMessage, receivePresence, receiveRoom } from './rooms.js'
+import {
+  adopt,
+  openInvite,
+  openMessage,
+  receiveAiProgress,
+  receivePresence,
+  receiveRoom
+} from './rooms.js'
 import { bindSearchShortcut } from './search.js'
 import { onAiProgress, onCommitment, refreshModels } from './models.js'
 import { appendWorkerOutput, refreshWorker, setWorkerBusy } from './worker.js'
@@ -118,7 +125,11 @@ bridge.onDeepLink(openInvite)
 onPush('ready', (msg) => adopt(msg.rooms))
 onPush('room', receiveRoom)
 onPush('presence', receivePresence)
-onPush('ai.progress', onAiProgress)
+// One push, two views. An ask made from a room carries the room it belongs to
+// and is previewed where the question was asked; a Models panel session carries
+// none. There is a single handler per name, so the two are told apart here
+// rather than each panel filtering out the other's.
+onPush('ai.progress', (msg) => (msg.room ? receiveAiProgress(msg) : onAiProgress(msg)))
 onPush('ai.commitment', onCommitment)
 onPush('worker.busy', setWorkerBusy)
 onPush('worker.output', appendWorkerOutput)

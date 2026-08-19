@@ -1551,6 +1551,108 @@ body {
   color: var(--lc-fg-muted);
 }
 
+/* A note describes a setting; this one describes what a setting cannot do. It
+   is not styled like the wallet's warning by accident — but it is its own class
+   rather than a reuse, because restyling one of them should not silently
+   restyle the other. */
+.settings-warning {
+  margin: 0;
+  padding: var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-warning);
+}
+
+/* What a field resolves to, under the field. Quieter than a note, because it is
+   read while typing rather than before deciding. */
+.settings-hint {
+  margin: 0;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Two buttons that belong to one form, on one line. `.wallet-form` stacks its
+   children, and a Cancel stranded under its own Save reads as a second form. */
+.settings-actions {
+  display: flex;
+  gap: var(--lc-space-sm);
+  align-items: center;
+}
+
+/* Two fields that are one decision asked twice, so they are read across rather
+   than down. */
+.settings-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--lc-space-md);
+}
+
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.template {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lc-space-md);
+  padding: var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated);
+}
+
+.template-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.template-name {
+  font-size: var(--lc-text-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* A body runs to thousands of characters and this is a list, not a reader. Two
+   lines is enough to tell which template a row is, and the whole of it is one
+   Edit away. */
+.template-body {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: var(--lc-text-xs);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-fg-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.template-actions {
+  display: flex;
+  gap: var(--lc-space-sm);
+  flex: 0 0 auto;
+}
+
+/* Taller is useful for a long instruction; wider drags the field out of the
+   reading column the rest of the page is set in. */
+.settings-page textarea.input {
+  resize: vertical;
+}
+
 /* --- First run ------------------------------------------------------------ */
 
 .onboarding {
@@ -2161,6 +2263,11 @@ body {
   padding: var(--lc-space-lg);
   list-style: none;
   overflow-y: auto;
+  /* Spelled out because it does not default to what it looks like it does:
+     setting one axis to `auto` promotes the other from `visible` to `auto`, so
+     a list that never scrolls sideways was still painting a horizontal track
+     under the conversation. */
+  overflow-x: hidden;
   overflow-wrap: anywhere;
   flex: 1 1 auto;
   min-height: 0;
@@ -2202,8 +2309,11 @@ body {
 }
 
 /* With the name and clock suppressed the row has nothing left to say, unless
-   it is carrying a verdict on the message — which always earns its space. */
-.message.is-run .message-meta:not(:has(.message-proof, .message-warning)) {
+   it is carrying a verdict on the message — which always earns its space.
+   "Edited" is one of those: a line that was changed after it was written is
+   not the same line, and hiding that because the previous message happened to
+   be from the same person would be hiding it at random. */
+.message.is-run .message-meta:not(:has(.message-proof, .message-warning, .message-edited)) {
   display: none;
 }
 

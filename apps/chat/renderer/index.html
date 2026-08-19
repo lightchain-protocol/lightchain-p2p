@@ -309,6 +309,7 @@
           <h2 class="sidebar-title">Settings</h2>
           <button class="nav-item is-active" type="button" data-settings="general">General</button>
           <button class="nav-item" type="button" data-settings="wallet">Wallet</button>
+          <button class="nav-item" type="button" data-settings="inference">Inference</button>
           <button class="nav-item" type="button" data-settings="worker">Worker</button>
           <button class="nav-item" type="button" data-settings="advanced">Advanced</button>
           <button class="button button-block" type="button" id="settings-close">Done</button>
@@ -409,6 +410,92 @@
               <p class="dialog-error" id="remove-error" hidden></p>
               <button class="button" type="submit" id="remove-btn">Remove wallet</button>
             </form>
+          </section>
+
+          <section class="settings-page" id="settings-inference" hidden>
+            <h3 class="settings-heading">Prompt templates</h3>
+            <p class="settings-note">
+              A template is a block of text put in front of a prompt — the standing instructions you
+              would otherwise retype every time. Templates are sealed under your wallet and kept on
+              this machine only: no peer, no worker and no contract is ever told that this list
+              exists.
+            </p>
+            <p class="settings-note" id="template-status" hidden></p>
+            <ul class="template-list" id="template-list"></ul>
+            <p class="settings-note" id="template-empty" hidden></p>
+
+            <form class="wallet-form" id="template-form">
+              <label class="field">
+                <span class="field-label">Name</span>
+                <input
+                  class="input"
+                  id="template-name"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="Reviewer"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">Text put in front of the prompt</span>
+                <textarea class="input" id="template-body" rows="4" spellcheck="false"></textarea>
+              </label>
+              <p class="settings-hint" id="template-caps"></p>
+              <p class="dialog-error" id="template-error" hidden></p>
+              <div class="settings-actions">
+                <button class="button button-primary" type="submit" id="template-save">
+                  Add template
+                </button>
+                <button class="button" type="button" id="template-cancel" hidden>Cancel</button>
+              </div>
+            </form>
+
+            <h3 class="settings-heading">Spending limits</h3>
+            <p class="settings-note">
+              Both caps are optional and both are in LCAI. A job costs about 0.02 LCAI on mainnet,
+              which is the figure worth holding in mind when choosing one. Leave a field empty for
+              no limit.
+            </p>
+            <p class="settings-warning">
+              These are checked by this application, on this machine, before it submits a job. They
+              will catch a typo, a loop that keeps asking and a model that costs more than you
+              expected. They will not stop anybody who controls this machine, because anything that
+              can bypass this window can bypass the check with it. The delegate allowance you
+              authorised on chain is the only limit that is enforced against your money.
+            </p>
+            <p class="settings-note" id="limits-status" hidden></p>
+            <form class="wallet-form" id="limits-form">
+              <div class="settings-pair">
+                <label class="field">
+                  <span class="field-label">Most one job may cost</span>
+                  <input
+                    class="input"
+                    id="limit-per-job"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="No limit"
+                    autocomplete="off"
+                  />
+                  <span class="settings-hint" id="limit-per-job-wei"></span>
+                </label>
+                <label class="field">
+                  <span class="field-label">Most to spend in a day</span>
+                  <input
+                    class="input"
+                    id="limit-daily"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="No limit"
+                    autocomplete="off"
+                  />
+                  <span class="settings-hint" id="limit-daily-wei"></span>
+                </label>
+              </div>
+              <p class="dialog-error" id="limits-error" hidden></p>
+              <button class="button button-primary" type="submit" id="limits-save">
+                Save limits
+              </button>
+            </form>
+            <dl class="facts" id="limits-facts"></dl>
           </section>
 
           <section class="settings-page" id="settings-worker" hidden>
