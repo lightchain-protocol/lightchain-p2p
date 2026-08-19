@@ -179,6 +179,84 @@
   gap: var(--lc-space-sm);
 }
 
+/* --- Transactions --------------------------------------------------------- */
+
+.ledger-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-sm);
+}
+
+.ledger-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  padding: var(--lc-space-sm) 0;
+  border-top: 1px solid var(--lc-rule);
+}
+
+.ledger-row:first-child {
+  border-top: 0;
+}
+
+.ledger-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--lc-space-md);
+}
+
+.ledger-kind {
+  font-weight: 600;
+}
+
+/* Tabular figures so a column of amounts lines up on the decimal rather than
+   drifting with the width of each digit. */
+.ledger-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-muted);
+}
+
+/* Pending is the one worth colouring: it is the state where the truth is still
+   arriving, and the only one somebody might want to act on. */
+.ledger-status[data-state='pending'] {
+  color: var(--lc-warning);
+}
+
+.ledger-status[data-state='failed'] {
+  color: var(--lc-danger);
+}
+
+/* A hash is taken to a block explorer, so it is whole and selectable rather
+   than shortened into something that has to be retyped. */
+.ledger-hash {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-dim);
+  overflow-wrap: anywhere;
+}
+
+.ledger-hash:hover {
+  color: var(--lc-fg);
+}
+
 /* --- Forms ---------------------------------------------------------------- */
 
 /* Shared with Settings and onboarding, which is why these are not named for

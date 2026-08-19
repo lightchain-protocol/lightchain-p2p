@@ -198,6 +198,44 @@ report(
   JSON.stringify(panes)
 )
 
+// Every deposit, withdrawal and payment has been recorded and reconciled since
+// the ledger was written, and nothing displayed any of it. What cannot be
+// checked here is a populated list: that needs a funded account on a live
+// chain. The empty case and the wiring are what this covers.
+const history = await ask('wallet.history')
+report(
+  'the wallet can read its own transaction history',
+  Array.isArray(history?.entries),
+  history?.error ?? `${history?.entries?.length ?? 0} entries`
+)
+
+const ledger = await evaluate(`(() => {
+  const list = document.getElementById('wallet-history')
+  const empty = document.getElementById('wallet-history-empty')
+  if (!list || !empty) return { missing: true }
+  return {
+    rows: list.querySelectorAll('.ledger-row').length,
+    emptyShown: !empty.hidden,
+    emptySays: (empty.textContent ?? '').trim().slice(0, 40)
+  }
+})()`)
+
+report(
+  'the transactions card is on the wallet panel',
+  ledger?.missing !== true,
+  ledger?.missing ? 'no list or empty note' : `${ledger.rows} rows`
+)
+
+// A list that is empty because there is nothing, and a list that is empty
+// because it failed, look identical without this.
+report(
+  'an empty history says so rather than showing a blank card',
+  ledger?.rows === (history?.entries?.length ?? 0) &&
+    ledger?.emptyShown === (ledger?.rows === 0) &&
+    (ledger?.rows > 0 || ledger?.emptySays !== ''),
+  ledger?.rows === 0 ? JSON.stringify(ledger?.emptySays) : `${ledger?.rows} rows shown`
+)
+
 // --- Models -------------------------------------------------------------------
 
 await show('models')

@@ -1,4 +1,4 @@
-import { copy, el, formatLcai, shortAddress, showSection, toast } from './dom.js'
+import { copy, el, el2, formatLcai, shortAddress, showSection, toast } from './dom.js'
 import { request } from './ipc.js'
 import { lastSummary, refreshDashboard } from './dashboard.js'
 import { refreshModels } from './models.js'
@@ -74,11 +74,113 @@ export async function refreshWallet() {
   try {
     const status = await request('wallet.status')
     showWallet(status)
-    if (status.unlocked) void refreshBalances()
+    if (status.unlocked) {
+      void refreshBalances()
+      void refreshHistory()
+    }
   } catch (err) {
     toast(err.message, 'error')
   }
 }
+
+// --- What this wallet has actually done ---------------------------------------
+
+/**
+ * Every transaction this identity signed, newest first.
+ *
+ * The ledger has been recording and reconciling these since it was written and
+ * nothing ever displayed them, so a wallet could deposit, withdraw and pay for
+ * a dozen answers and show no trace of any of it. A wallet that cannot say what
+ * it spent is asking to be trusted rather than read.
+ *
+ * `wallet.history` reconciles against the chain before answering, so a pending
+ * entry here is genuinely still pending rather than merely unwatched — and a
+ * transaction signed for another network stays pending rather than being
+ * reported as one that never happened.
+ */
+async function refreshHistory() {
+  const list = document.getElementById('wallet-history')
+  const empty = document.getElementById('wallet-history-empty')
+  if (!list || !empty) return
+
+  let entries
+  try {
+    entries = (await request('wallet.history')).entries
+  } catch {
+    // A locked wallet or an unreachable node. Neither is worth a toast on a
+    // panel the reader may not even be looking at.
+    return
+  }
+
+  list.replaceChildren()
+  empty.hidden = entries.length > 0
+
+  for (const entry of entries.slice(0, 50)) list.append(ledgerRow(entry))
+}
+
+const KIND_LABEL = {
+  send: 'Paid',
+  fund: 'Deposited',
+  withdraw: 'Withdrew',
+  cancel: 'Cancelled'
+}
+
+function ledgerRow(entry) {
+  const item = document.createElement('li')
+  item.className = 'ledger-row'
+
+  const head = document.createElement('div')
+  head.className = 'ledger-head'
+
+  const what = document.createElement('span')
+  what.className = 'ledger-kind'
+  what.textContent = KIND_LABEL[entry.kind] ?? entry.kind
+
+  const amount = document.createElement('span')
+  amount.className = 'ledger-amount'
+  // A cancel moves nothing, so showing its value as zero would read as a
+  // payment of nothing rather than as a transaction that undid one.
+  amount.textContent = entry.kind === 'cancel' ? '—' : formatLcai(entry.value ?? '0')
+
+  head.append(what, amount)
+
+  const meta = document.createElement('div')
+  meta.className = 'ledger-meta'
+
+  const state = document.createElement('span')
+  state.className = 'ledger-status'
+  state.dataset.state = entry.status
+  state.textContent = entry.status
+  if (entry.status === 'pending') {
+    state.title = 'Signed and broadcast. Not yet in a block this client has seen.'
+  }
+
+  const when = document.createElement('span')
+  when.className = 'ledger-when'
+  when.textContent = new Date(entry.settledAt ?? entry.at).toLocaleString()
+
+  meta.append(state, when)
+  if (entry.network) meta.append(el2('span', 'ledger-network', entry.network))
+
+  // The hash is what somebody takes to a block explorer, so it is selectable
+  // and copyable rather than shortened into something they have to retype.
+  const hash = document.createElement('button')
+  hash.type = 'button'
+  hash.className = 'ledger-hash'
+  hash.textContent = entry.hash
+  hash.title = 'Copy this transaction hash'
+  hash.addEventListener('click', () => {
+    void copy(entry.hash)
+    toast('Transaction hash copied')
+  })
+
+  item.append(head, meta, hash)
+  return item
+}
+
+document
+  .getElementById('wallet-history-refresh')
+  ?.addEventListener('click', () => void refreshHistory())
 
 /**
  * Where a failure goes.
@@ -184,6 +286,9 @@ el.walletUnlockForm.addEventListener('submit', async (evt) => {
   try {
     showWallet(await request('wallet.unlock', { password }))
     void refreshBalances()
+    // The ledger is sealed under the account, so this is the first moment it
+    // can be read at all.
+    void refreshHistory()
   } catch (err) {
     fail(el.walletUnlockError, err.message)
   } finally {
@@ -441,6 +546,7 @@ move.form.addEventListener('submit', async (evt) => {
     toast(`${spec.verb} confirmed in block ${sent.block}`)
     move.dialog.close()
     void refreshBalances()
+    void refreshHistory()
     void refreshTitlebarBalance()
     void refreshDashboard()
     void refreshModels()

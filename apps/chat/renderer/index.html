@@ -1953,6 +1953,27 @@
                       </div>
                     </div>
                   </section>
+
+                  <!-- Every deposit, withdrawal and payment was already being
+                       recorded and reconciled against the chain; none of it was
+                       ever shown. A wallet that cannot say what it spent is
+                       asking to be trusted rather than read. -->
+                  <section class="kit-card kit-card-flush">
+                    <header class="kit-card-head">
+                      <h2 class="kit-card-title">Transactions</h2>
+                      <button class="button button-sm" type="button" id="wallet-history-refresh">
+                        <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                        Refresh
+                      </button>
+                    </header>
+                    <div class="kit-card-scroll">
+                      <p class="wallet-note" id="wallet-history-empty">
+                        Nothing sent from this wallet yet. Deposits, withdrawals and payments for
+                        inference all appear here once they are signed.
+                      </p>
+                      <ul class="ledger-list" id="wallet-history"></ul>
+                    </div>
+                  </section>
                 </div>
               </div>
             </section>
