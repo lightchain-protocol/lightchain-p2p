@@ -725,34 +725,87 @@ function parseAnswer(value: unknown): ModelAnswer | undefined {
 }
 
 /**
+ * The fields a v1 signature never covered.
+ *
+ * A v1 signature on an entry carrying any of these proves nothing about them,
+ * so it is refused. See {@link verifyAuthor}.
+ */
+const BEYOND_V1 = ['event', 'replyTo', 'attachment', 'answer'] as const
+
+/** Whether an entry carries anything a v1 signature would leave unproven. */
+function needsV2(message: ChatMessage): boolean {
+  return BEYOND_V1.some((field) => message[field] !== undefined)
+}
+
+/**
+ * An entry as a single string, with its key order settled.
+ *
+ * `JSON.stringify` follows insertion order, so the same entry built two ways
+ * serialises two ways and the signature over it stops matching. Sorting every
+ * object's keys, at every depth, removes that — the same values always produce
+ * the same string, whoever assembled them and in whatever order.
+ *
+ * `author` and `sig` are dropped because they are the claim being made rather
+ * than part of what is claimed, and a signature cannot cover itself.
+ */
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
+
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([key, held]) => held !== undefined && key !== 'author' && key !== 'sig')
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+
+  return `{${entries.map(([key, held]) => `${JSON.stringify(key)}:${canonical(held)}`).join(',')}}`
+}
+
+/**
  * Exactly what an author signs.
  *
  * Bound to the room, so a signed message cannot be lifted out of one
  * conversation and replayed into another where it means something else.
  *
- * Every part is fixed-shape except the text, which is hashed rather than
- * included: a message containing a newline would otherwise be able to
- * impersonate the field separators and claim a different author or time. The
- * result stays human-readable, which matters when a hardware wallet is asked to
- * display it.
+ * ## Why v2 covers the whole entry
+ *
+ * v1 signed the id, the writer, the clock and a hash of the text, and nothing
+ * else. Every field added afterwards was therefore unsigned, and one of them
+ * decided what the entry *did*: an `edited` or `deleted` event names a `target`,
+ * so anybody could take a signed edit of Alice's, repoint `target` at a
+ * different message she wrote, and hand it around. The signature still checked
+ * out, the room concluded Alice had asked for it, and her other message was
+ * rewritten or withdrawn.
+ *
+ * Enumerating the fields that exist today would close that and leave the same
+ * hole for the next one. So v2 signs a hash of the entire entry, canonicalised,
+ * minus the two fields that carry the claim itself — which means a field added
+ * in future is covered by having been added, rather than by somebody
+ * remembering to list it here.
+ *
+ * The text is still hashed and named separately. It costs one line and it is
+ * the one field worth being able to read on a hardware wallet's display.
  */
 export function authorPreimage(
   roomKey: string,
   message: Pick<ChatMessage, 'id' | 'from' | 'at' | 'text'>,
-  hashText: (text: string) => string
+  hashText: (text: string) => string,
+  version: 1 | 2 = 2
 ): string {
   if (!HEX_KEY.test(roomKey)) {
     throw new MessageError('room key must be a 32-byte lowercase hex string')
   }
 
-  return [
-    'Lightchain room message v1',
+  const lines = [
+    `Lightchain room message v${version}`,
     `room: ${roomKey}`,
     `id: ${message.id}`,
     `writer: ${message.from}`,
     `at: ${message.at}`,
     `text: ${hashText(message.text)}`
-  ].join('\n')
+  ]
+
+  if (version === 2) lines.push(`entry: ${hashText(canonical(message))}`)
+
+  return lines.join('\n')
 }
 
 /**
@@ -776,20 +829,33 @@ export function verifyAuthor(
     throw new MessageError('a message claiming an author must carry a signature, and the reverse')
   }
 
-  let recovered: string
-  try {
-    recovered = recover(authorPreimage(roomKey, message, hashText), message.sig)
-  } catch (err) {
-    throw new MessageError(`the author signature could not be read: ${(err as Error).message}`)
+  // v2 first, because everything written from now on is v2 and the fallback
+  // exists only for what is already in a log.
+  //
+  // v1 is accepted **only** for an entry carrying nothing a v1 signature left
+  // unproven. Allowing it for the rest would keep the whole hole open: an
+  // attacker would simply present a repointed edit alongside a v1 signature and
+  // be believed. A plain message has nothing outside v1's coverage, so honouring
+  // its old signature costs nothing and keeps existing conversations attributed.
+  const versions: (1 | 2)[] = needsV2(message) ? [2] : [2, 1]
+  const failures: string[] = []
+
+  for (const version of versions) {
+    let recovered: string
+    try {
+      recovered = recover(authorPreimage(roomKey, message, hashText, version), message.sig)
+    } catch (err) {
+      failures.push(`v${version}: ${(err as Error).message}`)
+      continue
+    }
+
+    if (recovered.toLowerCase() === message.author.toLowerCase()) return recovered
+    failures.push(`v${version}: signed by ${recovered}`)
   }
 
-  if (recovered.toLowerCase() !== message.author.toLowerCase()) {
-    throw new MessageError(
-      `message ${message.id} claims to be from ${message.author} but was signed by ${recovered}`
-    )
-  }
-
-  return recovered
+  throw new MessageError(
+    `message ${message.id} claims to be from ${message.author} but its signature does not hold (${failures.join('; ')})`
+  )
 }
 
 /** True when an entry parses. Useful for filtering a batch without try/catch at each element. */

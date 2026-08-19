@@ -53,10 +53,12 @@ describe('the preimage', () => {
 
   it('hashes the text rather than including it', () => {
     // A message containing newlines could otherwise fake the field separators
-    // and claim a different writer or time.
+    // and claim a different writer or time. Seven lines rather than six since
+    // v2: the last is a hash of the whole entry, which is what stops a field
+    // outside this list deciding what the entry does without being signed.
     const sneaky = message({ text: 'hello\nat: 1\nwriter: ' + 'f'.repeat(64) })
     const preimage = authorPreimage(ROOM, sneaky, hashText)
-    expect(preimage.split('\n')).toHaveLength(6)
+    expect(preimage.split('\n')).toHaveLength(7)
     expect(preimage).not.toContain('f'.repeat(64))
   })
 
