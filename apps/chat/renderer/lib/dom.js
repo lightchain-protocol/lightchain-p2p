@@ -24,7 +24,6 @@ export const el = {
   collapseBtn: document.getElementById('collapse-btn'),
   themeBtn: document.getElementById('theme-btn'),
   accountBtn: document.getElementById('account-btn'),
-  accountMenu: document.getElementById('account-menu'),
   accountMark: document.getElementById('account-mark'),
   accountName: document.getElementById('account-name'),
   accountRole: document.getElementById('account-role'),

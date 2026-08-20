@@ -194,6 +194,12 @@ function renderRooms() {
   el.roomList.replaceChildren()
   el.sidebarEmpty.hidden = rooms.size > 0
 
+  // The page beside the list says which of the two nothings this is, so it has
+  // to be told when the list changes. It is drawn once at boot, before the
+  // rooms have been adopted, which is how the window came up announcing "No
+  // conversations yet" with two of them listed alongside.
+  renderNothingChosen()
+
   for (const room of rooms.values()) {
     const item = document.createElement('li')
     const button = document.createElement('button')
@@ -231,12 +237,33 @@ function renderRooms() {
   }
 }
 
+/**
+ * Which kind of nothing is on screen.
+ *
+ * Having no conversations at all and having several but not having opened one
+ * are different situations with different next steps. Saying "No conversations
+ * yet" while five of them sit in the sidebar beside the sentence is the
+ * interface arguing with itself, and that is what it did.
+ */
+function renderNothingChosen() {
+  const none = rooms.size === 0
+  const title = el.empty.querySelector('.empty-title')
+  const body = el.empty.querySelector('.empty-body')
+  if (!title || !body) return
+
+  title.textContent = none ? 'No conversations yet' : 'Pick a conversation'
+  body.textContent = none
+    ? 'Start one, or join with an invite someone sent you.'
+    : 'Choose one on the left to carry on where you left off.'
+}
+
 function renderRoom() {
   const room = activeKey ? rooms.get(activeKey) : null
 
   el.empty.hidden = room !== null && room !== undefined
   el.room.hidden = !room
-  if (!room) return
+
+  if (!room) return renderNothingChosen()
 
   el.roomTitle.textContent = room.name ?? 'Room'
   // Shown short, held whole. Sixty-four hex characters under a room's name is

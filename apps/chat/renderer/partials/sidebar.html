@@ -38,14 +38,22 @@
           </button>
         </div>
 
-        <!-- The head, the state strip and the foot hold their place; only the
-             list between them scrolls. Without this a long room list pushes the
-             account row off the bottom of a short window. -->
+        <!-- Where everything else is.
+             
+             These were removed and put behind a chevron on the account row, on
+             the argument that a messenger should have one primary surface. The
+             argument is not wrong and the execution was: a menu with no
+             affordance is not a second level of navigation, it is four
+             destinations that no longer exist as far as anybody using the
+             application can tell. Models, the wallet, earning and settings
+             became unreachable unless you already knew to press an avatar.
+             
+             They are visible again. Compact and below the conversations rather
+             than above them, because the conversations are still the reason the
+             window is open - but visible, named, and one press away. -->
         <div class="sidebar-body" id="chat-context">
           <ul class="room-list" id="room-list" aria-label="Your conversations"></ul>
-          <p class="sidebar-empty" id="sidebar-empty">
-            No conversations yet — start one.
-          </p>
+          <p class="sidebar-empty" id="sidebar-empty">No conversations yet — start one.</p>
         </div>
 
         <div class="sidebar-actions">
@@ -58,21 +66,38 @@
           </button>
         </div>
 
+        <ul class="sections" aria-label="Elsewhere">
+          <li>
+            <button class="nav-item" type="button" data-section="chat">
+              <svg class="nav-icon" aria-hidden="true"><use href="#i-chat" /></svg>
+              <span class="nav-label">Conversations</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-item" type="button" data-section="models">
+              <svg class="nav-icon" aria-hidden="true"><use href="#i-models" /></svg>
+              <span class="nav-label">Models</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-item" type="button" data-section="wallet">
+              <svg class="nav-icon" aria-hidden="true"><use href="#i-wallet" /></svg>
+              <span class="nav-label">Account</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-item" type="button" data-section="worker">
+              <svg class="nav-icon" aria-hidden="true"><use href="#i-worker" /></svg>
+              <span class="nav-label">Earn</span>
+            </button>
+          </li>
+        </ul>
+
         <div class="sidebar-foot">
-          <!-- The wallet is the identity, so it sits where an account does. It
-               opens a menu rather than a panel: Account, models, earning and
-               settings are four things somebody reaches for occasionally, and
-               four more rows in the primary column is what this rework exists
-               to undo. -->
-          <button
-            class="account"
-            type="button"
-            id="account-btn"
-            data-kit-focus
-            aria-haspopup="menu"
-            aria-expanded="false"
-            aria-controls="account-menu"
-          >
+          <!-- Who you are signed in as, and a way to the account page. Not a
+               menu any more: the four things it hid are nav rows above, where
+               they can be seen. -->
+          <button class="account" type="button" id="account-btn" data-kit-focus>
             <span class="account-mark" id="account-mark" aria-hidden="true"></span>
             <span class="account-text">
               <span class="account-name" id="account-name">No wallet</span>
@@ -92,35 +117,31 @@
             data-kit-focus
             hidden
           ></button>
-        </div>
 
-        <!-- Everything that is not a conversation. A menu rather than nav rows,
-             so the primary column stays one list of one kind of thing. -->
-        <div class="account-menu" id="account-menu" role="menu" aria-labelledby="account-btn" hidden>
-          <button class="account-menu-item" type="button" role="menuitem" data-section="wallet">
-            <svg class="icon" aria-hidden="true"><use href="#i-wallet" /></svg>
-            <span>Account</span>
-          </button>
-          <button class="account-menu-item" type="button" role="menuitem" data-section="models">
-            <svg class="icon" aria-hidden="true"><use href="#i-models" /></svg>
-            <span>Models</span>
-          </button>
-          <button class="account-menu-item" type="button" role="menuitem" data-section="worker">
-            <svg class="icon" aria-hidden="true"><use href="#i-worker" /></svg>
-            <span>Earn</span>
-          </button>
-
-          <div class="account-menu-rule" role="separator"></div>
-
-          <button class="account-menu-item" type="button" role="menuitem" id="theme-btn">
-            <svg class="icon" aria-hidden="true"><use href="#i-sun" /></svg>
-            <span>Switch theme</span>
-          </button>
-          <button class="account-menu-item" type="button" role="menuitem" id="settings-btn">
-            <svg class="icon" aria-hidden="true"><use href="#i-settings" /></svg>
-            <span>Settings</span>
-          </button>
-
-          <p class="account-menu-version" id="version"></p>
+          <!-- Theme and settings, back on screen. Both were plain icon buttons
+               in this corner for good reason: they are the two controls people
+               look for in exactly this place, and a person hunting for Settings
+               does not think to press their own avatar. -->
+          <div class="sidebar-tools">
+            <p class="version" id="version"></p>
+            <button
+              class="icon-button"
+              type="button"
+              id="theme-btn"
+              title="Switch theme"
+              aria-label="Switch theme"
+            >
+              <svg class="icon" aria-hidden="true"><use href="#i-sun" /></svg>
+            </button>
+            <button
+              class="icon-button"
+              type="button"
+              id="settings-btn"
+              title="Settings"
+              aria-label="Settings"
+            >
+              <svg class="icon" aria-hidden="true"><use href="#i-settings" /></svg>
+            </button>
+          </div>
         </div>
       </nav>

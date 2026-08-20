@@ -1,5 +1,17 @@
         <!-- Chat ------------------------------------------------------------>
-        <div class="panel" id="panel-chat" hidden>
+        <!-- Not hidden, because this is the home screen.
+             
+             Every panel started hidden and the Dashboard's markup was the one
+             exception, which is why the application used to open on it.
+             Dissolving the Dashboard took the exception with it and left a
+             window that opened on nothing: four hidden panels beside a sidebar.
+             Nothing caught it, because every harness and every screenshot
+             navigates somewhere before it looks at anything.
+             
+             Painted before a script runs rather than only unhidden by one.
+             `showSection('chat')` at boot agrees with this; the attribute is
+             what stops the first frame being empty. -->
+        <div class="panel" id="panel-chat">
           <!-- One warm sentence and the action. What was here pitched the
                architecture - one place to hold your identity, reach any
                published model, keep your own history and pay for all of it

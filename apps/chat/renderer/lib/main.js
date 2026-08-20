@@ -128,35 +128,25 @@ el.collapseBtn.addEventListener('click', () => {
   )
 })
 
-// --- The account menu -------------------------------------------------------
+// --- The account row ---------------------------------------------------------
 
 /**
- * Everything that is not a conversation, one press away and no closer.
+ * Goes to the account page.
  *
- * A menu rather than four more rows in the left column. The rework's whole
- * claim is that this application has one primary surface, and a nav list with
- * Account and Earn in it is five surfaces wearing a different arrangement.
+ * This opened a menu holding Account, Models, Earn and Settings, on the
+ * argument that a messenger should have one primary destination and everything
+ * else a level down. The argument is defensible; hanging it off an avatar with
+ * a chevron is not. A menu with no affordance is not a second level of
+ * navigation — it is four destinations that no longer exist as far as anybody
+ * using the application can tell, and that is exactly how it landed.
+ *
+ * The destinations are nav rows again. This is a button to one page.
  */
-function openAccountMenu(open) {
-  el.accountMenu.hidden = !open
-  el.accountBtn.setAttribute('aria-expanded', String(open))
-  if (open) el.accountMenu.querySelector('[role="menuitem"]')?.focus()
-}
-
-el.accountBtn.addEventListener('click', () => openAccountMenu(el.accountMenu.hidden))
-
-// Escape closes it, and so does clicking anywhere that is not it. Both are what
-// a menu is expected to do, and neither is free with a plain element.
-document.addEventListener('keydown', (evt) => {
-  if (evt.key !== 'Escape' || el.accountMenu.hidden) return
-  openAccountMenu(false)
-  el.accountBtn.focus()
-})
-
-document.addEventListener('pointerdown', (evt) => {
-  if (el.accountMenu.hidden) return
-  if (el.accountMenu.contains(evt.target) || el.accountBtn.contains(evt.target)) return
-  openAccountMenu(false)
+el.accountBtn.addEventListener('click', () => {
+  showSection('wallet')
+  void refreshWallet()
+  void refreshAssets()
+  void refreshActivity()
 })
 
 // The locked strip is a shortcut to the one thing it is complaining about.
@@ -180,7 +170,6 @@ for (const id of ['backup-banner-btn', 'account-backup-btn']) {
 
 for (const button of el.sections) {
   button.addEventListener('click', () => {
-    openAccountMenu(false)
     showSection(button.dataset.section)
 
     // Probing the host costs a few subprocesses and reading balances costs a
@@ -271,6 +260,12 @@ async function restorePreferences() {
 // one, leaves it running and already in every room. So the current state is
 // asked for rather than waited for. The `ready` push still arrives on a cold
 // start and is handled the same way, which is harmless when both happen.
+// The home screen, named once so the panels and the script agree about which
+// one is open. The markup already has it visible — this is what makes
+// `showSection` able to switch away and back without the first switch being
+// the one that reveals anything.
+showSection('chat')
+
 startWorker()
   .then(() => request('room.list'))
   .then(adopt)

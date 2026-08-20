@@ -177,8 +177,22 @@ body {
   outline-offset: 2px;
 }
 
+/* A column, and this is load-bearing.
+   
+   It was a flex row, which was invisible while every child was a panel and
+   exactly one panel was ever on screen. The moment a standing notice was added
+   as a sibling, the row did what a row does: the banner became a full-height
+   strip beside the panel rather than a line above it, and the application came
+   up as two coloured blocks with no interface in either.
+   
+   Nothing about the panels changes — a single stretched child fills a column
+   the same way it filled a row — and anything added beside them from now on
+   stacks, which is the only arrangement that makes sense for a page-wide
+   notice. `review.mjs` asserts it, because the broken version rendered without
+   an error and passed every check there was. */
 .content {
   display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
@@ -565,13 +579,21 @@ select.input option {
    dismissing is what "Later" already was, and offering it twice turns a
    reminder into a thing people learn to close. Warning-toned rather than
    danger-toned, because nothing is wrong yet. */
+/* A line, not a slab.
+   
+   This was `--lc-warning-soft` across the full width, which is fine as a tint
+   behind a short label on a card and reads as mud when it is sixty pixels tall
+   and a thousand wide — the first thing anybody saw on opening the application
+   was a brown bar. The tone now comes from the icon and a hairline rule, and
+   the strip itself sits on the page's own surface. */
 .backup-banner {
   display: flex;
   align-items: center;
   gap: var(--lc-space-sm);
-  padding: var(--lc-space-sm) var(--lc-space-lg);
-  background: var(--lc-warning-soft);
+  padding: var(--lc-space-xs) var(--lc-space-lg);
+  background: var(--lc-surface-2);
   border-bottom: 1px solid var(--lc-rule);
+  box-shadow: inset 2px 0 0 var(--lc-warning);
   color: var(--lc-warning);
   flex: 0 0 auto;
 }

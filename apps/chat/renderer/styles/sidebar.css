@@ -347,64 +347,6 @@
 
 /* --- The menu ---------------------------------------------------------------- */
 
-/* Opens upward from the account row, because it is at the bottom of the window
-   and a menu that opened downward would be off screen. */
-.account-menu {
-  position: absolute;
-  left: var(--lc-space-md);
-  right: var(--lc-space-md);
-  bottom: calc(100% - var(--lc-space-sm));
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--lc-space-xs);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-md);
-  background: var(--lc-surface-3);
-  box-shadow: var(--lc-shadow-3);
-}
-
-.account-menu-item {
-  display: flex;
-  align-items: center;
-  gap: var(--lc-space-sm);
-  width: 100%;
-  min-height: var(--lc-control-md);
-  padding: 0 var(--lc-space-sm);
-  border: 0;
-  border-radius: var(--lc-radius-sm);
-  background: transparent;
-  color: var(--lc-text-secondary);
-  font: inherit;
-  font-size: var(--lc-type-body);
-  text-align: left;
-  cursor: pointer;
-}
-
-.account-menu-item:hover {
-  background: var(--lc-surface-hover);
-  color: var(--lc-text-primary);
-}
-
-.account-menu-item .icon {
-  width: var(--lc-control-icon);
-  height: var(--lc-control-icon);
-  flex: 0 0 auto;
-}
-
-.account-menu-rule {
-  height: 1px;
-  margin: var(--lc-space-xs) var(--lc-space-sm);
-  background: var(--lc-rule);
-}
-
-.account-menu-version {
-  margin: var(--lc-space-xs) var(--lc-space-sm) var(--lc-space-xs);
-  font-size: var(--lc-type-caption);
-  color: var(--lc-text-tertiary);
-}
-
 /* --- Collapsed --------------------------------------------------------------- */
 
 /* A different layout rather than the same one narrower. Everything with words
@@ -447,8 +389,54 @@
   padding-inline: 0;
 }
 
-.sidebar.is-collapsed .account-menu {
-  left: var(--lc-space-xs);
-  width: 13rem;
-  right: auto;
+/* --- Everything that is not a conversation ----------------------------------- */
+
+/* Visible again. These were folded into a menu on the account row, which meant
+   Models, the wallet, earning and settings could not be found at all unless you
+   already knew to press an avatar. Below the conversations rather than above
+   them, because the conversations are still why the window is open. */
+.sections {
+  list-style: none;
+  margin: 0;
+  padding: var(--lc-space-xs) var(--lc-space-sm);
+  border-top: 1px solid var(--lc-rule);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.nav-icon {
+  width: var(--lc-control-icon);
+  height: var(--lc-control-icon);
+  flex: 0 0 auto;
+}
+
+/* --- The two switches that live in this corner -------------------------------- */
+
+.sidebar-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-xs);
+  margin-top: var(--lc-space-sm);
+  padding: 0 var(--lc-space-sm);
+}
+
+.sidebar-tools .version {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: var(--lc-type-caption);
+  color: var(--lc-text-tertiary);
+}
+
+.sidebar.is-collapsed .sections {
+  padding-inline: var(--lc-space-xs);
+}
+
+.sidebar.is-collapsed .sidebar-tools {
+  flex-direction: column;
+}
+
+.sidebar.is-collapsed .version {
+  display: none;
 }

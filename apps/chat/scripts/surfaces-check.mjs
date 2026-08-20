@@ -148,65 +148,73 @@ report(
   'no panel and no control'
 )
 
-// --- One primary destination, and a menu for the rest -------------------------
+// --- Every destination is on screen, not behind something -----------------------
 
-// The claim the whole rework rests on. If four more rows reappear in the left
-// column this is what says so.
-const primary = await evaluate(`(() => {
-  const inSidebar = [...document.querySelectorAll('#sidebar [data-section]')]
-  const inMenu = [...document.querySelectorAll('#account-menu [data-section]')]
-  return JSON.stringify({
-    loose: inSidebar.filter((b) => !b.closest('#account-menu')).length,
-    menu: inMenu.map((b) => b.dataset.section)
-  })
-})()`)
+/**
+ * The check that should have existed from the start.
+ *
+ * These four surfaces were briefly folded into a menu hanging off the account
+ * avatar, and the previous version of this block asserted that arrangement
+ * worked: that the menu opened, that Escape closed it, that each item landed
+ * somewhere. All true, and all beside the point, because nothing asked the only
+ * question that mattered — can somebody who has just opened this application
+ * find Models, or the wallet, or Settings without being told where to press?
+ *
+ * They could not. Four destinations behind an avatar with a chevron is four
+ * destinations that do not exist.
+ *
+ * So this asserts visibility rather than reachability: a control with a name,
+ * with a layout box, that a person could see and press. Reachability is what
+ * the loop below adds on top.
+ */
+const reachable = JSON.parse(
+  await evaluate(`(() => {
+    const wanted = ['chat', 'models', 'wallet', 'worker']
+    const found = {}
 
-const column = JSON.parse(primary)
-report(
-  'the sidebar offers conversations and nothing else',
-  column.loose === 0,
-  `${column.loose} destinations outside the account menu`
+    for (const section of wanted) {
+      const button = document.querySelector('#sidebar [data-section="' + section + '"]')
+      const box = button?.getBoundingClientRect()
+      found[section] = {
+        exists: Boolean(button),
+        // Not \`hidden\`, and not \`display\` either — whether it occupies space
+        // on screen. A control inside a closed menu reports itself perfectly
+        // healthy right up until you ask it how big it is.
+        visible: Boolean(button && button.offsetParent !== null && box.width > 0 && box.height > 0),
+        named: (button?.textContent ?? '').trim()
+      }
+    }
+
+    return JSON.stringify({
+      nav: found,
+      settings: Boolean(document.getElementById('settings-btn')?.offsetParent),
+      theme: Boolean(document.getElementById('theme-btn')?.offsetParent)
+    })
+  })()`)
 )
 
-const menu = await evaluate(`(async () => {
-  document.getElementById('account-btn').click()
-  await new Promise((r) => setTimeout(r, 200))
-  const open = !document.getElementById('account-menu').hidden
-  const focused = document.activeElement?.textContent?.trim() ?? ''
+for (const [section, state] of Object.entries(reachable.nav)) {
+  report(
+    `${section} can be seen in the sidebar without opening anything`,
+    state.visible === true && state.named !== '',
+    state.exists ? `"${state.named}", visible: ${state.visible}` : 'no control at all'
+  )
+}
 
-  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-  await new Promise((r) => setTimeout(r, 200))
-
-  return JSON.stringify({
-    open,
-    focused,
-    shut: document.getElementById('account-menu').hidden,
-    back: document.activeElement?.id ?? ''
-  })
-})()`)
-
-const menuState = JSON.parse(menu)
 report(
-  'the avatar opens the account menu',
-  menuState.open === true,
-  `focus went to "${menuState.focused}"`
-)
-report(
-  'and Escape closes it, handing focus back',
-  menuState.shut === true && menuState.back === 'account-btn',
-  `shut ${menuState.shut}, focus on ${menuState.back || 'nothing'}`
+  'and so can Settings and the theme switch',
+  reachable.settings === true && reachable.theme === true,
+  `settings ${reachable.settings}, theme ${reachable.theme}`
 )
 
-for (const destination of column.menu) {
+for (const destination of ['models', 'wallet', 'worker', 'chat']) {
   const landed = await evaluate(`(async () => {
-    document.getElementById('account-btn').click()
-    await new Promise((r) => setTimeout(r, 150))
-    document.querySelector('#account-menu [data-section="${destination}"]').click()
+    document.querySelector('#sidebar [data-section="${destination}"]').click()
     await new Promise((r) => setTimeout(r, 600))
     return document.getElementById('panel-${destination}')?.hidden === false
   })()`)
 
-  report(`the menu reaches ${destination}`, landed === true, landed ? 'opened' : 'went nowhere')
+  report(`pressing it opens ${destination}`, landed === true, landed ? 'opened' : 'went nowhere')
 }
 
 // --- A locked wallet, and where the interface says so -------------------------

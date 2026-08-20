@@ -263,6 +263,101 @@ note(
     : `opened: ${restores.opened}, moved in: ${restores.moved}, restored: ${restores.restored}`
 )
 
+// --- What a cold boot actually shows -------------------------------------------
+
+/**
+ * A visible panel, before anything has navigated anywhere.
+ *
+ * Asserted first, immediately after the reload above, because every other check
+ * in this file and every screenshot in the suite calls `showSection` before it
+ * looks at anything — which means all of them would pass against a window that
+ * opens on nothing.
+ *
+ * It opened on nothing. Panels all start hidden and the Dashboard's markup was
+ * the single exception, so dissolving the Dashboard left four hidden panels and
+ * a sidebar. The first person to launch a build saw two coloured blocks.
+ */
+const cold = await evaluate(`(() => {
+  const panels = [...document.querySelectorAll('[id^="panel-"]')]
+  const shown = panels.filter((p) => p.offsetParent !== null && p.getBoundingClientRect().width > 0)
+  const content = document.querySelector('.content')
+
+  return JSON.stringify({
+    total: panels.length,
+    shown: shown.map((p) => p.id),
+    // Measured against the space it was given rather than against a constant.
+    // A panel can be present, visible and still squeezed to a third of the
+    // window by something sharing its row, which is the same failure wearing a
+    // number that looks reasonable on its own.
+    width: shown[0] ? Math.round(shown[0].getBoundingClientRect().width) : 0,
+    available: content ? Math.round(content.getBoundingClientRect().width) : 0
+  })
+})()`)
+
+const boot = JSON.parse(cold)
+note(
+  boot.total >= FLOOR.panels && boot.shown.length === 1 && boot.width >= boot.available - 2,
+  'launching the app shows one panel, filling the space it was given',
+  `${boot.shown.join(', ') || 'nothing'} at ${boot.width} of ${boot.available}px, ${boot.total} panels`
+)
+
+// --- A notice must sit above the page, not beside it ---------------------------
+
+/**
+ * Every standing notice, shown, with the panel measured either side.
+ *
+ * This exists because of a specific failure that nothing else would have
+ * caught. `.content` was a flex row — harmless while every child of it was a
+ * panel and exactly one panel was ever visible. Adding a page-wide banner as a
+ * sibling made it a full-height strip *beside* the panel, and the application
+ * opened as two coloured blocks with no interface in either. No exception, no
+ * undefined token, no orphaned class, and every screenshot was taken with the
+ * banner hidden, so the whole suite passed on a build that did not work.
+ *
+ * The rule is general rather than about this one banner: turning on anything
+ * that spans the page must cost height, never width.
+ */
+const notices = await evaluate(`(async () => {
+  const { showSection } = await import('./lib/dom.js')
+  showSection('chat')
+  await new Promise((r) => setTimeout(r, 300))
+
+  const panel = document.getElementById('panel-chat')
+  const found = []
+
+  for (const banner of document.querySelectorAll('#backup-banner, .backup-banner')) {
+    const was = banner.hidden
+    const before = panel.getBoundingClientRect()
+
+    banner.hidden = false
+    await new Promise((r) => setTimeout(r, 120))
+    const after = panel.getBoundingClientRect()
+    const box = banner.getBoundingClientRect()
+
+    banner.hidden = was
+    found.push({
+      id: banner.id || banner.className,
+      narrowed: Math.round(before.width - after.width),
+      // A strip across the top is wide and short. A column beside the page is
+      // the other way round, which is what the broken version looked like.
+      wide: Math.round(box.width) >= Math.round(panel.getBoundingClientRect().width),
+      above: Math.round(box.bottom) <= Math.round(after.top) + 1
+    })
+  }
+
+  return found
+})()`)
+
+note(
+  notices.length > 0 && notices.every((n) => n.narrowed === 0 && n.wide && n.above),
+  'a standing notice costs the page height, never width',
+  notices.length === 0
+    ? 'no notices found — this check proves nothing'
+    : notices
+        .map((n) => `${n.id}: ${n.narrowed}px narrower, spans ${n.wide}, above ${n.above}`)
+        .join('; ')
+)
+
 // --- The design language, where it can be measured -----------------------------
 
 /**
