@@ -45,6 +45,10 @@ let quoted = null
  * what makes "did it arrive" an honest question — the only signal available is
  * the far balance going up, and going up from a known figure is what separates
  * this transfer's arrival from anything else landing at the same address.
+ *
+ * The worker keeps the durable copy (see 'bridge.pending'): this is the page's
+ * view of it, restored from there when the page opens so a closed window does
+ * not lose a transfer no explorer can look up.
  */
 let pending = null
 
@@ -91,6 +95,53 @@ function showTerms(state) {
 }
 
 /**
+ * Reads the destination balance the arrival check will compare against.
+ *
+ * Read after the send rather than before it: the far balance may have moved
+ * while the guard was up, and a baseline older than the transfer would see
+ * that movement as an arrival. The worker's copy is updated too, so the
+ * baseline survives the window closing as well as the transfer does.
+ */
+function watchBaseline(hash) {
+  request('bridge.arrived', { fromChainId: pending.fromChainId, before: '0' })
+    .then((arrival) => {
+      if (!pending) return
+      pending.before = arrival.balance
+      if (hash) void request('bridge.pending', { hash, before: arrival.balance }).catch(() => {})
+    })
+    .catch(() => {
+      // No baseline, no check — a comparison against zero would call any
+      // balance an arrival. The explorer link still works without it.
+      statusCheck.hidden = true
+    })
+}
+
+/**
+ * Puts a stored transfer back on the screen as though it had just been sent.
+ *
+ * The worker holds the record across restarts; without this, closing the
+ * window mid-bridge — on a route no explorer indexes — loses the hash, the
+ * direction and the baseline, and "did it arrive" becomes unanswerable.
+ */
+function restorePending(transfer) {
+  if (!transfer) return
+
+  pending = { fromChainId: transfer.fromChainId, hash: transfer.hash, before: transfer.before ?? null }
+
+  statusNote.textContent =
+    `Sent on ${transfer.fromName}. It arrives on ${transfer.toName} when the bridge's relayer delivers it. ` +
+    'Nothing here can hurry that along or retry it.'
+  if (transfer.explorerUrl) statusExplorer.dataset.href = transfer.explorerUrl
+  statusExplorer.hidden = !transfer.explorerUrl
+  statusCheck.hidden = false
+  status.hidden = false
+
+  // A transfer restored without its baseline needs one read now — it was
+  // stored before the window had a chance to supply it.
+  if (pending.before === null) watchBaseline(pending.hash)
+}
+
+/**
  * Reads the terms and the routes into the page.
  *
  * Called when the page is navigated to rather than at launch: the read is a
@@ -103,6 +154,15 @@ export async function showBridge() {
     showTerms(await request('bridge.terms'))
   } catch (err) {
     toast(err.message, 'error')
+  }
+
+  // Whatever is still crossing, put back on screen. Nothing is sent here —
+  // the record was written worker-side when the transfer went.
+  try {
+    const { pending: stored } = await request('bridge.pending')
+    if (stored.length > 0 && pending?.hash !== stored[0].hash) restorePending(stored[0])
+  } catch {
+    // A page that cannot reach the record simply opens without one.
   }
 }
 
@@ -195,7 +255,8 @@ sendBtn?.addEventListener('click', async () => {
 
     // A page does not close on you, so what happened has to stay on it: the
     // send, the note about what happens next, and the way to watch for it.
-    pending = { fromChainId: quoted.fromChainId, before: null }
+    // The durable copy was already written worker-side by the send itself.
+    pending = { fromChainId: quoted.fromChainId, hash: sent.hash, before: null }
 
     statusNote.textContent = sent.note
     statusExplorer.dataset.href = sent.explorerUrl
@@ -207,18 +268,7 @@ sendBtn?.addEventListener('click', async () => {
     unquote()
     status.scrollIntoView({ block: 'nearest' })
 
-    // The baseline for the arrival check, read after the send rather than
-    // before it: the far balance may have moved while the guard was up, and a
-    // baseline older than the transfer would see that movement as an arrival.
-    request('bridge.arrived', { fromChainId: pending.fromChainId, before: '0' })
-      .then((arrival) => {
-        if (pending) pending.before = arrival.balance
-      })
-      .catch(() => {
-        // No baseline, no check — a comparison against zero would call any
-        // balance an arrival. The explorer link still works without it.
-        statusCheck.hidden = true
-      })
+    watchBaseline(sent.hash)
 
     void refreshAssets({ refresh: true })
   } catch (err) {
@@ -247,6 +297,14 @@ statusCheck?.addEventListener('click', async () => {
     statusNote.textContent = arrival.grew
       ? `It arrived — your balance on ${arrival.chainName} is now ${arrival.balanceText}. ${arrival.note}`
       : `Not yet — your balance on ${arrival.chainName} is still ${arrival.balanceText}. ${arrival.note}`
+
+    if (arrival.grew) {
+      // Seen to arrive, so it stops being pending — on the worker's copy too,
+      // or the next visit to this page would resurrect a finished transfer.
+      if (pending?.hash) void request('bridge.pending', { clear: pending.hash }).catch(() => {})
+      pending = null
+      statusCheck.hidden = true
+    }
   } catch (err) {
     toast(err.message, 'error')
   } finally {

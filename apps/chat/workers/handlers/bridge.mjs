@@ -6,8 +6,10 @@ import {
   approveCall,
   balanceOf,
   chainById,
+  keccak256,
   quoteTransfer,
   sendTransaction,
+  toHex,
   transferRemoteCall
 } from '@lcai-p2p/chain'
 import { readableAmount } from '../guard.mjs'
@@ -41,6 +43,119 @@ import { readableAmount } from '../guard.mjs'
 /** Where the acknowledgement is kept, sealed under the account like everything else. */
 const ACKNOWLEDGED = 'bridge'
 
+/** Where transfers in flight are kept, so closing the window does not lose them. */
+const PENDING = 'bridge-pending'
+
+/** The most transfers worth remembering. A bridge nobody retries needs no archive. */
+const PENDING_LIMIT = 20
+
+/**
+ * `DispatchId(bytes32)`, the event the mailbox emits with the message id it
+ * assigned. Hashed from the signature rather than copied, so the constant is
+ * what the name says by construction.
+ */
+export const DISPATCH_ID_TOPIC = toHex(keccak256(new TextEncoder().encode('DispatchId(bytes32)')))
+
+/**
+ * The approvals that take an allowance from `current` to exactly `needed`.
+ *
+ * USDT on Ethereum — one of the curated swap inputs — rejects an `approve`
+ * that moves one non-zero allowance straight to another. That residue is
+ * exactly what a swap or transfer leaves behind when it reverts *after* its
+ * approval landed, so the next exact approval would revert on it. The fix the
+ * token dictates is to pass through zero first: two transactions, each
+ * confirmed on its own, rather than one that can never mine.
+ */
+export function approvalSequence(current, needed) {
+  if (current === needed) return []
+  if (current === 0n) return [needed]
+  return [0n, needed]
+}
+
+/**
+ * The message id a mined `transferRemote` was assigned, from its receipt.
+ *
+ * Null when the logs do not carry one — a shape this client does not know is
+ * not an error worth failing a sent transfer over. The id is the one artifact
+ * a stalled transfer can be recovered with on a route no explorer indexes.
+ */
+export function dispatchIdFromLogs(logs) {
+  if (!Array.isArray(logs)) return null
+
+  for (const log of logs) {
+    if (!Array.isArray(log?.topics)) continue
+    if (log.topics[0]?.toLowerCase() === DISPATCH_ID_TOPIC && typeof log.topics[1] === 'string') {
+      return log.topics[1]
+    }
+  }
+  return null
+}
+
+function usableTransfer(entry) {
+  return (
+    entry &&
+    typeof entry.hash === 'string' &&
+    /^0x[0-9a-fA-F]{64}$/.test(entry.hash) &&
+    Number.isInteger(entry.fromChainId) &&
+    Number.isInteger(entry.toChainId) &&
+    typeof entry.amount === 'string' &&
+    /^[0-9]+$/.test(entry.amount) &&
+    Number.isFinite(entry.at)
+  )
+}
+
+/**
+ * The transfers this wallet has sent across the bridge and not yet seen
+ * arrive, kept worker-side and sealed under the account.
+ *
+ * The renderer used to hold this in page memory, which is exactly as durable
+ * as the page: closing the window on a bridge no explorer indexes lost the
+ * hash, the direction and the arrival baseline with it. One list, newest
+ * first, written where the send happens so even a window that dies mid-flight
+ * leaves the record behind.
+ */
+export function createPendingStore(localState) {
+  const all = () => {
+    const stored = localState.read(PENDING, [])
+    return Array.isArray(stored) ? stored.filter(usableTransfer) : []
+  }
+  const write = (transfers) => localState.write(PENDING, transfers.slice(0, PENDING_LIMIT))
+
+  return {
+    all,
+    add(transfer) {
+      if (!usableTransfer(transfer)) return
+      write([transfer, ...all().filter((each) => each.hash !== transfer.hash)])
+    },
+    /** The destination balance the arrival check compares against, set after the send. */
+    setBaseline(hash, before) {
+      write(all().map((each) => (each.hash === hash ? { ...each, before } : each)))
+    },
+    clear(hash) {
+      write(all().filter((each) => each.hash !== hash))
+    }
+  }
+}
+
+/**
+ * Writes a sent transaction to the local ledger, if there is one.
+ *
+ * Bookkeeping, never a gate: a transfer that mined is real whether or not the
+ * ledger heard about it, so any failure here is logged and the flow
+ * continues. The module is imported lazily so this flow keeps working in a
+ * build where the ledger does not exist yet, and the `txish` is the
+ * `SentTransaction` itself, spread — the ledger needs the signed gas, fees
+ * and nonce exactly as broadcast, and it records before the receipt arrives.
+ */
+async function record(ctx, rpc, kind, sent, fallbackChainId) {
+  try {
+    const { recordTransaction } = await import('../ledger.mjs')
+    await recordTransaction(ctx, rpc, { kind, ...sent, fallbackChainId })
+  } catch (err) {
+    console.error('the transaction went through but the ledger did not record it:', err?.message ?? err)
+  }
+}
+
 /**
  * What somebody has to have read.
  *
@@ -59,6 +174,8 @@ export function bridgeHandlers(ctx) {
   const { wallet, localState, poolFor, guard } = ctx
 
   const acknowledged = () => localState.read(ACKNOWLEDGED, {})?.acknowledged === true
+
+  const pendingStore = createPendingStore(localState)
 
   /**
    * Which way round a transfer goes, and everything that follows from it.
@@ -217,10 +334,26 @@ export function bridgeHandlers(ctx) {
         )
       }
 
+      // The allowance as it stands, because the token decides what approving
+      // costs. USDT and its kin refuse to move one non-zero allowance straight
+      // to another, and a transfer that reverted after its approval landed
+      // leaves exactly that residue — so a stale allowance is reset to zero in
+      // its own transaction before the exact amount is set.
+      const current = await pool.use((rpc) => allowance(rpc, route.token, address, route.router))
+      const steps = approvalSequence(current, quote.token)
+      if (steps.length === 0) {
+        return {
+          hash: null,
+          approved: quote.token.toString(),
+          note: 'the allowance is already exactly this amount'
+        }
+      }
+
       // Granting spending authority is put to the operating system for the same
       // reason the transfer is. It is arguably the more consequential of the
       // two: a transfer moves what was named once, an allowance stands until
-      // something revokes it, and nothing here does.
+      // something revokes it, and nothing here does. One question covers the
+      // whole sequence — the reset and the grant are one act in two envelopes.
       await guard.allow({
         value: 2n ** 255n,
         details: {
@@ -232,22 +365,34 @@ export function bridgeHandlers(ctx) {
         }
       })
 
-      const sent = await pool.use((rpc) =>
-        sendTransaction(rpc, wallet.account(), {
-          to: route.token,
-          // Exactly what this transfer needs. Not a round number above it, and
-          // emphatically not the maximum — an unlimited approval to a bridge
-          // router is a standing permission to take every LCAI this address
-          // will ever hold.
-          data: approveCall(route.router, quote.token),
-          chainId: BigInt(route.from.id)
+      let last = null
+      for (const step of steps) {
+        let on = null
+        const sent = await pool.use((rpc) => {
+          on = rpc
+          return sendTransaction(rpc, wallet.account(), {
+            to: route.token,
+            // Exactly what this transfer needs. Not a round number above it, and
+            // emphatically not the maximum — an unlimited approval to a bridge
+            // router is a standing permission to take every LCAI this address
+            // will ever hold.
+            data: approveCall(route.router, step),
+            chainId: BigInt(route.from.id)
+          })
         })
-      )
 
-      const receipt = await sent.wait()
-      if (!receipt.status) throw new Error(`the approval reverted (${sent.hash})`)
+        // Recorded before the receipt is awaited: the transaction is already
+        // broadcast and cannot be recalled, so the record has to exist even if
+        // the wait — or the application — does not survive.
+        await record(ctx, on, 'bridge-approval', sent, route.from.id)
 
-      return { hash: sent.hash, approved: quote.token.toString() }
+        const receipt = await sent.wait()
+        if (!receipt.status) throw new Error(`the approval reverted (${sent.hash})`)
+
+        last = sent
+      }
+
+      return { hash: last.hash, approved: quote.token.toString(), reset: steps.length > 1 }
     },
 
     /**
@@ -266,9 +411,23 @@ export function bridgeHandlers(ctx) {
       if (amount <= 0n) throw new Error('bridge an amount above zero')
 
       const pool = poolFor(route.from.id)
-      const quote = await pool.use((rpc) =>
-        quoteTransfer(rpc, route.router, route.destination, address, amount)
-      )
+      const [quote, allowed] = await Promise.all([
+        pool.use((rpc) => quoteTransfer(rpc, route.router, route.destination, address, amount)),
+        route.token
+          ? pool.use((rpc) => allowance(rpc, route.token, address, route.router))
+          : Promise.resolve(null)
+      ])
+
+      // The allowance this transfer will pull against, re-read at send time
+      // rather than trusted from the quote the window showed. Approve and send
+      // are separate transactions at separate moments: between them the
+      // allowance can have been spent, replaced, or never have landed, and
+      // finding that out on chain costs the gas of a reverted transferRemote.
+      if (route.token && (allowed === null || allowed < quote.token)) {
+        throw new Error(
+          `approve the router to spend ${readableAmount(quote.token, 'LCAI')} first — the allowance it would pull against is not there`
+        )
+      }
 
       // Every bridge transfer goes to the operating system, whatever the
       // amount. It is not an ordinary send: it is irreversible in a way an
@@ -285,8 +444,10 @@ export function bridgeHandlers(ctx) {
         }
       })
 
-      const sent = await pool.use((rpc) =>
-        sendTransaction(rpc, wallet.account(), {
+      let on = null
+      const sent = await pool.use((rpc) => {
+        on = rpc
+        return sendTransaction(rpc, wallet.account(), {
           to: route.router,
           // Native routes send the amount as value; collateral routes pull the
           // token through the allowance and send only the delivery fee.
@@ -294,15 +455,42 @@ export function bridgeHandlers(ctx) {
           data: transferRemoteCall(route.destination, address, amount),
           chainId: BigInt(route.from.id)
         })
-      )
+      })
+
+      // Recorded before the receipt is awaited, for the same reason as the
+      // approval above: broadcast is the point of no return, not mining.
+      await record(ctx, on, 'bridge', sent, route.from.id)
 
       const receipt = await sent.wait()
       if (!receipt.status) throw new Error(`the transfer reverted (${sent.hash})`)
+
+      // The message id the mailbox assigned, when it said so: the one artifact
+      // a stalled transfer can be recovered with, on a route no explorer
+      // indexes. Kept with the pending record rather than only shown once.
+      const dispatchId = dispatchIdFromLogs(receipt.logs)
+
+      // Written where the send happens, so the record survives the window
+      // closing on it — which on this bridge loses the only copy of the hash.
+      pendingStore.add({
+        hash: sent.hash,
+        fromChainId: route.from.id,
+        toChainId: route.to.id,
+        fromName: route.from.name,
+        toName: route.to.name,
+        amount: amount.toString(),
+        at: Date.now(),
+        explorerUrl: `${route.from.explorerUrl}/tx/${sent.hash}`,
+        dispatchId,
+        // The destination baseline is the renderer's to read and hand back,
+        // after the send — see 'bridge.pending'.
+        before: null
+      })
 
       return {
         hash: sent.hash,
         block: receipt.blockNumber.toString(),
         explorerUrl: `${route.from.explorerUrl}/tx/${sent.hash}`,
+        dispatchId,
         // What happens next is not this application's to promise.
         note: `Sent on ${route.from.name}. It arrives on ${route.to.name} when the bridge's relayer delivers it, which usually takes a few minutes. Nothing here can hurry that along or retry it.`
       }
@@ -340,6 +528,33 @@ export function bridgeHandlers(ctx) {
         // or might be something else arriving at the same time.
         note: 'This watches your balance on the far side. It is the only signal available, and it cannot tell one arrival from another.'
       }
-    }
+    },
+
+    /**
+     * The transfers in flight, so a reopened page can pick one back up.
+     *
+     * `bridge.send` writes the record; this reads it and carries the two small
+     * updates that only the window can supply: the destination baseline it
+     * reads after the send (`{ hash, before }`), and the removal once the
+     * transfer has been seen to arrive (`{ clear: hash }`). Both answer with
+     * the list as it stands, so the caller never holds a stale copy.
+     */
+    'bridge.pending': (req) => {
+      if (typeof req?.clear === 'string') {
+        pendingStore.clear(req.clear)
+      } else if (typeof req?.hash === 'string' && typeof req?.before === 'string') {
+        pendingStore.setBaseline(req.hash, req.before)
+      }
+      return { pending: pendingStore.all() }
+    },
+
+    /**
+     * The same records, as a list of what was sent and when.
+     *
+     * The full transaction ledger lives elsewhere; this is the bridge's own
+     * narrow slice of it, kept because a transfer with no explorer is a thing
+     * somebody will one day ask this application about.
+     */
+    'bridge.history': () => ({ transfers: pendingStore.all() })
   }
 }

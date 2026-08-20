@@ -16,6 +16,26 @@ import {
 } from '@lcai-p2p/chain'
 import { FEEDS, decodeRoundData, decimalsCall, formatUsd, latestRoundDataCall } from '@lcai-p2p/prices'
 import { readableAmount } from '../guard.mjs'
+import { approvalSequence } from './bridge.mjs'
+
+/**
+ * Writes a sent transaction to the local ledger, if there is one.
+ *
+ * Bookkeeping, never a gate: a swap that mined is real whether or not the
+ * ledger heard about it, so any failure here is logged and the flow
+ * continues. The module is imported lazily so this flow keeps working in a
+ * build where the ledger does not exist yet, and the `txish` is the
+ * `SentTransaction` itself, spread — the ledger needs the signed gas, fees
+ * and nonce exactly as broadcast, and it records before the receipt arrives.
+ */
+async function record(ctx, rpc, kind, sent, fallbackChainId) {
+  try {
+    const { recordTransaction } = await import('../ledger.mjs')
+    await recordTransaction(ctx, rpc, { kind, ...sent, fallbackChainId })
+  } catch (err) {
+    console.error('the transaction went through but the ledger did not record it:', err?.message ?? err)
+  }
+}
 
 /**
  * Swapping what this wallet holds on Ethereum into LCAI, without leaving it.
@@ -275,6 +295,11 @@ export function swapHandlers(ctx) {
             data: approveCall(UNISWAP.swapRouter02, input.amount)
           })
         )
+        // A stale non-zero allowance — left by a swap that reverted after its
+        // approval landed — must pass through zero before the exact amount can
+        // be set (USDT and its kin reject anything else). That is a second
+        // approval transaction, and it costs what the first one does.
+        if (allowed > 0n) approveGas *= 2n
       } catch {
         approveGas = 60_000n
       }
@@ -407,10 +432,29 @@ export function swapHandlers(ctx) {
         )
       }
 
+      // The allowance as it stands, because the token decides what approving
+      // costs. USDT — a curated input here — refuses to move one non-zero
+      // allowance straight to another, and a swap that reverted after its
+      // approval landed leaves exactly that residue. A stale allowance is
+      // reset to zero in its own transaction before the exact amount is set.
+      const allowed = await pool.use((rpc) =>
+        allowance(rpc, input.token.address, input.address, UNISWAP.swapRouter02)
+      )
+      const steps = approvalSequence(allowed, input.amount)
+      if (steps.length === 0) {
+        return {
+          hash: null,
+          approved: input.amount.toString(),
+          note: 'the allowance is already exactly this amount'
+        }
+      }
+
       await guard.allow({
         // An approval is always put to the operating system, whatever the
         // token amount: the guard's threshold is in native units, a token's
         // dollar value is unknown here, and the permission stands until spent.
+        // One question covers the whole sequence — the reset and the grant are
+        // one act in two envelopes.
         value: 2n ** 255n,
         details: {
           amount: `permission to spend ${readableAmount(input.amount, input.symbol, input.decimals)}`,
@@ -421,27 +465,38 @@ export function swapHandlers(ctx) {
         }
       })
 
-      const sent = await pool.use((rpc) =>
-        sendTransaction(rpc, wallet.account(), {
-          to: input.token.address,
-          data: approveCall(UNISWAP.swapRouter02, input.amount),
-          chainId: BigInt(CHAIN_ID)
+      let last = null
+      for (const step of steps) {
+        let on = null
+        const sent = await pool.use((rpc) => {
+          on = rpc
+          return sendTransaction(rpc, wallet.account(), {
+            to: input.token.address,
+            data: approveCall(UNISWAP.swapRouter02, step),
+            chainId: BigInt(CHAIN_ID)
+          })
         })
-      )
 
-      const receipt = await sent.wait()
-      if (!receipt.status) throw new Error(`the approval reverted (${sent.hash})`)
+        // Recorded before the receipt is awaited: the transaction is already
+        // broadcast and cannot be recalled, so the record has to exist even if
+        // the wait — or the application — does not survive.
+        await record(ctx, on, 'swap-approval', sent, CHAIN_ID)
 
-      return { hash: sent.hash, approved: input.amount.toString() }
+        const receipt = await sent.wait()
+        if (!receipt.status) throw new Error(`the approval reverted (${sent.hash})`)
+
+        last = sent
+      }
+
+      return { hash: last.hash, approved: input.amount.toString(), reset: steps.length > 1 }
     },
 
     /**
      * Swaps, having re-derived every figure from the same inputs.
      *
-     * Guarded like any other transfer of the same size: ether by its amount,
-     * a token always — the guard's threshold is in native units, and a swap's
-     * return is decided by a market rather than by the sender, so a token swap
-     * is put to the operating system whatever its size.
+     * Always put to the operating system, token or ether: the guard's
+     * threshold is in native units, and a swap's return is decided by a market
+     * rather than by the sender, so it is confirmed whatever its size.
      */
     'swap.send': async (req) => {
       const plan = await planSwap(req)
@@ -460,7 +515,13 @@ export function swapHandlers(ctx) {
       }
 
       await guard.allow({
-        value: input.isNative ? input.amount : 2n ** 255n,
+        // Always the confirm-always sentinel, including for ether: the guard's
+        // threshold is in native units of the chain being transacted on, and
+        // until that comparison is chain-aware a native-amount swap could slip
+        // under a threshold meant for another chain's coin. A swap's return is
+        // decided by a market rather than by the sender, so asking every time
+        // is the safe side of that line.
+        value: 2n ** 255n,
         details: {
           amount: `${readableAmount(input.amount, input.symbol, input.decimals)} for ≈ ${readableAmount(plan.quoted.amountOut, 'LCAI')}`,
           to: `Uniswap on Ethereum, for at least ${readableAmount(plan.minimum, 'LCAI')}`,
@@ -471,8 +532,10 @@ export function swapHandlers(ctx) {
       })
 
       const pool = poolFor(CHAIN_ID)
-      const sent = await pool.use((rpc) =>
-        sendTransaction(rpc, wallet.account(), {
+      let on = null
+      const sent = await pool.use((rpc) => {
+        on = rpc
+        return sendTransaction(rpc, wallet.account(), {
           to: UNISWAP.swapRouter02,
           // Ether goes in as value and the router wraps it; a token goes in
           // through the allowance approved above and the value is zero.
@@ -483,7 +546,11 @@ export function swapHandlers(ctx) {
           maxPriorityFeePerGas: plan.fees.maxPriorityFeePerGas,
           chainId: BigInt(CHAIN_ID)
         })
-      )
+      })
+
+      // Recorded before the receipt is awaited, for the same reason as the
+      // approval above: broadcast is the point of no return, not mining.
+      await record(ctx, on, 'swap', sent, CHAIN_ID)
 
       const receipt = await sent.wait()
       if (!receipt.status) throw new Error(`the swap reverted (${sent.hash})`)
