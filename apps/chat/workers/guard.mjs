@@ -40,8 +40,22 @@
  * An interruption is worth it only when the amount justifies it; below this the
  * transfer goes, because a wallet that interrupts for every coffee teaches
  * people to click without reading.
+ *
+ * The figure is in Lightchain's native wei and means what it says only there:
+ * a hundred LCAI is an amount a person might move without ceremony. The same
+ * figure read in ether is a house deposit, so this threshold does not travel —
+ * see `allow` for what every other chain does instead.
  */
 export const DEFAULT_CONFIRM_ABOVE = 100n * 10n ** 18n
+
+/**
+ * The chain the amount threshold is calibrated for.
+ *
+ * Repeated here rather than imported from `@lcai-p2p/chain` so that this module
+ * — the last thing between a compromised window and the signing key — keeps
+ * depending on nothing that parses the outside world.
+ */
+export const LIGHTCHAIN_CHAIN_ID = 9200
 
 import b4a from 'b4a'
 import crypto from 'hypercore-crypto'
@@ -141,11 +155,24 @@ export function createGuard({ wallet, send, settings, onAutoLock, randomId = ran
      * the request the renderer sent. That distinction is the entire point: the
      * two agree in the ordinary case, and when they do not, this shows the one
      * that is about to be signed.
+     *
+     * The threshold is read against the chain the value is spent on. On
+     * Lightchain the default of a hundred tokens stands. On any other named
+     * chain any native value at all is asked about — the unit there is ether
+     * or something priced like it, and a threshold written in LCAI wei would
+     * wave a fifty-ether send through. A call that says nothing about the
+     * chain keeps the old line, because that is the contract the existing
+     * callers were written against; a caller that knows the chain says it.
      */
-    async allow({ value, details }) {
+    async allow({ value, details, chainId }) {
       const amount = typeof value === 'bigint' ? value : 0n
 
-      if (amount >= threshold('confirmAboveWei', DEFAULT_CONFIRM_ABOVE)) {
+      const above =
+        chainId === undefined || chainId === LIGHTCHAIN_CHAIN_ID
+          ? amount >= threshold('confirmAboveWei', DEFAULT_CONFIRM_ABOVE)
+          : amount > 0n
+
+      if (above) {
         if (!(await this.confirmVisibly(details))) {
           throw new Error('that transfer was not confirmed')
         }

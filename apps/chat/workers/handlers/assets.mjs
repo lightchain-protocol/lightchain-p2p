@@ -647,8 +647,12 @@ export function assetHandlers(ctx) {
         // Native sends risk the amount plus the fee; a token send risks the
         // token, whose dollar value this layer does not know. Using the fee for
         // a token send would let an unlimited USDC transfer past a guard set in
-        // native units, so tokens are always put to the operating system.
+        // native units, so tokens are always put to the operating system. The
+        // chain goes with the value, because the guard's hundred-token
+        // threshold is calibrated in LCAI — in ether it would let a fortune
+        // through without asking.
         value: plan.isNative ? plan.amount : plan.confirmAlways,
+        chainId: plan.chainId,
         details: {
           amount: readableAmount(plan.amount, plan.symbol, plan.decimals),
           to: plan.to,
