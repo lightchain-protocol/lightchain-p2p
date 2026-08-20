@@ -102,6 +102,9 @@ const ICONS = {
   'i-pin': 'pin',
   'i-attach': 'paperclip',
   'i-send': 'arrow-up',
+  // The pair of it. The markup referenced `#i-receive` in two places with no
+  // symbol behind it, so the button's icon painted nothing at all.
+  'i-receive': 'arrow-down',
 
   // In a room
   'i-members': 'users',

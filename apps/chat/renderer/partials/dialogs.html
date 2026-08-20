@@ -5,7 +5,13 @@
          ask. That is why the chain is chosen before the address is shown, why
          the warning names both the token and the chain, and why changing the
          picker clears the address and the code rather than leaving a stale one
-         under a new heading. -->
+         under a new heading.
+
+         The network is also the grouping, not a per-option annotation: the
+         asset picker lists bare symbols under a heading that names the chain,
+         because a line reading "ETH — the network's own coin" explains what
+         the select above it already said. The options themselves are built by
+         `fillTokenPicker` in lib/assets.js. -->
     <dialog class="dialog" id="receive-dialog">
       <div class="dialog-form">
         <h2 class="dialog-title">Receive</h2>

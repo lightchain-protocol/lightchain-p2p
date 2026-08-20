@@ -420,24 +420,35 @@ function clearReceive() {
   clearQr(document.getElementById('receive-qr'))
 }
 
+/**
+ * The asset picker, grouped by the network it belongs to.
+ *
+ * The labels used to carry a descriptor ("ETH — the network's own coin"),
+ * which read as clutter and explained the wrong thing: the network is chosen
+ * in the field above and named again as the group heading here, so an option
+ * line only has to say which asset it is — a bare symbol, nothing more.
+ */
 function fillTokenPicker() {
   const chainId = Number(chainPicker.value)
   const chain = chains.find((c) => c.id === chainId)
   const tokens = holdings.filter((a) => a.chainId === chainId && a.kind === 'token')
 
-  const options = [
-    { value: '', label: `${chain?.symbol ?? 'Native'} — the network's own coin` },
-    ...tokens.map((t) => ({ value: t.address, label: `${t.symbol} — ${t.name}` }))
-  ]
+  const group = document.createElement('optgroup')
+  group.label = chain?.name ?? 'Network'
 
-  tokenPicker.replaceChildren(
-    ...options.map((option) => {
-      const node = document.createElement('option')
-      node.value = option.value
-      node.textContent = option.label
-      return node
-    })
-  )
+  const own = document.createElement('option')
+  own.value = ''
+  own.textContent = chain?.symbol ?? 'Native coin'
+  group.append(own)
+
+  for (const token of tokens) {
+    const node = document.createElement('option')
+    node.value = token.address
+    node.textContent = token.symbol
+    group.append(node)
+  }
+
+  tokenPicker.replaceChildren(group)
 }
 
 async function showReceive() {
@@ -471,21 +482,18 @@ async function showReceive() {
 }
 
 /**
- * The detail page's four buttons, which all open something this module owns.
+ * The detail page's three buttons, which all open something this module owns.
  *
  * Wired from here rather than imported there, so the two files do not import
  * each other. Each one arrives already knowing which asset it is for, which is
- * the difference between "Receive" and "Receive USDC on Arbitrum".
+ * the difference between "Receive" and "Receive USDC on Arbitrum". There is no
+ * Buy: buying happens in a browser, off the app's back, and a button for it
+ * here implied an order flow the app does not have.
  */
 connectAssetActions({
   onReceive: (asset) => void openReceive(asset),
   onSend: (asset) => void openSend(asset),
-  onBridge: () => document.getElementById('bridge-open-btn')?.click(),
-  onBuy: () => {
-    void bridge
-      .openExternal('https://www.coingecko.com/en/coins/lightchain-ai#markets')
-      .catch(() => toast('Could not open that link', 'error'))
-  }
+  onBridge: () => document.getElementById('bridge-open-btn')?.click()
 })
 
 export async function openReceive(asset = null) {

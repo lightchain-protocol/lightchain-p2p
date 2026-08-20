@@ -26,10 +26,18 @@
               <p class="asset-hero-worth" id="asset-worth">—</p>
 
               <div class="asset-actions">
-                <button class="asset-action" type="button" id="asset-receive">Receive</button>
-                <button class="asset-action" type="button" id="asset-send">Send</button>
-                <button class="asset-action" type="button" id="asset-bridge">Bridge</button>
-                <button class="asset-action" type="button" id="asset-buy">Buy</button>
+                <button class="asset-action" type="button" id="asset-receive">
+                  <svg class="icon" aria-hidden="true"><use href="#i-receive" /></svg>
+                  Receive
+                </button>
+                <button class="asset-action" type="button" id="asset-send">
+                  <svg class="icon" aria-hidden="true"><use href="#i-send" /></svg>
+                  Send
+                </button>
+                <button class="asset-action" type="button" id="asset-bridge">
+                  <svg class="icon" aria-hidden="true"><use href="#i-routing" /></svg>
+                  Bridge
+                </button>
               </div>
             </div>
 
@@ -321,18 +329,56 @@
                   </div>
                 </section>
 
+                <!-- The address, and the way to the bridge. On the page itself
+                     rather than stranded at the bottom of the disclosure below:
+                     receiving shows this address again with a QR beside it, but
+                     copying it should not take opening Advanced first. The
+                     bridge is its own page now; this button is a deep link to
+                     it, kept here because the networks it moves between are
+                     what the rest of this card is about. -->
+                <section class="kit-card kit-card-flush wallet-account">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">Your address</h2>
+                    <span class="chip" id="wallet-network"></span>
+                  </header>
+                  <div class="kit-card-scroll">
+                    <div class="wallet-address">
+                      <code class="wallet-key" id="wallet-address"></code>
+                      <button
+                        class="button button-sm"
+                        type="button"
+                        id="wallet-copy"
+                        title="Copy address"
+                        aria-label="Copy address"
+                      >
+                        <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
+                      </button>
+                    </div>
+                    <p class="wallet-note">
+                      The same address on all six networks. What decides whether something arrives
+                      is which network it was sent on.
+                    </p>
+                    <div class="wallet-actions">
+                      <button class="button" type="button" id="bridge-open-btn">
+                        <svg class="icon" aria-hidden="true"><use href="#i-routing" /></svg>
+                        Bridge
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
                 <!-- Everything below is the chain showing through: six
-                     networks, a holdings table, per-asset pages and a bridge.
-                     All of it real and none of it what somebody came to this
-                     page for, so it is one press away rather than the first
-                     thing in view. `details` rather than a script: it is
-                     keyboard-operable, it announces its own state, and it
-                     remembers nothing, which is right for a section whose
-                     closed state is the recommendation. -->
+                     networks, a portfolio line and a holdings table. All of it
+                     real and none of it what somebody came to this page for, so
+                     it is one press away rather than the first thing in view.
+                     `details` rather than a script: it is keyboard-operable, it
+                     announces its own state, and it remembers nothing, which is
+                     right for a section whose closed state is the
+                     recommendation. -->
                 <details class="account-advanced" id="account-advanced" data-advanced>
                   <summary class="account-advanced-summary">
                     <svg class="icon" aria-hidden="true"><use href="#i-chevron" /></svg>
-                    Networks, holdings and the bridge
+                    Networks and holdings
                   </summary>
 
                 <div class="wallet-grid">
@@ -408,57 +454,6 @@
                       <p class="wallet-note" id="assets-empty" hidden>
                         Nothing held yet on any of the six networks. Use Receive to get an address.
                       </p>
-                    </div>
-                  </section>
-
-                  <!-- The address and the four things you can do with it. It
-                       was two cards, one of which spent a whole panel on an
-                       address that matters at exactly one moment — receiving,
-                       which shows it with a QR beside it anyway. -->
-                  <section class="kit-card kit-card-flush wallet-account">
-                    <header class="kit-card-head">
-                      <h2 class="kit-card-title">Account</h2>
-                      <span class="chip" id="wallet-network"></span>
-                    </header>
-                    <div class="kit-card-scroll">
-                      <div class="wallet-address">
-                        <code class="wallet-key" id="wallet-address"></code>
-                        <button
-                          class="button button-sm"
-                          type="button"
-                          id="wallet-copy"
-                          title="Copy address"
-                          aria-label="Copy address"
-                        >
-                          <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
-                        </button>
-                      </div>
-                      <p class="wallet-note">
-                        The same address on all six networks. What decides whether something arrives
-                        is which network it was sent on.
-                      </p>
-
-                      <!-- Send and Receive used to be here too. They are on the
-                           balance card now, where the figure they act on is;
-                           two buttons doing one job is two ids answering to one
-                           name, which is a bug waiting for whichever handler
-                           `getElementById` happens to reach. Bridging stays,
-                           because it belongs with the networks it moves
-                           between. -->
-                      <div class="wallet-actions">
-                        <button class="button" type="button" id="bridge-open-btn">
-                          <svg class="icon" aria-hidden="true"><use href="#i-routing" /></svg>
-                          Bridge
-                        </button>
-                        <button
-                          class="button"
-                          type="button"
-                          data-external="https://www.coingecko.com/en/coins/lightchain-ai#markets"
-                        >
-                          <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
-                          Buy
-                        </button>
-                      </div>
                     </div>
                   </section>
 

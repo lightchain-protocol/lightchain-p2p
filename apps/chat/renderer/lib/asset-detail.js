@@ -317,15 +317,14 @@ document.getElementById('asset-explorer')?.addEventListener('click', (evt) => {
 })
 
 /**
- * The four actions, wired from outside.
+ * The three actions, wired from outside.
  *
  * This module knows about one asset and nothing about the dialogs that move it,
  * so the panels that own those hand their openers in rather than being imported
  * here — which would make two modules import each other.
  */
-export function connectAssetActions({ onReceive, onSend, onBridge, onBuy }) {
+export function connectAssetActions({ onReceive, onSend, onBridge }) {
   document.getElementById('asset-receive')?.addEventListener('click', () => onReceive(showing))
   document.getElementById('asset-send')?.addEventListener('click', () => onSend(showing))
   document.getElementById('asset-bridge')?.addEventListener('click', () => onBridge(showing))
-  document.getElementById('asset-buy')?.addEventListener('click', () => onBuy(showing))
 }

@@ -456,10 +456,13 @@
   margin-top: var(--lc-space-md);
 }
 
-/* Pill-shaped and outlined, so the four read as one set of choices rather than
-   as one primary action and three afterthoughts. */
+/* Pill-shaped and outlined, so the three read as one set of choices rather than
+   as one primary action and two afterthoughts. */
 .asset-action {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
   padding: 0 var(--lc-space-lg);
   height: var(--lc-control-md);
   border: 1px solid var(--lc-rule);
@@ -623,10 +626,11 @@
   grid-column: 1 / -1;
 }
 
-/* Narrow enough to sit beside the transactions table, which is the wider of
-   the two and the one that suffers from being squeezed. */
+/* The address card is out of the disclosure and on the page itself, so it takes
+   a full row like the balance and activity cards above it rather than a grid
+   column. */
 .wallet-account {
-  grid-column: span 1;
+  align-self: start;
 }
 
 /* One column below the width where three cards stop being readable. Every card
@@ -636,8 +640,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .wallet-portfolio,
-  .wallet-account {
+  .wallet-portfolio {
     grid-column: 1 / -1;
   }
 }
@@ -747,8 +750,9 @@
 
 /* --- The Account front page -------------------------------------------------- */
 
-/* Two balances and what acts on them. Everything below this on the page is the
-   chain showing through and lives behind a disclosure. */
+/* Two balances and what acts on them. The portfolio line, the networks and the
+   holdings table are the chain showing through and live behind the disclosure;
+   the activity and the address are the account itself and stay on the page. */
 /* Sized by what is in it. The page is a flex column, so without this the card
    stretched to fill and two lines of text sat in a box four times their
    height. */
