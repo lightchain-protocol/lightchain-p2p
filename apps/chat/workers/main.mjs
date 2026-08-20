@@ -1065,7 +1065,12 @@ const handlers = {
   ...aiHandlers(ctx),
   ...workerHandlers(ctx),
   ...settingsHandlers(ctx),
-  ...localHandlers(ctx)
+  ...localHandlers(ctx),
+  // Loaded on demand, since a working session never calls it: packs the logs,
+  // a generated report and the doctor's probe summary into a ZIP the renderer
+  // saves through the existing attachment flow. Nothing secret is included —
+  // see workers/diagnostics.mjs for the enumerated list.
+  'diagnostics.export': () => import('./diagnostics.mjs').then((m) => m.exportDiagnostics(ctx))
 }
 
 async function handle(req) {

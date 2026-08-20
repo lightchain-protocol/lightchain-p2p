@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Notification, clipboard, dialog, ipcMain, shell } = require('electron')
+const { app, BrowserWindow, Notification, clipboard, crashReporter, dialog, ipcMain, shell } = require('electron')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
@@ -43,6 +43,20 @@ const pearStore = cmd.flags.storage
 const updates = cmd.flags.updates
 
 if (pearStore) app.setPath('userData', pearStore)
+
+// Crash reports are collected locally and never leave the machine. The
+// placeholder submitURL is required by the API and is never contacted while
+// uploadToServer is false — uploading anything, anywhere, is a decision for
+// the owner, not a default this app makes. Dumps land under the storage
+// directory so a broken install can be asked for them; the diagnostics export
+// lists their names and sizes but never copies their contents, because a
+// minidump is an image of process memory and can hold keys.
+app.setPath('crashDumps', path.join(storageDir(), 'crashes'))
+crashReporter.start({
+  productName: appName,
+  submitURL: 'http://localhost/',
+  uploadToServer: false
+})
 
 ipcMain.on('pkg', (evt) => {
   evt.returnValue = pkg
@@ -124,6 +138,58 @@ function storageDir() {
   return path.join(os.homedir(), 'AppData', 'Local', appName)
 }
 
+/**
+ * The on-disk log, under `logs/` in the storage directory.
+ *
+ * Until this existed, the worker's stdout/stderr was forwarded to this
+ * process's stdout — which for an installed GUI app goes nowhere — and a crash
+ * left no trace anywhere. The writer is a size-bounded rotating log (two files
+ * of at most 1 MB each), loaded from the worker-side diagnostics module so the
+ * rotation policy has one definition, tested without Electron.
+ *
+ * **Nothing secret may ever reach this log**: no keys, no seed phrases, no
+ * keystore passwords, no message or transcript contents. The rule is enforced
+ * by what is teed — the worker's stdout/stderr and this process's own
+ * warnings, all written by this codebase, which must never print any of the
+ * above — not by trying to recognise secrets after the fact.
+ */
+let logWriter = null
+let earlyLog = []
+
+import('../workers/diagnostics.mjs')
+  .then(({ createLogWriter }) => {
+    logWriter = createLogWriter({ fs, path, dir: path.join(storageDir(), 'logs') })
+    for (const [text, tag] of earlyLog) logWriter.write(text, tag)
+    earlyLog = null
+  })
+  .catch((err) => {
+    // Logging must never take the app down; without it, output still reaches
+    // the terminal in development exactly as it always has.
+    console.error('the log file is unavailable; output continues to stdout only:', err.message)
+  })
+
+function teeLog(text, tag) {
+  try {
+    if (logWriter) logWriter.write(text, tag)
+    else if (earlyLog) earlyLog.push([text, tag])
+  } catch {
+    // A full or read-only disk must not crash the app it was logging for.
+  }
+}
+
+// This process's own warnings and errors join the log too — a worker exit or
+// a failed window is half of any crash story, and it was going nowhere at all.
+for (const method of ['warn', 'error']) {
+  const original = console[method].bind(console)
+  console[method] = (...args) => {
+    teeLog(
+      args.map((arg) => (arg instanceof Error ? (arg.stack ?? arg.message) : String(arg))).join(' '),
+      `main:${method}`
+    )
+    original(...args)
+  }
+}
+
 function getWorker(specifier) {
   if (workers.has(specifier)) return workers.get(specifier)
   const appPath = getAppPath()
@@ -146,11 +212,15 @@ function getWorker(specifier) {
   // Also echoed to this process. The worker is where the peer-to-peer work
   // happens and so where the interesting failures are, and forwarding its
   // output only to the renderer makes those invisible unless devtools is open.
+  // The tee writes the same bytes to the rotating log file, so a crash leaves
+  // its last words on disk rather than nowhere.
   function sendWorkerStdout(data) {
+    teeLog(data.toString(), 'worker:out')
     process.stdout.write(data)
     sendToAll('pear:worker:stdout:' + specifier, data)
   }
   function sendWorkerStderr(data) {
+    teeLog(data.toString(), 'worker:err')
     process.stderr.write(data)
     sendToAll('pear:worker:stderr:' + specifier, data)
   }
@@ -169,6 +239,7 @@ function getWorker(specifier) {
   worker.stdout.on('data', sendWorkerStdout)
   worker.stderr.on('data', sendWorkerStderr)
   worker.once('exit', (code) => {
+    teeLog(`worker exited (code ${code})\n`, 'main')
     app.removeListener('before-quit', onBeforeQuit)
     ipcMain.removeHandler('pear:worker:writeIPC:' + specifier)
     pipe.removeListener('data', sendWorkerIPC)
