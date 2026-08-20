@@ -104,19 +104,19 @@ those are the ones nobody has looked at.
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `scripts/wsl-adversarial.mjs`      | 19 abuses of a live room from a second machine: forged signatures, spent invites, oversize text, concurrent renames, a peer killed mid-sentence.                                                                                                                                                                                        |
 | `scripts/hostile-renderer.mjs`     | 87 attempts to turn message text into markup, spend a capability the window should not have, forge the confirmation the operating system draws, wedge the worker pipe, move funds with no password, hand Docker an argument of its choosing, aim a replacement at a hash this wallet never sent, or name a file so it reads as another. |
-| `scripts/onboarding-check.mjs`     | 33 checks over create, recover and reset, including that no two elements share an id and that the phrase check asks for distinct words.                                                                                                                                                                                                 |
-| `scripts/conversation-check.mjs`   | 37 checks on replying, reacting, editing, withdrawing, pinning, naming yourself and drafts, clicked rather than called.                                                                                                                                                                                                                 |
+| `scripts/onboarding-check.mjs`     | 39 checks over create, recover and reset, including that no two elements share an id and that the phrase check asks for distinct words.                                                                                                                                                                                                 |
+| `scripts/conversation-check.mjs`   | 42 checks on replying, reacting, editing, withdrawing, pinning, naming yourself and drafts, clicked rather than called.                                                                                                                                                                                                                 |
 | `scripts/send-check.mjs`           | 34 checks on the send path up to the signature: what a quote refuses, that the asset quoted is the one chosen, that its figures come from the built transaction, and that editing anything throws the review away.                                                                                                                      |
-| `scripts/assets-check.mjs`         | 44 checks that holdings across six chains are read, that an unreachable chain is never a zero, and that the receive screen names the network as loudly as the address.                                                                                                                                                                  |
+| `scripts/assets-check.mjs`         | 46 checks that holdings across six chains are read, that an unreachable chain is never a zero, and that the receive screen names the network as loudly as the address.                                                                                                                                                                  |
 | `scripts/bridge-check.mjs`         | 31 checks that bridging is refused until the disclosure has been read, that the fee is quoted rather than assumed, and that the window cannot acknowledge on somebody's behalf.                                                                                                                                                         |
 | `scripts/clipboard-check.mjs`      | 25 checks that every copy button in the app reaches the system clipboard, read back from outside the application rather than asked of it.                                                                                                                                                                                               |
-| `scripts/surfaces-check.mjs`       | 21 checks that Dashboard, Wallet, Models, Worker and the roadmap agree with the worker rather than only looking right.                                                                                                                                                                                                                  |
+| `scripts/surfaces-check.mjs`       | 26 checks that Conversations, Account, Models and Earn agree with the worker rather than only looking right, that nothing but conversations is loose in the sidebar, and that the account menu reaches each of its three destinations.                                                                                                  |
 | `scripts/locking-check.mjs`        | 17 checks that the wallet locks itself, that a large transfer costs the password again, and that neither can be switched off from the window.                                                                                                                                                                                           |
 | `scripts/asset-page-check.mjs`     | 17 checks on one asset's page, most of them that the history screen says what its source cannot see rather than implying it saw everything.                                                                                                                                                                                             |
 | `scripts/drive-two-instances.mjs`  | The whole conversation through the real interface, 17 steps.                                                                                                                                                                                                                                                                            |
 | `scripts/inference-check.mjs`      | 17 checks on room context and spending caps, without spending anything.                                                                                                                                                                                                                                                                 |
 | `scripts/survives-restart.mjs`     | 12 checks either side of a kill: sealed rooms, wallet, DHT identity, write access, history.                                                                                                                                                                                                                                             |
-| `scripts/review.mjs`               | 14 structural checks over every surface in both themes, and over the pickers that only exist once a button is pressed.                                                                                                                                                                                                                  |
+| `scripts/review.mjs`               | 15 structural checks over every surface in both themes, and over the pickers that only exist once a button is pressed.                                                                                                                                                                                                                  |
 | `scripts/transcript-search.mjs`    | 11 checks that model history is searchable and stays separate from room history when the wallet is locked.                                                                                                                                                                                                                              |
 | `scripts/change-password.mjs`      | 9 checks that a password change moves the vault and nothing else.                                                                                                                                                                                                                                                                       |
 | `scripts/hosted-room-survives.mjs` | Three instances: a room outlives its author because another user was hosting it.                                                                                                                                                                                                                                                        |
@@ -165,6 +165,29 @@ the image.
 
 ### `apps/chat`, Advancement 4
 
+**The interface is a messenger now, not a console.** It was five destinations in
+three labelled groups — Dashboard, Chat, Models, Worker, Wallet — with the rooms
+tucked underneath as a context list. That is an architecture diagram, and it
+asked somebody opening a chat application to first decide which part of the
+system they wanted.
+
+There is one primary surface. Conversations are the sidebar's body; Account,
+Models, Earn and Settings live in a menu on the avatar at the bottom. The
+Dashboard is dissolved — its three honest facts are a status strip in the
+sidebar and two lines on the Account page — and `packages/ui` grew a real
+neutral scale, semantic colour roles, motion tokens and a 14px text floor,
+all of them contrast-tested in both themes.
+
+Four design rules are checks rather than prose, and every one of them failed
+on first run:
+
+| Check                      | What it refuses                                                                                                            |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/check-accent.mjs` | The mark's own colours outside a selector that draws the mark. Caught a violet-to-magenta gradient on the primary button.  |
+| `review.mjs`, raw keys     | Long hex on a primary surface. Caught a full wallet address printed across a card.                                         |
+| `review.mjs`, text size    | Anything under 14px. Caught three rules shrinking code to 13.8px.                                                          |
+| `review.mjs`, empty states | More than two sentences or more than one action. Caught a models screen opening with three sentences about job settlement. |
+
 **The conversation half works.** Create or join a room, grant write access, send
 and receive messages live, and keep both the history and the write access across
 a restart. Verified between two application instances on the public DHT.
@@ -178,7 +201,7 @@ paid nothing and held no session of its own.
 
 **The AI half works, in the app, on mainnet.** Pick a model, ask a question,
 watch the answer arrive. Job 2702 answered from the interface, paid for out of a
-prepaid balance deposited through the Wallet section:
+prepaid balance topped up from the Account page:
 
 > A Merkle tree is a data structure used in cryptography to efficiently verify
 > the integrity of large datasets by hashing and combining smaller chunks of

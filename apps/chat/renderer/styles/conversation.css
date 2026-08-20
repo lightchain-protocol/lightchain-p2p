@@ -36,6 +36,27 @@
   display: none;
 }
 
+/* A drawer once the window stops being wide enough for a third column.
+   
+   At 900 pixels the roster took half the conversation: bubbles wrapped after
+   four words and the thing somebody opened the room to read was the narrower
+   of the two panes. Overlaying it keeps the conversation whole and makes the
+   roster what it is at that size — something you open, look at, and close. */
+@media (max-width: 62rem) {
+  .room-body {
+    position: relative;
+  }
+
+  .room-members {
+    position: absolute;
+    inset: 0 0 0 auto;
+    z-index: 5;
+    width: min(20rem, 85%);
+    background: var(--lc-surface-2);
+    box-shadow: var(--lc-shadow-3);
+  }
+}
+
 .message-body {
   display: flex;
   flex-direction: column;
