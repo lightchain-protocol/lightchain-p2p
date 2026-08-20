@@ -611,7 +611,20 @@ export function aiHandlers(ctx) {
 
       // A draw takes most of a minute, so progress is pushed rather than
       // awaited in silence.
-      await session.conversation.start((progress) => send({ t: 'ai.progress', ...progress }))
+      try {
+        await session.conversation.start((progress) => send({ t: 'ai.progress', ...progress }))
+      } catch (err) {
+        // Opening the session is a transaction on this deployment, and a
+        // wallet with nothing for gas learns that as a raw RPC string. Say
+        // what is actually missing instead.
+        if (/insufficient funds/.test(err?.message ?? '')) {
+          throw new Error(
+            'opening a session sends a small transaction on chain, and this wallet has nothing for gas — receive some LCAI first',
+            { cause: err }
+          )
+        }
+        throw err
+      }
 
       session.id =
         earlier?.id ?? `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
@@ -642,10 +655,40 @@ export function aiHandlers(ctx) {
       // still in the transcript rather than vanishing with the failure.
       await log.said(session.id, model, 'you', prompt)
 
-      const answer = await session.conversation.ask(
-        withHistory(earlier?.turns ?? [], prompt, CONTEXT_BUDGET),
-        (progress) => send({ t: 'ai.progress', ...progress })
-      )
+      // Cheap truth before an expensive failure: submitted with an empty
+      // prepaid balance, or before the delegate is authorised, the job dies on
+      // chain and the answer comes back as a raw revert string. Both states
+      // are knowable beforehand, and both have the same fix, so say it.
+      const standing = await inference()
+        .then((api) => api.balance())
+        .catch(() => null)
+      if (standing && !standing.delegateAuthorized) {
+        throw new Error(
+          'the delegate that submits jobs for you is not authorised yet — add funds in Wallet once and the deposit authorises it'
+        )
+      }
+      if (standing && standing.balance === 0n) {
+        throw new Error('your prepaid balance is empty — add funds in Wallet, then ask again')
+      }
+
+      let answer
+      try {
+        answer = await session.conversation.ask(
+          withHistory(earlier?.turns ?? [], prompt, CONTEXT_BUDGET),
+          (progress) => send({ t: 'ai.progress', ...progress })
+        )
+      } catch (err) {
+        // The same state can lose the race with the check above — a balance
+        // read is a snapshot, and the chain is the judge. Translate the
+        // revert rather than hand anybody a contract's idea of an error.
+        if (/setDelegateAuthorization/.test(err?.message ?? '')) {
+          throw new Error(
+            'the delegate that submits jobs for you is not authorised yet — add funds in Wallet once and the deposit authorises it',
+            { cause: err }
+          )
+        }
+        throw err
+      }
 
       await log.said(session.id, model, 'model', answer.text, answer.jobId)
 
