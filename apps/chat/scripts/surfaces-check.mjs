@@ -174,11 +174,28 @@ report(
 
 await show('wallet')
 
+// Shown short and held whole. The card displays `0x60B0…8E42` because sixty-odd
+// hex characters is not something anybody reads, and carries the full value on
+// the element so the copy button and Advanced can reach it. Both halves are
+// asserted: a truncation that lost the real address would be worse than no
+// truncation at all.
 const shownAddress = await text('#wallet-address')
+const heldAddress = await evaluate(`document.getElementById('wallet-address')?.dataset.full ?? ''`)
+
 report(
-  'the wallet panel shows the address the worker holds',
-  wallet?.address ? shownAddress.includes(wallet.address) : false,
-  `${shownAddress || 'nothing'}`
+  'the wallet panel holds the address the worker holds',
+  wallet?.address ? heldAddress === wallet.address : false,
+  heldAddress || 'nothing'
+)
+
+report(
+  'and shows it shortened rather than in full',
+  wallet?.address
+    ? shownAddress !== wallet.address &&
+        shownAddress.startsWith(wallet.address.slice(0, 6)) &&
+        shownAddress.endsWith(wallet.address.slice(-4))
+    : false,
+  shownAddress || 'nothing'
 )
 
 const panes = await evaluate(`(() => {

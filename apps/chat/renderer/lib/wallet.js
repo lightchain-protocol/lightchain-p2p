@@ -47,9 +47,19 @@ export function showWallet(status) {
   el.walletLocked.hidden = !status.exists || status.unlocked
   el.walletOpen.hidden = !status.unlocked
 
+  // Shown short, copied whole. Sixty-odd hex characters across a card is not an
+  // identity anybody reads — it is a machine's copy of one, and printing it in
+  // full trains people to skim exactly the string they most need to check
+  // character by character. The full value stays on the element for the copy
+  // button and for anyone who opens Advanced.
   if (status.address) {
-    el.walletLockedAddress.textContent = status.address
-    el.walletAddress.textContent = status.address
+    el.walletLockedAddress.textContent = shortAddress(status.address)
+    el.walletLockedAddress.dataset.full = status.address
+    el.walletLockedAddress.title = status.address
+
+    el.walletAddress.textContent = shortAddress(status.address)
+    el.walletAddress.dataset.full = status.address
+    el.walletAddress.title = status.address
   }
 
   // The chip on the locked screen is meant to say which wallet you are about to
@@ -338,7 +348,11 @@ el.walletLockBtn.addEventListener('click', async () => {
   showWallet(await request('wallet.lock'))
 })
 
-el.walletCopy.addEventListener('click', () => copy(el.walletAddress.textContent, 'Address'))
+// The whole address, not the shortened one on screen. Copying what is displayed
+// would hand somebody an ellipsis and tell them it was their address.
+el.walletCopy.addEventListener('click', () =>
+  copy(el.walletAddress.dataset.full ?? el.walletAddress.textContent, 'Address')
+)
 
 // --- The balance, everywhere ------------------------------------------------
 

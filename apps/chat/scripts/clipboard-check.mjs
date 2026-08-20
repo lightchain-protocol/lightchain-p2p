@@ -260,7 +260,10 @@ if (keyShown) {
 // The wallet address.
 await evaluate(`document.querySelector('[data-section="wallet"]')?.click()`)
 await wait(800)
-const address = await evaluate(`document.getElementById('wallet-address')?.textContent ?? ''`)
+// The full value, not what is on screen. The card shows `0x60B0…8E42` now, and
+// a copy button that put an ellipsis on the clipboard while announcing "Address
+// copied" would be the most confidently wrong control in the application.
+const address = await evaluate(`document.getElementById('wallet-address')?.dataset.full ?? ''`)
 if (address) {
   await clear()
   await evaluate(`document.getElementById('wallet-copy').click()`)

@@ -240,6 +240,139 @@ note(
     : `opened: ${restores.opened}, moved in: ${restores.moved}, restored: ${restores.restored}`
 )
 
+// --- The design language, where it can be measured -----------------------------
+
+/**
+ * A key or a hash rendered raw, anywhere a person lands without asking.
+ *
+ * Sixty-four hex characters is not an identity, it is a machine's copy of one.
+ * The rule is an identicon plus `abcd…wxyz` plus a copy button on every primary
+ * surface, with the full value behind an Advanced disclosure or in a dialog
+ * somebody opened on purpose — so this refuses long hex in the panels and
+ * permits it inside `<dialog>` and `[data-advanced]`.
+ *
+ * Truncated forms are fine by construction: they are too short to match.
+ */
+const RAW_KEY = String.raw`(0x[0-9a-fA-F]{16,}|\b[0-9a-fA-F]{40,}\b)`
+
+const rawKeys = await evaluate(`(async () => {
+  const { showSection } = await import('./lib/dom.js')
+  const found = []
+
+  for (const surface of ${JSON.stringify(SURFACES)}) {
+    try { showSection(surface) } catch { continue }
+    await new Promise((r) => setTimeout(r, 250))
+
+    const panel = document.getElementById('panel-' + surface)
+    if (!panel) continue
+
+    const walk = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT)
+    for (let node = walk.nextNode(); node; node = walk.nextNode()) {
+      const owner = node.parentElement
+      if (!owner || owner.closest('dialog, [data-advanced], [hidden]')) continue
+      if (owner.offsetParent === null) continue
+
+      const hit = node.textContent.match(new RegExp(${JSON.stringify(RAW_KEY)}))
+      if (hit) found.push(surface + ': ' + hit[0].slice(0, 22) + '…')
+    }
+  }
+
+  return found
+})()`)
+
+note(
+  rawKeys.length === 0,
+  'no raw key or hash is shown on a primary surface',
+  rawKeys.length ? rawKeys.slice(0, 4).join(', ') : `${SURFACES.length} surfaces walked, all clean`
+)
+
+/**
+ * Text below the readable floor.
+ *
+ * Fourteen pixels, captions and timestamps included. They carry real
+ * information and shrinking them is how they stop being read — an application
+ * somebody sits in front of all day should be comfortable rather than merely
+ * legible.
+ */
+const small = await evaluate(`(async () => {
+  const { showSection } = await import('./lib/dom.js')
+  const under = new Map()
+  let measured = 0
+
+  for (const surface of ${JSON.stringify(SURFACES)}) {
+    try { showSection(surface) } catch { continue }
+    await new Promise((r) => setTimeout(r, 250))
+
+    const panel = document.getElementById('panel-' + surface)
+    if (!panel) continue
+
+    for (const node of panel.querySelectorAll('*')) {
+      // Only elements holding their own words. An empty wrapper inherits a size
+      // it never renders, and counting those buries the real ones.
+      const own = [...node.childNodes].some(
+        (c) => c.nodeType === 3 && c.textContent.trim() !== ''
+      )
+      if (!own || node.offsetParent === null) continue
+
+      measured += 1
+      const size = parseFloat(getComputedStyle(node).fontSize)
+      if (size < 14) {
+        const where = surface + ' ' + (node.className || node.tagName) + ' @' + size + 'px'
+        under.set(where, true)
+      }
+    }
+  }
+
+  return { measured, under: [...under.keys()] }
+})()`)
+
+note(
+  small.under.length === 0 && small.measured >= FLOOR.buttons,
+  'no text is smaller than fourteen pixels',
+  small.under.length
+    ? small.under.slice(0, 4).join(', ')
+    : `${small.measured} text-bearing elements, none under 14px`
+)
+
+/**
+ * An empty state that argues rather than offering.
+ *
+ * One warm sentence and one action. The failure mode is a paragraph explaining
+ * the architecture to somebody who wanted to start a conversation.
+ */
+const empties = await evaluate(`(async () => {
+  const { showSection } = await import('./lib/dom.js')
+  const wordy = []
+  let seen = 0
+
+  for (const surface of ${JSON.stringify(SURFACES)}) {
+    try { showSection(surface) } catch { continue }
+    await new Promise((r) => setTimeout(r, 250))
+
+    const panel = document.getElementById('panel-' + surface)
+    if (!panel) continue
+
+    for (const empty of panel.querySelectorAll('.empty')) {
+      if (empty.offsetParent === null) continue
+      seen += 1
+
+      const sentences = (empty.textContent.match(/[.!?](\\s|$)/g) ?? []).length
+      const buttons = empty.querySelectorAll('button, a[role="button"]').length
+      if (sentences > 2 || buttons > 1) {
+        wordy.push(surface + ': ' + sentences + ' sentences, ' + buttons + ' buttons')
+      }
+    }
+  }
+
+  return { seen, wordy }
+})()`)
+
+note(
+  empties.wordy.length === 0,
+  'empty states offer rather than explain',
+  empties.wordy.length ? empties.wordy.join(', ') : `${empties.seen} on screen, all short`
+)
+
 // --- Every surface, in both themes --------------------------------------------
 
 for (const theme of THEMES) {

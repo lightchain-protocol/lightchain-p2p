@@ -277,16 +277,23 @@ body {
   width: 100%;
 }
 
+/* Flat accent, not a gradient of the mark's two colours.
+   
+   It was violet-to-magenta, which put the most saturated pair the brand owns
+   behind white text on the one control every screen has — and made the primary
+   action read as decoration rather than as the thing to press. `accentContrast`
+   is the paired foreground, so the label is legible by construction rather than
+   because white happened to work against both ends of a gradient. */
 .button-primary {
   border-color: transparent;
-  color: #ffffff;
-  background: linear-gradient(90deg, var(--lc-brand-violet), var(--lc-brand-magenta));
+  color: var(--lc-accent-contrast);
+  background: var(--lc-accent);
 }
 
 .button-primary:hover:not(:disabled),
 .button-primary:active:not(:disabled) {
   border-color: transparent;
-  background: linear-gradient(90deg, var(--lc-brand-violet), var(--lc-brand-magenta));
+  background: var(--lc-accent);
   filter: brightness(1.12);
 }
 
@@ -300,7 +307,7 @@ body {
   padding: 0 var(--lc-space-md);
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-family: var(--lc-mono);
   font-size: var(--lc-text-sm);
   line-height: var(--lc-leading-normal);
   color: var(--lc-fg);
@@ -446,7 +453,7 @@ select.input option {
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
   background: var(--lc-bg);
-  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-family: var(--lc-mono);
   font-size: var(--lc-text-sm);
   line-height: 1.5;
   color: var(--lc-fg);

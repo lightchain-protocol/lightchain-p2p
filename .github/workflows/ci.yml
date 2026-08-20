@@ -77,6 +77,13 @@ jobs:
       - name: Markup is current
         run: node apps/chat/scripts/build-markup.mjs --check
 
+      # One accent per screen. The mark's own colours are more saturated than
+      # anything the interface should put behind text, and no contrast test
+      # objects to using them anyway — the primary button was a violet-to-magenta
+      # gradient and passed everything.
+      - name: One accent per surface
+        run: node apps/chat/scripts/check-accent.mjs
+
       # Surface sheets load after the kit, so a surface that redeclares a shared
       # class replaces that component everywhere rather than styling its own
       # copy. Three of those were found in one evening, none of them visible in

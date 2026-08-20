@@ -77,7 +77,7 @@
  * only reason it is on screen.
  */
 .wallet-key {
-  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-family: var(--lc-mono);
   font-size: var(--lc-text-xs);
   white-space: nowrap;
   overflow-x: auto;
@@ -187,7 +187,7 @@
   background: none;
   cursor: pointer;
   text-align: left;
-  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-family: var(--lc-mono);
   font-size: var(--lc-text-xs);
   color: var(--lc-fg-dim);
   overflow-wrap: anywhere;

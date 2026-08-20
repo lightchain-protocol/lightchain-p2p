@@ -345,7 +345,7 @@
 }
 
 .chart-bar {
-  fill: var(--lc-brand-violet);
+  fill: var(--lc-accent);
 }
 
 .chart-bar.is-answered {
@@ -387,7 +387,7 @@
   height: var(--lc-space-sm);
   flex: 0 0 auto;
   border-radius: var(--lc-radius-sm);
-  background: var(--lc-brand-violet);
+  background: var(--lc-accent);
 }
 
 .legend-swatch[data-series='answered'] {
@@ -395,7 +395,7 @@
 }
 
 .legend-swatch[data-series='jobs'] {
-  background: var(--lc-brand-magenta);
+  background: var(--lc-success);
 }
 
 .legend-value {
@@ -512,7 +512,7 @@
 }
 
 .bar-fill {
-  background: var(--lc-brand-violet);
+  background: var(--lc-accent);
   transition: width 220ms ease-out;
 }
 

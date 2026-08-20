@@ -124,10 +124,15 @@ export function short(key) {
   return `${key.slice(0, 6)}…${key.slice(-4)}`
 }
 
-/** An Ethereum address, shortened the way every wallet shortens one. */
-export function shortAddress(address) {
-  return `${address.slice(0, 6)}…${address.slice(-4)}`
-}
+/**
+ * An Ethereum address, shortened the way every wallet shortens one.
+ *
+ * The same function as `short` under a name that reads better at the call
+ * sites that pass an address rather than a room key. It delegates rather than
+ * repeating the body: the two were byte-identical copies, which is one edit
+ * away from a room key and an address being truncated differently.
+ */
+export const shortAddress = short
 
 export function time(at) {
   return new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })

@@ -171,7 +171,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-family: var(--lc-mono);
 }
 
 /* The same red the conversation gives a signature that does not match. It is

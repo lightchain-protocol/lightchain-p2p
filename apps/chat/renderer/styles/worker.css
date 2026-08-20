@@ -121,7 +121,7 @@
 
 .worker-log-text {
   margin: 0;
-  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
+  font-family: var(--lc-mono);
   font-size: var(--lc-text-xs);
   line-height: var(--lc-leading-normal);
   color: var(--lc-fg-muted);
@@ -145,8 +145,7 @@
 }
 
 .worker-note code {
-  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, monospace;
-  font-size: 0.92em;
+  font-family: var(--lc-mono);
   user-select: text;
 }
 
