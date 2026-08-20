@@ -1,5 +1,6 @@
 import { copy, el, el2, formatLcai, shortAddress, showSection, toast } from './dom.js'
 import { avatar } from './members.js'
+import { backedUp } from './backup.js'
 import { request } from './ipc.js'
 import { lastSummary, refreshActivity } from './activity.js'
 import { refreshModels } from './models.js'
@@ -101,6 +102,7 @@ export async function refreshWallet() {
     if (status.unlocked) {
       void refreshBalances()
       void refreshHistory()
+      void refreshBackupCard()
     }
   } catch (err) {
     toast(err.message, 'error')
@@ -297,8 +299,46 @@ function fail(alert, detail) {
  * held across six chains, which `assets.js` reads separately — so all that is
  * left here is keeping the chrome in step.
  */
+/**
+ * The two figures on the Account card, and what has been spent against them.
+ *
+ * `wallet.balances` answers for both pockets. The spend line comes from the
+ * summary the Dashboard used to draw and is folded in here rather than being
+ * its own card: "what did I spend this month" is a footnote to a balance, not
+ * a subject.
+ */
 async function refreshBalances() {
   await refreshTitlebarBalance()
+
+  const native = document.getElementById('account-native')
+  const spent = document.getElementById('account-spent')
+
+  try {
+    const balances = await request('wallet.balances')
+    // A dash where nothing could be read, never a nought. The two call for
+    // opposite reactions and only one of them is "you have no money".
+    if (native) {
+      native.textContent = balances?.native == null ? '—' : `${formatLcai(balances.native)} LCAI`
+    }
+  } catch {
+    if (native) native.textContent = '—'
+  }
+
+  if (!spent) return
+  const summary = lastSummary()
+  const month = summary?.inference?.months?.at(-1) ?? null
+
+  spent.textContent =
+    month && Number(month.jobs) > 0
+      ? `${formatLcai(month.spent)} LCAI on ${month.jobs} ${month.jobs === 1 ? 'answer' : 'answers'} this month`
+      : ''
+}
+
+/** The standing backup card, which is only on screen while it is outstanding. */
+async function refreshBackupCard() {
+  const card = document.getElementById('account-backup')
+  if (!card) return
+  card.hidden = await backedUp()
 }
 
 el.walletCreateForm.addEventListener('submit', async (evt) => {

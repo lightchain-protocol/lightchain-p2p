@@ -722,3 +722,141 @@
 .ledger-col-num {
   text-align: right;
 }
+
+/* --- The Account front page -------------------------------------------------- */
+
+/* Two balances and what acts on them. Everything below this on the page is the
+   chain showing through and lives behind a disclosure. */
+/* Sized by what is in it. The page is a flex column, so without this the card
+   stretched to fill and two lines of text sat in a box four times their
+   height. */
+.account-balances {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-lg);
+  flex: 0 0 auto;
+}
+
+.account-balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lc-space-lg);
+  flex-wrap: wrap;
+}
+
+.account-balance-named {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.account-balance-label {
+  font-size: var(--lc-type-caption);
+  color: var(--lc-text-tertiary);
+}
+
+.account-balance-value {
+  font-size: var(--lc-type-title-2);
+  font-weight: var(--lc-weight-semibold);
+  font-family: var(--lc-mono);
+  color: var(--lc-text-primary);
+}
+
+.account-balance-note {
+  font-size: var(--lc-type-caption);
+  color: var(--lc-text-tertiary);
+}
+
+.account-balance-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  flex: 0 0 auto;
+}
+
+/* Moving credit back to the wallet is the rarer half of the pair, so it is a
+   link beside the button rather than a second button of equal weight. */
+.button-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--lc-text-secondary);
+  font: inherit;
+  font-size: var(--lc-type-caption);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.button-link:hover {
+  color: var(--lc-text-primary);
+}
+
+.account-backup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lc-space-lg);
+  background: var(--lc-warning-soft);
+  flex: 0 0 auto;
+}
+
+.account-backup-text strong {
+  display: block;
+  color: var(--lc-text-primary);
+  font-size: var(--lc-type-body-strong);
+}
+
+.account-backup-text p {
+  margin: 2px 0 0;
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-type-caption);
+  text-wrap: pretty;
+}
+
+/* --- Advanced ---------------------------------------------------------------- */
+
+.account-advanced {
+  border-top: 1px solid var(--lc-rule);
+  padding-top: var(--lc-space-md);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.account-advanced-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  min-height: var(--lc-control-md);
+  padding: 0 var(--lc-space-sm);
+  border-radius: var(--lc-radius-sm);
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-type-body);
+  cursor: pointer;
+  list-style: none;
+  flex: 0 0 auto;
+}
+
+.account-advanced-summary::-webkit-details-marker {
+  display: none;
+}
+
+.account-advanced-summary:hover {
+  background: var(--lc-surface-hover);
+  color: var(--lc-text-primary);
+}
+
+.account-advanced-summary .icon {
+  transition: transform var(--lc-motion-fast) var(--lc-easing);
+}
+
+.account-advanced[open] .account-advanced-summary .icon {
+  transform: rotate(90deg);
+}
+
+.account-advanced[open] {
+  flex: 1 1 auto;
+}

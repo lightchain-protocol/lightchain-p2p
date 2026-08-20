@@ -1830,10 +1830,8 @@
             <section class="console wallet" id="wallet-open" hidden>
               <header class="page-head">
                 <div class="page-head-main">
-                  <h1 class="page-title">Wallet</h1>
-                  <p class="page-sub">
-                    One key signs your messages, joins rooms and pays for inference.
-                  </p>
+                  <h1 class="page-title">Account</h1>
+                  <p class="page-sub">What you hold, and what pays for answers.</p>
                 </div>
                 <div class="page-actions">
                   <button class="button button-sm" type="button" id="wallet-lock">
@@ -1843,12 +1841,79 @@
                 </div>
               </header>
 
-              <!-- A grid of cards, each with one subject and the width that
-                   subject needs. The portfolio wants a chart, the networks want
-                   six small tiles, and the holdings table has seven columns
-                   compared down the page. Two equal columns served none of
-                   them. -->
               <div class="console-body wallet-body">
+                <!-- Two balances, in plain words.
+                     
+                     "Wallet" is what this key holds. "AI credit" is what pays
+                     for answers - it was on the Dashboard, which no longer
+                     exists, and before that it was the only figure in the
+                     application called "prepaid", which is a word about
+                     accounting rather than about what somebody has. Two lines
+                     on one card, because they are two pockets of the same
+                     money and a person moves between them. -->
+                <section class="kit-card account-balances">
+                  <div class="account-balance-row">
+                    <div class="account-balance-named">
+                      <span class="account-balance-label">Wallet</span>
+                      <span class="account-balance-value" id="account-native">—</span>
+                    </div>
+                    <div class="account-balance-actions">
+                      <button class="button button-sm" type="button" id="assets-receive-btn">
+                        <svg class="icon" aria-hidden="true"><use href="#i-receive" /></svg>
+                        Receive
+                      </button>
+                      <button
+                        class="button button-sm button-primary"
+                        type="button"
+                        id="assets-send-btn"
+                      >
+                        <svg class="icon" aria-hidden="true"><use href="#i-send" /></svg>
+                        Send
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="account-balance-row">
+                    <div class="account-balance-named">
+                      <span class="account-balance-label">AI credit</span>
+                      <span class="account-balance-value" id="wallet-prepaid">—</span>
+                      <span class="account-balance-note" id="account-spent"></span>
+                    </div>
+                    <div class="account-balance-actions">
+                      <button class="button button-sm" type="button" data-move="fund">Top up</button>
+                      <button class="button-link" type="button" data-move="withdraw">
+                        Move back to wallet
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- Only while it is outstanding. A card that says "backed up"
+                     forever is a card nobody reads. -->
+                <section class="kit-card account-backup" id="account-backup" hidden>
+                  <div class="account-backup-text">
+                    <strong>Your account is not backed up</strong>
+                    <p>Twelve words are the only way back in. Nobody can reissue them.</p>
+                  </div>
+                  <button class="button button-sm button-primary" type="button" id="account-backup-btn">
+                    Back it up
+                  </button>
+                </section>
+
+                <!-- Everything below is the chain showing through: six
+                     networks, a holdings table, per-asset pages and a bridge.
+                     All of it real and none of it what somebody came to this
+                     page for, so it is one press away rather than the first
+                     thing in view. `details` rather than a script: it is
+                     keyboard-operable, it announces its own state, and it
+                     remembers nothing, which is right for a section whose
+                     closed state is the recommendation. -->
+                <details class="account-advanced" id="account-advanced" data-advanced>
+                  <summary class="account-advanced-summary">
+                    <svg class="icon" aria-hidden="true"><use href="#i-chevron" /></svg>
+                    Networks, holdings and the bridge
+                  </summary>
+
                 <div class="wallet-grid">
                   <section class="kit-card kit-card-flush wallet-portfolio">
                     <header class="kit-card-head">
@@ -1952,15 +2017,14 @@
                         is which network it was sent on.
                       </p>
 
+                      <!-- Send and Receive used to be here too. They are on the
+                           balance card now, where the figure they act on is;
+                           two buttons doing one job is two ids answering to one
+                           name, which is a bug waiting for whichever handler
+                           `getElementById` happens to reach. Bridging stays,
+                           because it belongs with the networks it moves
+                           between. -->
                       <div class="wallet-actions">
-                        <button class="button button-primary" type="button" id="assets-send-btn">
-                          <svg class="icon" aria-hidden="true"><use href="#i-upload" /></svg>
-                          Send
-                        </button>
-                        <button class="button" type="button" id="assets-receive-btn">
-                          <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
-                          Receive
-                        </button>
                         <button class="button" type="button" id="bridge-open-btn">
                           <svg class="icon" aria-hidden="true"><use href="#i-routing" /></svg>
                           Bridge
@@ -2005,6 +2069,7 @@
                     </div>
                   </section>
                 </div>
+                </details>
               </div>
             </section>
           </div>

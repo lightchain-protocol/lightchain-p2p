@@ -251,7 +251,14 @@ await wait(400)
 // here rather than worked around, because it is the one thing deferring the
 // backup withholds and a suite that quietly satisfied the gate would stop
 // noticing if the gate disappeared.
+// Cleared rather than assumed absent. A previous run of this suite marks the
+// account backed up on the way past, so "is receiving refused" was answering
+// about the run before it and would have kept passing after the gate was
+// removed.
 const beforeBackup = await evaluate(`(async () => {
+  const { request } = await import('./lib/ipc.js')
+  await request('local.write', { name: 'backup', document: {} })
+
   const { forgetBackupState, receivingBlocked } = await import('./lib/backup.js')
   forgetBackupState()
   return await receivingBlocked()
@@ -295,11 +302,17 @@ const surface = JSON.parse(
   await evaluate(`JSON.stringify({
     networks: document.querySelectorAll('#assets-networks .network').length,
     rows: document.querySelectorAll('#assets-list .holding').length,
-    // The two things that moved to the Dashboard. A wallet still offering them
-    // would be two pages owning one decision.
-    prepaid: document.getElementById('wallet-prepaid') !== null,
+    // Both came back, and deliberately. They lived on the Dashboard, which is
+    // gone; a balance that pays for answers belongs beside the balance it is
+    // moved from, and the page they are on now is the only page that owns
+    // either. What matters is that there is exactly one of each.
+    prepaid: document.querySelectorAll('#wallet-prepaid').length,
     moves: document.querySelectorAll('#panel-wallet [data-move]').length,
-    // And the four that should be here.
+    // One of each, not two. Send and Receive were on the balance card and in
+    // the account card underneath it, and two elements answering to one id is
+    // a bug waiting for whichever one getElementById reaches first.
+    sendButtons: document.querySelectorAll('#assets-send-btn').length,
+    receiveButtons: document.querySelectorAll('#assets-receive-btn').length,
     actions: ['assets-send-btn', 'assets-receive-btn', 'bridge-open-btn']
       .filter((id) => document.getElementById(id) !== null).length
   })`)
@@ -312,11 +325,20 @@ report(
 )
 report('and a row for every asset the wallet tracks', surface.rows > 0, `${surface.rows} rows`)
 report(
-  'the prepaid balance has left the wallet for the Dashboard',
-  surface.prepaid === false,
-  'it is the AI side, and two pages owning one figure is two that will disagree'
+  'the balance that pays for answers is on the Account page',
+  surface.prepaid === 1,
+  `${surface.prepaid} of it, and one page owns it`
 )
-report('and so have the buttons that move it', surface.moves === 0, `${surface.moves} left behind`)
+report(
+  'with both ways to move it, and no more than one of each',
+  surface.moves === 2,
+  `${surface.moves} controls`
+)
+report(
+  'Send and Receive appear once rather than twice',
+  surface.sendButtons === 1 && surface.receiveButtons === 1,
+  `${surface.sendButtons} send, ${surface.receiveButtons} receive`
+)
 report(
   'Send, Receive and Bridge are all on the wallet',
   surface.actions === 3,

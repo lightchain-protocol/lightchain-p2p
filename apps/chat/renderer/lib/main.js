@@ -165,13 +165,16 @@ el.sidebarLocked.addEventListener('click', () => {
   void refreshWallet()
 })
 
-// So is the backup banner. A standing reminder that does not offer the action
-// it is asking for is a reminder people learn to look past.
-document.getElementById('backup-banner-btn').addEventListener('click', () => {
-  void openSettings('wallet').then(() => {
-    document.getElementById('reveal-password')?.focus()
+// So is the backup banner, and the card on the Account page that says the same
+// thing. A standing reminder that does not offer the action it is asking for is
+// a reminder people learn to look past.
+for (const id of ['backup-banner-btn', 'account-backup-btn']) {
+  document.getElementById(id)?.addEventListener('click', () => {
+    void openSettings('wallet').then(() => {
+      document.getElementById('reveal-password')?.focus()
+    })
   })
-})
+}
 
 // --- Sections --------------------------------------------------------------
 
