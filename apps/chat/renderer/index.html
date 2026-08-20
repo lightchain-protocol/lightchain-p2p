@@ -1234,84 +1234,70 @@
         </div>
         <!-- Chat ------------------------------------------------------------>
         <div class="panel" id="panel-chat" hidden>
+          <!-- One warm sentence and the action. What was here pitched the
+               architecture - one place to hold your identity, reach any
+               published model, keep your own history and pay for all of it
+               from one balance - to somebody who had opened a messenger and
+               wanted to talk to a person. -->
           <div class="empty" id="empty">
-            <h1 class="empty-title">The universal hub</h1>
-            <p class="empty-body">
-              One place to hold your identity, reach any published model, keep your own history and
-              pay for all of it from one balance.
-            </p>
-            <p class="empty-hint">Create a room, or join one with a key someone sent you.</p>
+            <h1 class="empty-title">No conversations yet</h1>
+            <p class="empty-body">Start one, or join with an invite someone sent you.</p>
           </div>
 
           <div class="room" id="room" hidden>
-            <!-- Two zones, and the split is the whole point: what is true about
-                 the room on the left, what can be done to it on the right. The
-                 previous row put three status badges and four identical buttons
-                 in one strip, so nothing was ranked and Leave sat beside Members
-                 wearing the same clothes. -->
+            <!-- Avatar, name, who is in it, and one overflow.
+                 
+                 This row used to carry a title, a padlock, two chips, a raw
+                 room key and four buttons — three of them the same size and
+                 weight as each other, so nothing was ranked and Leave sat
+                 beside Members wearing the same clothes. The name is the only
+                 thing anybody reads at a glance. Everything else is either a
+                 fact that belongs in the roster or an action that belongs in a
+                 menu.
+                 
+                 The padlock stays. Somebody has to be able to tell whether the
+                 thing they are typing into is encrypted, and the only honest
+                 place to say so is beside the conversation — a padlock nobody
+                 can interrogate is a claim with nothing behind it, so it opens
+                 the page that explains itself. The word beside it is gone
+                 because the padlock already says it. -->
             <header class="room-head">
-              <div class="room-head-main">
-                <div class="room-identity">
+              <div class="room-identity">
+                <span class="room-mark" id="room-mark" aria-hidden="true"></span>
+                <div class="room-named">
                   <h1 class="room-title" id="room-title">Room</h1>
-
-                  <!-- Not decoration. Somebody has to be able to tell whether
-                       the thing they are typing into is encrypted, and the only
-                       honest place to say so is beside the conversation. The
-                       word is gone because a padlock already says it; the button
-                       stays, because a padlock nobody can interrogate is a
-                       claim with nothing behind it. -->
                   <button
-                    class="room-secure"
+                    class="room-people"
                     type="button"
-                    id="room-secure"
-                    title="This room is encrypted — what that means"
-                    aria-label="This room is encrypted — what that means"
+                    id="members-btn"
+                    aria-expanded="false"
+                    aria-controls="members"
+                    title="Who is in this room"
                   >
-                    <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+                    <span id="room-peers">no one else here</span>
                   </button>
-
-                  <!-- Facts, so chips rather than buttons. -->
-                  <span class="chip room-peers" id="room-peers" hidden></span>
-                  <span class="chip" id="room-role"></span>
                 </div>
-                <code class="key room-key" id="room-key" title="Room key"></code>
+                <button
+                  class="room-secure"
+                  type="button"
+                  id="room-secure"
+                  title="This room is encrypted — what that means"
+                  aria-label="This room is encrypted — what that means"
+                >
+                  <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+                </button>
+                <span class="chip room-role-chip" id="room-role" hidden></span>
               </div>
 
               <div class="room-head-actions">
-                <button
-                  class="button button-sm room-quiet room-square"
-                  type="button"
-                  id="rename-btn"
-                  title="Rename this room"
-                  aria-label="Rename this room"
-                >
-                  <svg class="icon" aria-hidden="true"><use href="#i-rename" /></svg>
-                </button>
-
-                <!-- A toggle rather than an action: it opens and closes the
-                     roster beside the conversation, and a control that leaves
-                     something on screen has to say that it did. -->
-                <button
-                  class="button button-sm room-toggle"
-                  type="button"
-                  id="members-btn"
-                  aria-expanded="false"
-                  aria-controls="members"
-                  title="Who is in this room"
-                >
-                  <svg class="icon" aria-hidden="true"><use href="#i-members" /></svg>
-                  <span class="room-action-label">Members</span>
-                </button>
-
                 <button
                   class="button button-sm button-primary"
                   type="button"
                   id="invite-btn"
                   title="Invite someone"
-                  aria-label="Invite someone"
                 >
                   <svg class="icon" aria-hidden="true"><use href="#i-invite" /></svg>
-                  <span class="room-action-label">Invite someone</span>
+                  <span class="room-action-label">Invite</span>
                 </button>
 
                 <button
@@ -1326,12 +1312,27 @@
                   <svg class="icon" aria-hidden="true"><use href="#i-more" /></svg>
                 </button>
 
-                <!-- Leaving is the one thing here nobody undoes by pressing it
-                     again, so it is a press further away from everything else.
-                     The popover is the platform's: it closes on Escape, on a
-                     click outside, and on its own trigger, none of which is
-                     worth writing again. -->
+                <!-- Everything that is not inviting somebody. Leaving is last
+                     and set apart, because it is the one thing here nobody
+                     undoes by pressing it again. The popover is the platform's:
+                     it closes on Escape, on a click outside, and on its own
+                     trigger, none of which is worth writing again. -->
                 <div class="room-menu" id="room-menu" popover aria-label="More room actions">
+                  <button class="room-menu-item" type="button" id="rename-btn">
+                    <svg class="icon" aria-hidden="true"><use href="#i-rename" /></svg>
+                    Rename this room
+                  </button>
+                  <button class="room-menu-item" type="button" id="copy-room-key">
+                    <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
+                    Copy the room key
+                  </button>
+                  <button class="room-menu-item" type="button" id="room-secure-menu">
+                    <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+                    How this room is protected
+                  </button>
+
+                  <div class="room-menu-rule" role="separator"></div>
+
                   <button class="room-menu-item room-menu-danger" type="button" id="leave-btn">
                     <svg class="icon" aria-hidden="true"><use href="#i-leave" /></svg>
                     Leave this room
@@ -1342,6 +1343,11 @@
                   </p>
                 </div>
               </div>
+
+              <!-- Kept in the document and out of sight. The key is what the
+                   menu's Copy reads and what several harnesses assert against;
+                   what it is not is something anybody needs to look at. -->
+              <code class="key room-key" id="room-key" title="Room key" hidden></code>
             </header>
 
             <div class="room-body">

@@ -245,8 +245,18 @@ function renderRoom() {
   el.roomKey.textContent = short(room.key)
   el.roomKey.dataset.full = room.key
   el.roomKey.title = room.key
-  el.roomRole.textContent = room.writable ? 'writer' : 'read only'
-  el.roomRole.dataset.role = room.writable ? 'writer' : 'reader'
+
+  // A face for the room, drawn from its key. Two conversations whose names
+  // begin the same way are otherwise the same row twice, and the same mark
+  // appears wherever the room does.
+  el.roomMark.replaceChildren(avatar(room.key, 32))
+
+  // Only when it is worth saying. "writer" against every room somebody can
+  // write in is a chip that means nothing; "read only" is a real constraint
+  // and the composer being disabled is not, on its own, an explanation.
+  el.roomRole.hidden = room.writable
+  el.roomRole.textContent = 'read only'
+  el.roomRole.dataset.role = 'reader'
   el.readonlyNotice.hidden = room.writable
   // Shown to a read-only member so they have something to send. It is not a
   // secret: it identifies this peer's core, and only an existing writer can act
@@ -1328,6 +1338,20 @@ const takeFiles = (files) => {
   showPending(files[0])
   el.composerInput.focus()
 }
+
+// The two the overflow menu gained. Both already existed as behaviour and
+// neither had a control: the key was on screen as text nobody could copy
+// without selecting it, and the protection page was reachable only by finding
+// the padlock.
+document.getElementById('copy-room-key').addEventListener('click', () => {
+  document.getElementById('room-menu')?.hidePopover?.()
+  void copy(el.roomKey.dataset.full ?? el.roomKey.textContent, 'Room key')
+})
+
+document.getElementById('room-secure-menu').addEventListener('click', () => {
+  document.getElementById('room-menu')?.hidePopover?.()
+  el.roomSecure.click()
+})
 
 el.composer.prepend(attachButton({ onFiles: takeFiles }))
 acceptDrops(el.composer, { onFiles: takeFiles })

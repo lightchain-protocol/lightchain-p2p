@@ -58,10 +58,14 @@ export function renderTyping(activeKey) {
   // Connections, not members. Someone in the room who is offline is not here,
   // and a blind peer holding the room is a connection rather than a person, so
   // this says "connected" — which is the thing it actually knows.
+  // Always something rather than nothing. This is the subtitle under the room's
+  // name now, and a line that vanishes when the count is zero leaves the name
+  // jumping up and down as people come and go — and says nothing at the one
+  // moment it would be useful, which is when you are the only one here.
   const peersNode = peersEl()
   if (peersNode) {
-    peersNode.hidden = peers === 0
-    peersNode.textContent = peers === 1 ? '1 connected' : `${peers} connected`
+    peersNode.textContent =
+      peers === 0 ? 'no one else here' : peers === 1 ? '1 connected' : `${peers} connected`
   }
 
   const line = typingEl()

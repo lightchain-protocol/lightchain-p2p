@@ -33,10 +33,6 @@
   container-type: inline-size;
 }
 
-.room-head-main {
-  min-width: 0;
-}
-
 /* The name, whether the room is encrypted, and what it knows about who is in
    it — read as one line, because they are one subject. */
 .room-identity {
@@ -132,11 +128,10 @@
 }
 
 /* On, and saying so. A toggle that looks identical whichever way it is set is
-   a control you have to press to find out what it did. */
-.room-toggle[aria-expanded='true'] {
-  border-color: color-mix(in srgb, var(--lc-brand) 60%, transparent);
-  color: var(--lc-brand-ink);
-  background: color-mix(in srgb, var(--lc-brand) 18%, transparent);
+   a control you have to press to find out what it did. The roster's toggle is
+   the member count under the room's name now, so this is what marks it. */
+.room-people[aria-expanded='true'] {
+  color: var(--lc-accent);
 }
 
 /* Icons alone below the width where the labels stop fitting. Wrapping into a
@@ -724,4 +719,66 @@
 
 .key-row .button {
   flex: 0 0 auto;
+}
+
+/* --- The room's own row ------------------------------------------------------ */
+
+/* Avatar, name, who is in it, and one overflow. What was here ranked nothing:
+   three status badges and four buttons of equal weight, with Leave dressed the
+   same as Members. */
+.room-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.room-mark {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: var(--lc-radius-md);
+  overflow: hidden;
+}
+
+.room-mark svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.room-named {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+/* The count is a button because pressing it is what opens the roster - the
+   thing it is a summary of. A label that describes a panel and does not open
+   it is a label somebody has to hunt for the control of. */
+.room-people {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--lc-text-tertiary);
+  font: inherit;
+  font-size: var(--lc-type-caption);
+  text-align: left;
+  cursor: pointer;
+}
+
+.room-people:hover {
+  color: var(--lc-text-secondary);
+}
+
+.room-role-chip {
+  flex: 0 0 auto;
+}
+
+.room-menu-rule {
+  height: 1px;
+  margin: var(--lc-space-xs) var(--lc-space-sm);
+  background: var(--lc-rule);
 }

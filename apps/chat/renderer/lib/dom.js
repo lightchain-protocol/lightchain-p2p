@@ -39,6 +39,8 @@ export const el = {
   empty: document.getElementById('empty'),
   room: document.getElementById('room'),
   roomTitle: document.getElementById('room-title'),
+  roomMark: document.getElementById('room-mark'),
+  roomPeers: document.getElementById('room-peers'),
   roomKey: document.getElementById('room-key'),
   roomRole: document.getElementById('room-role'),
   roomSecure: document.getElementById('room-secure'),
