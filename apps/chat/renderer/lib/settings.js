@@ -73,6 +73,11 @@ export async function openSettings(page = settingsPage) {
   const status = await request('wallet.status')
   document.getElementById('set-auto-lock').value = String(Math.round(status.autoLockMs / 60_000))
 
+  // Read receipts, default off. The stored value is the word "true" or the key
+  // is absent entirely — anything else, including a typo made with an editor,
+  // is read as off, the same rule the presence channel applies.
+  document.getElementById('set-receipts').checked = state.values.receipts === 'true'
+
   // The password is deliberately not returned, so the field shows whether one
   // exists rather than what it is.
   const password = document.getElementById('set-worker-password')
@@ -174,6 +179,31 @@ document.getElementById('set-network').addEventListener('change', async (evt) =>
     void refreshWallet()
     void openSettings()
   } catch (err) {
+    toast(err.message, 'error')
+  }
+})
+
+/**
+ * The receipts switch.
+ *
+ * One write does both halves: `settings.write` records the choice and the
+ * worker's settings handler applies it to every open room in the same breath,
+ * so the toggle, the saved file and what this machine publishes cannot drift
+ * apart. Off clears the key rather than storing "false", which keeps the
+ * absence of a choice and the choice of "no" the same thing — off.
+ */
+document.getElementById('set-receipts').addEventListener('change', async (evt) => {
+  const on = evt.target.checked
+  try {
+    await request('settings.write', { values: { receipts: on ? 'true' : null } })
+    toast(
+      on
+        ? 'Read receipts on — rooms can see when you have read them'
+        : 'Read receipts off — rooms are told nothing about what you have read'
+    )
+  } catch (err) {
+    // The box said yes and the worker said no: put the box back to the truth.
+    evt.target.checked = !on
     toast(err.message, 'error')
   }
 })

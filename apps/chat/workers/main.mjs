@@ -763,6 +763,11 @@ const rooms = await RoomHost.open({
   }
 })
 
+// Read receipts stay off unless a person switched them on — and the switch is
+// a saved setting, so it is applied here at boot. Skipping this would leave a
+// restart quietly publishing nothing while the Settings toggle still says on.
+rooms.setReceipts(setting('receipts') === 'true')
+
 /**
  * Ties the wallet to the rooms, in both directions.
  *

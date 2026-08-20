@@ -303,6 +303,28 @@
   height: 0.85em;
 }
 
+/* Sent versus read, on your own messages only. One tick while nobody has said
+   anything, two in the accent once somebody has — and never a second tick
+   inferred from silence, because receipts are off by default and a peer that
+   has opted out publishes nothing. The row sits under the text rather than
+   beside the clock: the clock is suppressed on the closing line of a run,
+   which is exactly the line the tick belongs to. */
+#panel-chat .message-receipt {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--lc-text-tertiary);
+}
+
+#panel-chat .message-receipt .icon {
+  width: var(--lc-text-xs);
+  height: var(--lc-text-xs);
+}
+
+#panel-chat .message-receipt.is-read {
+  color: var(--lc-accent);
+}
+
 /* Withdrawn text is styled as absent rather than as text, because it is not
    what anybody wrote — it is this client declining to show what they did. */
 #panel-chat .message-withdrawn {

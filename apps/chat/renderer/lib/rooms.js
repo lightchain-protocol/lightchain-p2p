@@ -25,6 +25,7 @@ import {
   connectPresence,
   forgetPresence,
   iAmTyping,
+  markRead,
   presenceFor,
   receivePresence as takePresence,
   refreshPresence,
@@ -67,7 +68,15 @@ connectDrafts({
 
 connectPresence({
   isActive: (key) => key === activeKey,
-  onChange: () => renderPresence()
+  onChange: () => {
+    renderPresence()
+    // A receipt is a presence change, and the ticks on your own messages are
+    // where it shows. Updated in place rather than by re-rendering the room,
+    // because the same push carries typing, which flickers several times a
+    // sentence — rebuilding the whole conversation for that would take hover
+    // state and scroll position with it.
+    renderReceipts()
+  }
 })
 import { acceptDrops, attachButton, attachmentView, pendingAttachment } from './attachments.js'
 
@@ -174,7 +183,13 @@ export function receiveRoom(msg) {
   announce(rooms.get(msg.room.key), msg.room)
   rooms.set(msg.room.key, msg.room)
   renderRooms()
-  if (msg.room.key === activeKey) renderRoom()
+  if (msg.room.key === activeKey) {
+    renderRoom()
+    // What arrived while the reader was parked at the bottom with the window
+    // in front of them is read, and saying so is what the receipt switch is
+    // for. Scrolled up or unfocused, it stays unsaid.
+    markVisible()
+  }
 }
 
 /**
@@ -349,6 +364,13 @@ function renderRoom() {
   }
 
   const byId = new Map(shown.map((m) => [m.id, m]))
+
+  // How far the room has read, as one position in the conversation: the
+  // furthest message anybody on the roster admits to having read. A peer
+  // publishing no receipts contributes nothing, so with every receipt switch
+  // off this stays -1 and every tick stays single — the absence of a receipt
+  // is never rendered as a read.
+  const readTo = readPosition(room.key, shown)
 
   // Above the conversation, not inside it: a pinned line is a fact about the
   // room, so it reads from the room's own list rather than being found by
@@ -599,6 +621,21 @@ function renderRoom() {
     // back to the top-right corner, which is the author and the clock.
     if (room.writable) bubble.append(messageActions(message, room))
 
+    // Sent and read, on your own messages only. One tick once the message is in
+    // the room — which it is by the time it renders here — and a second once
+    // somebody else says they have read it. Last line of a run only, the same
+    // place the avatar logic picks: a tick on every line of a run is the same
+    // noise as your own face on every line. A withdrawn message carries none —
+    // the room has agreed to stop showing it, and a status glyph would outlive
+    // the thing it reported on.
+    //
+    // In the body rather than the meta row: the clock and the whole meta line
+    // are suppressed on the closing line of a run, which is exactly the line
+    // the tick belongs to.
+    if (mine && !runOn && message.deletedAt === undefined) {
+      body.append(receiptTick(at, at <= readTo))
+    }
+
     // Beside incoming messages only, and only on the last of a run. Your own
     // face next to everything you said is noise — you know who you are — and a
     // column of identical avatars down a run is the same face six times. The
@@ -623,6 +660,104 @@ function renderRoom() {
   // still reading.
   if (following) el.messages.scrollTop = el.messages.scrollHeight
 }
+
+/**
+ * How far the room admits to having read, as one index into `shown`.
+ *
+ * The furthest message on the roster's read cursors that is actually in this
+ * conversation. A peer publishing no receipts contributes nothing — the
+ * default is off and a peer that has opted out must not be visibly opted out —
+ * and a cursor naming a message this machine has not replicated yet is skipped
+ * rather than guessed at, because a tick claiming a read that cannot be placed
+ * is a read this machine invented. -1 while nobody has said anything, which
+ * keeps every tick single.
+ */
+function readPosition(key, shown) {
+  const roster = presenceFor(key)?.roster
+  if (!Array.isArray(roster)) return -1
+
+  let furthest = -1
+  for (const peer of roster) {
+    const id = peer?.readMessageId
+    if (typeof id !== 'string' || id === '') continue
+    const at = shown.findIndex((m) => m.id === id)
+    if (at > furthest) furthest = at
+  }
+  return furthest
+}
+
+/**
+ * One status glyph for one of your own messages.
+ *
+ * A bare check once the message is in the room — which it always is by the
+ * time it renders, so "sent" is never a promise, only a fact — and the doubled
+ * check in the accent once somebody else in the room says they have read that
+ * far. The index is kept on the element so a receipt arriving later can
+ * repaint the tick without rebuilding the conversation.
+ */
+function receiptTick(index, read) {
+  const tick = el2('span', 'message-receipt', '')
+  tick.dataset.index = String(index)
+  paintTick(tick, read)
+  return tick
+}
+
+/** What a tick says right now: sent, or read. */
+function paintTick(tick, read) {
+  tick.classList.toggle('is-read', read)
+  tick.replaceChildren()
+  const mark = svg('svg', { class: 'icon', 'aria-hidden': 'true' })
+  mark.append(svg('use', { href: read ? '#i-check-check' : '#i-check' }))
+  tick.append(mark)
+  // Said in words as well as drawn, because one check versus two at 14px is a
+  // difference colour-vision and a small screen both have opinions about.
+  tick.title = read
+    ? 'Read — somebody else in the room has seen up to here.'
+    : 'Sent — in the room, not reported read by anybody yet.'
+}
+
+/**
+ * Repaints the ticks already on screen against the latest roster.
+ *
+ * Receipts arrive on the presence push, which also fires several times a
+ * sentence while somebody types — so this touches only the glyphs rather than
+ * re-rendering the room for every keystroke.
+ */
+function renderReceipts() {
+  const room = activeKey ? rooms.get(activeKey) : null
+  if (!room) return
+
+  const shown = room.conversation ?? room.messages ?? []
+  const readTo = readPosition(room.key, shown)
+  for (const tick of el.messages.querySelectorAll('.message-receipt')) {
+    const at = Number(tick.dataset.index)
+    paintTick(tick, Number.isInteger(at) && at <= readTo)
+  }
+}
+
+/**
+ * Tells the room how far this peer has read — exactly as far as is on screen.
+ *
+ * The mark only ever moves to the last message of the conversation, and only
+ * while the room is open, the window has focus and the reader is at the
+ * bottom: a receipt published for a message that was never visible is a read
+ * that never happened. Scrolled up catching up on Tuesday says nothing about
+ * the line that arrived a second ago.
+ */
+function markVisible() {
+  if (!activeKey || el.room.hidden || !document.hasFocus() || !atBottom()) return
+
+  const room = rooms.get(activeKey)
+  if (!room) return
+
+  const shown = room.conversation ?? room.messages ?? []
+  const last = shown[shown.length - 1]
+  if (last && typeof last.id === 'string') markRead(room.key, last.id)
+}
+
+// Coming back to the window over a conversation that was left open is the same
+// act of reading as opening it: whatever is on screen at the bottom is seen.
+window.addEventListener('focus', markVisible)
 
 /**
  * What the room has pinned, between the header and the conversation.
@@ -991,6 +1126,8 @@ function select(key) {
   renderRoom()
   renderPresence()
   void refreshPresence(key)
+  // Opening a conversation is reading it, up to what is on screen.
+  markVisible()
   if (rooms.get(key)?.writable) el.composerInput.focus()
 }
 
@@ -1419,7 +1556,13 @@ async function submitMessage() {
     })
     rooms.set(room.key, room)
     renderRooms()
-    if (room.key === activeKey) renderRoom()
+    if (room.key === activeKey) {
+      renderRoom()
+      // Your own message is on screen the moment it lands, so the read mark
+      // moves with it — a receipt that lagged a message behind you would tell
+      // the room you have not seen something you wrote.
+      markVisible()
+    }
   } catch (err) {
     // Give it back rather than losing what they wrote — but to the room it was
     // written for. A send can fail slowly, and putting the text back in the box

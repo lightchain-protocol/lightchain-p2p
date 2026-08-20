@@ -209,6 +209,23 @@
   gap: var(--lc-space-md);
 }
 
+/* A switch stated as a sentence: the box first, then what it does, at body
+   size — a setting about your own privacy should not need a magnifier. */
+.settings-check {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  font-size: var(--lc-type-body);
+  color: var(--lc-text-primary);
+}
+
+.settings-check input[type='checkbox'] {
+  width: var(--lc-control-icon);
+  height: var(--lc-control-icon);
+  margin: 0;
+  accent-color: var(--lc-accent);
+}
+
 /* --- Templates -------------------------------------------------------------- */
 
 .template-list {

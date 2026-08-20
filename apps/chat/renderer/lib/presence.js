@@ -15,6 +15,16 @@ import { request } from './ipc.js'
 
 const presence = new Map()
 
+/**
+ * The last read mark this window sent, per room.
+ *
+ * `Presence.setRead` already ignores a repeat of the same id, but the request
+ * would still cross the pipe every time anything re-rendered — and the rooms
+ * surface re-renders on every push. Remembering it here means a mark costs one
+ * round trip per newly seen message rather than one per redraw.
+ */
+const marked = new Map()
+
 const typingEl = () => document.getElementById('typing')
 const typingText = () => document.getElementById('typing-text')
 const peersEl = () => document.getElementById('room-peers')
@@ -48,6 +58,29 @@ export function receivePresence(msg) {
  */
 export function forgetPresence(key) {
   presence.delete(key)
+  marked.delete(key)
+}
+
+/**
+ * Says how far this peer has read in a room: the id of the latest message that
+ * was actually on screen.
+ *
+ * Recorded by the worker whether or not receipts are being published — so the
+ * privacy switch has something to say the moment it is flipped — and published
+ * only while it is on. A null id is not accepted here: clearing the mark is
+ * leaving-a-room behaviour and the host clears it on its own when that happens.
+ *
+ * Failures are quiet and the mark is forgotten, so the next thing that comes
+ * into view tries again rather than the receipt going missing until the room
+ * changes.
+ */
+export function markRead(key, messageId) {
+  if (!key || typeof messageId !== 'string' || messageId === '') return
+  if (marked.get(key) === messageId) return
+  marked.set(key, messageId)
+  void request('room.setRead', { room: key, messageId }).catch(() => {
+    if (marked.get(key) === messageId) marked.delete(key)
+  })
 }
 
 export function renderTyping(activeKey) {

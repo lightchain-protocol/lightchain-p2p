@@ -43,6 +43,12 @@ const WRITABLE = new Set([
   'hostRooms',
   'hostTrusted',
   'hostBudgetMb',
+  // Privacy. Stored as the word "true" or absent — absent is off, and off is
+  // the default on purpose: a receipt tells a room when you read what, and
+  // nobody agreed to publish that by opening a chat. Applied to open rooms by
+  // the write handler below and at boot, so the file and what is published can
+  // never disagree.
+  'receipts',
   // Two more are absent, and they are host arguments rather than settings.
   //
   // `keysDir` becomes the source of a `-v <dir>:/data` bind mount into a
@@ -69,6 +75,7 @@ export function settingsHandlers(ctx) {
     host,
     network,
     reconnectChain,
+    rooms,
     saveSettings,
     setting,
     settings,
@@ -156,6 +163,11 @@ export function settingsHandlers(ctx) {
 
       const before = network()
       saveSettings(next)
+
+      // Receipts take effect the moment they are saved, in every open room at
+      // once — a privacy switch that waited for a restart would keep telling
+      // rooms something its owner believes they have stopped saying.
+      if ('receipts' in patch) rooms.setReceipts(next.receipts === 'true')
 
       // Only the network justifies tearing any of this down, and only when it
       // actually changed. A session's token, its worker and its prepaid balance

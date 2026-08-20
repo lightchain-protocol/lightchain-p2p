@@ -74,6 +74,8 @@ const ICONS = {
   'i-eye': 'eye',
   'i-eye-off': 'eye-off',
   'i-check': 'check',
+  // Sent versus read on your own messages: one tick, then two.
+  'i-check-check': 'check-check',
   'i-alert': 'triangle-alert',
   'i-info': 'info',
   'i-clock': 'clock',
