@@ -20,10 +20,34 @@ const decoder = new TextDecoder('utf-8')
 const pending = new Map()
 let nextId = 1
 
+const MINUTE = 60_000
+
+/**
+ * How long each verb's reply may take before it is declared lost.
+ *
+ * The default covers the ordinary case — reads answer in milliseconds and a
+ * chain transaction in tens of seconds. The verbs listed here are the ones
+ * whose honest duration is longer: a sortition draw is advertised as up to a
+ * minute, an answer streams for as long as the model takes, and an image pull
+ * is gigabytes over whatever connection somebody has. A per-call
+ * `{ timeout }` overrides both.
+ */
+const VERB_TIMEOUTS = {
+  'ai.start': 2 * MINUTE,
+  'ai.ask': 5 * MINUTE,
+  'ai.dispute': 2 * MINUTE,
+  'room.ask': 5 * MINUTE,
+  'worker.pull': 30 * MINUTE,
+  'worker.register': 2 * MINUTE,
+  'worker.start': 5 * MINUTE,
+  'worker.stop': 2 * MINUTE
+}
+const DEFAULT_TIMEOUT_MS = 2 * MINUTE
+
 /**
  * Sends one request and waits for its reply.
  *
- * Two details here are load-bearing, and both were bugs first.
+ * Three details here are load-bearing, and all three were bugs first.
  *
  * The correlation id is `rid` and not `id`, because the fields are spread into
  * the same object. Handlers legitimately take an `id` — a template, a contact,
@@ -36,15 +60,35 @@ let nextId = 1
  * The trailing newline is the message boundary. The pipe is a byte stream, so
  * two requests sent in the same tick can arrive as one chunk; without a
  * delimiter the reader parses `{...}{...}`, throws, and drops both.
+ *
+ * The timeout is what a dropped reply decays into. Without it a lost message
+ * — the worker wrote half a line and crashed, the reader threw — hung the
+ * caller forever, and only the worker exiting outright ever settled it. A
+ * reply that arrives after its timeout finds nobody waiting and is dropped.
  */
-export function request(t, fields = {}) {
+export function request(t, fields = {}, { timeout = VERB_TIMEOUTS[t] ?? DEFAULT_TIMEOUT_MS } = {}) {
   if ('rid' in fields || 't' in fields) {
     throw new Error(`${t}: 'rid' and 't' belong to the envelope and cannot be request fields`)
   }
 
   const rid = String(nextId++)
   return new Promise((resolve, reject) => {
-    pending.set(rid, { resolve, reject })
+    const timer = setTimeout(() => {
+      if (!pending.delete(rid)) return
+      const seconds = Math.round(timeout / 1000)
+      reject(new Error(`${t}: no reply from the worker within ${seconds}s — the request may have been lost`))
+    }, timeout)
+
+    pending.set(rid, {
+      resolve(value) {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      reject(err) {
+        clearTimeout(timer)
+        reject(err)
+      }
+    })
     bridge.writeWorkerIPC(WORKER, JSON.stringify({ rid, t, ...fields }) + '\n')
   })
 }
@@ -71,7 +115,13 @@ function onChatMessage(msg) {
   }
 
   const waiting = pending.get(msg.rid)
-  if (!waiting) return
+  if (!waiting) {
+    // A reply addressed to a request nothing waits on is one whose caller gave
+    // up — timed out, or rejected when the worker stopped. Worth a line in the
+    // console, because the work it reports did complete.
+    if (msg.rid) console.warn(`[worker] reply to ${msg.rid} arrived after its caller stopped waiting`)
+    return
+  }
   pending.delete(msg.rid)
 
   if (msg.t === 'ok') waiting.resolve(msg.value)

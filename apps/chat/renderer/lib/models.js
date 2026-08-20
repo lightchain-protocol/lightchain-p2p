@@ -512,8 +512,10 @@ function showTranscript(transcript) {
 
   renderNotices()
 
-  for (const t of transcript.turns)
-    turn(t.role === 'you' ? 'you' : transcript.model, t.text, t.role === 'you')
+  for (const t of transcript.turns) {
+    const rendered = turn(t.role === 'you' ? 'you' : transcript.model, t.text, t.role === 'you')
+    if (t.jobId) rendered.item.dataset.jobId = String(t.jobId)
+  }
 
   offerToContinue(transcript)
 
@@ -708,8 +710,10 @@ async function startConversation(model, { resume = null } = {}) {
     if (session.resumed) {
       ai.messages.replaceChildren()
       ai.messages.hidden = false
-      for (const t of resume.turns)
-        turn(t.role === 'you' ? 'you' : model.name, t.text, t.role === 'you')
+      for (const t of resume.turns) {
+        const rendered = turn(t.role === 'you' ? 'you' : model.name, t.text, t.role === 'you')
+        if (t.jobId) rendered.item.dataset.jobId = String(t.jobId)
+      }
     }
 
     ai.session.textContent = `session ${session.sessionId} · worker ${short(session.worker)}`
@@ -763,7 +767,11 @@ async function ask(prompt) {
   showControls()
 
   try {
-    await request('ai.ask', { prompt })
+    const replied = await request('ai.ask', { prompt })
+    // The job the answer was, kept on the element so the commitment that
+    // follows seconds later can find this turn by name rather than by
+    // position — by then the thread on screen may be another conversation.
+    answer.item.dataset.jobId = String(replied.jobId)
   } catch (err) {
     const partial = answer.body.textContent !== ''
 
@@ -888,6 +896,7 @@ export function onAiProgress(progress) {
     ai.session.textContent = `session ${progress.sessionId} · worker ${short(progress.worker)}`
     if (!ai.state.hidden && openModel) showState(readyState(openModel.name), false)
   } else if (progress.phase === 'done') {
+    if (streaming) streaming.item.dataset.jobId = String(progress.jobId)
     ai.session.textContent = `job ${progress.jobId} answered`
   }
 }
@@ -895,20 +904,31 @@ export function onAiProgress(progress) {
 /**
  * What the chain says about the answer just given.
  *
- * Arrives seconds after the text, so it annotates the last turn rather than
- * gating it. `differs` is the one that matters and the one nobody expects to
- * see: the worker signed one answer and told the registry about another.
+ * Arrives seconds after the text, so it annotates the turn rather than gating
+ * it — the turn it names, found by the job id the element was tagged with when
+ * the answer landed. `differs` is the one that matters and the one nobody
+ * expects to see: the worker signed one answer and told the registry about
+ * another.
  */
 export function onCommitment(commitment) {
-  const last = ai.messages.querySelector('.message:last-child')
-  if (!last || last.querySelector('.message-proof, .message-warning')) return
+  const jobId = String(commitment.jobId ?? '')
+  // Matched by the job the answer was, not by where a message happens to sit:
+  // the check runs seconds after the text arrives, and by then the thread on
+  // screen may be a newer conversation or an opened transcript. No element
+  // tagged with this job means that turn is no longer on screen, and the
+  // badge belongs nowhere else.
+  const target =
+    jobId === ''
+      ? null
+      : ai.messages.querySelector(`.message[data-job-id="${CSS.escape(jobId)}"]`)
+  if (!target || target.querySelector('.message-proof, .message-warning')) return
 
   if (commitment.status === 'matches') {
     const badge = document.createElement('span')
     badge.className = 'message-proof'
     badge.textContent = 'confirmed on chain'
     badge.title = `The registry records exactly this answer for job ${commitment.jobId}.`
-    last.querySelector('.message-meta')?.append(badge)
+    target.querySelector('.message-meta')?.append(badge)
     return
   }
 
@@ -934,5 +954,5 @@ export function onCommitment(commitment) {
     }
   })
 
-  last.querySelector('.message-meta')?.append(badge, dispute)
+  target.querySelector('.message-meta')?.append(badge, dispute)
 }
