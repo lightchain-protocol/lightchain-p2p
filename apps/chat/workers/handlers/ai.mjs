@@ -53,6 +53,31 @@ const asWei = (value) => {
   return parsed < 0n ? null : parsed
 }
 
+/**
+ * An amount the renderer sent, as a bigint, or nothing.
+ *
+ * The same rule `wallet.mjs` gives transfers, kept local rather than reaching
+ * into that file: `BigInt('twelve')` throws a SyntaxError naming a type nobody
+ * outside this process has heard of, and a negative "deposit" is a withdrawal
+ * wearing the wrong clothes. Everything a caller can get wrong is worth one
+ * sentence that says which field and what it wanted instead.
+ */
+function whole(value, field) {
+  if (value === undefined || value === null || value === '') return undefined
+
+  let amount
+  try {
+    amount = BigInt(value)
+  } catch {
+    throw new Error(
+      `${field} must be a whole number written as a decimal string, and ${JSON.stringify(value)} is not one`
+    )
+  }
+
+  if (amount < 0n) throw new Error(`${field} cannot be negative, got ${amount}`)
+  return amount
+}
+
 /** Which day a spend belongs to, in local time, because that is the day a person means. */
 const today = () => {
   const at = new Date()
@@ -502,7 +527,7 @@ export function aiHandlers(ctx) {
       const api = await inference()
       const { delegate } = await api.balance()
       const { jobRegistry } = await resolveAddresses(rpc())
-      const value = BigInt(req.amount ?? 0)
+      const value = whole(req.amount, 'the amount') ?? 0n
 
       await guard.allow({
         value,
@@ -511,27 +536,45 @@ export function aiHandlers(ctx) {
           to: `the job registry at ${jobRegistry}`,
           from: account.address,
           network: network(),
-          fee: `this also lets ${delegate} spend that balance`
+          // Plainly, because this is the part of funding that is easy to miss:
+          // the allowance outlives the deposit. Withdrawing the balance does
+          // not revoke it, so a later deposit is spendable by the delegate
+          // without anyone approving it again.
+          fee: `this also authorises the delegate at ${delegate} to spend the prepaid balance, and that allowance stands until it is revoked — withdrawing does not end it`
         }
       })
 
-      const sent = await sendTransaction(rpc(), account, {
-        to: jobRegistry,
-        value,
-        data: depositAndAuthorize(delegate),
-        chainId: ctx.chainId()
-      })
+      try {
+        const sent = await sendTransaction(rpc(), account, {
+          to: jobRegistry,
+          value,
+          data: depositAndAuthorize(delegate),
+          chainId: ctx.chainId()
+        })
 
-      // Recorded before the wait, not after. The transaction is already
-      // broadcast and cannot be recalled, so a wait that times out — or an
-      // application closed while it waits — must not decide whether this wallet
-      // knows it happened.
-      await recordTransaction(ctx, 'fund', sent)
+        // Recorded before the wait, not after. The transaction is already
+        // broadcast and cannot be recalled, so a wait that times out — or an
+        // application closed while it waits — must not decide whether this wallet
+        // knows it happened.
+        await recordTransaction(ctx, 'fund', sent)
 
-      const receipt = await sent.wait()
-      if (!receipt.status) throw new Error(`the deposit reverted (${sent.hash})`)
+        const receipt = await sent.wait()
+        if (!receipt.status) throw new Error(`the deposit reverted (${sent.hash})`)
 
-      return { hash: sent.hash, block: receipt.blockNumber.toString() }
+        return { hash: sent.hash, block: receipt.blockNumber.toString() }
+      } catch (err) {
+        // The same mapping `ai.start` gives a session: a node that says
+        // "insufficient funds" is saying the wallet cannot cover the amount
+        // plus the gas, which is worth one plain sentence rather than a raw
+        // RPC string.
+        if (/insufficient funds/.test(err?.message ?? '')) {
+          throw new Error(
+            'funding sends a transaction on chain, and this wallet does not have enough LCAI to cover the amount and gas — receive some first, or fund a smaller amount',
+            { cause: err }
+          )
+        }
+        throw err
+      }
     },
 
     /**
@@ -544,7 +587,7 @@ export function aiHandlers(ctx) {
     'ai.withdraw': async (req) => {
       const account = wallet.account()
       const { jobRegistry } = await resolveAddresses(rpc())
-      const value = BigInt(req.amount ?? 0)
+      const value = whole(req.amount, 'the amount') ?? 0n
 
       // Guarded too, though this one moves funds towards the owner rather than
       // away. The contract sends to `msg.sender`, so the destination is not in
@@ -560,17 +603,30 @@ export function aiHandlers(ctx) {
         }
       })
 
-      const sent = await sendTransaction(rpc(), account, {
-        to: jobRegistry,
-        data: withdrawBalance(value),
-        chainId: ctx.chainId()
-      })
-      await recordTransaction(ctx, 'withdraw', sent)
+      try {
+        const sent = await sendTransaction(rpc(), account, {
+          to: jobRegistry,
+          data: withdrawBalance(value),
+          chainId: ctx.chainId()
+        })
+        await recordTransaction(ctx, 'withdraw', sent)
 
-      const receipt = await sent.wait()
-      if (!receipt.status) throw new Error(`the withdrawal reverted (${sent.hash})`)
+        const receipt = await sent.wait()
+        if (!receipt.status) throw new Error(`the withdrawal reverted (${sent.hash})`)
 
-      return { hash: sent.hash, block: receipt.blockNumber.toString() }
+        return { hash: sent.hash, block: receipt.blockNumber.toString() }
+      } catch (err) {
+        // The same mapping `ai.start` gives a session: withdrawing is a
+        // transaction too, and an empty wallet learns that as a raw RPC string
+        // unless it is translated here.
+        if (/insufficient funds/.test(err?.message ?? '')) {
+          throw new Error(
+            'withdrawing sends a transaction on chain, and this wallet has nothing for gas — receive some LCAI first',
+            { cause: err }
+          )
+        }
+        throw err
+      }
     },
 
     'ai.start': async (req) => {
@@ -671,6 +727,23 @@ export function aiHandlers(ctx) {
         throw new Error('your prepaid balance is empty — add funds in Wallet, then ask again')
       }
 
+      // The same caps a room ask is held to, on the same money: a question
+      // from the Models page spends the prepaid balance at the same fee, so a
+      // limit that does not bite here does not bite anywhere. The fee comes
+      // from the chain, and when it cannot be read the null-fee rule in
+      // `limits.check` decides — refused under a limit, allowed without one.
+      const fee = await feeFor(session.conversation.model)
+
+      // The zero check above is not the whole floor: a balance that is short
+      // of the fee dies on chain just the same, and is just as knowable here.
+      if (standing && fee !== null && standing.balance > 0n && standing.balance < fee) {
+        throw new Error(
+          `your prepaid balance of ${standing.balance} wei is short of this job's fee of ${fee} wei — add funds in Wallet, then ask again`
+        )
+      }
+
+      limits.check(fee)
+
       let answer
       try {
         answer = await session.conversation.ask(
@@ -691,6 +764,10 @@ export function aiHandlers(ctx) {
       }
 
       await log.said(session.id, model, 'model', answer.text, answer.jobId)
+
+      // Counted only once the answer exists, for the same reason `room.ask`
+      // records after rather than before: a job that never ran cost nothing.
+      limits.record(fee)
 
       // Asked afterwards, not before replying. The registry takes a few seconds
       // to reach `completed`, and holding the answer back to check something
