@@ -632,14 +632,8 @@
   flex: 0 0 auto;
 }
 
-#panel-chat .composer {
-  display: flex;
-  gap: var(--lc-space-sm);
-  align-items: flex-end;
-  padding: var(--lc-space-md) var(--lc-space-lg);
-  border-top: 1px solid var(--lc-rule);
-  flex: 0 0 auto;
-}
+/* `.composer` and `.composer-input` live in kit.css: the Models page composes
+   with the same control, so it is a shared component, not a room one. */
 
 /* --- Addressing a model ----------------------------------------------------- */
 
@@ -687,40 +681,6 @@
   white-space: nowrap;
   color: var(--lc-text-tertiary);
   font-variant-numeric: tabular-nums;
-}
-
-#panel-chat .composer-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  resize: none;
-  min-height: var(--lc-control-md);
-  max-height: 30vh;
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-lg);
-  padding: var(--lc-space-sm) var(--lc-space-md);
-  font: inherit;
-  font-size: var(--lc-text-md);
-  line-height: var(--lc-leading-normal);
-  color: var(--lc-text-primary);
-  background: var(--lc-surface-2);
-  user-select: text;
-  transition:
-    border-color var(--lc-motion-fast) var(--lc-easing),
-    box-shadow var(--lc-motion-fast) var(--lc-easing);
-}
-
-#panel-chat .composer-input::placeholder {
-  color: var(--lc-text-tertiary);
-}
-
-#panel-chat .composer-input:focus {
-  outline: none;
-  border-color: var(--lc-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lc-accent) 24%, transparent);
-}
-
-#panel-chat .composer-input:disabled {
-  color: var(--lc-text-tertiary);
 }
 
 /* A value that exists to be copied: shown in full where it fits, with the
