@@ -20,6 +20,18 @@
           <div class="empty" id="empty">
             <h1 class="empty-title">No conversations yet</h1>
             <p class="empty-body">Start one, or join with an invite someone sent you.</p>
+            <!-- The one action the sentence promises. rooms.js presses the
+                 sidebar's own New-conversation button on its behalf, so the two
+                 can never disagree about what starting one does. Hidden when
+                 the nothing on screen is "none chosen" rather than "none at
+                 all", where the next step is picking from the list. -->
+            <button
+              class="button button-primary empty-action"
+              type="button"
+              id="empty-create-btn"
+            >
+              Start a conversation
+            </button>
           </div>
 
           <div class="room" id="room" hidden>
@@ -127,6 +139,12 @@
                    what it is not is something anybody needs to look at. -->
               <code class="key room-key" id="room-key" title="Room key" hidden></code>
             </header>
+
+            <!-- What the room has pinned, between the header and the
+                 conversation. Filled by rooms.js from the room's own `pinned`
+                 list and hidden while nothing is pinned — an empty bar is
+                 chrome, not information. -->
+            <div class="pinned-bar" id="pinned-bar" hidden></div>
 
             <div class="room-body">
               <!-- Announced to screen readers as messages arrive, since they

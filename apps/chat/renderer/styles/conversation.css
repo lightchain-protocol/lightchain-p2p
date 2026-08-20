@@ -7,23 +7,28 @@
  * here uses the same tokens and the same control heights as the rest, because
  * a second stylesheet is a filing decision and must not become a second set of
  * conventions.
+ *
+ * Every selector is scoped under `#panel-chat`. These class names — `.message`,
+ * `.message-body`, `.composer-tray` — are generic enough that another surface
+ * could pick them up by accident, and the Models transcript already has: it
+ * wore this file's bubble styles until the scoping took them back.
  */
 
 /* The conversation and the roster beside it. The roster is a fixed column so
    that opening it does not reflow the conversation to a different width every
    time, which loses the reader's place. */
-.room-body {
+#panel-chat .room-body {
   display: flex;
   min-height: 0;
   flex: 1 1 auto;
 }
 
-.room-body > .messages {
+#panel-chat .room-body > .messages {
   flex: 1 1 auto;
   min-width: 0;
 }
 
-.room-members {
+#panel-chat .room-members {
   flex: 0 0 260px;
   overflow-y: auto;
   /* As with the conversation: one axis set to `auto` promotes the other away
@@ -32,22 +37,22 @@
   border-left: 1px solid var(--lc-rule);
 }
 
-.room-members[hidden] {
+#panel-chat .room-members[hidden] {
   display: none;
 }
 
 /* A drawer once the window stops being wide enough for a third column.
-   
+
    At 900 pixels the roster took half the conversation: bubbles wrapped after
    four words and the thing somebody opened the room to read was the narrower
    of the two panes. Overlaying it keeps the conversation whole and makes the
    roster what it is at that size — something you open, look at, and close. */
 @media (max-width: 62rem) {
-  .room-body {
+  #panel-chat .room-body {
     position: relative;
   }
 
-  .room-members {
+  #panel-chat .room-members {
     position: absolute;
     inset: 0 0 0 auto;
     z-index: 5;
@@ -57,7 +62,62 @@
   }
 }
 
-.message-body {
+/* --- The pinned bar --------------------------------------------------------- */
+
+/* Between the header and the conversation, because a pin is a fact about the
+   room rather than a line in it. One quiet row: the icon says what it is, the
+   words say what was pinned, and pressing either jumps to the message. */
+#panel-chat .pinned-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  padding: var(--lc-space-sm) var(--lc-space-lg);
+  border-bottom: 1px solid var(--lc-rule);
+  background: var(--lc-surface-2);
+  color: var(--lc-text-tertiary);
+  font-size: var(--lc-text-xs);
+  flex: 0 0 auto;
+}
+
+#panel-chat .pinned-bar .icon {
+  flex: 0 0 auto;
+  color: var(--lc-accent);
+}
+
+/* The label is the control: a pinned line that cannot be followed is a rumour
+   about a message. One line, clipped, because it is a pointer into the
+   conversation rather than a copy of it. */
+#panel-chat .pinned-bar-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--lc-text-secondary);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+#panel-chat .pinned-bar-label:hover {
+  color: var(--lc-text-primary);
+}
+
+#panel-chat .pinned-bar-label:focus-visible {
+  outline: var(--lc-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--lc-radius-sm);
+}
+
+#panel-chat .pinned-bar-count {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+#panel-chat .message-body {
   display: flex;
   flex-direction: column;
   gap: var(--lc-space-xs);
@@ -80,7 +140,7 @@
  * well, which no constant is.
  */
 /* The bands are on the bubble, not on the row.
-   
+
    They used to be on `.message`, which was the bubble. Once a message became a
    row holding a bubble so an avatar could sit beside it, this rule was still
    here declaring the row a grid — and because it loads after room.css and is
@@ -88,22 +148,22 @@
    above the bubble instead of beside it. Nothing errored and nothing in the
    list looked obviously wrong, because the only messages on screen were the
    reader's own and those carry no avatar. */
-.room-body .message-bubble {
+#panel-chat .room-body .message-bubble {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto;
 }
 
-.room-body .message-meta {
+#panel-chat .room-body .message-meta {
   grid-row: 1;
 }
 
-.room-body .message-body {
+#panel-chat .room-body .message-body {
   grid-row: 2;
 }
 
-.message-actions {
+#panel-chat .message-actions {
   position: absolute;
   /* Named, not placed by auto-flow: an out-of-flow child only gets a grid area
      for a containing block if it says which one it wants. */
@@ -116,22 +176,22 @@
   gap: 2px;
   padding: 2px;
   border-radius: var(--lc-radius-md);
-  background: var(--lc-bg-elevated-2);
+  background: var(--lc-surface-3);
   box-shadow:
     inset 0 0 0 1px var(--lc-rule),
-    0 6px 16px -8px rgb(0 0 0 / 0.55);
+    var(--lc-shadow-1);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--lc-motion-fast) ease;
 }
 
-.message:hover .message-actions,
-.message:focus-within .message-actions {
+#panel-chat .message:hover .message-actions,
+#panel-chat .message:focus-within .message-actions {
   opacity: 1;
   pointer-events: auto;
 }
 
-.message-action {
+#panel-chat .message-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -141,20 +201,20 @@
   border: 0;
   border-radius: var(--lc-radius-sm);
   background: transparent;
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
   cursor: default;
 }
 
-/* The brand tint the rest of the app's controls use. This was
-   `var(--lc-bg-elevated-2)`, which is the toolbar's own background, so hovering
-   a control did nothing anybody could see. */
-.message-action:hover {
-  color: var(--lc-fg);
-  background: color-mix(in srgb, var(--lc-brand) 22%, transparent);
+/* The accent's tint on hover, the same as every other quiet control. This was
+   the toolbar's own background colour, so hovering a control did nothing
+   anybody could see. */
+#panel-chat .message-action:hover {
+  color: var(--lc-text-primary);
+  background: var(--lc-accent-soft);
 }
 
-.message-action:focus-visible {
-  outline: 2px solid var(--lc-brand);
+#panel-chat .message-action:focus-visible {
+  outline: var(--lc-focus-ring);
   outline-offset: 1px;
 }
 
@@ -166,12 +226,12 @@
  * overflow, applied to a toolbar because this one is short enough not to need
  * an overflow at all.
  */
-.message-action-danger {
+#panel-chat .message-action-danger {
   position: relative;
   margin-left: var(--lc-space-sm);
 }
 
-.message-action-danger::before {
+#panel-chat .message-action-danger::before {
   content: '';
   position: absolute;
   left: calc(-1 * var(--lc-space-xs));
@@ -180,79 +240,80 @@
   border-left: 1px solid var(--lc-rule);
 }
 
-.message-action-danger:hover {
+#panel-chat .message-action-danger:hover {
   color: var(--lc-danger);
   background: color-mix(in srgb, var(--lc-danger) 18%, transparent);
 }
 
 /* The message being answered, above the answer. Clipped to one line: it is a
    pointer to something already in the conversation, not a second copy of it. */
-.message-reply {
+#panel-chat .message-reply {
   display: flex;
   gap: var(--lc-space-sm);
   width: 100%;
   padding: 4px var(--lc-space-sm);
   border: 0;
-  border-left: 2px solid var(--lc-brand);
+  border-left: 2px solid var(--lc-accent);
   border-radius: var(--lc-radius-sm);
-  background: var(--lc-bg-elevated-2);
-  color: var(--lc-fg-dim);
+  background: var(--lc-surface-3);
+  color: var(--lc-text-tertiary);
   font-size: var(--lc-text-xs);
   text-align: left;
   cursor: pointer;
 }
 
-.message-reply:hover {
-  color: var(--lc-fg);
+#panel-chat .message-reply:hover {
+  color: var(--lc-text-primary);
 }
 
-.message-reply:focus-visible {
-  outline: 2px solid var(--lc-brand);
+#panel-chat .message-reply:focus-visible {
+  outline: var(--lc-focus-ring);
   outline-offset: 1px;
 }
 
-.message-reply-who {
+#panel-chat .message-reply-who {
   flex: 0 0 auto;
   font-weight: 600;
 }
 
-.message-reply-text {
+#panel-chat .message-reply-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.message-edited {
+#panel-chat .message-edited {
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   font-style: italic;
 }
 
-/* Brand rather than dim: a pin is somebody deliberately marking this line,
+/* Accent rather than dim: a pin is somebody deliberately marking this line,
    unlike "edited", which is a fact the reader is owed rather than a choice. */
-.message-pinned {
+#panel-chat .message-pinned {
   display: inline-flex;
   align-items: center;
   gap: var(--lc-space-xs);
   font-size: var(--lc-text-xs);
-  color: var(--lc-brand);
+  color: var(--lc-accent);
 }
 
-.message-pinned .icon {
+#panel-chat .message-pinned .icon {
   width: 0.85em;
   height: 0.85em;
 }
 
 /* Withdrawn text is styled as absent rather than as text, because it is not
    what anybody wrote — it is this client declining to show what they did. */
-.message-withdrawn {
-  color: var(--lc-fg-dim);
+#panel-chat .message-withdrawn {
+  color: var(--lc-text-tertiary);
   font-style: italic;
 }
 
-/* Arriving at a message from a search result or a reply. Long enough to find
-   with the eye, short enough not to sit there afterwards. */
-.message.is-revealed {
+/* Arriving at a message from a search result, a pin or a reply. Long enough to
+   find with the eye, short enough not to sit there afterwards. The bubble takes
+   the ring rather than the row, so the avatar is not framed with it. */
+#panel-chat .message.is-revealed .message-bubble {
   animation: message-reveal var(--lc-motion-slow) ease;
 }
 
@@ -260,8 +321,8 @@
   0%,
   60% {
     box-shadow:
-      inset 0 0 0 1px var(--lc-brand),
-      0 0 0 3px color-mix(in srgb, var(--lc-brand) 35%, transparent);
+      inset 0 0 0 1px var(--lc-accent),
+      0 0 0 3px color-mix(in srgb, var(--lc-accent) 35%, transparent);
   }
   100% {
     box-shadow: inset 0 0 0 1px var(--lc-rule);
@@ -273,64 +334,89 @@
    Outlined rather than filled, and dashed rather than the hairline every other
    bubble carries: that hairline is what says "this is in the log", and this is
    not, yet. The difference has to survive a glance, because the whole point of
-   the bubble is that it is showing something only this window can see. */
-.message.is-preview {
-  border: 1px dashed color-mix(in srgb, var(--lc-brand) 55%, transparent);
+   the bubble is that it is showing something only this window can see. On the
+   bubble rather than the row — the row is transparent, so a dashed frame there
+   would sit behind the very fill it is meant to replace. */
+#panel-chat .message.is-preview .message-bubble {
+  border: 1px dashed color-mix(in srgb, var(--lc-accent) 55%, transparent);
   background: transparent;
   box-shadow: none;
 }
 
+/* The caret while tokens arrive. Mirrored from the Models transcript rather
+   than borrowed: `.is-streaming` there is that surface's to style, and a rule
+   in another panel's stylesheet is not a thing this one may lean on. Its own
+   keyframes for the same reason. */
+#panel-chat .message.is-streaming .message-text::after {
+  content: '▋';
+  margin-left: 2px;
+  color: var(--lc-text-tertiary);
+  animation: preview-caret 1s steps(2, start) infinite;
+}
+
+@keyframes preview-caret {
+  to {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #panel-chat .message.is-streaming .message-text::after {
+    animation: none;
+  }
+}
+
 /* Italic, matching the "edited" mark, because both are the interface talking
    about a message rather than anything anybody wrote. */
-.message-preview-note {
+#panel-chat .message-preview-note {
   font-style: italic;
 }
 
 /* Where the answer has got to, or why it stopped. Kept out of the text so that
    a phase or an error can never be mistaken for something the model said. */
-.message-preview-status {
+#panel-chat .message-preview-status {
   margin: 0;
   font-size: var(--lc-text-xs);
   line-height: var(--lc-leading-tight);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
 /* A question that failed may already have been paid for, which is worth more
    than the dim grey a status line usually gets. */
-.message.is-preview.is-failed {
+#panel-chat .message.is-preview.is-failed .message-bubble {
   border-color: var(--lc-danger);
 }
 
-.message.is-preview.is-failed .message-preview-status {
+#panel-chat .message.is-preview.is-failed .message-preview-status {
   color: var(--lc-danger);
 }
 
 /* What the next message is carrying, above the composer. Hidden entirely when
    empty so the composer does not gain a permanent empty strip. */
-.composer-tray {
+#panel-chat .composer-tray {
   display: flex;
   flex-wrap: wrap;
   gap: var(--lc-space-sm);
   padding: var(--lc-space-sm) var(--lc-space-lg) 0;
 }
 
-.composer-tray[hidden] {
+#panel-chat .composer-tray[hidden] {
   display: none;
 }
 
-.composer-note {
+#panel-chat .composer-note {
   display: flex;
   align-items: center;
   gap: var(--lc-space-sm);
   padding: 4px var(--lc-space-sm);
   border-radius: var(--lc-radius-md);
-  background: var(--lc-bg-elevated-2);
+  background: var(--lc-surface-3);
   box-shadow: inset 0 0 0 1px var(--lc-rule);
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
-.composer-note-text {
+#panel-chat .composer-note-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -343,12 +429,12 @@
    the same kind of act: both add something to the message before it is sent.
    It was previously announced only by the word "@" inside the placeholder,
    which disappears the moment anybody types. */
-.composer-ask {
+#panel-chat .composer-ask {
   flex: 0 0 auto;
   align-self: flex-end;
   color: var(--lc-text-tertiary);
 }
 
-.composer-ask:hover {
+#panel-chat .composer-ask:hover {
   color: var(--lc-accent);
 }

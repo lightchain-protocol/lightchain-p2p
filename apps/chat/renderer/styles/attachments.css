@@ -6,6 +6,10 @@
  * script either: an image is capped by this file rather than by a measurement
  * taken in the renderer, so a picture from a stranger cannot arrive at a size
  * of its own choosing.
+ *
+ * Scoped under `#panel-chat` with the rest of the conversation: every one of
+ * these elements lives inside it — the button in the composer, the chip in the
+ * tray above it, the arrived file inside a bubble.
  */
 
 /* --- Attaching ------------------------------------------------------------ */
@@ -13,29 +17,29 @@
 /* Square, and the same height as everything else on the composer row. It
    carries `.button` as well, so the border, the radius, the hover and the
    focus ring are the ones every other control already has. */
-.attach-btn {
+#panel-chat .attach-btn {
   width: var(--lc-control-md);
   padding: 0;
   flex: 0 0 auto;
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
 }
 
-.attach-btn:hover:not(:disabled) {
-  color: var(--lc-fg);
+#panel-chat .attach-btn:hover:not(:disabled) {
+  color: var(--lc-text-primary);
 }
 
 /* The composer with a file held over it. An outline rather than a border,
    because a border takes part in layout and the whole conversation would jump
    two pixels every time something was dragged across the window. */
-.attachment-dropping {
-  outline: 2px dashed var(--lc-brand);
+#panel-chat .attachment-dropping {
+  outline: 2px dashed var(--lc-accent);
   outline-offset: -3px;
-  background: color-mix(in srgb, var(--lc-brand) 8%, transparent);
+  background: color-mix(in srgb, var(--lc-accent) 8%, transparent);
 }
 
 /* --- Waiting to be sent --------------------------------------------------- */
 
-.attachment-chip {
+#panel-chat .attachment-chip {
   display: inline-flex;
   align-items: center;
   gap: var(--lc-space-sm);
@@ -45,28 +49,28 @@
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-pill);
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-muted);
-  background: var(--lc-bg-elevated);
+  color: var(--lc-text-secondary);
+  background: var(--lc-surface-2);
 }
 
 /* A filename has whatever length its author felt like. One line, and the chip
    gives way before the size and the remove button do — those are fixed and
    small, and a chip that pushed them off the end would be a chip you cannot
    take off again. */
-.attachment-chip-name {
+#panel-chat .attachment-chip-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.attachment-chip-size {
+#panel-chat .attachment-chip-size {
   flex: 0 0 auto;
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   font-variant-numeric: tabular-nums;
 }
 
-.attachment-chip-remove {
+#panel-chat .attachment-chip-remove {
   display: grid;
   place-items: center;
   width: 20px;
@@ -79,7 +83,7 @@
   font: inherit;
   font-size: var(--lc-text-sm);
   line-height: 1;
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   background: transparent;
   cursor: default;
   transition:
@@ -87,19 +91,19 @@
     color var(--lc-motion-fast) ease-out;
 }
 
-.attachment-chip-remove:hover {
-  color: var(--lc-fg);
-  background: var(--lc-bg-elevated-2);
+#panel-chat .attachment-chip-remove:hover {
+  color: var(--lc-text-primary);
+  background: var(--lc-surface-3);
 }
 
-.attachment-chip-remove:focus-visible {
-  outline: 2px solid var(--lc-brand);
+#panel-chat .attachment-chip-remove:focus-visible {
+  outline: var(--lc-focus-ring);
   outline-offset: 2px;
 }
 
 /* --- Arrived in a message ------------------------------------------------- */
 
-.attachment {
+#panel-chat .attachment {
   min-width: 0;
   margin-top: var(--lc-space-sm);
 }
@@ -107,7 +111,7 @@
 /* Everything that is not an image takes this shape — loading, failed, and an
    ordinary file — so the three read as one thing in three states rather than
    as three unrelated blocks that happen to appear in the same place. */
-.attachment-row {
+#panel-chat .attachment-row {
   display: flex;
   align-items: center;
   gap: var(--lc-space-md);
@@ -115,10 +119,10 @@
   padding: var(--lc-space-sm) var(--lc-space-sm) var(--lc-space-sm) var(--lc-space-md);
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: var(--lc-bg);
+  background: var(--lc-surface-1);
 }
 
-.attachment-text {
+#panel-chat .attachment-text {
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -128,7 +132,7 @@
 /* Shortened in script before it ever gets here, because an ellipsis on the
    right hides the extension. This is the second line of defence: whatever
    arrives, it takes one line and the button beside it keeps its place. */
-.attachment-name {
+#panel-chat .attachment-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -137,31 +141,41 @@
   user-select: text;
 }
 
-.attachment-meta {
+#panel-chat .attachment-meta {
   margin-top: 2px;
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   font-variant-numeric: tabular-nums;
 }
 
-.attachment-meta[data-tone='error'] {
+#panel-chat .attachment-meta[data-tone='error'] {
   color: var(--lc-danger);
 }
 
 /* The same slow fade the titlebar uses for a connection in progress, and the
    same keyframe from app.css rather than a second one that drifts from it. A
    file comes from whichever peer has it, which can take a moment or forever. */
-.attachment-loading .attachment-meta {
+#panel-chat .attachment-loading .attachment-meta {
   animation: pulse 1.6s ease-in-out infinite;
 }
 
-.attachment-row .button {
+/* A looping pulse is a distraction once the words "still fetching" have been
+   read, and a real duration cannot zero itself out the way the motion tokens
+   do. Dimmed and still says the same thing. */
+@media (prefers-reduced-motion: reduce) {
+  #panel-chat .attachment-loading .attachment-meta {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
+#panel-chat .attachment-row .button {
   flex: 0 0 auto;
 }
 
 /* --- An image ------------------------------------------------------------- */
 
-.attachment-figure {
+#panel-chat .attachment-figure {
   min-width: 0;
   margin: 0;
 }
@@ -171,35 +185,35 @@
    photograph to find the next sentence is the thing this exists to prevent.
    `width` and `height` are set on the element from what the image turned out
    to be, and `auto` here lets the caps scale it while keeping that ratio. */
-.attachment-image {
+#panel-chat .attachment-image {
   display: block;
   max-width: 100%;
   max-height: 320px;
   width: auto;
   height: auto;
   border-radius: var(--lc-radius-md);
-  background: var(--lc-bg);
+  background: var(--lc-surface-1);
 }
 
-.attachment-caption {
+#panel-chat .attachment-caption {
   display: flex;
   align-items: center;
   gap: var(--lc-space-sm);
   min-width: 0;
   margin-top: var(--lc-space-xs);
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
-.attachment-caption .attachment-name {
+#panel-chat .attachment-caption .attachment-name {
   flex: 1 1 auto;
 }
 
-.attachment-caption .attachment-meta {
+#panel-chat .attachment-caption .attachment-meta {
   margin-top: 0;
   flex: 0 0 auto;
 }
 
-.attachment-caption .button {
+#panel-chat .attachment-caption .button {
   flex: 0 0 auto;
 }

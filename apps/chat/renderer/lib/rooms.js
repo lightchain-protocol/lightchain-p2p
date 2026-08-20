@@ -255,6 +255,12 @@ function renderNothingChosen() {
   body.textContent = none
     ? 'Start one, or join with an invite someone sent you.'
     : 'Choose one on the left to carry on where you left off.'
+
+  // The action exists only for the first nothing. With rooms listed beside it,
+  // the next step is choosing one, and a "start" button would argue with the
+  // sentence.
+  const action = document.getElementById('empty-create-btn')
+  if (action) action.hidden = !none
 }
 
 function renderRoom() {
@@ -325,15 +331,28 @@ function renderRoom() {
   if (shown.length === 0) {
     const empty = document.createElement('li')
     empty.className = 'messages-empty'
-    empty.textContent = 'No messages yet.'
+    // The composer is the action, so the sentence points at it — except in a
+    // room this peer can only read, where it would point at a disabled box.
+    empty.textContent = room.writable
+      ? 'No messages yet — the first one is yours to write below.'
+      : 'No messages yet.'
     el.messages.append(empty)
   }
 
   const byId = new Map(shown.map((m) => [m.id, m]))
+
+  // Above the conversation, not inside it: a pinned line is a fact about the
+  // room, so it reads from the room's own list rather than being found by
+  // scrolling.
+  renderPinned(room, byId)
+
   let previous = null
   let onDay = null
 
-  for (const message of shown) {
+  // Indexed rather than `of`, because where an avatar goes depends on the
+  // message after this one, not only the one before.
+  for (let at = 0; at < shown.length; at++) {
+    const message = shown[at]
     // A day boundary, once, above the first message of it. Without these a
     // conversation is a wall of clock times with no way to tell last Tuesday
     // from twenty minutes ago — the timestamp on each line answers "when in the
@@ -394,6 +413,22 @@ function renderRoom() {
       message.at - previous.at < 10 * 60 * 1000
     if (run) item.classList.add('is-run')
     previous = message
+
+    // Whether the next line continues this run. The mirror image of `run`,
+    // asked of the message after rather than the one before, and what decides
+    // where the avatar sits: a face belongs at the bottom of a run, on its
+    // last line, which is where the eye finishes reading. A new day breaks a
+    // run the way it breaks `previous` above, so the last line of Tuesday does
+    // not lend its face to Wednesday.
+    const next = shown[at + 1]
+    const runOn =
+      next !== undefined &&
+      !next.event &&
+      next.from === message.from &&
+      !message.answer &&
+      !next.answer &&
+      next.at - message.at < 10 * 60 * 1000 &&
+      dayOf(next.at) === dayOf(message.at)
 
     const meta = document.createElement('div')
     meta.className = 'message-meta'
@@ -555,12 +590,14 @@ function renderRoom() {
     // back to the top-right corner, which is the author and the clock.
     if (room.writable) bubble.append(messageActions(message, room))
 
-    // Beside incoming messages only, and only on the first of a run. Your own
+    // Beside incoming messages only, and only on the last of a run. Your own
     // face next to everything you said is noise — you know who you are — and a
-    // column of identical avatars down a run is the same face six times.
+    // column of identical avatars down a run is the same face six times. The
+    // column keeps its width whether or not the face is drawn, so a run's
+    // bubbles line up rather than stepping sideways at the end of it.
     if (!mine) {
       const face = el2('div', 'message-avatar', '')
-      if (!run) face.append(avatar(message.verified === true ? message.author : message.from, 28))
+      if (!runOn) face.append(avatar(message.verified === true ? message.author : message.from, 28))
       item.append(face)
     }
 
@@ -576,6 +613,54 @@ function renderRoom() {
   // Yanking them down mid-scroll is how a chat loses a message someone is
   // still reading.
   if (following) el.messages.scrollTop = el.messages.scrollHeight
+}
+
+/**
+ * What the room has pinned, between the header and the conversation.
+ *
+ * Reads the room's own `pinned` list — ids in display order — rather than
+ * scanning the conversation for marked messages, because the list is the
+ * resolved fact and the scan would be a second opinion about it. A pin that
+ * points at a message this machine has not replicated yet, or at one since
+ * withdrawn, is left out rather than offered as a jump to nothing.
+ *
+ * The latest pin is the headline because it is the one somebody most recently
+ * asked the room to keep in view; the rest are a count. Pressing it jumps to
+ * the message, which is the only thing the bar is for.
+ */
+function renderPinned(room, byId) {
+  const bar = document.getElementById('pinned-bar')
+  if (!bar) return
+
+  const held = (room.pinned ?? [])
+    .map((id) => byId.get(id))
+    .filter((m) => m !== undefined && m.deletedAt === undefined)
+
+  bar.replaceChildren()
+  if (held.length === 0) {
+    bar.hidden = true
+    return
+  }
+
+  const latest = held[held.length - 1]
+
+  const mark = svg('svg', { class: 'icon', 'aria-hidden': 'true' })
+  mark.append(svg('use', { href: '#i-pin' }))
+
+  const jump = el2('button', 'pinned-bar-label', '')
+  jump.type = 'button'
+  // A file pinned without a caption has no text to quote; bodyFor says what
+  // it is instead, the same rule the sidebar's last-message line keeps.
+  jump.textContent =
+    typeof latest.text === 'string' && latest.text.trim() !== ''
+      ? latest.text.slice(0, 140)
+      : bodyFor(latest)
+  jump.title = 'Pinned in this room — jump to it'
+  jump.addEventListener('click', () => revealMessage(latest.id))
+
+  bar.append(mark, jump)
+  if (held.length > 1) bar.append(el2('span', 'pinned-bar-count', `${held.length} pinned`))
+  bar.hidden = false
 }
 
 /**
@@ -1051,6 +1136,14 @@ document.getElementById('room-secure').addEventListener('click', () => {
 })
 
 // --- Actions ---------------------------------------------------------------
+
+// The empty page's one action is the sidebar's own button, pressed on its
+// behalf, so "start a conversation" can never drift into doing two different
+// things depending on where it was pressed. Wired here rather than in the
+// markup because the behaviour belongs to the button being borrowed.
+document.getElementById('empty-create-btn')?.addEventListener('click', () => {
+  el.createBtn.click()
+})
 
 el.createBtn.addEventListener('click', async () => {
   el.createBtn.disabled = true

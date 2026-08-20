@@ -3,11 +3,19 @@
  *
  * Split out of app.css so this surface can be worked on without touching every
  * other one. app.css keeps what is genuinely shared.
+ *
+ * Every rule is scoped under `#panel-chat` except the three that are not this
+ * surface's to claim: `.key` and `.key-row` are also worn by Settings and the
+ * dialogs, and `.grant-form` lives in the dialogs. Everything else used to be
+ * declared globally, which is how the Models transcript (`#ai-messages`, a
+ * `.messages` list of `.message` rows) came to be styled by a stylesheet it
+ * had never heard of. Scoping is what keeps this file's promises inside the
+ * conversation.
  */
 
 /* --- Room ----------------------------------------------------------------- */
 
-.room {
+#panel-chat .room {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -23,7 +31,7 @@
  * changes one and not the other, and a media query would drop the labels at
  * the wrong moment in both directions.
  */
-.room-head {
+#panel-chat .room-head {
   display: flex;
   align-items: center;
   gap: var(--lc-space-md) var(--lc-space-lg);
@@ -35,7 +43,7 @@
 
 /* The name, whether the room is encrypted, and what it knows about who is in
    it — read as one line, because they are one subject. */
-.room-identity {
+#panel-chat .room-identity {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -43,7 +51,7 @@
   min-width: 0;
 }
 
-.room-title {
+#panel-chat .room-title {
   margin: 0;
   font-size: var(--lc-text-lg);
   font-weight: 600;
@@ -55,7 +63,7 @@
 /* Not a chip: it is the one thing in this group that answers back. Green, and
    the same tinted pill the `ok` chip wears, so it reads as a state that
    happens to be pressable rather than as a fifth button in the row. */
-.room-secure {
+#panel-chat .room-secure {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -70,29 +78,29 @@
   transition: background-color var(--lc-motion-fast) ease-out;
 }
 
-.room-secure:hover {
+#panel-chat .room-secure:hover {
   background: color-mix(in srgb, var(--lc-success) 28%, transparent);
 }
 
-.room-secure:focus-visible {
-  outline: 2px solid var(--lc-brand);
+#panel-chat .room-secure:focus-visible {
+  outline: var(--lc-focus-ring);
   outline-offset: 2px;
 }
 
 /* A count that changes under the reader must not shift the words beside it. */
-.room-peers {
+#panel-chat .room-peers {
   font-variant-numeric: tabular-nums;
 }
 
 /* The role the room gave this peer, as a fact rather than a control. Read-only
    is the one worth noticing, so it takes the warning tone the kit's chips use
-   for the same job. */
-.chip[data-role='reader'] {
+   for the same job. Scoped, as the kit asks of any extension to `.chip`. */
+#panel-chat .chip[data-role='reader'] {
   background: color-mix(in srgb, var(--lc-warning) 16%, transparent);
   color: var(--lc-warning);
 }
 
-.room-head-actions {
+#panel-chat .room-head-actions {
   display: flex;
   align-items: center;
   gap: var(--lc-space-sm);
@@ -112,17 +120,17 @@
 /* Quieter than the buttons beside it, for something offered rather than
    suggested. The border arrives on hover, so the control is discoverable
    without being a fourth thing competing for the eye at rest. */
-.room-quiet {
+#panel-chat .room-quiet {
   border-color: transparent;
   background: transparent;
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
 }
 
-.room-quiet:hover:not(:disabled) {
-  color: var(--lc-fg);
+#panel-chat .room-quiet:hover:not(:disabled) {
+  color: var(--lc-text-primary);
 }
 
-.room-square {
+#panel-chat .room-square {
   width: var(--lc-control-sm);
   padding: 0;
 }
@@ -130,7 +138,7 @@
 /* On, and saying so. A toggle that looks identical whichever way it is set is
    a control you have to press to find out what it did. The roster's toggle is
    the member count under the room's name now, so this is what marks it. */
-.room-people[aria-expanded='true'] {
+#panel-chat .room-people[aria-expanded='true'] {
   color: var(--lc-accent);
 }
 
@@ -139,11 +147,11 @@
    rebuilt to stop doing. Each button keeps its `aria-label` and its tooltip,
    so nothing is lost but the ink. */
 @container (max-width: 640px) {
-  .room-action-label {
+  #panel-chat .room-action-label {
     display: none;
   }
 
-  .room-head-actions .button {
+  #panel-chat .room-head-actions .button {
     width: var(--lc-control-sm);
     padding: 0;
   }
@@ -158,9 +166,11 @@
  * inside the header would be clipped by nothing today and by the first person
  * to give the header `overflow: hidden`. Anchor positioning is what ties it
  * back to its trigger: the two are in different containing blocks, so
- * `position: absolute` has nothing to resolve against.
+ * `position: absolute` has nothing to resolve against. A popover stays a
+ * descendant of the panel in the document whichever layer it is painted in,
+ * so the scoping above still reaches it.
  */
-.room-menu-trigger {
+#panel-chat .room-menu-trigger {
   anchor-name: --lc-room-menu;
 }
 
@@ -168,7 +178,7 @@
    border, a padding and system colours. All of it is replaced — the insets
    first, or the menu is centred in the window rather than sat under the
    ellipsis that opened it. */
-.room-menu {
+#panel-chat .room-menu {
   position: fixed;
   position-anchor: --lc-room-menu;
   position-area: block-end span-inline-start;
@@ -180,21 +190,21 @@
   padding: var(--lc-space-xs);
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-lg);
-  color: var(--lc-fg);
-  background: var(--lc-bg-elevated-2);
-  box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.6);
+  color: var(--lc-text-primary);
+  background: var(--lc-surface-3);
+  box-shadow: var(--lc-shadow-3);
 }
 
 /* Declared only for the open state. An author `display` would beat the UA rule
    that hides a closed popover, and the menu would sit in the header
    permanently. */
-.room-menu:popover-open {
+#panel-chat .room-menu:popover-open {
   display: flex;
   flex-direction: column;
   gap: var(--lc-space-xs);
 }
 
-.room-menu-item {
+#panel-chat .room-menu-item {
   display: flex;
   align-items: center;
   gap: var(--lc-space-sm);
@@ -205,37 +215,40 @@
   border-radius: var(--lc-radius-md);
   font: inherit;
   font-size: var(--lc-text-sm);
-  color: var(--lc-fg);
+  color: var(--lc-text-primary);
   background: transparent;
   text-align: left;
   cursor: default;
 }
 
-.room-menu-item:focus-visible {
-  outline: 2px solid var(--lc-brand);
+#panel-chat .room-menu-item:focus-visible {
+  outline: var(--lc-focus-ring);
   outline-offset: -2px;
 }
 
 /* Red on the item rather than on the whole menu, and paired with a word and a
    sentence underneath: colour is never the only thing saying this one is
    different. */
-.room-menu-danger {
+#panel-chat .room-menu-danger {
   color: var(--lc-danger);
 }
 
-.room-menu-danger:hover {
+#panel-chat .room-menu-danger:hover {
   background: color-mix(in srgb, var(--lc-danger) 16%, transparent);
 }
 
-.room-menu-note {
+#panel-chat .room-menu-note {
   margin: 0;
   padding: 0 var(--lc-space-md) var(--lc-space-xs);
   font-size: var(--lc-text-xs);
   line-height: var(--lc-leading-normal);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   text-wrap: pretty;
 }
 
+/* Shared, deliberately: Settings and the dialogs wear `.key` too, and this is
+   the only definition. Scoping it to the panel would leave those surfaces
+   unstyled, which is the leak running in the other direction. */
 .key {
   display: inline-block;
   max-width: 32ch;
@@ -245,7 +258,7 @@
   vertical-align: bottom;
   font-family: var(--lc-mono);
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   /* Keys exist to be copied. */
   user-select: text;
 }
@@ -254,18 +267,15 @@
    kept its full 32ch in a column that had shrunk to half of it, and ran under
    the actions at a narrow window. A block takes the column's width and
    ellipsises inside it. */
-.room-key {
+#panel-chat .room-key {
   display: block;
 }
 
-/* The room's own badges became kit chips. This is left because the wallet's
-   network label still reads it, and it predates the kit rather than belonging
-   to this surface. */
 /* --- Room events ---------------------------------------------------------- */
 
 /* A rename is not addressed to anyone, so it reads across the conversation
    rather than sitting in a bubble on one side of it. */
-.system {
+#panel-chat .system {
   display: flex;
   align-items: baseline;
   justify-content: center;
@@ -274,24 +284,24 @@
   max-width: 100%;
   padding: 2px var(--lc-space-md);
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
-.system-text {
+#panel-chat .system-text {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.system-when {
+#panel-chat .system-when {
   flex: 0 0 auto;
   font-variant-numeric: tabular-nums;
 }
 
 /* --- Messages ------------------------------------------------------------- */
 
-.messages {
+#panel-chat .messages {
   display: flex;
   flex-direction: column;
   gap: var(--lc-space-md);
@@ -310,12 +320,12 @@
 }
 
 /* A row, holding an avatar and a bubble.
-   
+
    The bubble used to be this element. Splitting them is what lets a face sit
    beside an incoming message without being inside the box the message is drawn
    in — and it costs nothing, because the id and the alignment stay here where
    everything already looks for them. */
-.message {
+#panel-chat .message {
   display: flex;
   align-items: flex-end;
   gap: var(--lc-space-sm);
@@ -323,14 +333,14 @@
   align-self: flex-start;
 }
 
-.message.is-own {
+#panel-chat .message.is-own {
   align-self: flex-end;
   flex-direction: row-reverse;
 }
 
 /* Always the same width, whether or not it holds a face. A run of messages
    whose bubbles shift left when the avatar disappears reads as two people. */
-.message-avatar {
+#panel-chat .message-avatar {
   width: 28px;
   height: 28px;
   flex: 0 0 auto;
@@ -338,7 +348,7 @@
   overflow: hidden;
 }
 
-.message-avatar svg {
+#panel-chat .message-avatar svg {
   width: 100%;
   height: 100%;
   display: block;
@@ -346,9 +356,9 @@
 
 /* The hairline is what makes a bubble a bubble on a light background, where the
    raised surface is only a couple of steps off the page behind it. */
-.message-bubble {
+#panel-chat .message-bubble {
   min-width: 0;
-  padding: 6px var(--lc-space-md) var(--lc-space-sm);
+  padding: var(--lc-space-sm) var(--lc-space-md);
   border-radius: var(--lc-radius-bubble);
   background: var(--lc-surface-2);
   box-shadow: inset 0 0 0 1px var(--lc-rule);
@@ -357,18 +367,18 @@
 /* Accent-tinted rather than one more grey. Which side a message is on is the
    fastest way to read a conversation and colour is the second; two neutrals a
    step apart give you neither at a glance. */
-.message.is-own .message-bubble {
+#panel-chat .message.is-own .message-bubble {
   background: var(--lc-accent-soft);
-  box-shadow: inset 0 0 0 1px transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lc-accent) 22%, transparent);
 }
 
 /* The corner nearest its owner is squared off, which is what makes a bubble
    point at somebody rather than float. */
-.message .message-bubble {
+#panel-chat .message .message-bubble {
   border-bottom-left-radius: var(--lc-radius-sm);
 }
 
-.message.is-own .message-bubble {
+#panel-chat .message.is-own .message-bubble {
   border-bottom-left-radius: var(--lc-radius-bubble);
   border-bottom-right-radius: var(--lc-radius-sm);
 }
@@ -377,15 +387,15 @@
    lines, not several announcements. Repeating the name and the clock above each
    of them is the single loudest thing a chat interface can get wrong: the
    metadata ends up outweighing what was actually said. */
-.message.is-run {
+#panel-chat .message.is-run {
   margin-top: calc(-1 * var(--lc-space-sm));
 }
 
-.message.is-run .message-bubble {
+#panel-chat .message.is-run .message-bubble {
   border-top-left-radius: var(--lc-radius-sm);
 }
 
-.message.is-run.is-own .message-bubble {
+#panel-chat .message.is-run.is-own .message-bubble {
   border-top-left-radius: var(--lc-radius-bubble);
   border-top-right-radius: var(--lc-radius-sm);
 }
@@ -395,7 +405,7 @@
 /* A rule with the date in it, once per day. Without these a conversation is a
    wall of clock times: each line answers "when in the day" and nothing answers
    "which day". */
-.day-rule {
+#panel-chat .day-rule {
   display: flex;
   align-items: center;
   gap: var(--lc-space-md);
@@ -404,20 +414,20 @@
   font-size: var(--lc-type-caption);
 }
 
-.day-rule::before,
-.day-rule::after {
+#panel-chat .day-rule::before,
+#panel-chat .day-rule::after {
   content: '';
   flex: 1 1 auto;
   height: 1px;
   background: var(--lc-rule);
 }
 
-.day-rule-label {
+#panel-chat .day-rule-label {
   flex: 0 0 auto;
 }
 
-.message.is-run .message-author,
-.message.is-run .message-time {
+#panel-chat .message.is-run .message-author,
+#panel-chat .message.is-run .message-time {
   display: none;
 }
 
@@ -427,12 +437,13 @@
    not the same line, and hiding that because the previous message happened to
    be from the same person would be hiding it at random. A pin is the same
    argument: somebody marked that line and not the one above it. */
-.message.is-run
+#panel-chat
+  .message.is-run
   .message-meta:not(:has(.message-proof, .message-warning, .message-edited, .message-pinned)) {
   display: none;
 }
 
-.message-meta {
+#panel-chat .message-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -440,37 +451,37 @@
   margin-bottom: 2px;
   font-size: var(--lc-text-xs);
   line-height: var(--lc-leading-tight);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
-.message-author {
+#panel-chat .message-author {
   font-family: var(--lc-mono);
   font-weight: 500;
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
 }
 
 /* Only on an author whose signature checked out. The affordance is the point:
    an address you can pay should look different from one you cannot. */
-.message-author-payable {
+#panel-chat .message-author-payable {
   cursor: default;
   text-decoration: underline;
   text-decoration-style: dotted;
   text-underline-offset: 3px;
 }
 
-.message-author-payable:hover {
-  color: var(--lc-brand-ink);
+#panel-chat .message-author-payable:hover {
+  color: var(--lc-accent);
 }
 
-.message-author-payable:focus-visible {
-  outline: 2px solid var(--lc-brand);
+#panel-chat .message-author-payable:focus-visible {
+  outline: var(--lc-focus-ring);
   outline-offset: 2px;
   border-radius: 2px;
 }
 
 /* The clock is the least important thing in the row and it repeats on every
    one, so it sits at the end and stays out of the way. */
-.message-time {
+#panel-chat .message-time {
   margin-left: auto;
   padding-left: var(--lc-space-sm);
   font-variant-numeric: tabular-nums;
@@ -478,32 +489,33 @@
 
 /* --- Formatting in a message ----------------------------------------------- */
 
-.md-code {
+#panel-chat .md-code {
   padding: 1px 5px;
   border-radius: var(--lc-radius-sm);
-  background: color-mix(in srgb, var(--lc-fg-dim) 22%, transparent);
+  background: color-mix(in srgb, var(--lc-text-tertiary) 22%, transparent);
   font-family: var(--lc-mono);
 }
 
-.link {
-  color: var(--lc-brand-ink);
+#panel-chat .link {
+  color: var(--lc-accent);
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: default;
   overflow-wrap: anywhere;
 }
 
-.link:hover {
-  color: var(--lc-brand);
+#panel-chat .link:hover {
+  color: var(--lc-accent);
+  text-decoration-thickness: 2px;
 }
 
-.link:focus-visible {
-  outline: 2px solid var(--lc-brand);
+#panel-chat .link:focus-visible {
+  outline: var(--lc-focus-ring);
   outline-offset: 2px;
   border-radius: 2px;
 }
 
-.message-text {
+#panel-chat .message-text {
   margin: 0;
   line-height: var(--lc-leading-normal);
   /* Preserves the line breaks someone typed without collapsing runs of them. */
@@ -512,43 +524,43 @@
   user-select: text;
 }
 
-.messages-empty {
+#panel-chat .messages-empty {
   margin: auto;
   font-size: var(--lc-text-sm);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
 /* --- Typing --------------------------------------------------------------- */
 
-.typing {
+#panel-chat .typing {
   display: flex;
   align-items: center;
   gap: var(--lc-space-sm);
   margin: 0;
   padding: 0 var(--lc-space-lg) var(--lc-space-sm);
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   flex: 0 0 auto;
 }
 
-.typing-dots {
+#panel-chat .typing-dots {
   display: inline-flex;
   gap: 3px;
 }
 
-.typing-dots i {
+#panel-chat .typing-dots i {
   width: 5px;
   height: 5px;
   border-radius: var(--lc-radius-pill);
-  background: var(--lc-fg-dim);
+  background: var(--lc-text-tertiary);
   animation: typing-bounce 1.2s ease-in-out infinite;
 }
 
-.typing-dots i:nth-child(2) {
+#panel-chat .typing-dots i:nth-child(2) {
   animation-delay: 0.15s;
 }
 
-.typing-dots i:nth-child(3) {
+#panel-chat .typing-dots i:nth-child(3) {
   animation-delay: 0.3s;
 }
 
@@ -565,19 +577,30 @@
   }
 }
 
+/* A real duration rather than a token, so it cannot zero itself out the way
+   the motion tokens do — and a looping animation nobody can switch off is a
+   distraction, not a hint. Still, not none: three lit dots say "typing" without
+   moving. */
+@media (prefers-reduced-motion: reduce) {
+  #panel-chat .typing-dots i {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
 /* --- Composer ------------------------------------------------------------- */
 
-.notice {
+#panel-chat .notice {
   display: flex;
   align-items: center;
   gap: var(--lc-space-md);
   padding: var(--lc-space-md) var(--lc-space-lg);
   border-top: 1px solid var(--lc-rule);
-  background: var(--lc-bg-elevated);
+  background: var(--lc-surface-2);
   flex: 0 0 auto;
 }
 
-.notice-main {
+#panel-chat .notice-main {
   display: flex;
   flex-direction: column;
   gap: var(--lc-space-sm);
@@ -585,12 +608,14 @@
   flex: 1 1 auto;
 }
 
-.notice-body {
+#panel-chat .notice-body {
   margin: 0;
   font-size: var(--lc-text-sm);
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
 }
 
+/* Shared, deliberately: the grant-writer form lives in the dialogs, and this
+   is the only definition. */
 .grant-form {
   display: flex;
   align-items: center;
@@ -602,12 +627,12 @@
   min-width: 0;
 }
 
-.composer-wrap {
+#panel-chat .composer-wrap {
   position: relative;
   flex: 0 0 auto;
 }
 
-.composer {
+#panel-chat .composer {
   display: flex;
   gap: var(--lc-space-sm);
   align-items: flex-end;
@@ -618,7 +643,7 @@
 
 /* --- Addressing a model ----------------------------------------------------- */
 
-.mentions {
+#panel-chat .mentions {
   position: absolute;
   bottom: 100%;
   left: var(--lc-space-lg);
@@ -632,11 +657,11 @@
   list-style: none;
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-lg);
-  background: var(--lc-bg-elevated-2);
-  box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.6);
+  background: var(--lc-surface-3);
+  box-shadow: var(--lc-shadow-3);
 }
 
-.mention {
+#panel-chat .mention {
   display: flex;
   align-items: baseline;
   gap: var(--lc-space-md);
@@ -645,60 +670,62 @@
   cursor: default;
 }
 
-.mention.is-active {
-  background: color-mix(in srgb, var(--lc-brand) 20%, transparent);
+/* The accent's own tint, which is what "selected" means everywhere else. */
+#panel-chat .mention.is-active {
+  background: var(--lc-accent-soft);
 }
 
-.mention-name {
+#panel-chat .mention-name {
   font-size: var(--lc-text-sm);
   font-weight: 500;
   font-family: var(--lc-mono);
 }
 
-.mention-meta {
+#panel-chat .mention-meta {
   margin-left: auto;
   font-size: var(--lc-text-xs);
   white-space: nowrap;
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   font-variant-numeric: tabular-nums;
 }
 
-.composer-input {
+#panel-chat .composer-input {
   flex: 1 1 auto;
   min-width: 0;
   resize: none;
   min-height: var(--lc-control-md);
   max-height: 30vh;
   border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-md);
-  padding: 5px var(--lc-space-md);
+  border-radius: var(--lc-radius-lg);
+  padding: 8px var(--lc-space-md);
   font: inherit;
   font-size: var(--lc-text-md);
   line-height: var(--lc-leading-normal);
-  color: var(--lc-fg);
-  background: var(--lc-bg-elevated);
+  color: var(--lc-text-primary);
+  background: var(--lc-surface-2);
   user-select: text;
   transition:
     border-color var(--lc-motion-fast) ease-out,
     box-shadow var(--lc-motion-fast) ease-out;
 }
 
-.composer-input::placeholder {
-  color: var(--lc-fg-dim);
+#panel-chat .composer-input::placeholder {
+  color: var(--lc-text-tertiary);
 }
 
-.composer-input:focus {
+#panel-chat .composer-input:focus {
   outline: none;
-  border-color: var(--lc-brand);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lc-brand) 24%, transparent);
+  border-color: var(--lc-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lc-accent) 24%, transparent);
 }
 
-.composer-input:disabled {
-  color: var(--lc-fg-dim);
+#panel-chat .composer-input:disabled {
+  color: var(--lc-text-tertiary);
 }
 
 /* A value that exists to be copied: shown in full where it fits, with the
-   button that copies it attached rather than floated off to one side. */
+   button that copies it attached rather than floated off to one side. Shared
+   with Settings and the dialogs, like `.key`. */
 .key-row {
   display: flex;
   align-items: center;
@@ -708,7 +735,7 @@
   padding: var(--lc-space-xs) var(--lc-space-xs) var(--lc-space-xs) var(--lc-space-md);
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: var(--lc-bg-elevated);
+  background: var(--lc-surface-2);
 }
 
 .key-row .key {
@@ -721,12 +748,21 @@
   flex: 0 0 auto;
 }
 
+/* --- The empty page's one action ------------------------------------------- */
+
+/* The sentence says what will be here; this starts it. Spacing is all it
+   needs — the weight is `.button-primary`'s, and a second style of button on
+   an empty page would be a choice where there is only one thing to do. */
+#panel-chat .empty-action {
+  margin-top: var(--lc-space-xl);
+}
+
 /* --- The room's own row ------------------------------------------------------ */
 
 /* Avatar, name, who is in it, and one overflow. What was here ranked nothing:
    three status badges and four buttons of equal weight, with Leave dressed the
    same as Members. */
-.room-identity {
+#panel-chat .room-identity {
   display: flex;
   align-items: center;
   gap: var(--lc-space-sm);
@@ -734,7 +770,7 @@
   flex: 1 1 auto;
 }
 
-.room-mark {
+#panel-chat .room-mark {
   width: 32px;
   height: 32px;
   flex: 0 0 auto;
@@ -742,13 +778,13 @@
   overflow: hidden;
 }
 
-.room-mark svg {
+#panel-chat .room-mark svg {
   width: 100%;
   height: 100%;
   display: block;
 }
 
-.room-named {
+#panel-chat .room-named {
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -758,7 +794,7 @@
 /* The count is a button because pressing it is what opens the roster - the
    thing it is a summary of. A label that describes a panel and does not open
    it is a label somebody has to hunt for the control of. */
-.room-people {
+#panel-chat .room-people {
   padding: 0;
   border: 0;
   background: none;
@@ -769,15 +805,15 @@
   cursor: pointer;
 }
 
-.room-people:hover {
+#panel-chat .room-people:hover {
   color: var(--lc-text-secondary);
 }
 
-.room-role-chip {
+#panel-chat .room-role-chip {
   flex: 0 0 auto;
 }
 
-.room-menu-rule {
+#panel-chat .room-menu-rule {
   height: 1px;
   margin: var(--lc-space-xs) var(--lc-space-sm);
   background: var(--lc-rule);

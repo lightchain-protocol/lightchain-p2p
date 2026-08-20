@@ -7,11 +7,17 @@
  * and hover treatment from `.button` and `.badge` in `app.css` rather than
  * inventing quieter versions of them, so a room with reactions in it looks like
  * the room without.
+ *
+ * The bar under a message is scoped under `#panel-chat`, like the rest of the
+ * conversation. The picker is not: it is appended to `document.body` — a list
+ * that is `aria-live` would read the whole panel aloud the moment it opened —
+ * so its rules stay global. Global is safe here because the `emoji-` prefix
+ * belongs to this file alone.
  */
 
 /* --- The bar under a message ---------------------------------------------- */
 
-.reactions {
+#panel-chat .reactions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--lc-space-xs);
@@ -23,7 +29,7 @@
 /* Lighter than the bubble it sits on rather than darker, the way `.chip` sits
    on the hero: a pill in the same tone as the surface behind it disappears on
    an own message, where the bubble is already the elevated colour. */
-.reaction {
+#panel-chat .reaction {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -35,8 +41,8 @@
   font: inherit;
   font-size: var(--lc-text-xs);
   line-height: 1;
-  color: var(--lc-fg-muted);
-  background: var(--lc-bg);
+  color: var(--lc-text-secondary);
+  background: var(--lc-surface-1);
   cursor: default;
   transition:
     background-color var(--lc-motion-fast) ease-out,
@@ -44,43 +50,44 @@
     color var(--lc-motion-fast) ease-out;
 }
 
-.reaction:hover:not(:disabled) {
-  border-color: var(--lc-brand);
-  color: var(--lc-fg);
-  background: color-mix(in srgb, var(--lc-brand) 14%, var(--lc-bg-elevated-2));
+#panel-chat .reaction:hover:not(:disabled) {
+  border-color: var(--lc-accent);
+  color: var(--lc-text-primary);
+  background: var(--lc-accent-soft);
 }
 
-.reaction:active:not(:disabled) {
-  background: color-mix(in srgb, var(--lc-brand) 22%, var(--lc-bg-elevated-2));
+#panel-chat .reaction:active:not(:disabled) {
+  background: color-mix(in srgb, var(--lc-accent) 22%, var(--lc-surface-3));
 }
 
-.reaction:focus-visible {
-  outline: 2px solid var(--lc-brand);
+#panel-chat .reaction:focus-visible {
+  outline: var(--lc-focus-ring);
   outline-offset: 2px;
 }
 
 /* A read-only member can see what a room thinks and cannot add to it. */
-.reaction:disabled {
+#panel-chat .reaction:disabled {
   opacity: 0.45;
 }
 
-/* One this peer is behind. It carries the brand fill and a brand border rather
-   than the fill alone, because at thirteen pixels a tinted background is a
-   difference some people cannot see and the border is a difference in shape. */
-.reaction.is-mine {
-  border-color: color-mix(in srgb, var(--lc-brand) 60%, transparent);
-  color: var(--lc-brand-ink);
-  background: color-mix(in srgb, var(--lc-brand) 16%, transparent);
+/* One this peer is behind. It carries the accent fill and an accent border
+   rather than the fill alone, because at thirteen pixels a tinted background
+   is a difference some people cannot see and the border is a difference in
+   shape. */
+#panel-chat .reaction.is-mine {
+  border-color: color-mix(in srgb, var(--lc-accent) 60%, transparent);
+  color: var(--lc-accent);
+  background: var(--lc-accent-soft);
 }
 
-.reaction.is-mine:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--lc-brand) 26%, transparent);
+#panel-chat .reaction.is-mine:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--lc-accent) 26%, transparent);
 }
 
 /* Bounded rather than trusted. A reaction is other people's text, and the
    protocol lets it be twenty-four characters of anything; unchecked, one member
    could put a sentence wearing a button under everybody's messages. */
-.reaction-emoji {
+#panel-chat .reaction-emoji {
   max-width: 8ch;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -88,7 +95,7 @@
   font-size: var(--lc-text-sm);
 }
 
-.reaction-count {
+#panel-chat .reaction-count {
   font-variant-numeric: tabular-nums;
 }
 
@@ -129,9 +136,9 @@
   overflow: hidden;
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-lg);
-  color: var(--lc-fg);
-  background: var(--lc-bg-elevated-2);
-  box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.6);
+  color: var(--lc-text-primary);
+  background: var(--lc-surface-3);
+  box-shadow: var(--lc-shadow-3);
 }
 
 /* The field is `.input`, which is monospaced for the keys and addresses that
@@ -147,7 +154,7 @@
   margin: 0;
   padding: var(--lc-space-sm) var(--lc-space-xs);
   font-size: var(--lc-text-sm);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
 /* The panel is capped and this is the part that gives: the field and the
@@ -168,7 +175,7 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
 /* Eight across, and `COLUMNS` in `lib/reactions.js` has to say eight as well:
@@ -192,7 +199,7 @@
 }
 
 .emoji-option:hover {
-  background: var(--lc-bg-elevated);
+  background: var(--lc-surface-2);
 }
 
 /* The selection, which is the keyboard's and the pointer's alike. Focus stays
@@ -200,7 +207,7 @@
    saying what Enter would choose — the same treatment the `@model` list uses
    for the same reason. */
 .emoji-option.is-active {
-  background: color-mix(in srgb, var(--lc-brand) 20%, transparent);
+  background: var(--lc-accent-soft);
 }
 
 .emoji-hint {
@@ -209,5 +216,5 @@
   font-family: var(--lc-mono);
   font-size: var(--lc-text-xs);
   line-height: var(--lc-leading-normal);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
