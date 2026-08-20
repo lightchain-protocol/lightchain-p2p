@@ -126,87 +126,11 @@
       </form>
     </dialog>
 
-    <!-- Bridging ------------------------------------------------------------
-         The disclosure is the first thing and it is a gate, not a notice. This
-         route's safety rests on one key, nothing on chain obliges anyone to
-         deliver, and a stalled transfer cannot be retried from here or looked
-         up anywhere. Somebody is entitled to know that before, not after. The
-         worker refuses to bridge until it has been accepted, so a window that
-         skipped this screen would gain nothing. -->
-    <dialog class="dialog" id="bridge-dialog">
-      <div class="dialog-form">
-        <h2 class="dialog-title">Bridge LCAI</h2>
-
-        <section id="bridge-terms">
-          <p class="dialog-body">
-            LCAI on Ethereum and LCAI on Lightchain are the same token in two places. Moving between
-            them means locking it on one side and releasing it on the other. Before you do that,
-            here is what you are relying on.
-          </p>
-          <ul class="bridge-disclosure" id="bridge-disclosure"></ul>
-          <!-- Not `.field`: that is a vertical stack of label over control,
-               which made this a full-width bar with its sentence on the line
-               below — in front of an irreversible transfer. `.bridge-accept`
-               is a row, and review.mjs measures that it stays one. -->
-          <label class="bridge-accept">
-            <input type="checkbox" id="bridge-accept" />
-            <span>I have read this and want to continue</span>
-          </label>
-        </section>
-
-        <section id="bridge-form" hidden>
-          <label class="field">
-            <span class="field-label">Direction</span>
-            <select class="input" id="bridge-direction"></select>
-          </label>
-
-          <label class="field">
-            <span class="field-label">Amount</span>
-            <input
-              class="input"
-              id="bridge-amount"
-              type="text"
-              inputmode="decimal"
-              spellcheck="false"
-              autocomplete="off"
-              placeholder="0.0"
-            />
-          </label>
-          <p class="field-hint" id="bridge-balance"></p>
-
-          <div class="alert" data-tone="error" role="alert" id="bridge-error" hidden>
-            <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
-            <div class="alert-body">
-              <strong class="alert-title">This cannot be bridged</strong>
-              <span data-slot="detail"></span>
-            </div>
-          </div>
-
-          <section class="send-review" id="bridge-review" hidden>
-            <dl class="facts">
-              <dt>Moving</dt>
-              <dd id="bridge-review-amount"></dd>
-              <dt>From</dt>
-              <dd id="bridge-review-from"></dd>
-              <dt>To</dt>
-              <dd id="bridge-review-to"></dd>
-              <dt>Delivery fee</dt>
-              <dd id="bridge-review-fee"></dd>
-            </dl>
-            <p class="send-warning" id="bridge-review-note"></p>
-          </section>
-        </section>
-
-        <div class="dialog-actions">
-          <button class="button" type="button" data-close="bridge-dialog">Close</button>
-          <button class="button" type="button" id="bridge-quote-btn" hidden>Review</button>
-          <button class="button" type="button" id="bridge-approve-btn" hidden>Approve first</button>
-          <button class="button button-primary" type="button" id="bridge-send-btn" hidden>
-            Bridge it
-          </button>
-        </div>
-      </div>
-    </dialog>
+    <!-- Bridging is a page now, not a dialog: the disclosure gate, the form
+         and the transfer status live in panel-bridge.html, reached from the
+         sidebar's elsewhere group. The ids moved with it — nothing here may
+         reintroduce a `bridge-` id, or the page and this dialog's ghost would
+         answer to the same name. -->
 
     <dialog class="dialog" id="join-dialog">
       <form method="dialog" class="dialog-form" id="join-form">

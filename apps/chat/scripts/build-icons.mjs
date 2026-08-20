@@ -55,6 +55,7 @@ const ICONS = {
   'i-models': 'sparkles',
   'i-worker': 'server',
   'i-wallet': 'wallet',
+  'i-bridge': 'arrow-left-right',
 
   // Chrome
   'i-settings': 'settings',

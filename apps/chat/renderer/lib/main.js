@@ -13,9 +13,7 @@ import { openSettings } from './settings.js'
 // Nothing out here calls into the settings panel, but importing a panel is what
 // attaches its controls, and the button that opens it is one of them.
 import './settings.js'
-// Same reason: the bridge dialog and the links out to exchanges are attached by
-// importing the module that owns them.
-import './bridge.js'
+import { showBridge } from './bridge.js'
 
 /**
  * The shell around the panels, and the order things come up in.
@@ -228,6 +226,7 @@ for (const button of el.sections) {
       void refreshActivity()
     }
     if (button.dataset.section === 'models') void refreshModels()
+    if (button.dataset.section === 'bridge') void showBridge()
   })
 }
 

@@ -45,6 +45,7 @@ const DOCUMENT = [
   ['panel-models.html', 'models and inference'],
   ['panel-worker.html', 'worker'],
   ['panel-wallet.html', 'wallet'],
+  ['panel-bridge.html', 'bridge — a page, not a dialog'],
   ['content-close.html', 'shared — closes content and shell'],
   ['dialogs.html', 'shared dialogs: join, invite, pay, rename, move'],
   ['dialog-secure.html', 'how this room is protected'],

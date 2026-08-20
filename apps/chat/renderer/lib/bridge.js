@@ -1,4 +1,4 @@
-import { el2, toast } from './dom.js'
+import { el2, showSection, toast } from './dom.js'
 import { bridge as pear, request } from './ipc.js'
 import { toBaseUnits } from './amounts.js'
 import { refreshAssets } from './assets.js'
@@ -12,12 +12,12 @@ import { refreshAssets } from './assets.js'
  * person is entitled to know that before their tokens are locked in a contract,
  * not after.
  *
- * The worker enforces the same thing independently, so this screen is where the
- * text is read rather than where the rule lives. A window that skipped it would
- * gain nothing.
+ * That was too much weight for a modal buried in Account's Advanced disclosure,
+ * so the bridge is a page now — a nav peer, where the terms stay on screen to
+ * be re-read before the next transfer. The worker enforces the same acceptance
+ * independently; this page is where the text is read, not where the rule lives.
  */
 
-const dialog = document.getElementById('bridge-dialog')
 const form = document.getElementById('bridge-form')
 const accept = document.getElementById('bridge-accept')
 const direction = document.getElementById('bridge-direction')
@@ -29,10 +29,24 @@ const quoteBtn = document.getElementById('bridge-quote-btn')
 const approveBtn = document.getElementById('bridge-approve-btn')
 const sendBtn = document.getElementById('bridge-send-btn')
 
+const status = document.getElementById('bridge-status')
+const statusNote = document.getElementById('bridge-status-note')
+const statusExplorer = document.getElementById('bridge-status-explorer')
+const statusCheck = document.getElementById('bridge-status-check')
+
 /** LCAI is eighteen decimals on both sides, which is what makes this symmetrical. */
 const DECIMALS = 18
 
 let quoted = null
+
+/**
+ * The transfer in flight, if this window sent one: which side it left from,
+ * and what the destination balance was right after the send. The baseline is
+ * what makes "did it arrive" an honest question — the only signal available is
+ * the far balance going up, and going up from a known figure is what separates
+ * this transfer's arrival from anything else landing at the same address.
+ */
+let pending = null
 
 function failed(message) {
   error.querySelector('[data-slot="detail"]').textContent = message
@@ -76,19 +90,20 @@ function showTerms(state) {
   )
 }
 
-export async function openBridge() {
+/**
+ * Reads the terms and the routes into the page.
+ *
+ * Called when the page is navigated to rather than at launch: the read is a
+ * round trip to the worker, and a page nobody opens should not cost one.
+ */
+export async function showBridge() {
   unquote()
-  amountField.value = ''
-  document.getElementById('bridge-balance').textContent = ''
 
   try {
     showTerms(await request('bridge.terms'))
   } catch (err) {
     toast(err.message, 'error')
-    return
   }
-
-  dialog.showModal()
 }
 
 accept?.addEventListener('change', async () => {
@@ -178,8 +193,33 @@ sendBtn?.addEventListener('click', async () => {
       amount: quoted.amount
     })
 
-    dialog.close()
-    toast(sent.note)
+    // A page does not close on you, so what happened has to stay on it: the
+    // send, the note about what happens next, and the way to watch for it.
+    pending = { fromChainId: quoted.fromChainId, before: null }
+
+    statusNote.textContent = sent.note
+    statusExplorer.dataset.href = sent.explorerUrl
+    statusExplorer.hidden = false
+    statusCheck.hidden = false
+    status.hidden = false
+
+    amountField.value = ''
+    unquote()
+    status.scrollIntoView({ block: 'nearest' })
+
+    // The baseline for the arrival check, read after the send rather than
+    // before it: the far balance may have moved while the guard was up, and a
+    // baseline older than the transfer would see that movement as an arrival.
+    request('bridge.arrived', { fromChainId: pending.fromChainId, before: '0' })
+      .then((arrival) => {
+        if (pending) pending.before = arrival.balance
+      })
+      .catch(() => {
+        // No baseline, no check — a comparison against zero would call any
+        // balance an arrival. The explorer link still works without it.
+        statusCheck.hidden = true
+      })
+
     void refreshAssets({ refresh: true })
   } catch (err) {
     failed(err.message)
@@ -189,7 +229,37 @@ sendBtn?.addEventListener('click', async () => {
   }
 })
 
-document.getElementById('bridge-open-btn')?.addEventListener('click', () => void openBridge())
+statusExplorer?.addEventListener('click', () => {
+  const href = statusExplorer.dataset.href
+  if (href) void pear.openExternal(href).catch(() => toast('Could not open that link', 'error'))
+})
+
+statusCheck?.addEventListener('click', async () => {
+  if (!pending || pending.before === null) return
+
+  statusCheck.disabled = true
+  try {
+    const arrival = await request('bridge.arrived', {
+      fromChainId: pending.fromChainId,
+      before: pending.before
+    })
+
+    statusNote.textContent = arrival.grew
+      ? `It arrived — your balance on ${arrival.chainName} is now ${arrival.balanceText}. ${arrival.note}`
+      : `Not yet — your balance on ${arrival.chainName} is still ${arrival.balanceText}. ${arrival.note}`
+  } catch (err) {
+    toast(err.message, 'error')
+  } finally {
+    statusCheck.disabled = false
+  }
+})
+
+// The bridge button on the Account page, and the one on an LCAI asset's page
+// (which presses it), both lead here rather than to a dialog of their own.
+document.getElementById('bridge-open-btn')?.addEventListener('click', () => {
+  showSection('bridge')
+  void showBridge()
+})
 
 /**
  * Buying and selling, which happen somewhere else.

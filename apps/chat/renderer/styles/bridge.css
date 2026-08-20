@@ -1,0 +1,49 @@
+/* The Bridge page: the disclosure gate, the transfer form, and what happened
+   to the last transfer. The consent row (`.bridge-accept`), the disclosure
+   list and the review card (`.send-review`) are styled in secure.css, where
+   they were born — this sheet is only the page's own layout, and everything
+   here is scoped under `.bridge-page` so none of it leaks. */
+
+/* A reading flow, not a console grid: the three cards stack in one column at
+   a measure a form can be read at, rather than stretching edge to edge. */
+.bridge-page .console-body {
+  grid-template-columns: minmax(0, 64ch);
+  align-content: start;
+  overflow-y: auto;
+}
+
+.bridge-page .kit-card-head .icon {
+  width: var(--lc-control-icon);
+  height: var(--lc-control-icon);
+  color: var(--lc-text-tertiary);
+}
+
+.bridge-terms-body {
+  display: grid;
+  gap: var(--lc-space-lg);
+}
+
+.bridge-terms-body .bridge-disclosure {
+  font-size: var(--lc-type-body);
+}
+
+.bridge-form-body {
+  display: grid;
+  gap: var(--lc-space-lg);
+}
+
+/* The action row: Review, then Approve, then Bridge — right-aligned, in the
+   order they become available. */
+.bridge-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--lc-space-sm);
+}
+
+.bridge-status-note {
+  margin: 0 0 var(--lc-space-md);
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-type-body);
+  line-height: var(--lc-leading-normal);
+  text-wrap: pretty;
+}

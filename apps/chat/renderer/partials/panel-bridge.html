@@ -1,0 +1,154 @@
+        <!-- Bridge ---------------------------------------------------------->
+        <!-- A page, not a dialog. Moving LCAI between Ethereum and Lightchain
+             is an irreversible, externally-relayed transfer with a disclosure
+             in front of it — that was too much weight for a modal buried in
+             Account's Advanced disclosure, so it is a nav peer now.
+
+             The disclosure stays the first thing and stays a gate rather than
+             a notice: the form card does not exist on screen until the terms
+             have been accepted, and the text stays on the page afterwards so
+             it can be re-read before the next transfer. The worker enforces
+             the same acceptance independently; this page is where the text is
+             read, not where the rule lives. -->
+        <div class="panel" id="panel-bridge" hidden>
+          <div class="console bridge-page">
+            <header class="page-head">
+              <div class="page-head-main">
+                <h1 class="page-title">Bridge</h1>
+                <p class="page-sub">
+                  Move LCAI between Ethereum and Lightchain. It is the same token in two places:
+                  moving it locks it on one side and releases it on the other.
+                </p>
+              </div>
+            </header>
+
+            <div class="console-body bridge-body">
+              <!-- What the route asks somebody to rely on, before it asks for
+                   money. The worker writes the lines; the page renders them. -->
+              <section class="kit-card" id="bridge-terms" aria-labelledby="bridge-terms-title">
+                <header class="kit-card-head">
+                  <h2 class="kit-card-title" id="bridge-terms-title">
+                    <svg class="icon" aria-hidden="true"><use href="#i-shield" /></svg>
+                    Read this first
+                  </h2>
+                </header>
+                <div class="bridge-terms-body">
+                  <!-- Loading is a word: the worker writes the real lines when
+                       the page opens, and until it answers this says why the
+                       list is short. -->
+                  <ul class="bridge-disclosure" id="bridge-disclosure">
+                    <li class="bridge-disclosure-item">Loading…</li>
+                  </ul>
+                  <!-- Not `.field`: that is a vertical stack of label over control,
+                       which made this a full-width bar with its sentence on the
+                       line below — in front of an irreversible transfer.
+                       `.bridge-accept` is a row, and review.mjs measures that it
+                       stays one. -->
+                  <label class="bridge-accept">
+                    <input type="checkbox" id="bridge-accept" />
+                    <span>I have read this and want to continue</span>
+                  </label>
+                </div>
+              </section>
+
+              <!-- The transfer itself. Hidden until the disclosure above has
+                   been accepted: the gate is the point, not the form. -->
+              <section class="kit-card" id="bridge-form" hidden aria-labelledby="bridge-form-title">
+                <header class="kit-card-head">
+                  <h2 class="kit-card-title" id="bridge-form-title">
+                    <svg class="icon" aria-hidden="true"><use href="#i-bridge" /></svg>
+                    New transfer
+                  </h2>
+                </header>
+                <div class="bridge-form-body">
+                  <div class="form">
+                    <label class="field">
+                      <span class="field-label">Direction</span>
+                      <select class="input" id="bridge-direction"></select>
+                    </label>
+
+                    <label class="field">
+                      <span class="field-label">Amount in LCAI</span>
+                      <input
+                        class="input"
+                        id="bridge-amount"
+                        type="text"
+                        inputmode="decimal"
+                        spellcheck="false"
+                        autocomplete="off"
+                        placeholder="0.0"
+                      />
+                    </label>
+                    <p class="field-hint" id="bridge-balance"></p>
+                  </div>
+
+                  <div class="alert" data-tone="error" role="alert" id="bridge-error" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                    <div class="alert-body">
+                      <strong class="alert-title">This cannot be bridged</strong>
+                      <span data-slot="detail"></span>
+                    </div>
+                  </div>
+
+                  <!-- What the worker actually quoted, before anything is
+                       signed. The delivery fee is quoted every time rather
+                       than remembered: it is zero today and the route's owner
+                       can raise it whenever they like. -->
+                  <section class="send-review" id="bridge-review" hidden>
+                    <dl class="facts">
+                      <dt>Moving</dt>
+                      <dd id="bridge-review-amount"></dd>
+                      <dt>From</dt>
+                      <dd id="bridge-review-from"></dd>
+                      <dt>To</dt>
+                      <dd id="bridge-review-to"></dd>
+                      <dt>Delivery fee</dt>
+                      <dd id="bridge-review-fee"></dd>
+                    </dl>
+                    <p class="send-warning" id="bridge-review-note"></p>
+                  </section>
+
+                  <!-- Approving is its own button and its own transaction, so
+                       the allowance being granted is visible rather than folded
+                       into the send. -->
+                  <div class="bridge-actions">
+                    <button class="button" type="button" id="bridge-quote-btn" hidden>Review</button>
+                    <button class="button" type="button" id="bridge-approve-btn" hidden>
+                      Approve first
+                    </button>
+                    <button class="button button-primary" type="button" id="bridge-send-btn" hidden>
+                      Bridge it
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              <!-- After a send: what was sent and where to watch it. Status is
+                   a sentence, not a tracker — no explorer indexes this bridge,
+                   so arrival is inferred from the destination balance, which
+                   the wallet's holdings already show. -->
+              <section class="kit-card" id="bridge-status" hidden aria-labelledby="bridge-status-title">
+                <header class="kit-card-head">
+                  <h2 class="kit-card-title" id="bridge-status-title">
+                    <svg class="icon" aria-hidden="true"><use href="#i-check" /></svg>
+                    Transfer sent
+                  </h2>
+                </header>
+                <p class="bridge-status-note" id="bridge-status-note"></p>
+                <div class="bridge-actions">
+                  <!-- Arrival is inferred, not tracked: no explorer indexes this
+                       bridge, so the check watches the destination balance and
+                       says so. The baseline is read right after the send. -->
+                  <button class="button button-sm" type="button" id="bridge-status-check" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                    Check whether it arrived
+                  </button>
+                  <button class="button button-sm" type="button" id="bridge-status-explorer" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+                    View the transaction
+                  </button>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>

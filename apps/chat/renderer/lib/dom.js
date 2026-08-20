@@ -16,9 +16,9 @@
  */
 export const el = {
   // Anything carrying a section name, wherever it lives. They used to be the
-  // five nav rows; they are now the three elsewhere rows — Models, Account and
-  // Earn. A room list is not one of them, and "Conversations" is the list's
-  // label, never a nav item: no destination appears twice.
+  // five nav rows; they are now the four elsewhere rows — Models, Account,
+  // Bridge and Earn. A room list is not one of them, and "Conversations" is
+  // the list's label, never a nav item: no destination appears twice.
   sections: [...document.querySelectorAll('[data-section]')],
   chatContext: document.getElementById('chat-context'),
   sidebar: document.getElementById('sidebar'),
@@ -231,8 +231,8 @@ export function setStatus(text) {
  *
  * This used to iterate the nav buttons and hide `panel-${button.dataset.section}`
  * for each, which worked while every panel had a button. It does not any more:
- * Conversations is the only primary destination, and Models, Account and Earn
- * are reached from the elsewhere rows under the list. Driving the panels from
+ * Conversations is the only primary destination, and Models, Account, Bridge
+ * and Earn are reached from the elsewhere rows under the list. Driving the panels from
  * the panels means a surface can lose its button without becoming unreachable,
  * and a button that names a panel nobody built throws here rather than
  * silently doing nothing.
