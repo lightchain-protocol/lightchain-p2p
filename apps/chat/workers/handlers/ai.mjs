@@ -506,7 +506,6 @@ export function aiHandlers(ctx) {
 
       await guard.allow({
         value,
-        password: req.password,
         details: {
           amount: `${readableAmount(value, NETWORKS[network()].symbol)} into prepaid inference`,
           to: `the job registry at ${jobRegistry}`,
@@ -553,7 +552,6 @@ export function aiHandlers(ctx) {
       // can empty the prepaid balance can strand somebody mid-conversation.
       await guard.allow({
         value,
-        password: req.password,
         details: {
           amount: `${readableAmount(value, NETWORKS[network()].symbol)} back out of prepaid inference`,
           to: account.address,

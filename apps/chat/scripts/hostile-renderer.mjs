@@ -552,10 +552,12 @@ if (csp === null) {
     )
   }
 
-  // The thresholds decide when a transfer needs the password again and when it
-  // needs a confirmation the operating system draws. A window able to raise
-  // them could turn both off and then send anything, which would make the guard
-  // a setting the attacker configures.
+  // The thresholds and the idle clock decide what it costs to move money. A
+  // window able to raise `confirmAboveWei` could send anything with the
+  // operating system's dialog never firing; able to write `autoLockMinutes`
+  // it could keep the vault open forever. `reauthAboveWei` guarded a password
+  // tier that no longer exists — it stays on this list so a stale write is
+  // refused rather than silently accepted.
   for (const key of ['reauthAboveWei', 'confirmAboveWei', 'autoLockMinutes']) {
     const raised = await asWorker('settings.write', {
       values: { [key]: (2n ** 255n).toString() }
@@ -620,10 +622,19 @@ if (csp === null) {
     alive?.error ?? 'answered'
   )
 
-  // Money paths that moved value with no password and no dialog at all.
-  // `ai.fund` was the worst of them: the same call raises a delegate's
-  // allowance by the amount deposited, and nothing lowers it again, so an
-  // unguarded one grants standing spending authority rather than spending once.
+  // Money paths must not move value while nobody is there to mean it. The
+  // password re-entry tier is gone — no dialog ever collected one, so it only
+  // ever refused — and what a large amount costs now is the confirmation the
+  // operating system draws. This suite cannot click that dialog, which is the
+  // point, so the proof is that the request neither succeeds nor fails on its
+  // own: it waits on a person. (The modal is left to its own timeout and dies
+  // with the instance; the window stays drivable because the dialog lives in
+  // the main process.)
+  //
+  // `ai.fund` was the worst of the unguarded paths: the same call raises a
+  // delegate's allowance by the amount deposited, and nothing lowers it again,
+  // so an unguarded one grants standing spending authority rather than
+  // spending once.
   //
   // The disclosure is accepted first so `bridge.approve` is refused by the
   // guard rather than by the gate in front of it. Refused-for-the-wrong-reason
@@ -631,25 +642,31 @@ if (csp === null) {
   await asWorker('bridge.acknowledge', { accepted: true })
 
   for (const request of ['ai.fund', 'ai.withdraw']) {
-    const moved = await asWorker(request, { amount: (1000n * 10n ** 18n).toString() })
+    const answered = await Promise.race([
+      asWorker(request, { amount: (1000n * 10n ** 18n).toString() }).then(
+        (reply) => `settled on its own: ${reply?.error ?? 'with no error at all'}`
+      ),
+      new Promise((resolve) => setTimeout(() => resolve(null), 3000))
+    ])
     report(
-      `${request} refuses a large amount with no password`,
-      /needs your password again/.test(moved?.error ?? ''),
-      moved?.error?.slice(0, 70)
+      `${request} waits for the operating system's answer rather than signing`,
+      answered === null,
+      answered ?? 'still waiting on the dialog after 3s'
     )
   }
 
   // Two separate ceilings stand in front of an approval and either is a pass.
   // The balance one answers first on a wallet holding nothing, which is the
-  // case here; on a funded wallet the password does. Both were added together
-  // and an approval that got past either would be the finding.
+  // case here; on a funded wallet the operating system's dialog does, and a
+  // window cannot answer that. Both were added together and an approval that
+  // got past either would be the finding.
   const approved = await asWorker('bridge.approve', {
     amount: (1000n * 10n ** 18n).toString(),
     fromChainId: 1
   })
   report(
-    'bridge.approve refuses an allowance nothing backs, with no password',
-    /needs your password again|more than this address holds/.test(approved?.error ?? ''),
+    'bridge.approve refuses an allowance nothing backs, with nobody confirming',
+    /more than this address holds|not confirmed/.test(approved?.error ?? ''),
     approved?.error?.slice(0, 70)
   )
 

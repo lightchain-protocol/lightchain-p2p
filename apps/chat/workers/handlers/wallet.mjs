@@ -911,7 +911,6 @@ export function walletHandlers(ctx) {
       // one amount and displayed another is exactly what this exists to catch.
       await guard.allow({
         value,
-        password: req.password,
         details: {
           amount: readableAmount(value, NETWORKS[network()].symbol),
           // Checksummed, because the dialog is where somebody checks the

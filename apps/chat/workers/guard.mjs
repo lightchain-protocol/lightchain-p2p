@@ -8,36 +8,28 @@
  * nothing at all. Nothing in the sandbox fixes this, because the problem is not
  * that the renderer is too powerful — it is that it is the thing being asked.
  *
- * So the checks that matter live here, on the far side of the IPC seam, and
- * they are the two a window cannot forge:
+ * So the check that matters lives here, on the far side of the IPC seam, and
+ * it is the one a window cannot forge: **a dialog the operating system draws.**
+ * `dialog.showMessageBox` in the main process is not part of the page and cannot
+ * be covered, restyled or dismissed by it. What it shows is what the worker is
+ * about to sign, taken from the transaction itself rather than from the request
+ * that asked for it.
  *
- * - **The password.** Checked against the vault, which costs scrypt and cannot
- *   be answered by a caller that does not know it.
- * - **A dialog the operating system draws.** `dialog.showMessageBox` in the
- *   main process is not part of the page and cannot be covered, restyled or
- *   dismissed by it. What it shows is what the worker is about to sign, taken
- *   from the transaction itself rather than from the request that asked for it.
- *
- * Both are proportionate to the amount. A wallet that asked for a password
- * before every message tip would be a wallet whose password gets typed without
- * reading, which is worse than not asking.
+ * There used to be a second, smaller tier that asked for the password again
+ * above one token. It was removed: no dialog ever collected one, so the tier's
+ * only effect was refusing transfers outright, and a password typed into every
+ * other transfer is a password typed without reading — worse than not asking.
+ * What remains is proportionate in the other direction: ordinary sends just
+ * work, and amounts big enough to ruin somebody's day are put to the operating
+ * system, which the page cannot answer for them.
  */
-
-/**
- * Above this, moving funds costs the password again.
- *
- * In wei, so a whole token of an eighteen-decimal chain. The ceiling is a
- * setting; this is what it is until somebody chooses otherwise.
- */
-export const DEFAULT_REAUTH_ABOVE = 10n ** 18n
 
 /**
  * Above this, the operating system asks rather than the page.
  *
- * Higher than the password threshold on purpose. The two are different
- * questions — "is the owner here" and "does the owner mean this" — and the
- * second is worth interrupting for only when the amount justifies a modal
- * window appearing over everything.
+ * A modal window over everything is worth interrupting for only when the
+ * amount justifies it; below this the transfer simply goes, because a wallet
+ * that interrupts for every coffee teaches people to click without reading.
  */
 export const DEFAULT_CONFIRM_ABOVE = 100n * 10n ** 18n
 
@@ -159,18 +151,8 @@ export function createGuard({ wallet, pipe, settings, onAutoLock, randomId = ran
      * two agree in the ordinary case, and when they do not, this shows the one
      * that is about to be signed.
      */
-    async allow({ value, password, details }) {
+    async allow({ value, details }) {
       const amount = typeof value === 'bigint' ? value : 0n
-
-      if (amount >= threshold('reauthAboveWei', DEFAULT_REAUTH_ABOVE)) {
-        const given = typeof password === 'string' ? password : ''
-        if (given === '') {
-          throw new Error('moving this much needs your password again')
-        }
-        if (!wallet.verifyPassword(given)) {
-          throw new Error('that password is not right')
-        }
-      }
 
       if (amount >= threshold('confirmAboveWei', DEFAULT_CONFIRM_ABOVE)) {
         if (!(await this.confirmNatively(details))) {

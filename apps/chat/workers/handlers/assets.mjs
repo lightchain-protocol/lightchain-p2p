@@ -649,7 +649,6 @@ export function assetHandlers(ctx) {
         // a token send would let an unlimited USDC transfer past a guard set in
         // native units, so tokens are always put to the operating system.
         value: plan.isNative ? plan.amount : plan.confirmAlways,
-        password: req.password,
         details: {
           amount: readableAmount(plan.amount, plan.symbol, plan.decimals),
           to: plan.to,

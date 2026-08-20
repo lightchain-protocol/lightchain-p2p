@@ -408,8 +408,10 @@ export function swapHandlers(ctx) {
       }
 
       await guard.allow({
+        // An approval is always put to the operating system, whatever the
+        // token amount: the guard's threshold is in native units, a token's
+        // dollar value is unknown here, and the permission stands until spent.
         value: 2n ** 255n,
-        password: req.password,
         details: {
           amount: `permission to spend ${readableAmount(input.amount, input.symbol, input.decimals)}`,
           to: `the Uniswap router at ${UNISWAP.swapRouter02}`,
@@ -436,9 +438,10 @@ export function swapHandlers(ctx) {
     /**
      * Swaps, having re-derived every figure from the same inputs.
      *
-     * Always put to the operating system, whatever the amount: a swap is
-     * irreversible in the way a bridge transfer is, and the amount that comes
-     * back is decided by a market rather than by the sender.
+     * Guarded like any other transfer of the same size: ether by its amount,
+     * a token always — the guard's threshold is in native units, and a swap's
+     * return is decided by a market rather than by the sender, so a token swap
+     * is put to the operating system whatever its size.
      */
     'swap.send': async (req) => {
       const plan = await planSwap(req)
@@ -457,8 +460,7 @@ export function swapHandlers(ctx) {
       }
 
       await guard.allow({
-        value: 2n ** 255n,
-        password: req.password,
+        value: input.isNative ? input.amount : 2n ** 255n,
         details: {
           amount: `${readableAmount(input.amount, input.symbol, input.decimals)} for ≈ ${readableAmount(plan.quoted.amountOut, 'LCAI')}`,
           to: `Uniswap on Ethereum, for at least ${readableAmount(plan.minimum, 'LCAI')}`,

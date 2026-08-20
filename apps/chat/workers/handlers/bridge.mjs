@@ -223,7 +223,6 @@ export function bridgeHandlers(ctx) {
       // something revokes it, and nothing here does.
       await guard.allow({
         value: 2n ** 255n,
-        password: req.password,
         details: {
           amount: `permission to spend ${readableAmount(quote.token, 'LCAI')}`,
           to: `the bridge router at ${route.router}`,
@@ -277,7 +276,6 @@ export function bridgeHandlers(ctx) {
       // else's relayer rather than the chain itself.
       await guard.allow({
         value: 2n ** 255n,
-        password: req.password,
         details: {
           amount: `${readableAmount(amount, 'LCAI')} across the bridge`,
           to: `${address} on ${route.to.name}`,
