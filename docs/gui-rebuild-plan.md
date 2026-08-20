@@ -167,6 +167,8 @@ at both sizes × both themes, fix pass, README/ROADMAP updates, final commit.
 
 ## 9. Current execution state
 
-- [ ] Wave 0 — A1 Design System Architect
-- [ ] Wave 1 — A2 Shell / A3 Conversation / A4 Money & Models / A5 Onboarding+QA
-- [ ] Wave 2 — Integration & polish
+- [x] Wave 0 — A1 Design System Architect (`bf7cc9c`)
+- [x] Wave 1 — A2 Shell (`6494f7c`) / A3 Conversation (`05eccfd`) / A4 Money & Models (`813bdf8`) / A5 Onboarding+QA (`ba49374`)
+- [x] Wave 2 — Integration & polish (`c0c043d`): harness assertions updated to the new IA, regenerated markup committed, `rebuild-final/` screenshots captured. Gates: lint + typecheck clean, chat 102/102, surfaces-check 28/28, conversation-check 42/42, review 18/18.
+
+Known leftovers, none blocking: backup-banner dismissal is per-session (persistence needs a worker `WRITABLE` key — data-plane change, deliberately deferred); the unread divider was not built (no read cursor exists in `packages/room` — inventing one is protocol work); `shoot.mjs` misses the receive dialog because receiving is intentionally gated on backup; toast chrome lives in `secure.css` and should fold into `app.css` later.
