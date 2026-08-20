@@ -35,10 +35,12 @@ import './confirm.js'
 // macOS traffic lights, and the system font for each OS.
 document.documentElement.dataset.platform = bridge.platform()
 
-// The utility row shows a badge, not a build number: "BETA" says what a
-// version string cannot (this is not a finished thing), and the number itself
-// stays a hover away — and in full in Settings, which reads the same package.
-el.version.textContent = 'BETA'
+// The badge carries the version itself: "0.1.0 BETA" answers support's first
+// question — what version are you on — without a hover or a trip into
+// Settings, and BETA still says what a version string cannot (this is not a
+// finished thing). The number is the same one Settings reports, read from the
+// same package.
+el.version.textContent = `${bridge.pkg().version} BETA`
 el.version.title = `Lightchain Chat v${bridge.pkg().version}`
 
 // Searching belongs to the window rather than to the room panel: it looks

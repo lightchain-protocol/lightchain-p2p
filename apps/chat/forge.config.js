@@ -57,6 +57,45 @@ if (process.env.MAC_CODESIGN_IDENTITY) {
   }
 }
 
+/**
+ * The package version as an MSIX four-part version.
+ *
+ * An MSIX manifest takes exactly four numeric parts, each 0–65535, and a
+ * semver prerelease tag is not one of those: a build from `0.9.0-beta.1`
+ * produced `Version="0.9.0-beta.1"`, which the maker rejects outright.
+ *
+ * The fold is deterministic and keeps installs ordered. A prerelease carries
+ * its trailing number in the fourth part (`0.9.0-beta.2` → `0.9.0.2`, a bare
+ * `-beta` → `0.9.0.0`), and a plain release takes the top of the range
+ * (`0.9.0` → `0.9.0.65535`), so the release always installs over its own
+ * betas rather than failing as a downgrade. A number past 65534 is clamped —
+ * still deterministic, and such a tag has bigger problems than this.
+ */
+function toMsixVersion(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z.-]+)?$/.exec(
+    version
+  )
+  if (!match) throw new Error(`Cannot map ${JSON.stringify(version)} to an MSIX version`)
+
+  const parts = [match[1], match[2], match[3]].map(Number)
+  for (const part of parts) {
+    if (part > 65535) {
+      throw new Error(`MSIX version parts must be 0-65535, and ${version} is not`)
+    }
+  }
+
+  let revision = 65535
+  if (match[4] !== undefined) {
+    const identifiers = match[4].split('.')
+    const trailing = Number(identifiers[identifiers.length - 1])
+    revision = Number.isSafeInteger(trailing) && String(trailing) === identifiers[identifiers.length - 1]
+      ? Math.min(trailing, 65534)
+      : 0
+  }
+
+  return [...parts, revision].join('.')
+}
+
 module.exports = {
   packagerConfig,
 
@@ -167,7 +206,7 @@ module.exports = {
       fs.rmSync(path.join(__dirname, 'out', 'make'), { recursive: true, force: true })
 
       const manifest = path.join(__dirname, 'build', 'AppxManifest.xml')
-      const msixVersion = pkg.version.replace(/^(\d+\.\d+\.\d+)$/, '$1.0')
+      const msixVersion = toMsixVersion(pkg.version)
       const xml = fs.readFileSync(manifest, 'utf-8')
       fs.writeFileSync(manifest, xml.replace(/Version="[^"]*"/, `Version="${msixVersion}"`))
     },
@@ -199,3 +238,10 @@ module.exports = {
     }
   ]
 }
+
+// Exported for the test that locks the mapping down, and non-enumerable so
+// Forge — which reads this object as its config — never sees it as one.
+Object.defineProperty(module.exports, 'toMsixVersion', {
+  value: toMsixVersion,
+  enumerable: false
+})

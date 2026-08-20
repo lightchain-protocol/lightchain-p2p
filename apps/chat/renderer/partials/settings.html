@@ -77,6 +77,38 @@
               <input type="checkbox" id="set-deposit-sound" />
               <span>Play a sound when a deposit lands</span>
             </label>
+
+            <h3 class="settings-heading">Network trust</h3>
+            <p class="settings-note">
+              Who runs what. The workers that answer questions are run by anyone, and this
+              app does not choose them. The parts in between — the dispatcher that routes a
+              question to a worker, the relay that carries the answer back, the disputer that
+              settles challenges, and the service that puts the question's data on chain —
+              are all run by the Lightchain foundation, one operator.
+            </p>
+            <p class="settings-note">
+              What is checked. Every answer carries the worker's signature, and this app
+              verifies it before showing anything, so an answer cannot be swapped for another
+              on the way. A worker that tells you one thing while recording something else on
+              chain has equivocated, and that can be disputed — it costs the worker its stake.
+              What no check can catch is an answer that is wrong but reads as right: a model
+              that is simply mistaken looks exactly like one that is not, so judge answers
+              accordingly.
+            </p>
+            <p class="settings-note">
+              What the prepaid balance means. Funding it also authorises the delegate — the
+              service that submits jobs for you — to spend it, and that authorisation stands
+              until you revoke it on chain. Withdrawing what is left does not revoke it, so a
+              later deposit is spendable again without asking. The delegate can reach the
+              prepaid balance and nothing else; the rest of the wallet is never part of the
+              arrangement.
+            </p>
+            <p class="settings-note">
+              And one thing about this window. The dialog that asks you to confirm a transfer
+              is drawn by this application, not by the operating system. It vouches for what
+              this app is about to sign and nothing wider — it cannot see, and says nothing
+              about, anything else running on this machine.
+            </p>
           </section>
 
           <section class="settings-page" id="settings-wallet" hidden>
