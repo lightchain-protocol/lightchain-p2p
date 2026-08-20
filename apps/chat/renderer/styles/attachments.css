@@ -83,8 +83,8 @@
   background: transparent;
   cursor: default;
   transition:
-    background-color 120ms ease-out,
-    color 120ms ease-out;
+    background-color var(--lc-motion-fast) ease-out,
+    color var(--lc-motion-fast) ease-out;
 }
 
 .attachment-chip-remove:hover {

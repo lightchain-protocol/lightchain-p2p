@@ -39,9 +39,9 @@
   background: var(--lc-bg);
   cursor: default;
   transition:
-    background-color 120ms ease-out,
-    border-color 120ms ease-out,
-    color 120ms ease-out;
+    background-color var(--lc-motion-fast) ease-out,
+    border-color var(--lc-motion-fast) ease-out,
+    color var(--lc-motion-fast) ease-out;
 }
 
 .reaction:hover:not(:disabled) {

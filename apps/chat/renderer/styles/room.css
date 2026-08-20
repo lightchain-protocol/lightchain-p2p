@@ -67,7 +67,7 @@
   color: var(--lc-success);
   background: color-mix(in srgb, var(--lc-success) 15%, transparent);
   cursor: default;
-  transition: background-color 120ms ease-out;
+  transition: background-color var(--lc-motion-fast) ease-out;
 }
 
 .room-secure:hover {
@@ -679,8 +679,8 @@
   background: var(--lc-bg-elevated);
   user-select: text;
   transition:
-    border-color 120ms ease-out,
-    box-shadow 120ms ease-out;
+    border-color var(--lc-motion-fast) ease-out,
+    box-shadow var(--lc-motion-fast) ease-out;
 }
 
 .composer-input::placeholder {

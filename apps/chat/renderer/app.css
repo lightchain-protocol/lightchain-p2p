@@ -251,9 +251,9 @@ body {
   cursor: default;
   white-space: nowrap;
   transition:
-    background-color 120ms ease-out,
-    border-color 120ms ease-out,
-    color 120ms ease-out;
+    background-color var(--lc-motion-fast) ease-out,
+    border-color var(--lc-motion-fast) ease-out,
+    color var(--lc-motion-fast) ease-out;
 }
 
 .button:hover:not(:disabled) {
@@ -313,8 +313,8 @@ body {
   background: var(--lc-bg);
   user-select: text;
   transition:
-    border-color 120ms ease-out,
-    box-shadow 120ms ease-out;
+    border-color var(--lc-motion-fast) ease-out,
+    box-shadow var(--lc-motion-fast) ease-out;
 }
 
 /* A textarea has to grow, so it gets the height as a floor and pays for its
@@ -382,7 +382,7 @@ select.input option {
 /* A dialog that appears between one frame and the next reads as a glitch. The
    fade is short enough not to be a delay and long enough to be a movement. */
 .dialog[open] {
-  animation: dialog-in 140ms ease-out;
+  animation: dialog-in var(--lc-motion-fast) ease-out;
 }
 
 @keyframes dialog-in {
@@ -393,7 +393,7 @@ select.input option {
 }
 
 .dialog::backdrop {
-  background: rgb(0 0 0 / 0.55);
+  background: var(--lc-scrim);
   backdrop-filter: blur(2px);
 }
 
@@ -521,7 +521,7 @@ select.input option {
   color: var(--lc-fg);
   background: var(--lc-bg-elevated-2);
   box-shadow: 0 12px 28px -8px rgb(0 0 0 / 0.6);
-  animation: toast-in 160ms ease-out;
+  animation: toast-in var(--lc-motion-base) ease-out;
 }
 
 @keyframes toast-in {
@@ -543,10 +543,18 @@ select.input option {
   transition: none !important;
 }
 
-/* Respect the setting rather than animating regardless. */
+/* Respect the setting rather than animating regardless.
+   
+   The generated token stylesheet already collapses the three duration tokens
+   to zero under this query, which covers every transition and every one-shot
+   animation now that they all read a token. This stays for the ones that do
+   not and should not: a pulsing dot, a blinking caret and the typing bounce
+   are rhythms rather than responses, so they carry their own timing and would
+   otherwise keep running for somebody who asked the system to stop moving. */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

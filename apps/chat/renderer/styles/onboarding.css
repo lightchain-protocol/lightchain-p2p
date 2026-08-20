@@ -91,7 +91,7 @@
 /* Each step is a slide. The movement is small on purpose: enough to say the
    screen changed, not enough to make somebody wait for it. */
 .step {
-  animation: onboarding-step-in 220ms ease-out both;
+  animation: onboarding-step-in var(--lc-motion-base) ease-out both;
 }
 
 @keyframes onboarding-step-in {
@@ -203,9 +203,9 @@
   text-align: left;
   cursor: pointer;
   transition:
-    border-color 120ms ease,
-    background 120ms ease,
-    transform 120ms ease;
+    border-color var(--lc-motion-fast) ease,
+    background var(--lc-motion-fast) ease,
+    transform var(--lc-motion-fast) ease;
 }
 
 .choice:hover:not(:disabled) {

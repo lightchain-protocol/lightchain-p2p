@@ -101,7 +101,7 @@
     0 6px 16px -8px rgb(0 0 0 / 0.55);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 120ms ease;
+  transition: opacity var(--lc-motion-fast) ease;
 }
 
 .message:hover .message-actions,
@@ -232,7 +232,7 @@
 /* Arriving at a message from a search result or a reply. Long enough to find
    with the eye, short enough not to sit there afterwards. */
 .message.is-revealed {
-  animation: message-reveal 1600ms ease;
+  animation: message-reveal var(--lc-motion-slow) ease;
 }
 
 @keyframes message-reveal {
