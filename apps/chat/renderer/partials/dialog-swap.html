@@ -8,15 +8,35 @@
 
          The destination is fixed — LCAI on Ethereum — so it is stated rather
          than picked: the only choice a swap screen could offer here is the one
-         that buys the wrong token. -->
+         that buys the wrong token. The route strip under the title says the
+         direction in marks rather than words: ether in, LCAI out, Uniswap
+         doing the trade. -->
     <dialog class="dialog" id="swap-dialog">
       <form method="dialog" class="dialog-form" id="swap-form">
-        <h2 class="dialog-title">Swap into LCAI</h2>
-        <p class="dialog-body">
-          Trades on Uniswap v3 on Ethereum, straight from this wallet. LCAI trades in one thin
-          pool, so the price can move between the quote and the swap — the "at least" figure is
-          the deal you are actually agreeing to.
-        </p>
+        <div class="dialog-head">
+          <h2 class="dialog-title">Swap into LCAI</h2>
+          <button
+            class="dialog-close"
+            type="button"
+            data-close="swap-dialog"
+            aria-label="Close"
+            title="Close"
+          >
+            <svg class="icon" aria-hidden="true"><use href="#i-close" /></svg>
+          </button>
+        </div>
+
+        <!-- The direction and the venue, in marks: ether in, LCAI out, the
+             unicorn doing the trade. -->
+        <div class="swap-route" aria-hidden="true">
+          <svg class="swap-mark"><use href="#c-eth" /></svg>
+          <svg class="icon swap-route-arrow"><use href="#i-receive" /></svg>
+          <svg class="swap-mark swap-mark-lcai"><use href="#i-logo" /></svg>
+          <span class="swap-provider">
+            <svg class="swap-provider-mark"><use href="#c-uniswap" /></svg>
+            Uniswap v3
+          </span>
+        </div>
 
         <div class="alert" data-tone="warn" role="alert" id="swap-unavailable" hidden>
           <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
@@ -75,7 +95,9 @@
         </div>
 
         <!-- What the worker actually quoted. Everything here comes from the
-             chain rather than from the form above it. -->
+             chain rather than from the form above it. The pool's price moves,
+             so a standing quote re-reads every five seconds — the figure on
+             screen is never older than that. -->
         <section class="send-review" id="swap-review" hidden>
           <dl class="facts">
             <dt>You receive</dt>
@@ -92,8 +114,9 @@
           <div class="send-warnings" id="swap-review-warnings"></div>
         </section>
 
-        <!-- The outcome, kept on screen rather than toasted away: a swap is
-             money moving, and what happened deserves more than three seconds. -->
+        <!-- The outcome replaces the form rather than sitting under it: once
+             money has moved, the inputs that moved it are done, and the only
+             things left to do are look at the receipt or leave. -->
         <section class="send-review" id="swap-result" hidden>
           <dl class="facts">
             <dt>Swapped</dt>
@@ -105,6 +128,9 @@
           </dl>
           <div class="dialog-actions">
             <button class="button" type="button" id="swap-result-explorer">View on explorer</button>
+            <button class="button button-primary" type="button" data-close="swap-dialog">
+              Done
+            </button>
           </div>
         </section>
 

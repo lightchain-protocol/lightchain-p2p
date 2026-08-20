@@ -863,3 +863,41 @@
 .account-advanced[open] {
   flex: 1 1 auto;
 }
+
+
+/* The swap dialog's route strip: ether in, LCAI out, the venue named with its
+   own mark. Marks rather than words because the direction of a trade is the
+   thing people misread, and two logos with an arrow cannot be misread. */
+.swap-route {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+}
+
+.swap-mark {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+
+.swap-mark-lcai {
+  color: var(--lc-accent);
+}
+
+.swap-route-arrow {
+  color: var(--lc-fg-dim);
+}
+
+.swap-provider {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lc-space-xs);
+  margin-left: auto;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-fg-muted);
+}
+
+.swap-provider-mark {
+  width: 16px;
+  height: 16px;
+}

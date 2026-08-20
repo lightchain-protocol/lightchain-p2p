@@ -492,6 +492,9 @@ export function swapHandlers(ctx) {
         hash: sent.hash,
         block: receipt.blockNumber.toString(),
         explorerUrl: `${plan.chain.explorerUrl}/tx/${sent.hash}`,
+        // Raw beside readable, as on the quote: the window formats for its own
+        // display, and the exact figure is the string.
+        received: plan.quoted.amountOut.toString(),
         receiveText: `≈ ${readableAmount(plan.quoted.amountOut, 'LCAI')}`
       }
     }

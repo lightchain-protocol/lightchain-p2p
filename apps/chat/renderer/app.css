@@ -424,6 +424,45 @@ select.input option {
   font-weight: 600;
 }
 
+/* A title row that also carries a close button: the X lives at the top right,
+   where every other window on the desktop keeps it, and the title stays on the
+   baseline it had alone. */
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lc-space-md);
+}
+
+.dialog-head .dialog-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--lc-radius-sm, 6px);
+  background: transparent;
+  color: var(--lc-fg-muted);
+  cursor: pointer;
+}
+
+.dialog-close:hover {
+  background: var(--lc-accent-soft);
+  color: var(--lc-fg);
+}
+
+.dialog-close:focus-visible {
+  outline: var(--lc-focus-ring);
+  outline-offset: 2px;
+}
+
 .dialog-body {
   margin: 0;
   font-size: var(--lc-text-sm);

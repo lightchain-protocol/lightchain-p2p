@@ -12,6 +12,10 @@ import { refreshAssets } from './assets.js'
  * set of inputs is the failure the Send dialog's two-step flow exists to
  * prevent, and a live quote has the same rule with the steps merged.
  *
+ * A standing quote also re-reads itself every five seconds, because the pool's
+ * price moves whether anybody is typing or not. The figure on screen is never
+ * older than one breath, and completion and closing both stop the clock.
+ *
  * The worker re-derives everything at send time from the same inputs rather
  * than redeeming this quote, so what is signed cannot drift from what was
  * shown; what this screen holds is only for showing.
@@ -39,6 +43,8 @@ let state = null
 let quoted = null
 /** The request in flight, so a slow answer cannot overwrite a newer edit. */
 let asking = 0
+/** An approval or swap is being signed; quoting would only repaint under it. */
+let busy = false
 
 const chosenAsset = () => {
   if (!state || fromPicker.value === '') return null
@@ -73,6 +79,24 @@ function requoteSoon() {
   retime = setTimeout(() => void quote(), 500)
 }
 
+/**
+ * The five-second clock. Re-quotes only a standing quote: nothing typed means
+ * nothing to refresh, and an answered dialog or a shown receipt stops it.
+ */
+let tick = null
+function startRequote() {
+  stopRequote()
+  tick = setInterval(() => {
+    if (!dialog.open || !result.hidden || busy || quoted === null) return
+    void quote()
+  }, 5000)
+}
+function stopRequote() {
+  if (tick) clearInterval(tick)
+  tick = null
+}
+dialog?.addEventListener('close', stopRequote)
+
 function showBalance() {
   const asset = chosenAsset()
   balanceHint.textContent = asset
@@ -87,6 +111,10 @@ function showBalance() {
  * reply to the latest edit from a slow one that left before it.
  */
 async function quote() {
+  // The receipt replaces the form once money has moved, and a closed dialog
+  // owns no figures at all.
+  if (!dialog.open || !result.hidden || busy) return
+
   const asset = chosenAsset()
   if (!asset) return
 
@@ -104,9 +132,12 @@ async function quote() {
 
     quoted = answer
 
-    document.getElementById('swap-review-receive').textContent = answer.receiveText
+    // Formatted for eyes from the raw figures: eighteen places of precision is
+    // the chain's business, not a screen's.
+    document.getElementById('swap-review-receive').textContent =
+      `≈ ${formatUnits(answer.receive, 18)} LCAI`
     document.getElementById('swap-review-min').textContent =
-      `${answer.minReceivedText} (slippage ${answer.slippageBps / 100}%)`
+      `${formatUnits(answer.minReceived, 18)} LCAI (slippage ${answer.slippageBps / 100}%)`
     document.getElementById('swap-review-pool').textContent =
       `Uniswap v3 · ${answer.feeTier / 10_000}% fee tier`
     document.getElementById('swap-review-fee').textContent =
@@ -116,7 +147,7 @@ async function quote() {
     document.getElementById('swap-review-network').textContent =
       `${answer.chainName} (chain ${answer.chainId})`
 
-    receiveLine.textContent = `You receive ${answer.receiveText}`
+    receiveLine.textContent = `You receive ≈ ${formatUnits(answer.receive, 18)} LCAI`
 
     warnings.replaceChildren(
       ...(answer.enough
@@ -151,12 +182,26 @@ async function quote() {
 
 const fields = [...form.querySelectorAll('.field')]
 
+/** The form's two faces: the inputs, or the receipt they produced. */
+function showForm() {
+  fields.forEach((field) => (field.hidden = false))
+  balanceHint.hidden = false
+  receiveLine.hidden = false
+  result.hidden = true
+}
+function showReceipt() {
+  fields.forEach((field) => (field.hidden = true))
+  balanceHint.hidden = true
+  receiveLine.hidden = true
+  review.hidden = true
+  actions.hidden = true
+  result.hidden = false
+}
+
 export async function openSwap() {
   unquote()
-  result.hidden = true
+  showForm()
   unavailable.hidden = true
-  fields.forEach((field) => (field.hidden = false))
-  receiveLine.hidden = false
 
   try {
     state = await request('swap.assets')
@@ -201,6 +246,7 @@ export async function openSwap() {
 
   amountField.value = ''
   dialog.showModal()
+  startRequote()
   showBalance()
   amountField.focus()
 }
@@ -225,6 +271,7 @@ document.getElementById('swap-max')?.addEventListener('click', () => {
 approveBtn?.addEventListener('click', async () => {
   if (!quoted) return
 
+  busy = true
   approveBtn.disabled = true
   approveBtn.textContent = 'Approving…'
 
@@ -238,6 +285,7 @@ approveBtn?.addEventListener('click', async () => {
   } catch (err) {
     failed(err.message)
   } finally {
+    busy = false
     approveBtn.disabled = false
     approveBtn.textContent = 'Approve first'
   }
@@ -246,6 +294,7 @@ approveBtn?.addEventListener('click', async () => {
 confirmBtn?.addEventListener('click', async () => {
   if (!quoted) return
 
+  busy = true
   confirmBtn.disabled = true
   confirmBtn.textContent = 'Swapping…'
 
@@ -257,19 +306,20 @@ confirmBtn?.addEventListener('click', async () => {
     })
 
     document.getElementById('swap-result-amount').textContent = quoted.amountText
-    document.getElementById('swap-result-received').textContent = done.receiveText
+    document.getElementById('swap-result-received').textContent =
+      `≈ ${formatUnits(done.received, 18)} LCAI`
     document.getElementById('swap-result-hash').textContent = done.hash
     document.getElementById('swap-result-explorer').dataset.href = done.explorerUrl
 
-    review.hidden = true
-    actions.hidden = true
-    result.hidden = false
     quoted = null
+    stopRequote()
+    showReceipt()
 
     void refreshAssets({ refresh: true })
   } catch (err) {
     failed(err.message)
   } finally {
+    busy = false
     confirmBtn.disabled = false
     confirmBtn.textContent = 'Swap it'
   }

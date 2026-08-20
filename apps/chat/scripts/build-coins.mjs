@@ -56,7 +56,10 @@ const COINS = {
   'c-bnb': 'bnb',
   'c-pol': 'matic',
   'c-arb': 'generic',
-  'c-generic': 'generic'
+  'c-generic': 'generic',
+  // Not an asset but a venue: the swap dialog names Uniswap as its provider,
+  // and the unicorn is how somebody recognises it. The UNI mark is that brand.
+  'c-uniswap': 'uni'
 }
 
 const START = '<!-- coins:start -->'
