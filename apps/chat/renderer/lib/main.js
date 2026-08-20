@@ -166,6 +166,47 @@ for (const id of ['backup-banner-btn', 'account-backup-btn']) {
   })
 }
 
+// --- The reminder can rest ---------------------------------------------------
+
+/**
+ * The backup banner's dismiss: put down now, back at the next launch.
+ *
+ * The banner used to be permanent — one line on every surface that could not
+ * be put down, on the argument that offering a close teaches people to close
+ * it. The permanence had the same effect for free, and worse: a reminder you
+ * cannot set down becomes part of the furniture, which is the failure the
+ * argument was trying to avoid. So it can rest.
+ *
+ * The rest is per-session, and that is a limitation rather than a design:
+ * persistence would mean a new key in the worker's settings, and that list is
+ * deliberately closed against exactly this kind of quiet growth from the
+ * window. The security posture loses nothing — the receive gate that actually
+ * protects the funds lives in backup.js and does not read this — and the
+ * reminder is back after a restart, which for a desktop app is rarely more
+ * than a day away.
+ */
+let bannerDismissed = false
+
+/**
+ * Keeps the banner down once it has been put down.
+ *
+ * showBackupBanner() re-derives the banner's visibility every time the wallet
+ * state is re-read, and it does not know about the dismissal — nor should it:
+ * its job is whether a backup is needed, this one's is whether we are asking
+ * right now. So when the banner reappears after being dismissed, it is put
+ * back to rest here rather than in the module that decides it is needed.
+ */
+if (el.backupBanner) {
+  new MutationObserver(() => {
+    if (bannerDismissed && !el.backupBanner.hidden) el.backupBanner.hidden = true
+  }).observe(el.backupBanner, { attributes: true, attributeFilter: ['hidden'] })
+}
+
+el.backupBannerDismiss?.addEventListener('click', () => {
+  bannerDismissed = true
+  el.backupBanner.hidden = true
+})
+
 // --- Sections --------------------------------------------------------------
 
 for (const button of el.sections) {

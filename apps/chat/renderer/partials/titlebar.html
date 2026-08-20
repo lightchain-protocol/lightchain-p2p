@@ -1,11 +1,10 @@
 
-    <!-- Drawn by us on Windows and Linux; on macOS the traffic lights sit here
-         and the content is inset to clear them. -->
+    <!-- Window chrome and nothing else: somewhere to grab the window, inset
+         clear of the platform's own controls, plus the one control that
+         belongs to the window itself. The brand moved to the top of the
+         sidebar — the app title was in two places, and a strip whose whole
+         job is to be draggable earns the simplicity. -->
     <header class="titlebar" id="titlebar">
-      <div class="titlebar-brand">
-        <svg class="logo" aria-hidden="true"><use href="#i-logo" /></svg>
-        <span class="wordmark">Lightchain</span>
-      </div>
       <!-- The only control the bar ever carries, and it is hidden until there
            is something to apply. renderer/lib/ipc.js resolves it by id. -->
       <button

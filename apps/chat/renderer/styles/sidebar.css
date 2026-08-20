@@ -1,15 +1,12 @@
-/* The left column: a list of conversations, and the account underneath it.
-   
-   Rewritten for the messenger layout. What used to be here styled five nav
-   destinations in three labelled groups, with the room list as a context
-   section that appeared when Chat was the current one. There is one list now
-   and it is the column's whole body, so most of the group and section
-   machinery has gone with the markup that used it.
-   
-   `.nav-item` survives, and deliberately: the room rows wear it, and so does
-   the Settings overlay's own navigation. It is the one shape in this file that
-   is genuinely shared, which is why it is defined plainly rather than scoped
-   to the sidebar. */
+/* The left column: a list of conversations, with everything else arranged
+   around it in five zones — brand and connection, the list with its two
+   actions pinned under the header, the elsewhere group, the identity row,
+   and the utility row.
+
+   `.nav-item` survives from the old five-destination sidebar, and
+   deliberately: the room rows wear it, and so does the Settings overlay's own
+   navigation. It is the one shape in this file that is genuinely shared,
+   which is why it is defined plainly rather than scoped to the sidebar. */
 
 .sidebar {
   display: flex;
@@ -22,7 +19,7 @@
   transition: width var(--lc-motion-base) var(--lc-easing);
 }
 
-/* --- Head ------------------------------------------------------------------ */
+/* --- Head: the brand, and the fold-away control ----------------------------- */
 
 .sidebar-head {
   display: flex;
@@ -33,11 +30,25 @@
   flex: 0 0 auto;
 }
 
+/* The app brand lives here, at the top of the column, rather than in the
+   title bar — the title was in two places, and the bar's whole job is to be
+   somewhere to grab the window. The mark is the logomark; the wordmark is
+   plain text, because the brand gradient is for the logo only. */
 .sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  min-width: 0;
+}
+
+.sidebar-wordmark {
   font-size: var(--lc-type-body-strong);
   font-weight: var(--lc-weight-semibold);
   color: var(--lc-text-primary);
   letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-collapse {
@@ -123,14 +134,51 @@
   flex: 0 0 auto;
 }
 
-/* --- The conversations ----------------------------------------------------- */
+/* --- The conversations: header, pinned actions, then the list ---------------- */
+
+/* The zone is a column that takes whatever height is left after the fixed
+   zones, and only its list scrolls. The header and the two actions stay put,
+   so "New conversation" is in the same place with two rooms open or two
+   hundred. */
+.sidebar-rooms {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: var(--lc-space-sm);
+}
+
+.sidebar-rooms-head {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--lc-space-md);
+  flex: 0 0 auto;
+}
+
+/* A label, not a nav item. "Conversations" names what the list is; the list
+   itself is the destination, and the same word was briefly both, which put
+   one destination on screen twice. */
+.sidebar-rooms-title {
+  font-size: var(--lc-type-caption);
+  font-weight: var(--lc-weight-semibold);
+  color: var(--lc-text-tertiary);
+  letter-spacing: 0.04em;
+}
+
+.sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  flex: 0 0 auto;
+}
 
 .sidebar-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--lc-space-sm) var(--lc-space-sm) 0;
+  padding: 0 var(--lc-space-sm);
 }
 
 .room-list {
@@ -231,17 +279,52 @@
   white-space: nowrap;
 }
 
-/* --- Starting one ----------------------------------------------------------- */
+/* --- Everything that is not a conversation ----------------------------------- */
 
-.sidebar-actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--lc-space-xs);
-  padding: var(--lc-space-sm) var(--lc-space-md);
+/* The elsewhere group: Models, Account, Earn, in the contract's order, behind
+   a hairline and a small label so the column reads as list-then-elsewhere
+   rather than as one undifferentiated stack. */
+.sidebar-elsewhere {
   flex: 0 0 auto;
+  padding: var(--lc-space-xs) 0;
+  border-top: 1px solid var(--lc-rule);
 }
 
-/* --- The account, and everything behind it ---------------------------------- */
+.sidebar-group-title {
+  margin: 0;
+  padding: var(--lc-space-xs) var(--lc-space-md) var(--lc-space-xs);
+  font-size: var(--lc-type-caption);
+  font-weight: var(--lc-weight-semibold);
+  color: var(--lc-text-tertiary);
+  letter-spacing: 0.04em;
+}
+
+.sections {
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--lc-space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* The row's icon inherits the row's text colour. It used to borrow nothing:
+   the sprite's symbols paint with whatever fill the engine defaults to, the
+   stroke setting that makes the line icons work lives on `.icon`, and these
+   wore `.nav-icon` instead — so every nav icon rendered as a black silhouette,
+   which on the dark theme was no icon at all. */
+.nav-icon {
+  width: var(--lc-control-icon);
+  height: var(--lc-control-icon);
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* --- The account, and the tools in this corner ------------------------------- */
 
 .sidebar-foot {
   flex: 0 0 auto;
@@ -345,73 +428,6 @@
   color: var(--lc-warning);
 }
 
-/* --- The menu ---------------------------------------------------------------- */
-
-/* --- Collapsed --------------------------------------------------------------- */
-
-/* A different layout rather than the same one narrower. Everything with words
-   in it goes; what is left is the collapse control and a column of marks. */
-.sidebar.is-collapsed {
-  width: 3.5rem;
-}
-
-.sidebar.is-collapsed .sidebar-brand,
-.sidebar.is-collapsed .sidebar-empty,
-.sidebar.is-collapsed .nav-label,
-.sidebar.is-collapsed .nav-item-body,
-.sidebar.is-collapsed .account-text,
-.sidebar.is-collapsed .account-chevron,
-.sidebar.is-collapsed .account-balance,
-.sidebar.is-collapsed .sidebar-locked span,
-.sidebar.is-collapsed .sidebar-status {
-  display: none;
-}
-
-.sidebar.is-collapsed .sidebar-head {
-  justify-content: center;
-  padding-inline: 0;
-}
-
-.sidebar.is-collapsed .sidebar-collapse .icon {
-  transform: rotate(180deg);
-}
-
-.sidebar.is-collapsed .sidebar-state,
-.sidebar.is-collapsed .sidebar-actions,
-.sidebar.is-collapsed .sidebar-foot {
-  padding-inline: var(--lc-space-xs);
-}
-
-.sidebar.is-collapsed .nav-item,
-.sidebar.is-collapsed .account,
-.sidebar.is-collapsed .button {
-  justify-content: center;
-  padding-inline: 0;
-}
-
-/* --- Everything that is not a conversation ----------------------------------- */
-
-/* Visible again. These were folded into a menu on the account row, which meant
-   Models, the wallet, earning and settings could not be found at all unless you
-   already knew to press an avatar. Below the conversations rather than above
-   them, because the conversations are still why the window is open. */
-.sections {
-  list-style: none;
-  margin: 0;
-  padding: var(--lc-space-xs) var(--lc-space-sm);
-  border-top: 1px solid var(--lc-rule);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 0 0 auto;
-}
-
-.nav-icon {
-  width: var(--lc-control-icon);
-  height: var(--lc-control-icon);
-  flex: 0 0 auto;
-}
-
 /* --- The two switches that live in this corner -------------------------------- */
 
 .sidebar-tools {
@@ -429,6 +445,56 @@
   color: var(--lc-text-tertiary);
 }
 
+/* --- Collapsed --------------------------------------------------------------- */
+
+/* A different layout rather than the same one narrower. Everything with words
+   in it goes; what is left is the logomark, the collapse control, and a column
+   of marks. */
+.sidebar.is-collapsed {
+  width: 3.5rem;
+}
+
+.sidebar.is-collapsed .sidebar-wordmark,
+.sidebar.is-collapsed .sidebar-rooms-title,
+.sidebar.is-collapsed .sidebar-group-title,
+.sidebar.is-collapsed .sidebar-empty,
+.sidebar.is-collapsed .nav-label,
+.sidebar.is-collapsed .nav-item-body,
+.sidebar.is-collapsed .account-text,
+.sidebar.is-collapsed .account-chevron,
+.sidebar.is-collapsed .account-balance,
+.sidebar.is-collapsed .sidebar-locked span,
+.sidebar.is-collapsed .sidebar-status {
+  display: none;
+}
+
+.sidebar.is-collapsed .sidebar-head {
+  flex-direction: column;
+  padding-inline: 0;
+}
+
+.sidebar.is-collapsed .sidebar-collapse .icon {
+  transform: rotate(180deg);
+}
+
+.sidebar.is-collapsed .sidebar-state,
+.sidebar.is-collapsed .sidebar-actions,
+.sidebar.is-collapsed .sidebar-foot {
+  padding-inline: var(--lc-space-xs);
+}
+
+.sidebar.is-collapsed .sidebar-rooms-head,
+.sidebar.is-collapsed .sidebar-group-title {
+  padding-inline: 0;
+}
+
+.sidebar.is-collapsed .nav-item,
+.sidebar.is-collapsed .account,
+.sidebar.is-collapsed .button {
+  justify-content: center;
+  padding-inline: 0;
+}
+
 .sidebar.is-collapsed .sections {
   padding-inline: var(--lc-space-xs);
 }
@@ -439,4 +505,44 @@
 
 .sidebar.is-collapsed .version {
   display: none;
+}
+
+/* --- Short windows ------------------------------------------------------------ */
+
+/* At 600px tall every zone still fits — the list yields, everything else is
+   fixed — but the fixed zones pay for their own comfort first, so the list
+   keeps enough room to be a list. */
+@media (max-height: 640px) {
+  .sidebar-head {
+    padding-top: var(--lc-space-sm);
+  }
+
+  .sidebar-rooms {
+    margin-top: var(--lc-space-xs);
+  }
+
+  .sidebar-actions {
+    padding-block: var(--lc-space-xs);
+    gap: var(--lc-space-xs);
+  }
+
+  .sidebar-actions .button {
+    height: var(--lc-control-sm);
+  }
+
+  .sidebar-elsewhere {
+    padding-block: 2px;
+  }
+
+  .sidebar-group-title {
+    padding-block: 2px;
+  }
+
+  .sidebar-foot {
+    padding-block: var(--lc-space-xs) var(--lc-space-sm);
+  }
+
+  .sidebar-tools {
+    margin-top: var(--lc-space-xs);
+  }
 }

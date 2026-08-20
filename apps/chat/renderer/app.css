@@ -575,12 +575,11 @@ select.input option {
 
 /* --- The standing backup reminder ------------------------------------------ */
 
-/* One quiet row above whatever surface is open, and no dismiss control:
-   dismissing is what "Later" already was, and offering it twice turns a
-   reminder into a thing people learn to close. Warning-toned rather than
-   danger-toned, because nothing is wrong yet. */
+/* One quiet row above whatever surface is open, with a way to put it down for
+   a few days: a reminder that cannot rest becomes a thing people learn to look
+   past. Warning-toned rather than danger-toned, because nothing is wrong yet. */
 /* A line, not a slab.
-   
+
    This was `--lc-warning-soft` across the full width, which is fine as a tint
    behind a short label on a card and reads as mud when it is sixty pixels tall
    and a thousand wide — the first thing anybody saw on opening the application
@@ -608,4 +607,10 @@ select.input option {
   font-size: var(--lc-type-caption);
   color: var(--lc-text-secondary);
   text-wrap: pretty;
+}
+
+/* The snooze. Smaller and quieter than the action beside it, because the
+   answer the banner wants is "Back it up", not "go away". */
+.backup-banner .backup-banner-dismiss {
+  flex: 0 0 auto;
 }

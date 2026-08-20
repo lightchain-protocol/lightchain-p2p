@@ -1,14 +1,18 @@
 
       <section class="content">
-        <!-- Standing until the words are written down.
-             
+        <!-- Standing until the words are written down — but it can rest.
+
              Deferring the backup has to be a real option or people photograph
              the setup screen to get past it, which is worse. So this is the
-             price of deferring: one quiet line, on every surface, that does not
-             go away by itself and cannot be dismissed. It is not a modal and it
-             does not interrupt anything - what it blocks is receiving funds,
-             and that gate lives on the button that would have shown an
-             address. -->
+             price of deferring: one quiet line, on every surface, that does
+             not go away by itself. It is not a modal and it does not interrupt
+             anything — what it blocks is receiving funds, and that gate lives
+             on the button that would have shown an address.
+
+             It can be put down for the session. A reminder with no way to rest
+             becomes a thing people learn to look past; this one comes back at
+             the next launch, because the twelve words are still the only way
+             back in. -->
         <div class="backup-banner" id="backup-banner" role="status" hidden>
           <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
           <p class="backup-banner-text">
@@ -16,5 +20,14 @@
           </p>
           <button class="button button-sm" type="button" id="backup-banner-btn">
             Back it up
+          </button>
+          <button
+            class="icon-button backup-banner-dismiss"
+            type="button"
+            id="backup-banner-dismiss"
+            title="Remind me later"
+            aria-label="Dismiss the backup reminder until the app restarts"
+          >
+            <svg class="icon" aria-hidden="true"><use href="#i-close" /></svg>
           </button>
         </div>
