@@ -262,14 +262,68 @@ export function showSection(name) {
 }
 
 let toastTimer = null
+
+/**
+ * The toast's insides, built once.
+ *
+ * The markup in foot.html is a bare paragraph so the element exists for the
+ * `el` lookup above; what goes in it is this module's business. A text span,
+ * so showing a message never has to rebuild the close control, and a button,
+ * because a notification that covers something has to be dismissible on
+ * demand rather than on a timer. The paragraph is an announcement either way:
+ * `role="status"` makes it a live region, which a bare `<p>` is not.
+ */
+const toastText = document.createElement('span')
+toastText.className = 'toast-text'
+
+const toastClose = document.createElement('button')
+toastClose.type = 'button'
+toastClose.className = 'toast-close'
+toastClose.title = 'Dismiss'
+toastClose.setAttribute('aria-label', 'Dismiss the notification')
+{
+  const icon = svg('svg', { class: 'icon', 'aria-hidden': 'true' })
+  icon.append(svg('use', { href: '#i-close' }))
+  toastClose.append(icon)
+}
+
+if (el.toast) {
+  el.toast.setAttribute('role', 'status')
+  el.toast.append(toastText, toastClose)
+}
+
+function dismissToast() {
+  clearTimeout(toastTimer)
+  el.toast.hidden = true
+}
+
+toastClose.addEventListener('click', dismissToast)
+
+/**
+ * Where the card docks: under the window chrome, or under the backup banner
+ * when that is up. Fixed at the top right rather than bottom centre, where it
+ * used to land on top of whatever paragraph ran to the foot of the page —
+ * a notification that covers the text it is interrupting is one you have to
+ * wait out to keep reading.
+ *
+ * Measured rather than declared, because the banner's height is content's to
+ * decide and the stylesheet has no business knowing it.
+ */
+function dockToast() {
+  let top = document.getElementById('titlebar')?.getBoundingClientRect().bottom ?? 0
+  if (el.backupBanner && !el.backupBanner.hidden) {
+    top = Math.max(top, el.backupBanner.getBoundingClientRect().bottom)
+  }
+  el.toast.style.top = `${Math.round(top) + 12}px`
+}
+
 export function toast(text, tone) {
-  el.toast.textContent = readable(text)
+  toastText.textContent = readable(text)
   el.toast.dataset.tone = tone ?? 'info'
+  dockToast()
   el.toast.hidden = false
   clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => {
-    el.toast.hidden = true
-  }, 3200)
+  toastTimer = setTimeout(dismissToast, 3200)
 }
 
 /**

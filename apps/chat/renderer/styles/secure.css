@@ -425,24 +425,3 @@
   text-wrap: pretty;
 }
 
-/* ---------------------------------------------------------------------------
-   The toast
-   ------------------------------------------------------------------------- */
-
-/* The toast's frame lives in app.css with the rest of the shared chrome; these
-   are its colours and its motion, retuned to the tokens. Raised one surface
-   above the page behind it, the elevation token rather than a hand-rolled
-   shadow, and the error tone drawn from the soft status pair instead of a bare
-   colour on grey. */
-.toast {
-  border-color: var(--lc-rule-strong);
-  background: var(--lc-surface-3);
-  box-shadow: var(--lc-shadow-2);
-  animation: toast-in var(--lc-motion-base) var(--lc-easing);
-}
-
-.toast[data-tone='error'] {
-  border-color: color-mix(in srgb, var(--lc-danger) 45%, var(--lc-rule-strong));
-  background: var(--lc-danger-soft);
-  color: var(--lc-danger);
-}

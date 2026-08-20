@@ -434,12 +434,13 @@ el.walletCopy.addEventListener('click', () =>
 // --- The balance, everywhere ------------------------------------------------
 
 /**
- * Both numbers, in the title bar.
+ * The wallet's balance, in the sidebar's identity row.
  *
- * They mean different things and both decide whether the next thing you try
- * will work: the wallet is what can be deposited or sent, and the prepaid
- * balance is what inference is actually drawn from. Keeping them in the Wallet
- * section meant finding out you were empty by being refused.
+ * One figure, not two: the row used to read "0 LCAI · 0 prepaid", two numbers
+ * where a glance has room for one. The prepaid figure lives on the Account
+ * page beside the deposit and withdrawal controls that change it, which is
+ * where a second number can be explained. Zero is still a number here — "0
+ * LCAI" is an answer, a dash is a load failure.
  */
 const balanceButton = document.getElementById('account-balance')
 
@@ -466,24 +467,13 @@ export async function refreshTitlebarBalance() {
       return
     }
 
-    const [balances, ai] = await Promise.all([
-      request('wallet.balances'),
-      request('ai.status').catch(() => null)
-    ])
+    const balances = await request('wallet.balances')
 
     const native = balances.native === null ? null : compactLcai(balances.native)
-    const prepaid = ai ? compactLcai(ai.balance) : null
 
     balanceButton.hidden = false
-    balanceButton.textContent =
-      prepaid === null ? `${native} LCAI` : `${native} LCAI · ${prepaid} prepaid`
-    balanceButton.title = `${native} LCAI in the wallet on ${status.network}${
-      prepaid === null ? '' : `, and ${prepaid} deposited for inference`
-    }. Click to open the wallet.`
-
-    // Red when there is not enough prepaid for even the cheapest job, which is
-    // the state that turns into a refusal a minute later.
-    balanceButton.classList.toggle('is-empty', ai !== null && BigInt(ai.balance) === 0n)
+    balanceButton.textContent = `${native} LCAI`
+    balanceButton.title = `${native} LCAI in the wallet on ${status.network}. Click to open the wallet.`
   } catch {
     balanceButton.hidden = true
   }

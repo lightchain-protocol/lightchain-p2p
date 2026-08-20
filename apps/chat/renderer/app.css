@@ -521,32 +521,77 @@ select.input option {
 
 /* --- Toast ---------------------------------------------------------------- */
 
+/* A notification card, docked at the top right beneath the window chrome —
+   dom.js measures the title bar, and the backup banner when it is up, and sets
+   the offset — rather than floating bottom centre over whatever the page was
+   saying. The colours and elevation were folded in from secure.css, which had
+   retuned them to the tokens while the frame stayed here; there is now exactly
+   one place a toast is styled. */
 .toast {
   position: fixed;
-  left: 50%;
-  bottom: var(--lc-space-xl);
+  top: calc(38px + var(--lc-space-md)); /* docked precisely by dom.js */
+  right: var(--lc-space-lg);
   z-index: 30;
-  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  max-width: 24rem;
   margin: 0;
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-pill);
-  padding: var(--lc-space-sm) var(--lc-space-lg);
+  border: 1px solid var(--lc-rule-strong);
+  border-radius: var(--lc-radius-md);
+  padding: var(--lc-space-sm) var(--lc-space-sm) var(--lc-space-sm) var(--lc-space-md);
   font-size: var(--lc-text-sm);
-  color: var(--lc-fg);
-  background: var(--lc-bg-elevated-2);
-  box-shadow: 0 12px 28px -8px rgb(0 0 0 / 0.6);
-  animation: toast-in var(--lc-motion-base) ease-out;
+  color: var(--lc-text-primary);
+  background: var(--lc-surface-3);
+  box-shadow: var(--lc-shadow-2);
+  animation: toast-in var(--lc-motion-base) var(--lc-easing);
+}
+
+/* `display: flex` above would beat the hidden attribute's `display: none`. */
+.toast[hidden] {
+  display: none;
 }
 
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translate(-50%, 8px);
+    transform: translateY(-8px);
   }
 }
 
+.toast-text {
+  min-width: 0;
+  line-height: var(--lc-leading-normal);
+}
+
+/* The way to make it go away now rather than in three seconds. */
+.toast-close {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: var(--lc-space-xs);
+  border: 0;
+  border-radius: var(--lc-radius-sm);
+  background: transparent;
+  color: var(--lc-text-tertiary);
+  cursor: pointer;
+}
+
+.toast-close:hover {
+  background: var(--lc-surface-hover);
+  color: var(--lc-text-primary);
+}
+
 .toast[data-tone='error'] {
+  border-color: color-mix(in srgb, var(--lc-danger) 45%, var(--lc-rule-strong));
+  background: var(--lc-danger-soft);
   color: var(--lc-danger);
+}
+
+/* An error's dismiss keeps the plain hover: a red cross on red reads as part
+   of the message rather than as the control. */
+.toast[data-tone='error'] .toast-close {
+  color: inherit;
 }
 
 /* Changing theme repaints every surface in the window at once. Letting each of

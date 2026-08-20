@@ -255,6 +255,28 @@
   white-space: nowrap;
 }
 
+/* The room's identicon, drawn by rooms.js from the room's key. It is the whole
+   row when the sidebar is folded: the elsewhere rows keep their icons in that
+   mode and a room row without one was an empty coloured block. The plate and
+   rounding match the identity row's mark below, so a mark means the same thing
+   wherever it appears. `.identicon` itself is sized for the roster; the box
+   here wins on specificity. */
+.nav-item-mark {
+  width: var(--lc-control-icon);
+  height: var(--lc-control-icon);
+  flex: 0 0 auto;
+  border-radius: var(--lc-radius-sm);
+  overflow: hidden;
+  background: var(--lc-surface-3);
+  display: grid;
+  place-items: center;
+}
+
+.nav-item-mark .identicon {
+  width: 100%;
+  height: 100%;
+}
+
 .nav-item-body {
   display: flex;
   flex-direction: column;
@@ -424,10 +446,6 @@
   color: var(--lc-text-primary);
 }
 
-.account-balance.is-empty {
-  color: var(--lc-warning);
-}
-
 /* --- The two switches that live in this corner -------------------------------- */
 
 .sidebar-tools {
@@ -438,11 +456,21 @@
   padding: 0 var(--lc-space-sm);
 }
 
+/* The build's badge: a muted chip rather than a bare version string. The
+   number itself moved to the element's title, so it is still there for anybody
+   who needs it without reading as a control. */
 .sidebar-tools .version {
-  flex: 1 1 auto;
-  margin: 0;
-  font-size: var(--lc-type-caption);
+  flex: 0 0 auto;
+  margin: 0 auto 0 0;
+  padding: 0 var(--lc-space-sm);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-surface-3);
   color: var(--lc-text-tertiary);
+  font-size: var(--lc-type-caption);
+  font-weight: var(--lc-weight-semibold);
+  letter-spacing: 0.08em;
+  line-height: var(--lc-leading-normal);
 }
 
 /* --- Collapsed --------------------------------------------------------------- */

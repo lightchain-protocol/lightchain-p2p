@@ -209,6 +209,15 @@ function renderRooms() {
     const body = document.createElement('span')
     body.className = 'nav-item-body'
 
+    // A face for the room, in the list as well as in its header. The elsewhere
+    // rows each carry an icon, and a room row carrying none collapses to an
+    // empty coloured block when the sidebar folds — the one mode where the
+    // mark is the whole label. Same `avatar()` the header and the roster draw
+    // with, so a room reads as the same shape everywhere it appears.
+    const mark = document.createElement('span')
+    mark.className = 'nav-item-mark'
+    mark.append(avatar(room.key, 18))
+
     const name = document.createElement('span')
     name.className = 'nav-item-name'
     // The name if the room has one, and the key only as a fallback. A column of
@@ -230,7 +239,7 @@ function renderRooms() {
     sub.textContent = last ? bodyFor(last) : room.writable ? 'No messages yet' : 'Read only'
 
     body.append(name, sub)
-    button.append(body)
+    button.append(mark, body)
     button.addEventListener('click', () => select(room.key))
     item.append(button)
     el.roomList.append(item)
@@ -946,12 +955,21 @@ function clearComposerExtras() {
  */
 export function openMessage({ room, id }) {
   if (!rooms.has(room)) return
-  showSection('chat')
+  // `select` reveals the chat panel itself; the duplicate call here went when
+  // the third selection path turned out not to have one.
   select(room)
   requestAnimationFrame(() => revealMessage(id))
 }
 
 function select(key) {
+  // Choosing a conversation is a navigation, wherever the choice came from —
+  // the list, a search result, a fresh create or join. The chat panel has to
+  // be the thing on screen, or the room loads behind Models, Account or Earn
+  // and the window looks as though it ignored the click. This used to live at
+  // two of the call sites; the list's own handler did not have it, which left
+  // no way back to a conversation from the elsewhere pages.
+  showSection('chat')
+
   const changed = activeKey !== key
 
   // Leaving a room mid-sentence should not leave the indicator on behind you.
