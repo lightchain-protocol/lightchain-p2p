@@ -29,9 +29,28 @@ export interface NetworkProfile {
   readonly consumerApiUrl: string
   /** Where answers stream back from. */
   readonly relayUrl: string
+  /**
+   * The deployed AIConfig contract, where the network publishes one.
+   *
+   * The mainnet value is the proxy from
+   * https://docs.lightchain.ai/docs/getting-started/mainnet/contracts —
+   * "always interact with the proxy"; governance can upgrade the
+   * implementation behind it. Testnet carries none and resolves it from the
+   * WorkerRegistry at runtime instead, so a stale copy can never point a
+   * worker at a contract nobody else is using.
+   */
+  readonly aiConfigAddress?: string
+  /** The deployed JobRegistry contract. Same source and caveat as above. */
+  readonly jobRegistryAddress?: string
 }
 
-/** Genesis predeploy. Identical on both networks. */
+/**
+ * Genesis predeploy. Identical on both networks.
+ *
+ * Per https://docs.lightchain.ai/docs/getting-started/mainnet/contracts,
+ * genesis predeploys are part of the chain's genesis state and stable across
+ * upgrades, which is why this one is safe to hold as a constant.
+ */
 export const WORKER_REGISTRY_ADDRESS = '0x0000000000000000000000000000000000001002'
 
 export const NETWORKS: Readonly<Record<NetworkName, NetworkProfile>> = {
@@ -46,7 +65,12 @@ export const NETWORKS: Readonly<Record<NetworkName, NetworkProfile>> = {
     workerGatewayUrl: 'https://worker-gateway.mainnet.lightchain.ai',
     image: 'us-central1-docker.pkg.dev/lightchain/lightchain-mainnet-public-docker/worker:latest',
     consumerApiUrl: 'https://chat-api.mainnet.lightchain.ai',
-    relayUrl: 'wss://relay.mainnet.lightchain.ai/ws'
+    relayUrl: 'wss://relay.mainnet.lightchain.ai/ws',
+    // Proxy addresses, per
+    // https://docs.lightchain.ai/docs/getting-started/mainnet/contracts —
+    // not the implementations, which are exposed for source verification only.
+    aiConfigAddress: '0x24D11533C354092ed6E18b964257819cE78Ce77D',
+    jobRegistryAddress: '0xfB15F90298e4CcD7106E76ffB5e520315cC42B0b'
   },
   testnet: {
     name: 'testnet',

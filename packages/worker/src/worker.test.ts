@@ -64,8 +64,35 @@ describe('configuration', () => {
     expect(() => resolveConfig({ ...base, aiConfigAddress: '0x123' })).toThrow(WorkerConfigError)
   })
 
-  it('is not runnable until the registry addresses are resolved', () => {
-    const partial = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD })
+  it('defaults the mainnet contract addresses to the published proxies', () => {
+    // Registering with nothing configured must work out of the box. These are
+    // the proxy addresses from
+    // https://docs.lightchain.ai/docs/getting-started/mainnet/contracts —
+    // never the implementations, which governance can swap behind the proxy.
+    const bare = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD })
+    expect(bare.aiConfigAddress).toBe('0x24D11533C354092ed6E18b964257819cE78Ce77D')
+    expect(bare.jobRegistryAddress).toBe('0xfB15F90298e4CcD7106E76ffB5e520315cC42B0b')
+    expect(bare.workerRegistryAddress).toBe('0x0000000000000000000000000000000000001002')
+    expect(isRunnable(bare)).toBe(true)
+  })
+
+  it('lets an explicit address win over the profile default', () => {
+    // The escape hatch for testing against a deployment the profile predates.
+    const override = '0x0000000000000000000000000000000000000001'
+    const custom = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD, aiConfigAddress: override })
+    expect(custom.aiConfigAddress).toBe(override)
+    expect(custom.jobRegistryAddress).toBe(NETWORKS.mainnet.jobRegistryAddress)
+  })
+
+  it('keeps testnet resolving from the registry rather than a baked-in copy', () => {
+    // A stale hardcoded testnet address points a worker at a contract nobody
+    // else is using, so the profile deliberately carries none.
+    expect(NETWORKS.testnet.aiConfigAddress).toBeUndefined()
+    expect(NETWORKS.testnet.jobRegistryAddress).toBeUndefined()
+
+    const partial = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD, network: 'testnet' })
+    expect(partial.aiConfigAddress).toBeUndefined()
+    expect(partial.jobRegistryAddress).toBeUndefined()
     expect(isRunnable(partial)).toBe(false)
     expect(isRunnable(config)).toBe(true)
   })
@@ -125,8 +152,20 @@ describe('docker commands', () => {
   })
 
   it('refuses to run before the registry addresses are known', () => {
-    const partial = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD })
+    // Only reachable on a network the profile publishes no addresses for;
+    // mainnet is runnable from its profile alone.
+    const partial = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD, network: 'testnet' })
     expect(() => runWorker(partial, '/data/ks')).toThrow(/aiConfig\(\)/)
+  })
+
+  it('registers against the published mainnet contracts with nothing configured', () => {
+    // The live failure this guards: the image refuses to load its config when
+    // AI_CONFIG_ADDRESS is absent, so registration could never work for a user
+    // who never exported the variable.
+    const bare = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD })
+    const joined = register(bare, '/data/ks').argv.join(' ')
+    expect(joined).toContain('AI_CONFIG_ADDRESS=0x24D11533C354092ed6E18b964257819cE78Ce77D')
+    expect(joined).toContain('JOB_REGISTRY_ADDRESS=0xfB15F90298e4CcD7106E76ffB5e520315cC42B0b')
   })
 
   it('removes the container forcibly on stop, since it restarts always', () => {

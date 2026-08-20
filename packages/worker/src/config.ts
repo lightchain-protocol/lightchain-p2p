@@ -16,9 +16,14 @@ export interface WorkerConfigInput {
   readonly keystorePassword: string
   /** Path of the keystore file inside the container, under /data. */
   readonly keystorePath?: string
-  /** Resolved from the registry by `aiConfig()`. */
+  /**
+   * Defaults to the network profile's published address. An explicit value
+   * still wins — the escape hatch for a deployment the profile predates.
+   * When the profile carries none (testnet), resolved from the registry by
+   * `aiConfig()`.
+   */
   readonly aiConfigAddress?: string
-  /** Resolved from the registry by `jobRegistry()`. */
+  /** Same resolution as `aiConfigAddress`, by `jobRegistry()`. */
   readonly jobRegistryAddress?: string
   readonly supportedModels?: readonly string[]
   readonly ollamaUrl?: string
@@ -101,8 +106,12 @@ export function resolveConfig(input: WorkerConfigInput): WorkerConfig {
     workerGatewayUrl: profile.workerGatewayUrl,
     image: profile.image,
     workerRegistryAddress: WORKER_REGISTRY_ADDRESS,
-    aiConfigAddress: input.aiConfigAddress,
-    jobRegistryAddress: input.jobRegistryAddress,
+    // An explicit address wins; the profile's published one is the default, so
+    // a worker that was never configured still registers against the contracts
+    // everybody else is using. Where the profile carries none (testnet) this
+    // stays undefined and the registry is asked instead.
+    aiConfigAddress: input.aiConfigAddress ?? profile.aiConfigAddress,
+    jobRegistryAddress: input.jobRegistryAddress ?? profile.jobRegistryAddress,
     keysDir: input.keysDir,
     keystorePassword: input.keystorePassword,
     keystorePath: input.keystorePath ?? '/data/eth-keystore',

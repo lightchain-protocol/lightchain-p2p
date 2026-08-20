@@ -812,6 +812,12 @@ function workerConfig(overrides = {}) {
         keysDir:
           setting('keysDir', 'KEYS_DIR') ?? path.join(os.homedir(), 'lightchain-worker', 'keys'),
         keystorePassword: setting('workerPassword', 'WORKER_PASSWORD') ?? '',
+        // Unset is fine here: resolveConfig falls back to the network
+        // profile's published mainnet proxy addresses, and an explicit
+        // setting or environment variable still wins. Leaving these unset
+        // used to reach the container as a missing AI_CONFIG_ADDRESS, which
+        // the image rejects at config load — registration could never work
+        // for anyone who had not exported the variables.
         aiConfigAddress: setting('aiConfigAddress', 'AI_CONFIG_ADDRESS'),
         jobRegistryAddress: setting('jobRegistryAddress', 'JOB_REGISTRY_ADDRESS'),
         supportedModels: models ? models.split(',').map((m) => m.trim()) : undefined,
