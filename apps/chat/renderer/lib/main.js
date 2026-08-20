@@ -10,10 +10,14 @@ import { refreshAssets } from './assets.js'
 import { refreshActivity } from './activity.js'
 import { startOnboarding } from './onboarding.js'
 import { openSettings } from './settings.js'
+import { notifyDeposit, setDepositSound } from './sound.js'
 // Nothing out here calls into the settings panel, but importing a panel is what
 // attaches its controls, and the button that opens it is one of them.
 import './settings.js'
 import { showBridge } from './bridge.js'
+// Imported for its controls, as settings is: the Swap button on the wallet is
+// one of them, and importing the module is what attaches it.
+import './swap.js'
 
 /**
  * The shell around the panels, and the order things come up in.
@@ -263,6 +267,13 @@ onPush('wallet.locked', () => {
 })
 
 /**
+ * Money arrived. The worker watches the balances on a timer and pushes this;
+ * what it becomes — a toast naming the amount, and a chime unless the setting
+ * is off — is sound.js's business.
+ */
+onPush('wallet.deposit', notifyDeposit)
+
+/**
  * Says somebody is still here, at most once a minute.
  *
  * Without this, reading a long thread for twenty minutes reads to the worker as
@@ -294,6 +305,9 @@ async function restorePreferences() {
   const { values } = await request('settings.read').catch(() => ({ values: {} }))
   applyTheme(values?.theme)
   applyCollapsed(values?.sidebar === 'collapsed')
+  // Absent is on: the chime is the default, and the stored word "false" is how
+  // it is switched off. The settings panel applies the same rule.
+  setDepositSound(values?.depositSound !== 'false')
 
   // A link can be what started the app, in which case it arrived before this
   // window existed and is waiting rather than having been delivered.

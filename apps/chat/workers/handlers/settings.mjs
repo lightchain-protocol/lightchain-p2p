@@ -49,6 +49,12 @@ const WRITABLE = new Set([
   // the write handler below and at boot, so the file and what is published can
   // never disagree.
   'receipts',
+  // The deposit chime. The mirror image of receipts: stored as the word
+  // "false" or absent, and absent is ON — a deposit is news about the owner's
+  // own money, addressed to the owner alone, so it rings unless they asked it
+  // not to. The worker pushes the event either way; only the sound is gated,
+  // and it is gated in the window that plays it.
+  'depositSound',
   // Two more are absent, and they are host arguments rather than settings.
   //
   // `keysDir` becomes the source of a `-v <dir>:/data` bind mount into a

@@ -37,12 +37,14 @@ import {
   sealJson
 } from '@lcai-p2p/wallet'
 import { createGuard } from './guard.mjs'
+import { watchDeposits } from './deposits.mjs'
 import { Api, History, isAnswerVerified } from '@lcai-p2p/inference'
 import { roomHandlers } from './handlers/rooms.mjs'
 import { walletHandlers } from './handlers/wallet.mjs'
 import { assetHandlers, chainPools } from './handlers/assets.mjs'
 import { historyHandlers } from './handlers/history.mjs'
 import { bridgeHandlers } from './handlers/bridge.mjs'
+import { swapHandlers } from './handlers/swap.mjs'
 import { aiHandlers } from './handlers/ai.mjs'
 import { workerHandlers } from './handlers/worker.mjs'
 import { settingsHandlers } from './handlers/settings.mjs'
@@ -112,6 +114,8 @@ import { localHandlers } from './handlers/local.mjs'
  *     { t: 'ok',    id, value }
  *     { t: 'error', id, message }
  *     { t: 'room',  room: state }        pushed whenever a room changes
+ *     { t: 'wallet.deposit', chainId, chainName, symbol, amountWei, amountText, address }
+ *                                      pushed when a watched balance goes up
  *
  * No shared module defines this. The renderer is sandboxed and cannot import
  * from the workspace, so its client repeats these strings, and changing one
@@ -980,6 +984,10 @@ const guard = createGuard({
 
 guard.watchIdle()
 
+// One pool per chain, shared by holdings, history and the deposit watcher, so
+// all three learn about an endpoint being down from the same place.
+const poolFor = chainPools(() => settings)
+
 const ctx = {
   attachmentsFor,
   forgetAttachments,
@@ -988,9 +996,7 @@ const ctx = {
   chatStore,
   guard,
   host,
-  // One per chain, shared by holdings and history so that both learn about an
-  // endpoint being down from the same place.
-  poolFor: chainPools(() => settings),
+  poolFor,
   localState,
   rooms,
   send,
@@ -1039,6 +1045,7 @@ const handlers = {
   ...assetHandlers(ctx),
   ...historyHandlers(ctx),
   ...bridgeHandlers(ctx),
+  ...swapHandlers(ctx),
   ...aiHandlers(ctx),
   ...workerHandlers(ctx),
   ...settingsHandlers(ctx),
@@ -1154,5 +1161,11 @@ goodbye(async () => {
 })
 
 console.log('storage:', pear.storage)
+
+// Watching what the wallet holds, so a balance that goes up is announced
+// rather than noticed the next time somebody opens the Wallet page. The first
+// read only sets the baseline — see workers/deposits.mjs for the rules.
+const stopWatchingDeposits = watchDeposits({ wallet, poolFor, send })
+goodbye(() => stopWatchingDeposits())
 
 send({ t: 'ready', rooms: await rooms.states() })

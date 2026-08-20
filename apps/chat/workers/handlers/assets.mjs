@@ -116,6 +116,78 @@ export function chainPools(settings) {
   }
 }
 
+/**
+ * Everything held on one chain.
+ *
+ * Native balance and every curated token in a single batch where Multicall3
+ * exists, and one call each where it does not. A token that reverts costs its
+ * own row: `aggregate3` reports per-call success, which is the whole reason
+ * for using it over the strict variants.
+ *
+ * Module scope rather than a closure inside the handlers, because the deposit
+ * watcher reads the same rows on a timer — a second, subtly different copy of
+ * this read is how the list and the notification would come to disagree.
+ */
+export async function holdingsOn(poolFor, chainId, address) {
+  const chain = chainById(chainId)
+  const tokens = tokensOn(chainId)
+  const pool = poolFor(chainId)
+
+  const [native, results] = await Promise.all([
+    pool.balanceOf(address),
+    aggregate(
+      { call: (request) => pool.call(request) },
+      chain.multicall3,
+      tokens.map((token) => ({ to: token.address, data: balanceOfCall(address) }))
+    )
+  ])
+
+  const held = [
+    {
+      kind: 'native',
+      chainId,
+      chainName: chain.name,
+      symbol: chain.symbol,
+      // The coin, not the chain. Base and Arbitrum both run on ether, and a
+      // row reading "Base · ETH · Base" names the chain twice and the asset
+      // never.
+      name: chain.coinName,
+      decimals: chain.decimals,
+      address: null,
+      balance: native.toString(),
+      pricedAs: chain.symbol
+    }
+  ]
+
+  tokens.forEach((token, i) => {
+    const result = results[i]
+    if (!result?.success) return
+
+    let balance
+    try {
+      balance = decodeUint256(result.data)
+    } catch {
+      // A contract that answered something that is not a number is not a
+      // token this wallet can show. Leaving it out beats inventing a zero.
+      return
+    }
+
+    held.push({
+      kind: 'token',
+      chainId,
+      chainName: chain.name,
+      symbol: token.symbol,
+      name: token.name,
+      decimals: token.decimals,
+      address: token.address,
+      balance: balance.toString(),
+      pricedAs: token.pricedAs ?? null
+    })
+  })
+
+  return held
+}
+
 export function assetHandlers(ctx) {
   const { wallet, network, guard, poolFor } = ctx
 
@@ -208,74 +280,6 @@ export function assetHandlers(ctx) {
     return value
   }
 
-  /**
-   * Everything held on one chain.
-   *
-   * Native balance and every curated token in a single batch where Multicall3
-   * exists, and one call each where it does not. A token that reverts costs its
-   * own row: `aggregate3` reports per-call success, which is the whole reason
-   * for using it over the strict variants.
-   */
-  async function holdingsOn(chainId, address) {
-    const chain = chainById(chainId)
-    const tokens = tokensOn(chainId)
-    const pool = poolFor(chainId)
-
-    const [native, results] = await Promise.all([
-      pool.balanceOf(address),
-      aggregate(
-        { call: (request) => pool.call(request) },
-        chain.multicall3,
-        tokens.map((token) => ({ to: token.address, data: balanceOfCall(address) }))
-      )
-    ])
-
-    const held = [
-      {
-        kind: 'native',
-        chainId,
-        chainName: chain.name,
-        symbol: chain.symbol,
-        // The coin, not the chain. Base and Arbitrum both run on ether, and a
-        // row reading "Base · ETH · Base" names the chain twice and the asset
-        // never.
-        name: chain.coinName,
-        decimals: chain.decimals,
-        address: null,
-        balance: native.toString(),
-        pricedAs: chain.symbol
-      }
-    ]
-
-    tokens.forEach((token, i) => {
-      const result = results[i]
-      if (!result?.success) return
-
-      let balance
-      try {
-        balance = decodeUint256(result.data)
-      } catch {
-        // A contract that answered something that is not a number is not a
-        // token this wallet can show. Leaving it out beats inventing a zero.
-        return
-      }
-
-      held.push({
-        kind: 'token',
-        chainId,
-        chainName: chain.name,
-        symbol: token.symbol,
-        name: token.name,
-        decimals: token.decimals,
-        address: token.address,
-        balance: balance.toString(),
-        pricedAs: token.pricedAs ?? null
-      })
-    })
-
-    return held
-  }
-
   // Named rather than returned anonymously, because the portfolio handler asks
   // the holdings handler for its answer instead of assembling a second, subtly
   // different one beside it.
@@ -319,7 +323,7 @@ export function assetHandlers(ctx) {
             return {
               chainId: chain.id,
               name: chain.name,
-              held: await holdingsOn(chain.id, address),
+              held: await holdingsOn(poolFor, chain.id, address),
               error: null
             }
           } catch (err) {

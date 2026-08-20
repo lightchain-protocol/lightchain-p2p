@@ -1,5 +1,6 @@
 import { copy, formatLcai, toast } from './dom.js'
 import { bridge, request } from './ipc.js'
+import { setDepositSound } from './sound.js'
 import { markBackedUp, showBackupBanner } from './backup.js'
 import { refreshWallet, showWallet } from './wallet.js'
 import { startOnboarding } from './onboarding.js'
@@ -77,6 +78,10 @@ export async function openSettings(page = settingsPage) {
   // is absent entirely — anything else, including a typo made with an editor,
   // is read as off, the same rule the presence channel applies.
   document.getElementById('set-receipts').checked = state.values.receipts === 'true'
+
+  // The deposit chime, default ON — the mirror image of receipts: the stored
+  // value is the word "false" or the key is absent, and absent rings.
+  document.getElementById('set-deposit-sound').checked = state.values.depositSound !== 'false'
 
   // The password is deliberately not returned, so the field shows whether one
   // exists rather than what it is.
@@ -203,6 +208,26 @@ document.getElementById('set-receipts').addEventListener('change', async (evt) =
     )
   } catch (err) {
     // The box said yes and the worker said no: put the box back to the truth.
+    evt.target.checked = !on
+    toast(err.message, 'error')
+  }
+})
+
+/**
+ * The deposit-sound switch.
+ *
+ * Same shape as the receipts switch above, inverted: on clears the key rather
+ * than storing "true", which keeps the absence of a choice and the choice of
+ * "yes" the same thing — on. `setDepositSound` takes effect for this window
+ * immediately; the saved value is what the next launch reads.
+ */
+document.getElementById('set-deposit-sound').addEventListener('change', async (evt) => {
+  const on = evt.target.checked
+  try {
+    await request('settings.write', { values: { depositSound: on ? null : 'false' } })
+    setDepositSound(on)
+    toast(on ? 'Deposit sound on' : 'Deposit sound off — you will still see what arrives')
+  } catch (err) {
     evt.target.checked = !on
     toast(err.message, 'error')
   }
