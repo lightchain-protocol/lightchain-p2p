@@ -377,3 +377,21 @@
     visibility: hidden;
   }
 }
+
+/* --- Filtering the list ------------------------------------------------------ */
+
+/* Narrows what is already on screen rather than asking the network anything.
+   The registry is short today and is not meant to stay that way. */
+.ai-filter {
+  padding: 0 var(--lc-space-md) var(--lc-space-sm);
+  flex: 0 0 auto;
+}
+
+.ai-filter .input {
+  width: 100%;
+}
+
+.input-sm {
+  min-height: var(--lc-control-sm);
+  font-size: var(--lc-type-caption);
+}

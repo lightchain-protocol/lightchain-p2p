@@ -268,10 +268,29 @@ function markTurn(answer, text) {
 
 // --- The list -----------------------------------------------------------------
 
+/** What has been typed into the filter, lower-cased once rather than per row. */
+let filter = ''
+
 function renderModels() {
   ai.list.replaceChildren()
 
-  for (const model of models) {
+  const showing =
+    filter === ''
+      ? models
+      : models.filter((m) => `${m.name} ${m.id ?? ''}`.toLowerCase().includes(filter))
+
+  // A filter that matches nothing has to say so. An empty column reads as a
+  // list that failed to load, which is a different problem with a different
+  // response.
+  if (showing.length === 0 && models.length > 0) {
+    const none = document.createElement('li')
+    none.className = 'model-waiting'
+    none.textContent = `No model matches “${filter}”.`
+    ai.list.append(none)
+    return
+  }
+
+  for (const model of showing) {
     const item = document.createElement('li')
     const button = document.createElement('button')
     button.className = 'model' + (openModel?.id === model.id ? ' is-active' : '')
@@ -321,6 +340,11 @@ function renderModels() {
     ai.list.append(item)
   }
 }
+
+document.getElementById('model-filter')?.addEventListener('input', (evt) => {
+  filter = evt.target.value.trim().toLowerCase()
+  renderModels()
+})
 
 /** A list being fetched, said in the list rather than in a slot beside it. */
 function showWaiting() {

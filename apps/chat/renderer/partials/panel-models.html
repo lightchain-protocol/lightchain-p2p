@@ -10,6 +10,22 @@
                 </button>
               </header>
 
+              <!-- Filtering, not searching: it narrows a list already on screen
+                   rather than asking the network anything. The list is short
+                   today and will not stay that way - a published model registry
+                   is the point - and a column somebody has to scroll to find a
+                   name in is a column that stops being used. -->
+              <div class="ai-filter">
+                <input
+                  class="input input-sm"
+                  type="search"
+                  id="model-filter"
+                  placeholder="Filter models"
+                  aria-label="Filter models"
+                  autocomplete="off"
+                />
+              </div>
+
               <!-- Both lists share one scroller. Two of them stacked meant the
                    earlier conversations could be scrolled while the models above
                    them stayed where they were. -->

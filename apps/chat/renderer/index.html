@@ -1413,6 +1413,22 @@
                 </button>
               </header>
 
+              <!-- Filtering, not searching: it narrows a list already on screen
+                   rather than asking the network anything. The list is short
+                   today and will not stay that way - a published model registry
+                   is the point - and a column somebody has to scroll to find a
+                   name in is a column that stops being used. -->
+              <div class="ai-filter">
+                <input
+                  class="input input-sm"
+                  type="search"
+                  id="model-filter"
+                  placeholder="Filter models"
+                  aria-label="Filter models"
+                  autocomplete="off"
+                />
+              </div>
+
               <!-- Both lists share one scroller. Two of them stacked meant the
                    earlier conversations could be scrolled while the models above
                    them stayed where they were. -->
@@ -1540,13 +1556,22 @@
             </section>
           </div>
         </div>
-        <!-- Worker ---------------------------------------------------------->
+        <!-- Earn ------------------------------------------------------------->
+        <!-- Called Worker until this pass, which is the name of the software
+             rather than of the reason anybody would run it. It is reached from
+             the account menu and from nowhere else: answering other people's
+             questions for a fee is a real thing this application does and it
+             is not something most people who install a messenger will ever
+             want, so it is one press away rather than a peer of the
+             conversation they came for. -->
         <div class="panel" id="panel-worker" hidden>
           <div class="console worker">
             <header class="page-head">
               <div class="page-head-main">
-                <h1 class="page-title">Worker</h1>
-                <p class="page-sub">Whether this machine can run one, and what it is doing.</p>
+                <h1 class="page-title">Earn</h1>
+                <p class="page-sub">
+                  Answer other people's questions with this machine, and be paid for it.
+                </p>
               </div>
               <div class="page-actions">
                 <button class="button button-sm" type="button" id="worker-pull">
