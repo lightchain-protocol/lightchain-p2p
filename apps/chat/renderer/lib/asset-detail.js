@@ -28,6 +28,16 @@ const list = document.getElementById('asset-history')
 let showing = null
 let range = '1w'
 
+/**
+ * This page's range buttons, and not the Portfolio card's.
+ *
+ * Both strips wear `.asset-range`, so an unscoped query matched all ten and
+ * this module quietly reset the other card's buttons. The Portfolio kept
+ * requesting whatever range it was actually on while lighting whichever one
+ * this page had just set — a year of data under a control reading 1W.
+ */
+const rangeButtons = () => document.querySelectorAll('#asset-ranges .asset-range')
+
 export function closeAsset() {
   pane.hidden = true
   walletPane.hidden = false
@@ -275,7 +285,7 @@ export async function openAsset(asset) {
   // Back to the chart and to the default range on every open, so the screen is
   // the same shape each time rather than remembering where somebody last was.
   range = '1w'
-  for (const button of document.querySelectorAll('.asset-range')) {
+  for (const button of rangeButtons()) {
     button.classList.toggle('is-active', button.dataset.range === range)
   }
   showTab('chart')
@@ -290,10 +300,10 @@ for (const tab of document.querySelectorAll('.asset-tab')) {
   tab.addEventListener('click', () => showTab(tab.dataset.tab))
 }
 
-for (const button of document.querySelectorAll('.asset-range')) {
+for (const button of rangeButtons()) {
   button.addEventListener('click', () => {
     range = button.dataset.range
-    for (const other of document.querySelectorAll('.asset-range')) {
+    for (const other of rangeButtons()) {
       other.classList.toggle('is-active', other === button)
     }
     void loadChart()

@@ -517,11 +517,14 @@ export function assetHandlers(ctx) {
         unpriced: portfolio.unpriced,
         complete: portfolio.unpriced === 0,
         // Said plainly, because somebody will compare this against the holdings
-        // total and find it short.
+        // total and find it short, or measure the line and find it stops early.
+        // Both are honest outcomes and neither is self-explanatory.
         note:
-          portfolio.unpriced === 0
-            ? null
-            : `${portfolio.unpriced} of what you hold has no price history, so it is missing from this line.`
+          portfolio.unpriced > 0
+            ? `${portfolio.unpriced} of what you hold has no price history, so it is missing from this line.`
+            : portfolio.trimmed > 0
+              ? 'This line starts where every holding has a price, which is later than the range asked for.'
+              : null
       }
     },
 

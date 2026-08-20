@@ -218,7 +218,6 @@
   max-width: none;
 }
 
-
 /* --- Holdings -------------------------------------------------------------
    A table rather than a list of cards. These are columns being compared down —
    which is worth most, which moved today — and a card layout makes that
@@ -598,7 +597,6 @@
   color: var(--lc-fg-muted);
   font-variant-numeric: tabular-nums;
 }
-
 
 /* --- The wallet's own layout ---------------------------------------------
    A grid of cards, each taking the width its subject needs. The portfolio wants

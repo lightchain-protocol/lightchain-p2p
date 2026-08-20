@@ -41,6 +41,9 @@ export const DEFAULT_REAUTH_ABOVE = 10n ** 18n
  */
 export const DEFAULT_CONFIRM_ABOVE = 100n * 10n ** 18n
 
+import b4a from 'b4a'
+import crypto from 'hypercore-crypto'
+
 /** How long to wait for somebody to answer the dialog before giving up. */
 const CONFIRM_TIMEOUT_MS = 5 * 60 * 1000
 
@@ -51,8 +54,10 @@ const IDLE_POLL_MS = 15 * 1000
  * The control lines this shares with the main process.
  *
  * Plain strings rather than JSON envelopes, matching the updater channel that
- * already runs over this pipe. The renderer sees them too and ignores them:
- * `onWorkerLine` drops anything that does not start with a brace.
+ * already runs over this pipe — and the pipe is shared with the renderer,
+ * which is why the id below is random. The main process holds up the other two
+ * halves of that arrangement: it refuses to carry anything from a window that
+ * is not a JSON envelope, and it does not forward a request line to one.
  */
 const CONFIRM_REQUEST = 'wallet:confirm'
 const CONFIRM_REPLY = 'wallet:confirmed'
@@ -76,10 +81,21 @@ export function readableAmount(wei, symbol, decimals = 18) {
   return `${whole}.${fraction} ${symbol}`
 }
 
-export function createGuard({ wallet, pipe, settings, onAutoLock }) {
+/**
+ * A name for one outstanding dialog that nobody else can arrive at.
+ *
+ * A counter would do if this process were the only writer of the pipe, and it
+ * is not. The renderer is refused the control prefix in the main process and is
+ * never shown a request line, so guessing is the last way in — and sixteen
+ * random bytes closes it whatever happens to the other two.
+ */
+function randomToken() {
+  return b4a.toString(crypto.randomBytes(16), 'hex')
+}
+
+export function createGuard({ wallet, pipe, settings, onAutoLock, randomId = randomToken }) {
   /** Outstanding dialogs, by the id the reply will quote. */
   const waiting = new Map()
-  let nextId = 1
   let timer = null
 
   const threshold = (key, fallback) => {
@@ -122,7 +138,7 @@ export function createGuard({ wallet, pipe, settings, onAutoLock }) {
      * transfer going through on the strength of something not working.
      */
     async confirmNatively(details) {
-      const id = String(nextId++)
+      const id = randomId()
 
       const answered = new Promise((resolve) => {
         waiting.set(id, resolve)

@@ -70,7 +70,7 @@ last said so — what is still missing is a signed release, not the code.
 | `packages/blind`            | **Real**        | Blind-peer registration, 4 tests against a real server with every holder offline                                 |
 | `packages/room`             | **Real**        | Multi-writer rooms, presence, attachments and a suite of abuses, 112 tests                                       |
 | `packages/wallet`           | **Real**        | BIP-39 phrase and passphrase, BIP-32 accounts, idle locking, a sealed local store, Keystore V3, 139 tests        |
-| `packages/inference`        | **Real**        | The session handshake, the prompt, the relay and what a model is shown of the conversation, under Bare, 73 tests |
+| `packages/inference`        | **Real**        | The session handshake, the prompt, the relay and what a model is shown of the conversation, under Bare, 77 tests |
 | `packages/inference-crypto` | **Real**        | ECDH P-256 and AES-256-GCM as the deployed workers speak it, 15 tests                                            |
 | `packages/host`             | **Real**        | Probes the machine a worker would run on, 15 tests                                                               |
 | `packages/ui`               | **Real**        | Design tokens and identicons, held to WCAG contrast, 57 tests                                                    |
@@ -78,7 +78,7 @@ last said so — what is still missing is a signed release, not the code.
 | `packages/worker`           | **Real**        | Network profiles, config validation, Docker orchestration, 33 tests                                              |
 | `apps/supervisor`           | **Real**        | Full worker lifecycle, contract addresses read from the registry, 17 tests                                       |
 | `packages/chain`            | **Real**        | Six EVM chains: signing, fees, ERC-20, Multicall3, endpoint failover, the bridge, 193 tests                      |
-| `packages/prices`           | **Real**        | Chainlink feeds and one Uniswap pool, read from the chain rather than an API, 31 tests                           |
+| `packages/prices`           | **Real**        | Chainlink feeds and one Uniswap pool, read from the chain rather than an API, 54 tests                           |
 | `packages/da`               | **Not started** | Referenced in CODEOWNERS so ownership is settled before the code exists                                          |
 | Blind peer infrastructure   | **Not started** | There is no public fleet; we must operate our own servers or nothing stays available                             |
 | `packages/seed`             | **Real**        | Holds and serves drives, 6 tests                                                                                 |

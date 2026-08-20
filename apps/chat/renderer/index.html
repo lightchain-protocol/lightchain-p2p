@@ -991,11 +991,20 @@
               </label>
               <label class="field">
                 <span class="field-label">Keys directory</span>
-                <input class="input" id="set-keys-dir" type="text" spellcheck="false" />
+                <input class="input" id="set-keys-dir" type="text" spellcheck="false" readonly />
+                <span class="field-hint">
+                  Shown, not settable here. This directory is mounted into the worker's
+                  container, so it is changed in the settings file rather than from a
+                  window.
+                </span>
               </label>
               <label class="field">
                 <span class="field-label">Container name</span>
-                <input class="input" id="set-container" type="text" spellcheck="false" />
+                <input class="input" id="set-container" type="text" spellcheck="false" readonly />
+                <span class="field-hint">
+                  Shown, not settable here. Docker acts on whatever this names, so it is
+                  changed in the settings file rather than from a window.
+                </span>
               </label>
               <label class="field">
                 <span class="field-label">Supported models, comma separated and untagged</span>

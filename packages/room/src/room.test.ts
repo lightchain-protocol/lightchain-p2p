@@ -373,6 +373,41 @@ describe('surviving a peer that knows more than this build', () => {
     expect(await spoken(room)).toBe(2)
   })
 
+  it('keeps a message whose answer is quoted in a shape it cannot read', async () => {
+    net = await createTestNetwork()
+    const alice = await net.createPeer('alice')
+    const room = await openRoom(alice)
+
+    await room.send('before')
+    await appendRaw(room, {
+      type: 'message',
+      v: 1,
+      id: 'msg-fromthefuture',
+      from: room.writerKey,
+      at: Date.now(),
+      text: 'the model said something',
+      answer: {
+        model: 'llama3-8b',
+        jobId: '2702',
+        sessionId: '1',
+        worker: '0x' + '11'.repeat(20),
+        sessionKey: '0x' + 'ab'.repeat(32),
+        // Neither `ciphertext` nor `frames`: a third way of quoting evidence,
+        // added after this build. This is what streaming looked like to a build
+        // that predated it, and it used to take the whole message down with it.
+        transcript: { commitment: '0x' + 'cd'.repeat(32) }
+      }
+    })
+    await room.send('after')
+
+    expect(await textsOf(room)).toEqual(['before', 'the model said something', 'after'])
+
+    // The claim is gone rather than guessed at, so nothing downstream can treat
+    // an unreadable answer as a verified one.
+    const messages = await room.messages()
+    expect(messages.find((m) => m.id === 'msg-fromthefuture')?.answer).toBeUndefined()
+  })
+
   it('does not wedge on an entry that is not an entry at all', async () => {
     net = await createTestNetwork()
     const alice = await net.createPeer('alice')

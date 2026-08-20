@@ -567,6 +567,108 @@ if (csp === null) {
     )
   }
 
+  // The other way at the same thresholds, and the one that was open. The
+  // confirmation reply is a plain control line on the pipe the window writes
+  // requests to, so for a while a window could simply answer the dialog itself:
+  // read the id off the request the main process was broadcasting, write
+  // `wallet:confirmed`, and the transfer went through with the modal still on
+  // screen and the person's real answer discarded.
+  //
+  // Three things close it and all three are checked here — the window is
+  // refused the control prefix, it is never shown a request, and the id is
+  // random rather than counted.
+  const forgeries = [
+    ['a forged confirmation', 'wallet:confirmed {"id":"1","approved":true}\n'],
+    [
+      'a sprayed range of ids',
+      [...Array(32).keys()].map((i) => `wallet:confirmed {"id":"${i}","approved":true}\n`).join('')
+    ],
+    ['an updater control line', 'pear:applyUpdate\n'],
+    [
+      'a control line hidden behind a real request',
+      '{"rid":"x","t":"wallet.status"}\nwallet:confirmed {"id":"1","approved":true}\n'
+    ]
+  ]
+
+  for (const [what, payload] of forgeries) {
+    const carried = await evaluate(
+      `window.bridge.writeWorkerIPC('/workers/main.mjs', ${JSON.stringify(payload)})`
+    )
+    report(`the pipe refuses ${what}`, carried === false, `writeWorkerIPC returned ${carried}`)
+  }
+
+  // The same handler is the one that used to wedge the data plane outright. A
+  // non-string reaches framed-stream's `_frame(data.byteLength)` as undefined
+  // and throws a tick later, after `write` has already returned true — so every
+  // later request hung forever with the worker alive and the status line still
+  // reading "connected".
+  for (const [what, literal] of [
+    ['a number', '42'],
+    ['an object', '({ t: "wallet.status" })'],
+    ['null', 'null']
+  ]) {
+    const carried = await evaluate(`window.bridge.writeWorkerIPC('/workers/main.mjs', ${literal})`)
+    report(`the pipe refuses ${what}`, carried === false, `writeWorkerIPC returned ${carried}`)
+  }
+
+  // And the worker is still answering after all of that, which is the assertion
+  // that would have caught the wedge.
+  const alive = await asWorker('wallet.status')
+  report(
+    'the worker still answers afterwards',
+    alive !== undefined && !alive?.error?.includes('NO ANSWER'),
+    alive?.error ?? 'answered'
+  )
+
+  // Money paths that moved value with no password and no dialog at all.
+  // `ai.fund` was the worst of them: the same call raises a delegate's
+  // allowance by the amount deposited, and nothing lowers it again, so an
+  // unguarded one grants standing spending authority rather than spending once.
+  //
+  // The disclosure is accepted first so `bridge.approve` is refused by the
+  // guard rather than by the gate in front of it. Refused-for-the-wrong-reason
+  // is how a check like this passes after somebody removes the thing it tests.
+  await asWorker('bridge.acknowledge', { accepted: true })
+
+  for (const request of ['ai.fund', 'ai.withdraw']) {
+    const moved = await asWorker(request, { amount: (1000n * 10n ** 18n).toString() })
+    report(
+      `${request} refuses a large amount with no password`,
+      /needs your password again/.test(moved?.error ?? ''),
+      moved?.error?.slice(0, 70)
+    )
+  }
+
+  // Two separate ceilings stand in front of an approval and either is a pass.
+  // The balance one answers first on a wallet holding nothing, which is the
+  // case here; on a funded wallet the password does. Both were added together
+  // and an approval that got past either would be the finding.
+  const approved = await asWorker('bridge.approve', {
+    amount: (1000n * 10n ** 18n).toString(),
+    fromChainId: 1
+  })
+  report(
+    'bridge.approve refuses an allowance nothing backs, with no password',
+    /needs your password again|more than this address holds/.test(approved?.error ?? ''),
+    approved?.error?.slice(0, 70)
+  )
+
+  // Two settings that are not settings. Both are arguments handed to Docker —
+  // a bind mount source and the subject of `rm -f` — so a window able to write
+  // them could mount any directory into a root container, read another
+  // container's logs, or destroy one.
+  for (const [key, value] of [
+    ['keysDir', 'C:\\'],
+    ['containerName', 'postgres']
+  ]) {
+    const written = await asWorker('settings.write', { values: { [key]: value } })
+    report(
+      `${key} cannot be changed from the window`,
+      /not a setting this app writes/.test(written?.error ?? ''),
+      written?.error
+    )
+  }
+
   // A user's own RPC key would be a credential the window has no business
   // holding. Nothing should hand one back.
   const settings = await asWorker('settings.read')

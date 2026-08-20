@@ -321,10 +321,16 @@ const nav = JSON.parse(advertised)
 report(
   'every nav item leads to a panel that exists',
   nav.orphaned.length === 0,
-  nav.orphaned.length === 0 ? `${nav.sections.length} sections` : `orphaned: ${nav.orphaned.join(', ')}`
+  nav.orphaned.length === 0
+    ? `${nav.sections.length} sections`
+    : `orphaned: ${nav.orphaned.join(', ')}`
 )
 
-report('and nothing in the sidebar is dimmed out', nav.dimmed === 0, `${nav.dimmed} dimmed controls`)
+report(
+  'and nothing in the sidebar is dimmed out',
+  nav.dimmed === 0,
+  `${nav.dimmed} dimmed controls`
+)
 
 // --- Nothing threw on the way through -----------------------------------------
 

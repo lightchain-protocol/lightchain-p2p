@@ -12,8 +12,20 @@ import globals from 'globals'
  * from reaching into each other's territory.
  */
 export const pearBoundary = {
-  files: ['apps/**/*.{ts,tsx,js,mjs}'],
-  ignores: ['apps/**/workers/**'],
+  // Relative to the config that spreads this in, which is each app's own
+  // `eslint.config.mjs`, run by Turbo with that app as the working directory.
+  // These patterns used to read `apps/**`, and inside `apps/chat` there is no
+  // `apps/` to match — so the rule was configured, exported, composed, and
+  // matched not one file in the repository. `eslint --print-config` on a
+  // renderer module reported `no-restricted-imports: undefined`. Verify a
+  // change here the same way: a green lint run is what the defect produces.
+  files: ['**/*.{ts,tsx,js,mjs}'],
+  // Workers are the documented exception — they are the data plane, and the
+  // stack is what they are for. `scripts/` is the undocumented one: the wsl-*
+  // harnesses drive a second peer from Node and legitimately build their own
+  // Corestore and swarm, which is the whole point of testing against a
+  // separate implementation.
+  ignores: ['workers/**', 'scripts/**'],
   rules: {
     'no-restricted-imports': [
       'error',
@@ -205,12 +217,11 @@ export const bareWorkers = {
   }
 }
 
-export default tseslint.config(
+const shared = tseslint.config(
   { ignores: ['**/dist/**', '**/out/**', '**/.turbo/**', '**/node_modules/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
-  pearBoundary,
   bareScripts,
   runtimeAdapters,
   electronMain,
@@ -219,3 +230,17 @@ export default tseslint.config(
   bareCommonJs,
   appTests
 )
+
+export default shared
+
+/**
+ * What an application lints with: the above, plus the import boundary.
+ *
+ * The boundary is deliberately not in the default export. Rule 1 is that
+ * *applications* compose packages — inside `packages/` the stack is the job,
+ * and `packages/testkit` builds a Corestore and a swarm on purpose. Sharing one
+ * config meant the rule had to be written with an `apps/**` glob to keep it off
+ * the packages, and that glob is what made it match nothing anywhere. Splitting
+ * the two lets each say what it means.
+ */
+export const appConfig = tseslint.config(...shared, pearBoundary)

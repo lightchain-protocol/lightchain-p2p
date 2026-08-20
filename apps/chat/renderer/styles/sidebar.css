@@ -190,7 +190,6 @@
   color: var(--lc-brand);
 }
 
-
 /* Brand-tinted rather than filled with the elevated surface, which this plane
    has all but swallowed. */
 .nav-badge {

@@ -99,10 +99,36 @@ describe('adding holdings up', () => {
       grid
     )
 
-    // At the start only ether is priced: two at a hundred.
-    expect(portfolio.points[0]?.usd).toBe(ONE * 200n)
-    // By the end both are: two at two hundred, plus three dollars.
+    // The dollar's series starts half an hour after the grid does, so the first
+    // grid point is dropped rather than drawn as ether alone. Every point that
+    // survives holds both: two at a hundred plus three dollars, up to two at
+    // two hundred plus three dollars.
+    expect(portfolio.points).toHaveLength(4)
+    expect(portfolio.points[0]?.usd).toBe(ONE * 203n)
     expect(portfolio.points[portfolio.points.length - 1]?.usd).toBe(ONE * 403n)
+    expect(portfolio.trimmed).toBe(1)
+  })
+
+  it('never draws a total that is missing one of its terms', () => {
+    // The bug this rule exists for, at the size it actually appeared. Both
+    // prices are flat for the whole window, so the honest answer is no change
+    // at all. Requiring only one holding to be priced drew the second asset's
+    // arrival as a 33% gain — a smooth, plausible line, reported as complete.
+    const flat = (hours: number[], usd: bigint) => hours.map((h) => at(h, usd))
+
+    const portfolio = portfolioAcross(
+      [
+        { balance: 10n ** 18n, decimals: 18, points: flat([4, 3, 2, 1, 0], ONE * 1000n) },
+        // Arrives two hours into a four-hour window and never moves.
+        { balance: 2000n * 10n ** 6n, decimals: 6, points: flat([2, 1, 0], ONE) }
+      ],
+      grid
+    )
+
+    expect(portfolio.changeBps).toBe(0)
+    expect(new Set(portfolio.points.map((p) => p.usd)).size).toBe(1)
+    expect(portfolio.points[0]?.usd).toBe(ONE * 3000n)
+    expect(portfolio.trimmed).toBe(2)
   })
 
   it('respects each asset\u2019s own decimals', () => {

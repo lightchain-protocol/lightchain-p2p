@@ -90,6 +90,16 @@ jobs:
       - name: Apps have distinct upgrade links
         run: node scripts/check-links.mjs
 
+      # pnpm satisfies two disagreeing ranges by nesting, so one package on an
+      # older major quietly loads a second copy of the whole network stack into
+      # the same worker. That is usually waste. For bare-tls it was not: it did
+      # not verify certificates before 3.0.0, and the package pinned to 1.x was
+      # the one carrying prompts to the inference service. Both versions
+      # install, both resolve, both work, and the difference is a security
+      # property with no symptom.
+      - name: Bare runtimes agree on a major
+        run: node scripts/check-runtime-majors.mjs
+
       # Three surveys that ask the chains whether this repository still
       # describes them. None of them signs anything or costs anything.
       #

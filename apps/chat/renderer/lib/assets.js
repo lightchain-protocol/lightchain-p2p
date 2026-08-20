@@ -211,11 +211,29 @@ function renderNetworks(held) {
   holder.replaceChildren(...tiles)
 }
 
-/** A dollar total, formatted the way the worker formats one. */
+/**
+ * A dollar total, formatted the way the worker formats one.
+ *
+ * A hand copy of `formatUsd` in `packages/prices`, because a sandboxed renderer
+ * cannot import from the workspace and this sum is computed here. It had
+ * already drifted: without the sub-cent branch a tile holding $0.0013 read
+ * `$0.00` beside a row, formatted by the worker, reading $0.0013. A wallet
+ * holding only LCAI — which trades near a tenth of a cent — showed six networks
+ * worth nothing next to a total that was not nothing.
+ *
+ * Change either and change both. Better still, have the worker send the text.
+ */
 function formatUsd(value) {
-  if (value === 0n) return '$0.00'
+  if (value === null) return '—'
+
   const whole = value / 10_000n
-  const cents = ((value % 10_000n) / 100n).toString().padStart(2, '0')
+  const rest = value % 10_000n
+
+  if (value !== 0n && whole === 0n && rest < 100n) {
+    return `$${(Number(value) / 10_000).toFixed(4)}`
+  }
+
+  const cents = (rest / 100n).toString().padStart(2, '0')
   return `$${whole.toLocaleString('en-US')}.${cents}`
 }
 
@@ -534,8 +552,20 @@ const review = document.getElementById('send-review')
 const confirmBtn = document.getElementById('send-confirm-btn')
 const sendError = document.getElementById('send-error')
 
-/** The asset currently selected, so Max and the balance hint have one to read. */
-const chosenAsset = () => holdings[Number(assetPicker.value)] ?? null
+/**
+ * The asset currently selected, so Max and the balance hint have one to read.
+ *
+ * The empty-string check is the whole of this function's difficulty. A `<select>`
+ * with no options reads `''`, `Number('')` is `0`, and every caller — the
+ * balance hint, Max, the quote and the button that signs — then silently aimed
+ * at `holdings[0]`, which the worker sorts to be LCAI on Lightchain. Opening
+ * Send on a WETH row with nothing in it quoted a transfer of LCAI on chain 9200
+ * instead, and only the review step's network line gave it away.
+ */
+const chosenAsset = () => {
+  if (assetPicker.value === '') return null
+  return holdings[Number(assetPicker.value)] ?? null
+}
 
 function sendFailed(message) {
   sendError.querySelector('[data-slot="detail"]').textContent = message
@@ -551,13 +581,21 @@ function unreview() {
   sendError.hidden = true
 }
 
+/**
+ * Every asset, including the ones holding nothing.
+ *
+ * Offering only what has a balance seemed tidier and was worse in both
+ * directions. Somebody looking for ETH they no longer hold found it simply
+ * absent, with nothing saying why — and arriving from a zero-balance row left
+ * the picker with no selection at all, which is how a WETH row came to quote a
+ * transfer of LCAI. The review step already refuses an amount beyond the
+ * balance and says so in words, which is a better answer than a missing row.
+ */
 function fillAssetPicker() {
-  const sendable = holdings.filter((a) => BigInt(a.balance) > 0n)
-
   assetPicker.replaceChildren(
-    ...sendable.map((asset) => {
+    ...holdings.map((asset, at) => {
       const node = document.createElement('option')
-      node.value = String(holdings.indexOf(asset))
+      node.value = String(at)
       node.textContent = `${asset.symbol} on ${asset.chainName} — ${formatUnits(asset.balance, asset.decimals)}`
       return node
     })
@@ -582,14 +620,23 @@ export async function openSend(asset = null) {
   // chosen, and re-choosing it is a chance to choose wrong.
   if (asset) {
     const at = holdings.findIndex((a) => a.chainId === asset.chainId && a.address === asset.address)
-    if (at !== -1) assetPicker.value = String(at)
+    assetPicker.value = at === -1 ? '' : String(at)
+
+    // Every holding is offered, so this only fires when the row came from a
+    // list older than the picker. Said out loud rather than left to the balance
+    // hint, because the dialog would otherwise open looking ready with nothing
+    // behind it — and what it used to do instead was quietly aim at whatever
+    // sorted first, which on this screen is LCAI on Lightchain.
+    if (assetPicker.value === '') {
+      sendFailed(`${asset.symbol} on ${asset.chainName} is no longer in this wallet.`)
+    }
     showBalance()
   }
 
   toField.value = ''
   amountField.value = ''
   document.getElementById('send-to-hint').textContent = ''
-  unreview()
+  if (!asset) unreview()
   sendDialog.showModal()
 }
 

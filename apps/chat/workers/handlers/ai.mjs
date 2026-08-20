@@ -11,6 +11,7 @@ import {
 } from '@lcai-p2p/chain'
 import { NETWORKS } from '@lcai-p2p/worker'
 import { Conversation, withHistory } from '@lcai-p2p/inference'
+import { readableAmount } from '../guard.mjs'
 import { recordTransaction } from './wallet.mjs'
 
 /**
@@ -336,8 +337,19 @@ function recentActivity(conversations, states) {
 }
 
 export function aiHandlers(ctx) {
-  const { rooms, wallet, rpc, network, send, session, inference, transcripts, handle, localState } =
-    ctx
+  const {
+    rooms,
+    wallet,
+    rpc,
+    network,
+    send,
+    session,
+    inference,
+    transcripts,
+    handle,
+    localState,
+    guard
+  } = ctx
 
   const limits = spending(localState)
 
@@ -474,16 +486,39 @@ export function aiHandlers(ctx) {
       }
     },
 
-    /** Deposits and authorises in one transaction, which is what the service asks for. */
+    /**
+     * Deposits and authorises in one transaction, which is what the service asks for.
+     *
+     * Guarded like any other outbound transfer, and for a sharper reason than
+     * most. This does not only move native funds out of the wallet: the same
+     * call raises the delegate's allowance by the amount deposited, and nothing
+     * on chain lowers it again. Withdrawing the balance leaves the allowance
+     * standing, so a later deposit is spendable without anyone approving it a
+     * second time. That makes an unguarded `ai.fund` a way to grant a third
+     * party permanent spending authority, not just a way to spend once.
+     */
     'ai.fund': async (req) => {
       const account = wallet.account()
       const api = await inference()
       const { delegate } = await api.balance()
       const { jobRegistry } = await resolveAddresses(rpc())
+      const value = BigInt(req.amount ?? 0)
+
+      await guard.allow({
+        value,
+        password: req.password,
+        details: {
+          amount: `${readableAmount(value, NETWORKS[network()].symbol)} into prepaid inference`,
+          to: `the job registry at ${jobRegistry}`,
+          from: account.address,
+          network: network(),
+          fee: `this also lets ${delegate} spend that balance`
+        }
+      })
 
       const sent = await sendTransaction(rpc(), account, {
         to: jobRegistry,
-        value: BigInt(req.amount ?? 0),
+        value,
         data: depositAndAuthorize(delegate),
         chainId: ctx.chainId()
       })
@@ -510,10 +545,26 @@ export function aiHandlers(ctx) {
     'ai.withdraw': async (req) => {
       const account = wallet.account()
       const { jobRegistry } = await resolveAddresses(rpc())
+      const value = BigInt(req.amount ?? 0)
+
+      // Guarded too, though this one moves funds towards the owner rather than
+      // away. The contract sends to `msg.sender`, so the destination is not in
+      // question — what is worth asking about is the size, since a window that
+      // can empty the prepaid balance can strand somebody mid-conversation.
+      await guard.allow({
+        value,
+        password: req.password,
+        details: {
+          amount: `${readableAmount(value, NETWORKS[network()].symbol)} back out of prepaid inference`,
+          to: account.address,
+          from: `the job registry at ${jobRegistry}`,
+          network: network()
+        }
+      })
 
       const sent = await sendTransaction(rpc(), account, {
         to: jobRegistry,
-        data: withdrawBalance(BigInt(req.amount ?? 0)),
+        data: withdrawBalance(value),
         chainId: ctx.chainId()
       })
       await recordTransaction(ctx, 'withdraw', sent)

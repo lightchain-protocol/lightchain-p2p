@@ -355,11 +355,7 @@ export class Wallet {
    * resulting address and let the user recognise it, because that is the only
    * confirmation available.
    */
-  importPhrase(
-    phrase: string,
-    password: string,
-    options: ImportOptions = {}
-  ): ReplacementStatus {
+  importPhrase(phrase: string, password: string, options: ImportOptions = {}): ReplacementStatus {
     const replaced = this.#displacing(
       options.confirmation,
       'a wallet already exists. Remove it deliberately before importing another.'

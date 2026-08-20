@@ -721,12 +721,39 @@ const DIGITS = /^\d+$/
  */
 export const MAX_ANSWER_FRAMES = 200
 
+/**
+ * The evidence half of a message, where this build understands the shape.
+ *
+ * The same asymmetry `parseEvent` has, and it is here for the same reason —
+ * arrived at the hard way. A **malformed** answer in a shape this build knows
+ * is rejected, and rejects the message with it. An answer in a shape this build
+ * has never heard of is dropped, and the message survives without the claim.
+ *
+ * That second half was missing, and the cost was not hypothetical. When
+ * streaming added `frames`, `ciphertext` went from required to optional, and a
+ * build compiled before that change met the new shape, threw, and lost the
+ * entire entry — the answer's text included, shown nowhere at all. The
+ * docstring on `frames` promised the opposite: that an older client would see
+ * the answer as an ordinary message from whoever asked. It now does.
+ *
+ * The rule to keep: a third shape may be added, and every build that predates
+ * it must reach this branch rather than a throw. Anything else makes two builds
+ * disagree about what a room contains, which is unfixable once entries exist.
+ */
 function parseAnswer(value: unknown): ModelAnswer | undefined {
   if (value === undefined) return undefined
   if (!isRecord(value)) throw new MessageError('message answer must be an object')
 
   const { model, jobId, sessionId, worker, ciphertext, sessionKey, signature, frames } =
     value as Record<string, unknown>
+
+  // Checked before anything else, because a shape from the future must not be
+  // measured against this build's fields. An answer carrying none of the forms
+  // named here is one a newer build wrote: the claim is unreadable, the message
+  // is not, and dropping only the claim is what keeps the two builds agreeing.
+  if (frames === undefined && ciphertext === undefined && signature === undefined) {
+    return undefined
+  }
 
   // All or nothing. A half-populated claim cannot be checked, and showing it as
   // if it could would be worse than showing an ordinary message.

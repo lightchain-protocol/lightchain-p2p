@@ -282,6 +282,14 @@ export interface Portfolio {
    * short, with nothing on screen explaining the difference.
    */
   readonly unpriced: number
+  /**
+   * Grid points dropped because not every holding had a price there.
+   *
+   * Non-zero means the window drawn is shorter than the window asked for. The
+   * line is still true of the period it covers; it just does not reach back as
+   * far, because one of the feeds does not.
+   */
+  readonly trimmed: number
 }
 
 /**
@@ -291,33 +299,47 @@ export interface Portfolio {
  * recorded what was held in the past. It is today's holdings priced backwards,
  * which is a different and still useful thing, and the interface says so.
  *
- * A grid point where **nothing** could be priced is dropped rather than plotted
- * as zero. Early points often fall before the feeds' sampled range, and a line
- * that starts at zero and leaps up reads as a portfolio that was empty and
- * suddenly was not.
+ * A grid point is plotted only where **every** contributing holding has a
+ * price. Requiring only one was a real bug and an expensive one: feeds write at
+ * wildly different rates, so their sampled windows do not line up, and a
+ * portfolio of 1 ETH and 2000 USDC drew a line that began at the USDC alone and
+ * stepped up when the ETH series started — reported as a 113% gain over a week
+ * in which neither asset moved, and marked complete. A sum is not a chart of
+ * one asset: a missing term does not make the total uncertain, it makes it
+ * wrong, and wrong in the direction that looks like news.
+ *
+ * A holding with no price anywhere on the grid is excluded from that
+ * requirement rather than blanking the chart, and counted in `unpriced` so the
+ * caller can say the total is short. One feed nobody can read should not mean
+ * no line at all.
  */
 export function portfolioAcross(holdings: readonly Holding[], grid: readonly number[]): Portfolio {
   const filled = holdings.map((holding) => forwardFill(holding.points, grid))
-  const unpriced = filled.filter((series) => series.every((v) => v === null)).length
+  const contributes = filled.map((series) => series.some((v) => v !== null))
+  const unpriced = contributes.filter((yes) => !yes).length
 
   const points: Point[] = []
 
   grid.forEach((moment, i) => {
     let total = 0n
-    let priced = false
+    let whole = true
 
     holdings.forEach((holding, h) => {
+      if (!contributes[h]) return
+
       // `undefined` as well as null: the grid and every filled series are the
       // same length by construction, and reading past the end would silently
       // contribute nothing rather than saying the two had drifted apart.
       const usd = filled[h]?.[i]
-      if (usd === null || usd === undefined) return
+      if (usd === null || usd === undefined) {
+        whole = false
+        return
+      }
 
-      priced = true
       total += (holding.balance * usd) / 10n ** BigInt(holding.decimals)
     })
 
-    if (priced) points.push({ at: moment, usd: total })
+    if (whole && contributes.some((yes) => yes)) points.push({ at: moment, usd: total })
   })
 
   const first = points[0]
@@ -328,7 +350,7 @@ export function portfolioAcross(holdings: readonly Holding[], grid: readonly num
       ? Number(((last.usd - first.usd) * 10_000n) / first.usd)
       : null
 
-  return { points, changeBps, unpriced }
+  return { points, changeBps, unpriced, trimmed: grid.length - points.length }
 }
 
 export { PRICE_DECIMALS }

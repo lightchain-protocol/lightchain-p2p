@@ -190,8 +190,10 @@ document.getElementById('worker-settings-form').addEventListener('submit', async
         // Left blank means "leave it alone", not "clear it" — otherwise
         // opening settings and saving anything would wipe the password.
         ...(password === '' ? {} : { workerPassword: password }),
-        keysDir: document.getElementById('set-keys-dir').value.trim(),
-        containerName: document.getElementById('set-container').value.trim(),
+        // `keysDir` and `containerName` are shown above and deliberately not
+        // sent. Both are arguments to Docker — a bind mount and the subject of
+        // `rm -f` — so the worker refuses them from a window, and sending them
+        // anyway would fail the whole save.
         supportedModels: document.getElementById('set-models').value.trim(),
         ollamaUrl: document.getElementById('set-ollama').value.trim()
       }

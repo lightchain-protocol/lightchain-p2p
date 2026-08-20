@@ -72,25 +72,60 @@ function sendToAll(name, data) {
  * values the worker took from the transaction it assembled rather than from the
  * request that asked for it.
  *
- * The worker speaks first, over the same pipe the updater uses. The renderer
- * sees these lines too and ignores them — `onWorkerLine` drops anything that
- * does not begin with a brace.
+ * The worker speaks first, over the same pipe the updater uses — and that pipe
+ * is also the one the renderer writes requests to, which is the whole
+ * difficulty. Three things keep the channel honest, and all three are needed:
+ *
+ * - This process is the only writer of `wallet:confirmed`. `writeIPC` refuses
+ *   anything from a window that is not a JSON envelope, which is all the
+ *   renderer has ever legitimately sent.
+ * - A `wallet:confirm` request is never forwarded to a window, so the id it
+ *   carries is not something a window has seen.
+ * - The id is random rather than counted, so it cannot be guessed either.
+ *
+ * Any one of them alone is not enough. Dropping the first lets a window answer
+ * its own dialog; dropping either of the others hands it the id to answer with.
  */
 const CONFIRM_REQUEST = 'wallet:confirm'
 const CONFIRM_REPLY = 'wallet:confirmed'
 
+/**
+ * The most a window may put on the worker pipe in one write.
+ *
+ * Attachments cross as JSON arrays of numbers, which costs three or four bytes
+ * per byte, so the largest legal 25 MiB file needs roughly a hundred megabytes
+ * of envelope. This is that with room to spare — loose enough never to refuse
+ * real traffic, tight enough that the worker's reader cannot be grown without
+ * bound by a window writing endlessly with no newline.
+ */
+const MAX_IPC_BYTES = 160 * 1024 * 1024
+
 /** Whatever has arrived on the worker pipe that is not yet a whole line. */
 let confirmInbound = ''
 
+/**
+ * Answers the worker's confirmation requests, and keeps them off the windows.
+ *
+ * Returns the bytes that are safe to forward: everything except the
+ * confirmation traffic. The renderer discards those lines anyway, so nothing
+ * visible is lost by withholding them — what is gained is that a compromised
+ * window cannot read the id off a dialog it is not supposed to answer.
+ */
 function watchForConfirmRequests(pipe, data) {
   confirmInbound += data.toString('utf8')
 
   const lines = confirmInbound.split('\n')
   confirmInbound = lines.pop() ?? ''
 
+  const forward = []
   for (const line of lines) {
     if (line.startsWith(CONFIRM_REQUEST)) askToConfirm(pipe, line.slice(CONFIRM_REQUEST.length))
+    else forward.push(line)
   }
+
+  // The trailing fragment stays here until its newline arrives, so a request
+  // split across two chunks is still recognised before any of it is forwarded.
+  return forward.length ? Buffer.from(forward.join('\n') + '\n', 'utf8') : null
 }
 
 async function askToConfirm(pipe, payload) {
@@ -136,6 +171,33 @@ async function askToConfirm(pipe, payload) {
   }
 
   pipe.write(`${CONFIRM_REPLY} ${JSON.stringify({ id: details.id, approved })}\n`)
+}
+
+/**
+ * Whether a window may put these bytes on the worker pipe.
+ *
+ * Two separate reasons to refuse, and the check is one function because both
+ * are answered by the same question — is this a newline-delimited run of JSON
+ * envelopes, which is the only thing `request()` has ever sent?
+ *
+ * A control line is refused because the confirmation channel shares this pipe.
+ * `wallet:confirmed` is this process's word that a person answered a dialog,
+ * and a window able to write it can answer for them.
+ *
+ * A non-string is refused because `framed-stream` maps only strings to buffers.
+ * Anything else reaches `_frame(data.byteLength)` as `undefined`, throws a tick
+ * later — after `write` has already returned true — and leaves the stream
+ * wedged. Every subsequent request then hangs forever, with the worker alive,
+ * the status line reading "connected", and nothing anywhere reporting an error.
+ */
+function writableByRenderer(data) {
+  if (typeof data !== 'string' || data.length > MAX_IPC_BYTES) return false
+
+  for (const line of data.split('\n')) {
+    if (line !== '' && !line.startsWith('{')) return false
+  }
+
+  return true
 }
 
 /**
@@ -195,13 +257,14 @@ function getWorker(specifier) {
     sendToAll('pear:worker:stderr:' + specifier, data)
   }
   function sendWorkerIPC(data) {
-    sendToAll('pear:worker:ipc:' + specifier, data)
-    watchForConfirmRequests(pipe, data)
+    const forward = watchForConfirmRequests(pipe, data)
+    if (forward) sendToAll('pear:worker:ipc:' + specifier, forward)
   }
   function onBeforeQuit() {
     pipe.destroy()
   }
   ipcMain.handle('pear:worker:writeIPC:' + specifier, (evt, data) => {
+    if (!writableByRenderer(data)) return false
     return pipe.write(data)
   })
   workers.set(specifier, pipe)

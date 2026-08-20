@@ -211,6 +211,29 @@ report('the send dialog opens', form.open === true)
 report('the review is hidden until something has been reviewed', form.reviewHidden === true)
 report('and there is no button to sign with before then', form.confirmHidden === true)
 
+// This count was read and never asserted on, and the omission hid a real fault.
+// The picker used to offer only assets with a balance, so on a wallet holding
+// nothing it had no options — and an empty `<select>` reads as the empty
+// string, `Number('')` is 0, and every consumer silently aimed at holdings[0].
+// The dialog quoted LCAI on chain 9200 for a row that said WETH on Arbitrum.
+report('the picker offers something to choose', form.assets > 0, `${form.assets} assets offered`)
+
+const aimed = JSON.parse(
+  await evaluate(`JSON.stringify({
+    value: document.getElementById('send-asset').value,
+    label: document.getElementById('send-asset').selectedOptions[0]?.textContent ?? null,
+    balance: document.getElementById('send-balance').textContent
+  })`)
+)
+
+report(
+  'and the balance shown belongs to the asset selected',
+  aimed.value !== '' &&
+    aimed.label !== null &&
+    aimed.balance.includes(aimed.label.split(' on ')[0]),
+  `${aimed.label} → ${aimed.balance}`
+)
+
 // Reviewing an amount larger than the balance must show the figures and refuse
 // to offer the signing button.
 const reviewed = JSON.parse(

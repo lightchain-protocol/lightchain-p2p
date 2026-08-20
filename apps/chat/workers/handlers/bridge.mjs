@@ -204,6 +204,35 @@ export function bridgeHandlers(ctx) {
         quoteTransfer(rpc, route.router, route.destination, address, amount)
       )
 
+      // The re-quote is not a bound. `quoteTransfer` echoes the amount it was
+      // asked about — a router with no token fee answers with exactly the
+      // number that went in — so the figure above is still the window's, only
+      // laundered through an `eth_call`. The balance is not: it is what this
+      // address actually holds, and an allowance beyond it grants authority
+      // over funds that do not exist yet, which is the whole hazard.
+      const held = await pool.use((rpc) => balanceOf(rpc, route.token, address))
+      if (quote.token > held) {
+        throw new Error(
+          `that is more than this address holds — the balance is ${readableAmount(held, 'LCAI')}`
+        )
+      }
+
+      // Granting spending authority is put to the operating system for the same
+      // reason the transfer is. It is arguably the more consequential of the
+      // two: a transfer moves what was named once, an allowance stands until
+      // something revokes it, and nothing here does.
+      await guard.allow({
+        value: 2n ** 255n,
+        password: req.password,
+        details: {
+          amount: `permission to spend ${readableAmount(quote.token, 'LCAI')}`,
+          to: `the bridge router at ${route.router}`,
+          from: `${address} on ${route.from.name}`,
+          network: route.from.name,
+          fee: 'this permission stands until it is spent or replaced'
+        }
+      })
+
       const sent = await pool.use((rpc) =>
         sendTransaction(rpc, wallet.account(), {
           to: route.token,

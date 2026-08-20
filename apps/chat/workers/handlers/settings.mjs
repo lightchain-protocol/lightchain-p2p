@@ -43,10 +43,20 @@ const WRITABLE = new Set([
   'hostRooms',
   'hostTrusted',
   'hostBudgetMb',
+  // Two more are absent, and they are host arguments rather than settings.
+  //
+  // `keysDir` becomes the source of a `-v <dir>:/data` bind mount into a
+  // container that runs as root, so a window that could write it could mount
+  // any directory on this machine into the worker. `containerName` becomes the
+  // subject of `docker logs` and `docker rm -f`, so a window that could write
+  // it could read another container's log output — credentials included — or
+  // destroy any container on the host. Neither needs an attack on Docker
+  // itself; both are ordinary Docker doing exactly what the argument says.
+  //
+  // They stay settable with an editor, like the transfer thresholds above. What
+  // they stop being is reachable from the untrusted side.
   // The worker this machine can run
   'workerPassword',
-  'keysDir',
-  'containerName',
   'supportedModels',
   'ollamaUrl'
 ])
