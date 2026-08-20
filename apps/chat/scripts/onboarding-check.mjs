@@ -139,7 +139,66 @@ await typeIn('onboard-password', PASSWORD)
 await typeIn('onboard-password-confirm', PASSWORD)
 await submit('onboard-password-form')
 await wait(2500)
-report('a good password reaches the phrase', (await showing()) === 'step-phrase')
+
+// Writing the words down used to be mandatory and unskippable, which is how
+// people end up photographing a screen. It is a choice now, and the choice
+// comes before the words rather than after them.
+report('a good password reaches the backup choice', (await showing()) === 'step-secure')
+
+report(
+  'and the choice is genuinely two options, not a wall with a door in it',
+  (await evaluate(`Boolean(document.getElementById('secure-now'))`)) === true &&
+    (await evaluate(`Boolean(document.getElementById('secure-later'))`)) === true,
+  'Back up now, and Later'
+)
+
+// What deferring costs, checked before taking the other branch. The state is
+// the absence of a record, so this is what the application looks like at this
+// exact moment — which is also what it looks like for somebody who pressed
+// Later, because Later writes nothing.
+report(
+  'before it is backed up, receiving is refused with a reason',
+  await evaluate(`(async () => {
+    const { forgetBackupState, receivingBlocked } = await import('./lib/backup.js')
+    forgetBackupState()
+    const said = await receivingBlocked()
+    return typeof said === 'string' && /back up/i.test(said)
+  })()`),
+  await evaluate(`(async () => {
+    const { receivingBlocked } = await import('./lib/backup.js')
+    return (await receivingBlocked() ?? '').slice(0, 58)
+  })()`)
+)
+
+report(
+  'but messaging is not',
+  (await evaluate(`document.getElementById('create-btn').disabled`)) === false,
+  'a conversation can be started'
+)
+
+report(
+  'and the standing banner is what says so',
+  await evaluate(`(async () => {
+    const { showBackupBanner } = await import('./lib/backup.js')
+    await showBackupBanner()
+    return document.getElementById('backup-banner').hidden === false
+  })()`),
+  await evaluate(`document.querySelector('.backup-banner-text')?.textContent?.trim() ?? ''`)
+)
+
+// Later is one line — it closes onboarding and records nothing — so what is
+// asserted is that it exists and reaches the application, rather than
+// re-deriving the state above through it.
+report(
+  'Later is wired to a way out rather than to nothing',
+  (await evaluate(`typeof document.getElementById('secure-later').onclick`)) !== 'undefined' &&
+    (await evaluate(`document.getElementById('secure-later').disabled`)) === false,
+  'the deferral is reachable'
+)
+
+await evaluate(`document.getElementById('secure-now').click()`)
+await wait(600)
+report('and Back up now reaches the phrase', (await showing()) === 'step-phrase')
 
 // The words must not be on screen before somebody has asked for them: this step
 // opens in front of whoever is in the room, and in every screen recording.

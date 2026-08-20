@@ -1,2 +1,20 @@
 
       <section class="content">
+        <!-- Standing until the words are written down.
+             
+             Deferring the backup has to be a real option or people photograph
+             the setup screen to get past it, which is worse. So this is the
+             price of deferring: one quiet line, on every surface, that does not
+             go away by itself and cannot be dismissed. It is not a modal and it
+             does not interrupt anything - what it blocks is receiving funds,
+             and that gate lives on the button that would have shown an
+             address. -->
+        <div class="backup-banner" id="backup-banner" role="status" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+          <p class="backup-banner-text">
+            Your account is not backed up. Twelve words are the only way back in.
+          </p>
+          <button class="button button-sm" type="button" id="backup-banner-btn">
+            Back it up
+          </button>
+        </div>

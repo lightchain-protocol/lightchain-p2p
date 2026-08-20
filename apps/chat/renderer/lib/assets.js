@@ -1,5 +1,6 @@
 import { copy, el2, svg, toast } from './dom.js'
 import { bridge, request } from './ipc.js'
+import { receivingBlocked } from './backup.js'
 import { clearQr, drawQr } from './qr.js'
 import { exactUnits, formatUnits, plainUnits, toBaseUnits } from './amounts.js'
 import { closeAsset, connectAssetActions, openAsset } from './asset-detail.js'
@@ -487,6 +488,12 @@ connectAssetActions({
 })
 
 export async function openReceive(asset = null) {
+  // Receiving is the one thing an un-backed-up account may not do. Refused with
+  // a sentence rather than a disabled button: a control that does nothing and
+  // says nothing is indistinguishable from one that is broken.
+  const blocked = await receivingBlocked()
+  if (blocked) return toast(blocked, 'error')
+
   if (chains.length === 0) {
     try {
       chains = (await request('assets.chains')).chains ?? []

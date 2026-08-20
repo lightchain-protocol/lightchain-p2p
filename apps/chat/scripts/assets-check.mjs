@@ -246,6 +246,32 @@ report('a curated token is accepted and named', knownToken?.symbol === 'USDC', k
 
 await evaluate(`document.querySelector('[data-section="wallet"]').click()`)
 await wait(400)
+
+// Receiving waits until the recovery phrase has been written down. Asserted
+// here rather than worked around, because it is the one thing deferring the
+// backup withholds and a suite that quietly satisfied the gate would stop
+// noticing if the gate disappeared.
+const beforeBackup = await evaluate(`(async () => {
+  const { forgetBackupState, receivingBlocked } = await import('./lib/backup.js')
+  forgetBackupState()
+  return await receivingBlocked()
+})()`)
+
+report(
+  'receiving is refused while the account is not backed up',
+  typeof beforeBackup === 'string' && /back up/i.test(beforeBackup),
+  beforeBackup ? beforeBackup.slice(0, 58) : 'nothing was withheld'
+)
+
+// This wallet came from a harness rather than from somebody with a pen, so the
+// record is written directly. What it stands in for is the person having done
+// it; everything after this is about the receive screen, not about the gate.
+await evaluate(`(async () => {
+  const { markBackedUp } = await import('./lib/backup.js')
+  await markBackedUp('written down by the harness')
+  return true
+})()`)
+
 await evaluate(`document.getElementById('assets-receive-btn').click()`)
 
 for (let i = 0; i < 30; i++) {

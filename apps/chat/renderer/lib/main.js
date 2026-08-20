@@ -9,6 +9,7 @@ import { refreshWallet, showWallet } from './wallet.js'
 import { refreshAssets } from './assets.js'
 import { refreshActivity } from './activity.js'
 import { startOnboarding } from './onboarding.js'
+import { openSettings } from './settings.js'
 // Nothing out here calls into the settings panel, but importing a panel is what
 // attaches its controls, and the button that opens it is one of them.
 import './settings.js'
@@ -162,6 +163,14 @@ document.addEventListener('pointerdown', (evt) => {
 el.sidebarLocked.addEventListener('click', () => {
   showSection('wallet')
   void refreshWallet()
+})
+
+// So is the backup banner. A standing reminder that does not offer the action
+// it is asking for is a reminder people learn to look past.
+document.getElementById('backup-banner-btn').addEventListener('click', () => {
+  void openSettings('wallet').then(() => {
+    document.getElementById('reveal-password')?.focus()
+  })
 })
 
 // --- Sections --------------------------------------------------------------

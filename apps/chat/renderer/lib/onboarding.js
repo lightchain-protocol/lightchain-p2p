@@ -1,4 +1,5 @@
 import { copy, toast } from './dom.js'
+import { forgetBackupState, markBackedUp, showBackupBanner } from './backup.js'
 import { request } from './ipc.js'
 import { refreshTitlebarBalance, showWallet } from './wallet.js'
 
@@ -68,6 +69,17 @@ function showStep(id) {
   focusable?.focus()
 }
 
+/**
+ * Opens a named step, for the harness that walks this flow.
+ *
+ * Exported rather than reached at through internals, so a rename here breaks
+ * the test loudly instead of leaving it clicking at nothing. It is the same
+ * function the flow uses; nothing about the sequence is bypassed by calling it.
+ */
+export function showStepForTesting(id) {
+  showStep(id)
+}
+
 function fail(id, message) {
   const error = el(id)
   error.textContent = message
@@ -84,6 +96,7 @@ function finishOnboarding() {
   // throw, which is a blank screen with the reason only in the console.
   coverPhrase()
   onboarding.root.hidden = true
+  void showBackupBanner()
 }
 
 /**
@@ -205,7 +218,13 @@ el('onboard-password-form').addEventListener('submit', async (evt) => {
     renderPhrase(created.phrase)
     showWallet(created)
     coverPhrase()
-    showStep('step-phrase')
+
+    // The wallet exists from here. Writing the words down is the next thing to
+    // do and it is no longer the next thing you are made to do — the step
+    // offers both, and choosing Later reaches the application with a banner
+    // rather than reaching a dead end.
+    forgetBackupState()
+    showStep('step-secure')
   } catch (err) {
     // The most likely cause is a wallet that appeared while this screen was
     // open, and the worker's message says so but offers nothing to do about it.
@@ -222,6 +241,19 @@ el('onboard-password-form').addEventListener('submit', async (evt) => {
     button.disabled = false
     button.textContent = 'Continue'
   }
+})
+
+el('secure-now').addEventListener('click', () => {
+  if (!pendingPhrase) return finishOnboarding()
+  coverPhrase()
+  showStep('step-phrase')
+})
+
+el('secure-later').addEventListener('click', () => {
+  // Nothing is recorded. Not backed up is the absence of the record, so a
+  // deliberate "later" and a window closed at this exact moment land in the
+  // same state — which is the honest one, because neither wrote anything down.
+  finishOnboarding()
 })
 
 /** Hides the words again, which is the state the step has to open in. */
@@ -269,6 +301,10 @@ el('verify-form').addEventListener('submit', (evt) => {
   }
 
   el('verify-error').hidden = true
+  // Recorded here rather than on the screen that showed the words. Seeing them
+  // is not writing them down; typing three back from memory is the closest this
+  // can get to evidence that they left the machine.
+  void markBackedUp('written down during setup')
   finishOnboarding()
   toast('Wallet ready')
 })
@@ -376,6 +412,12 @@ el('restore-form').addEventListener('submit', async (evt) => {
     })
 
     showWallet(restored)
+    // Somebody who just typed twelve words demonstrably has them. Asking them
+    // to back up a phrase they restored from would be asking them to copy out
+    // what is already in their hand.
+    forgetBackupState()
+    void markBackedUp('restored from a phrase')
+
     el('restore-phrase').value = ''
     el('restore-passphrase').value = ''
     el('restore-preview').hidden = true

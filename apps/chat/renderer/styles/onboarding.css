@@ -469,3 +469,35 @@
   outline: 2px solid var(--lc-brand);
   outline-offset: 2px;
 }
+
+/* --- The welcome screen's two controls ------------------------------------ */
+
+/* One primary button, large, and the escape hatch under it as a link rather
+   than a second button of equal weight. A first screen offering two equally
+   styled choices makes somebody read both before they can start. */
+.button-lg {
+  min-height: var(--lc-control-lg);
+  padding-inline: var(--lc-space-xl);
+  font-size: var(--lc-type-body-strong);
+}
+
+/* Left, under the button, rather than centred in the card. The two controls are
+   one decision and a link that drifts to the middle reads as belonging to the
+   page instead of to the choice above it. */
+.step-link {
+  display: block;
+  margin: var(--lc-space-md) 0 0;
+  padding: var(--lc-space-xs) 0;
+  border: 0;
+  background: none;
+  color: var(--lc-text-secondary);
+  font: inherit;
+  font-size: var(--lc-type-caption);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.step-link:hover {
+  color: var(--lc-text-primary);
+}

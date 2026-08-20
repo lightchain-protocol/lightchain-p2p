@@ -550,3 +550,32 @@ select.input option {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* --- The standing backup reminder ------------------------------------------ */
+
+/* One quiet row above whatever surface is open, and no dismiss control:
+   dismissing is what "Later" already was, and offering it twice turns a
+   reminder into a thing people learn to close. Warning-toned rather than
+   danger-toned, because nothing is wrong yet. */
+.backup-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  padding: var(--lc-space-sm) var(--lc-space-lg);
+  background: var(--lc-warning-soft);
+  border-bottom: 1px solid var(--lc-rule);
+  color: var(--lc-warning);
+  flex: 0 0 auto;
+}
+
+.backup-banner .icon {
+  flex: 0 0 auto;
+}
+
+.backup-banner-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--lc-type-caption);
+  color: var(--lc-text-secondary);
+  text-wrap: pretty;
+}

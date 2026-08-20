@@ -1,5 +1,6 @@
 import { copy, formatLcai, toast } from './dom.js'
 import { bridge, request } from './ipc.js'
+import { markBackedUp, showBackupBanner } from './backup.js'
 import { refreshWallet, showWallet } from './wallet.js'
 import { startOnboarding } from './onboarding.js'
 
@@ -223,6 +224,14 @@ document.getElementById('reveal-form').addEventListener('submit', async (evt) =>
       list.append(item)
     }
     list.hidden = false
+
+    // Revealing them behind the password is the deferred half of setup, so the
+    // standing banner comes down here. Weaker evidence than typing three words
+    // back during setup — the words have been on screen and that is all this
+    // knows — but somebody who came here on purpose, from a banner that says
+    // why, has done the thing the banner was asking for.
+    await markBackedUp('revealed from settings')
+    await showBackupBanner()
   } catch (err) {
     list.hidden = true
     error.textContent = err.message

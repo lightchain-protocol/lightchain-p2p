@@ -394,28 +394,63 @@
           <div class="onboarding-wordmark">Lightchain</div>
         </div>
 
-        <!-- Welcome -->
+        <!-- Welcome.
+             
+             One sentence and one button. What was here explained that a key is
+             your identity, that it signs what you write, opens rooms and pays
+             for inference, and that it never leaves the machine. Every clause
+             is true and none of it is what somebody wants on the first screen -
+             they want to know whether this is the thing they were told to
+             install, and then to get on with it. The key explains itself one
+             screen later, at the point it starts to matter. -->
         <section class="step" id="step-welcome">
-          <h1 class="step-title" id="title-welcome">Welcome</h1>
+          <h1 class="step-title" id="title-welcome">Private messages, and a model to ask</h1>
           <p class="step-body">
-            A private, peer-to-peer place to talk and to ask models questions. One key is your
-            identity here: it signs what you write, opens the rooms you are in, and pays for
-            inference. It is made on this machine and never leaves it.
+            Conversations that stay between the people in them, on a network with no company in
+            the middle.
+          </p>
+          <div class="step-actions">
+            <button class="button button-primary button-lg" type="button" id="choose-create">
+              Get started
+            </button>
+          </div>
+          <button class="step-link" type="button" id="choose-restore">
+            I already have a recovery phrase
+          </button>
+        </section>
+
+        <!-- Secure your account.
+             
+             The step that used to be mandatory and unskippable. Writing twelve
+             words down is the single most important thing somebody does here
+             and it is also the thing they are least ready to do ninety seconds
+             after opening an application - so being made to do it produces a
+             photograph of a screen, or a paste into a notes app, which is worse
+             than deferring it honestly.
+             
+             Later is a real option and the banner that follows is gentle. What
+             it blocks is receiving funds, and only that: losing a conversation
+             is bad and losing money nobody can return is worse. -->
+        <section class="step" id="step-secure" hidden>
+          <h1 class="step-title" id="title-secure">Secure your account</h1>
+          <p class="step-body">
+            Your account lives on this machine. If you lose it — a broken laptop, a reinstall —
+            twelve words are the only way back in. Nobody can reissue them for you.
           </p>
           <div class="choice-list">
-            <button class="choice choice-primary" type="button" id="choose-create">
+            <button class="choice choice-primary" type="button" id="secure-now">
               <span>
-                <span class="choice-title">Create a new wallet</span>
-                <span class="choice-note">
-                  Takes about a minute. You will be given twelve words to write down.
-                </span>
+                <span class="choice-title">Back up now</span>
+                <span class="choice-note">Takes a minute. You will need somewhere to write.</span>
               </span>
               <span class="choice-mark" aria-hidden="true">→</span>
             </button>
-            <button class="choice" type="button" id="choose-restore">
+            <button class="choice" type="button" id="secure-later">
               <span>
-                <span class="choice-title">I have a recovery phrase</span>
-                <span class="choice-note">Restore a wallet you already own on this machine.</span>
+                <span class="choice-title">Later</span>
+                <span class="choice-note">
+                  You can message straight away. Receiving funds waits until this is done.
+                </span>
               </span>
               <span class="choice-mark" aria-hidden="true">→</span>
             </button>
@@ -1179,6 +1214,24 @@
       </nav>
 
       <section class="content">
+        <!-- Standing until the words are written down.
+             
+             Deferring the backup has to be a real option or people photograph
+             the setup screen to get past it, which is worse. So this is the
+             price of deferring: one quiet line, on every surface, that does not
+             go away by itself and cannot be dismissed. It is not a modal and it
+             does not interrupt anything - what it blocks is receiving funds,
+             and that gate lives on the button that would have shown an
+             address. -->
+        <div class="backup-banner" id="backup-banner" role="status" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+          <p class="backup-banner-text">
+            Your account is not backed up. Twelve words are the only way back in.
+          </p>
+          <button class="button button-sm" type="button" id="backup-banner-btn">
+            Back it up
+          </button>
+        </div>
         <!-- Chat ------------------------------------------------------------>
         <div class="panel" id="panel-chat" hidden>
           <div class="empty" id="empty">
