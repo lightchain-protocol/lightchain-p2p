@@ -58,7 +58,16 @@
  * this needs neither, and it is right when the row wraps onto a second line as
  * well, which no constant is.
  */
-.room-body .message {
+/* The bands are on the bubble, not on the row.
+   
+   They used to be on `.message`, which was the bubble. Once a message became a
+   row holding a bubble so an avatar could sit beside it, this rule was still
+   here declaring the row a grid — and because it loads after room.css and is
+   more specific, it won: the flex row never applied, and the avatar stacked
+   above the bubble instead of beside it. Nothing errored and nothing in the
+   list looked obviously wrong, because the only messages on screen were the
+   reader's own and those carry no avatar. */
+.room-body .message-bubble {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -305,4 +314,20 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 48ch;
+}
+
+/* --- Asking a model, from the composer ------------------------------------- */
+
+/* Beside the attachment button, because attaching a file and asking a model are
+   the same kind of act: both add something to the message before it is sent.
+   It was previously announced only by the word "@" inside the placeholder,
+   which disappears the moment anybody types. */
+.composer-ask {
+  flex: 0 0 auto;
+  align-self: flex-end;
+  color: var(--lc-text-tertiary);
+}
+
+.composer-ask:hover {
+  color: var(--lc-accent);
 }

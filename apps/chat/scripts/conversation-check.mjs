@@ -629,6 +629,15 @@ const carry = await evaluate(`(async () => {
 
   pick(${JSON.stringify(label)})
   await new Promise((r) => setTimeout(r, 300))
+
+  // Emptied first, and the emptying announced. Anything left in the composer by
+  // an earlier check is a draft as far as the store is concerned, and setting a
+  // value on top of it without a clearing event leaves the two disagreeing
+  // about what was typed.
+  input.value = ''
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  await new Promise((r) => setTimeout(r, 200))
+
   input.value = 'meant for the first room'
   input.dispatchEvent(new Event('input', { bubbles: true }))
   await new Promise((r) => setTimeout(r, 300))

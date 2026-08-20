@@ -88,7 +88,16 @@ export const el = {
 
 const SVG = 'http://www.w3.org/2000/svg'
 
-export function svg(name, attributes) {
+/**
+ * An SVG element, which needs its own namespace or it renders as nothing.
+ *
+ * The attributes are optional and default to none. They did not, and calling
+ * this with one argument threw `Cannot convert undefined or null to object` at
+ * module scope — which took the whole of `rooms.js` down with it, and with it
+ * the code that wires the worker pipe. The window came up, said "connecting",
+ * and answered nothing, for a missing second argument.
+ */
+export function svg(name, attributes = {}) {
   const node = document.createElementNS(SVG, name)
   for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, String(value))
   return node

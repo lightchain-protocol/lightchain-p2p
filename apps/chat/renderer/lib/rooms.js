@@ -507,13 +507,16 @@ function renderRoom() {
       if (bar) body.append(bar)
     }
 
-    if (room.writable) item.append(messageActions(message, room))
-
     // The bubble is a box inside the row rather than the row itself, so an
     // avatar can sit beside it. `.message` keeps the id and the alignment; what
     // moved is only the background and the padding.
     const bubble = el2('div', 'message-bubble', '')
     bubble.append(meta, body)
+
+    // Inside the bubble, because the toolbar is positioned against the bubble's
+    // second band. Appended to the row it had no grid area to sit in and fell
+    // back to the top-right corner, which is the author and the clock.
+    if (room.writable) bubble.append(messageActions(message, room))
 
     // Beside incoming messages only, and only on the first of a run. Your own
     // face next to everything you said is noise — you know who you are — and a
@@ -1328,6 +1331,37 @@ const takeFiles = (files) => {
 
 el.composer.prepend(attachButton({ onFiles: takeFiles }))
 acceptDrops(el.composer, { onFiles: takeFiles })
+
+/**
+ * Asking a model, as a button rather than as a rumour.
+ *
+ * The mention flow has worked since it was written and the only thing that
+ * announced it was the word "@" inside the placeholder — which disappears as
+ * soon as anybody types. Being able to put a question to a model mid-sentence
+ * is the second half of what this application is, and it was discoverable only
+ * by having been told about it.
+ *
+ * It types the character rather than opening a picker of its own, so there is
+ * one code path: the same list, the same keys, and a composer whose text says
+ * what is about to be sent.
+ */
+const askModel = el2('button', 'icon-button composer-ask', '')
+askModel.type = 'button'
+askModel.title = 'Ask a model'
+askModel.setAttribute('aria-label', 'Ask a model')
+
+const askMark = svg('svg', { class: 'icon', 'aria-hidden': 'true' })
+askMark.append(svg('use', { href: '#i-models' }))
+askModel.append(askMark)
+askModel.addEventListener('click', () => {
+  const input = el.composerInput
+  const at = input.value === '' || input.value.endsWith(' ') ? '@' : ' @'
+  input.value += at
+  input.focus()
+  resizeComposer()
+  void offerModels()
+})
+el.composer.prepend(askModel)
 
 el.composerInput.addEventListener('keydown', (evt) => {
   // The picker owns these keys while it is open, or Enter sends "@lla" as a

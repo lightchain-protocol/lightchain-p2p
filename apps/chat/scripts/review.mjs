@@ -35,7 +35,25 @@ const page = await Page.attach(port)
 const thrown = page.exceptions
 const evaluate = (expression) => page.evaluate(expression)
 
-await page.until(`document.readyState === 'complete'`, 'the document')
+/**
+ * Reloaded, so a module that throws while loading is seen.
+ *
+ * This harness attaches to a window that has been running for a while, which
+ * means every exception raised while the modules were first evaluated happened
+ * before anything was listening. That is not a corner: a single bad argument at
+ * module scope takes the whole file down, and if the file is the one that wires
+ * the worker pipe the window comes up, says "connecting", and answers nothing.
+ * It happened exactly that way, and this reported "the renderer threw nothing
+ * throughout" while it did.
+ */
+await page.send('Page.enable')
+await page.send('Page.reload')
+await page.until(`document.readyState === 'complete'`, 'the document to reload')
+await page.until(
+  `document.getElementById('status')?.textContent !== 'starting'`,
+  'the worker to answer',
+  40_000
+)
 
 /**
  * A fixed size, because half of what follows is a claim about layout.
@@ -462,6 +480,23 @@ const transient = await evaluate(`(async () => {
       actions.find((b) => b.getAttribute('aria-label') === label),
       label
     )
+  }
+
+  // Put back. Pressing Reply leaves the composer in a reply state and pressing
+  // React leaves a picker open, and the next suite to run inherits both — which
+  // is how a stray character ended up in somebody else's draft assertions. A
+  // harness that dirties the application is a harness that breaks the next one.
+  document
+    .querySelectorAll('#composer-tray .composer-note button')
+    .forEach((b) => b.click())
+  document.querySelectorAll('dialog[open], [popover]:popover-open').forEach((d) => {
+    if (typeof d.hidePopover === 'function' && d.matches(':popover-open')) d.hidePopover()
+    else if (typeof d.close === 'function') d.close()
+  })
+  const composer = document.getElementById('composer-input')
+  if (composer && composer.value !== '') {
+    composer.value = ''
+    composer.dispatchEvent(new Event('input', { bubbles: true }))
   }
 
   return opened
