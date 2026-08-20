@@ -198,7 +198,7 @@
   gap: var(--lc-space-xs);
   flex: 0 0 auto;
   opacity: 0;
-  transition: opacity var(--lc-motion-fast) ease-out;
+  transition: opacity var(--lc-motion-fast) var(--lc-easing);
 }
 
 #panel-chat .member:hover .member-actions,

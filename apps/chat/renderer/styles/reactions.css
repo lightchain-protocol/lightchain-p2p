@@ -45,9 +45,9 @@
   background: var(--lc-surface-1);
   cursor: default;
   transition:
-    background-color var(--lc-motion-fast) ease-out,
-    border-color var(--lc-motion-fast) ease-out,
-    color var(--lc-motion-fast) ease-out;
+    background-color var(--lc-motion-fast) var(--lc-easing),
+    border-color var(--lc-motion-fast) var(--lc-easing),
+    color var(--lc-motion-fast) var(--lc-easing);
 }
 
 #panel-chat .reaction:hover:not(:disabled) {

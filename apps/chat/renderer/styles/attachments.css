@@ -87,8 +87,8 @@
   background: transparent;
   cursor: default;
   transition:
-    background-color var(--lc-motion-fast) ease-out,
-    color var(--lc-motion-fast) ease-out;
+    background-color var(--lc-motion-fast) var(--lc-easing),
+    color var(--lc-motion-fast) var(--lc-easing);
 }
 
 #panel-chat .attachment-chip-remove:hover {

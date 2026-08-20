@@ -461,6 +461,6 @@
 .status-row a:focus-visible,
 .alert a:focus-visible,
 [data-kit-focus]:focus-visible {
-  outline: 2px solid var(--lc-brand);
-  outline-offset: 2px;
+  outline: var(--lc-focus-ring);
+  outline-offset: var(--lc-focus-offset);
 }

@@ -101,6 +101,16 @@
   animation: pulse 1.6s ease-in-out infinite;
 }
 
+/* The pulse is a real duration, not a motion token, so it cannot zero itself
+   out at the source the way the tokens do. For a reader who asked for no
+   motion the dot simply holds still — lit, which is the fact the pulse was
+   repeating. */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-status[data-state='busy']::before {
+    animation: none;
+  }
+}
+
 .sidebar-status[data-state='bad'] {
   color: var(--lc-danger);
 }

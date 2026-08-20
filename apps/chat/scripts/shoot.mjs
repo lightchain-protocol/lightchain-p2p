@@ -27,7 +27,7 @@ import { ASK, unlockForHarness } from './harness.mjs'
 const port = Number(process.argv[2] ?? 9301)
 const outdir = process.argv[3] ?? join(process.cwd(), 'shots')
 
-const SURFACES = ['chat', 'models', 'worker', 'wallet']
+const SURFACES = ['chat', 'models', 'wallet', 'bridge', 'worker']
 const THEMES = ['dark', 'light']
 
 /**
@@ -210,8 +210,9 @@ const DIALOGS = [
   // whole run out. Photograph it by hand when its design changes.
   { name: 'secure', surface: 'chat', press: '#room-secure', dialog: '#secure-dialog' },
   { name: 'receive', surface: 'wallet', press: '#assets-receive-btn', dialog: '#receive-dialog' },
-  { name: 'send', surface: 'wallet', press: '#assets-send-btn', dialog: '#send-dialog' },
-  { name: 'bridge', surface: 'wallet', press: '#bridge-open-btn', dialog: '#bridge-dialog' }
+  { name: 'send', surface: 'wallet', press: '#assets-send-btn', dialog: '#send-dialog' }
+  // The bridge is a page now, not a dialog: it is one of the SURFACES above and
+  // is photographed like every other panel, in both themes at both sizes.
 ]
 
 for (const name of THEMES) {

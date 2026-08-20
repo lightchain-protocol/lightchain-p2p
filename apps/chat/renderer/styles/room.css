@@ -75,7 +75,7 @@
   color: var(--lc-success);
   background: color-mix(in srgb, var(--lc-success) 15%, transparent);
   cursor: default;
-  transition: background-color var(--lc-motion-fast) ease-out;
+  transition: background-color var(--lc-motion-fast) var(--lc-easing);
 }
 
 #panel-chat .room-secure:hover {
@@ -697,7 +697,7 @@
   max-height: 30vh;
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-lg);
-  padding: 8px var(--lc-space-md);
+  padding: var(--lc-space-sm) var(--lc-space-md);
   font: inherit;
   font-size: var(--lc-text-md);
   line-height: var(--lc-leading-normal);
@@ -705,8 +705,8 @@
   background: var(--lc-surface-2);
   user-select: text;
   transition:
-    border-color var(--lc-motion-fast) ease-out,
-    box-shadow var(--lc-motion-fast) ease-out;
+    border-color var(--lc-motion-fast) var(--lc-easing),
+    box-shadow var(--lc-motion-fast) var(--lc-easing);
 }
 
 #panel-chat .composer-input::placeholder {
@@ -771,8 +771,8 @@
 }
 
 #panel-chat .room-mark {
-  width: 32px;
-  height: 32px;
+  width: var(--lc-control-sm);
+  height: var(--lc-control-sm);
   flex: 0 0 auto;
   border-radius: var(--lc-radius-md);
   overflow: hidden;

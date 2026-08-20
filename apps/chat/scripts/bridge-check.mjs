@@ -195,21 +195,25 @@ report(
 
 // --- the screen ---------------------------------------------------------------------
 
-await evaluate(`document.querySelector('[data-section="wallet"]').click()`)
-await wait(500)
-await evaluate(`document.getElementById('bridge-open-btn').click()`)
+// The bridge is a page now, not a dialog: reached from the sidebar's elsewhere
+// group, with the disclosure gate, the form and the transfer status on it. So
+// this asserts against the visible panel rather than a dialog's `open`.
+await evaluate(`document.querySelector('[data-section="bridge"]').click()`)
 await wait(1200)
 
 const shown = JSON.parse(
   await evaluate(`JSON.stringify({
-    open: document.getElementById('bridge-dialog').open,
+    shown: document.getElementById('panel-bridge')?.hidden === false &&
+      document.getElementById('panel-bridge')?.offsetParent !== null,
     points: document.querySelectorAll('#bridge-disclosure li').length,
     disclosureVisible: document.getElementById('bridge-disclosure').offsetParent !== null,
+    // Accepted above, so the gate should already have lifted.
+    formShown: document.getElementById('bridge-form')?.hidden === false,
     directions: document.getElementById('bridge-direction').options.length
   })`)
 )
 
-report('the bridge dialog opens', shown.open === true)
+report('the bridge page opens from the sidebar', shown.shown === true)
 report(
   'it lists every point of the disclosure',
   shown.points === terms.disclosure.length,
@@ -220,9 +224,12 @@ report(
   shown.disclosureVisible === true,
   'so it can be re-read before the next transfer rather than clicked past once'
 )
+report(
+  'and accepting the terms lifts the gate on the form',
+  shown.formShown === true,
+  `form shown: ${shown.formShown}`
+)
 report('and offers both directions', shown.directions === 2)
-
-await evaluate(`document.getElementById('bridge-dialog').close()`)
 
 const failed = results.filter((r) => !r.ok)
 console.log(`\n${results.length - failed.length} passed, ${failed.length} failed`)

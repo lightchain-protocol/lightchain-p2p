@@ -22,7 +22,7 @@ import { ASK, unlockForHarness } from './harness.mjs'
 const port = Number(process.argv[2] ?? 9301)
 const outdir = process.argv[3] ?? path.join(process.cwd(), 'shots')
 
-const SURFACES = ['chat', 'models', 'worker', 'wallet']
+const SURFACES = ['chat', 'models', 'wallet', 'bridge', 'worker']
 const THEMES = ['dark', 'light']
 
 const findings = []
@@ -96,12 +96,13 @@ if (!rooms?.length) {
 // unlabelled ones. So each states the population it searched, and fails if that
 // population is implausibly small — the number is the difference between "this
 // held" and "this never ran".
-// `panels` was 5 and is 4: the Dashboard was dissolved, and its three honest
-// facts moved to the Account page and the sidebar's status strip. Lowered
-// deliberately rather than removed — the number is the difference between "this
-// held" and "this never ran", and a check that cannot fail on an empty document
-// is not a check.
-const FLOOR = { ids: 100, buttons: 20, panels: 4 }
+// `panels` was 5, then 4 (the Dashboard was dissolved, and its three honest
+// facts moved to the Account page and the sidebar's status strip), and is 5
+// again since the bridge became a page of its own. Lowered and raised
+// deliberately rather than removed — the number is the difference between
+// "this held" and "this never ran", and a check that cannot fail on an empty
+// document is not a check.
+const FLOOR = { ids: 100, buttons: 20, panels: 5 }
 
 // Two elements answering to one id means getElementById hands both their
 // handlers the same element. It has happened here once already, between the
@@ -272,23 +273,32 @@ note(
  * checkbox stretches in a column's cross axis, so the consent rendered as a
  * full-width bar with "I have read this and want to continue" on the line
  * below it, in front of a transfer that cannot be recalled. Screenshots of the
- * dialog looked plausible at a glance; only measuring the box against its
+ * surface looked plausible at a glance; only measuring the box against its
  * sentence catches it. So this measures: a row, a checkbox no wider than a
  * checkbox, and the words beginning beside it on the same line.
+ *
+ * The bridge is a page now rather than a dialog, so the panel is shown to
+ * measure it — and whatever was on screen is put back afterwards, because the
+ * cold-boot check below asks what the window showed on its own.
  */
-const consent = await evaluate(`(() => {
-  const dialog = document.getElementById('bridge-dialog')
+const consent = await evaluate(`(async () => {
+  const panel = document.getElementById('panel-bridge')
   const box = document.getElementById('bridge-accept')
   const label = box?.closest('label')
   const words = label?.querySelector('span')
-  if (!dialog || !box || !label || !words) return { missing: true }
+  if (!panel || !box || !label || !words) return { missing: true }
 
-  dialog.showModal()
+  const { showSection } = await import('./lib/dom.js')
+  const before = [...document.querySelectorAll('.panel')].find((p) => !p.hidden)
+  showSection('bridge')
+  await new Promise((r) => setTimeout(r, 300))
+
   const style = getComputedStyle(label)
   const cb = box.getBoundingClientRect()
   const tx = words.getBoundingClientRect()
   const measured = {
     missing: false,
+    shown: panel.hidden === false && panel.offsetParent !== null,
     row: style.display === 'flex' && style.flexDirection.startsWith('row'),
     boxWidth: Math.round(cb.width),
     // The words start on the checkbox's line, not the line below it.
@@ -296,17 +306,18 @@ const consent = await evaluate(`(() => {
     // And to its right, not wrapped underneath it.
     beside: tx.left >= cb.right - 1
   }
-  dialog.close()
+
+  if (before) showSection(before.id.replace('panel-', ''))
   return measured
 })()`)
 
 note(
-  consent.missing !== true && consent.row && consent.boxWidth <= 32 && consent.sameRow &&
-    consent.beside,
+  consent.missing !== true && consent.shown && consent.row && consent.boxWidth <= 32 &&
+    consent.sameRow && consent.beside,
   'the bridge consent is a checkbox beside its label, on one row',
   consent.missing
-    ? 'no bridge dialog, checkbox or label found'
-    : `row: ${consent.row}, box ${consent.boxWidth}px wide, same row: ${consent.sameRow}, beside: ${consent.beside}`
+    ? 'no bridge panel, checkbox or label found'
+    : `shown: ${consent.shown}, row: ${consent.row}, box ${consent.boxWidth}px wide, same row: ${consent.sameRow}, beside: ${consent.beside}`
 )
 
 // --- What a cold boot actually shows -------------------------------------------

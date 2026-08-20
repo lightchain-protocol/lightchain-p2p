@@ -31,7 +31,7 @@
 @keyframes settings-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(var(--lc-space-xs));
   }
 }
 
@@ -143,6 +143,16 @@
   display: flex;
   flex-direction: column;
   gap: var(--lc-space-lg);
+}
+
+/* The kit's `.form` holds a field stack to 44ch, which is right for prose-length
+   answers. Settings fields hold keys, paths and URLs rather than sentences, and
+   those have real lengths — here the form takes the reading column it sits in,
+   which at least lines its edge up with the paragraph explaining it. Scoped to
+   this surface: the rule lives with the overlay it serves, not in wallet.css,
+   where it was born and from where it silently restyled this page. */
+.settings-page .form {
+  max-width: none;
 }
 
 .settings-heading {

@@ -353,15 +353,16 @@
   border-color: color-mix(in srgb, var(--lc-accent) 55%, var(--lc-rule-strong));
 }
 
-/* Drawn rather than native, so it takes the theme: an 18px box that fills with
-   the accent when it is ticked, the tick itself a turned corner of two borders.
-   No image, so nothing for the content policy to refuse. */
+/* Drawn rather than native, so it takes the theme: a control-icon-sized box
+   that fills with the accent when it is ticked, the tick itself a turned
+   corner of two borders. No image, so nothing for the content policy to
+   refuse. */
 .bridge-accept input[type='checkbox'] {
   appearance: none;
   display: grid;
   place-content: center;
-  width: 18px;
-  height: 18px;
+  width: var(--lc-control-icon);
+  height: var(--lc-control-icon);
   flex: none;
   margin: 1px 0 0;
   padding: 0;

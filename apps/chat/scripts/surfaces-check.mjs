@@ -169,7 +169,7 @@ report(
  */
 const reachable = JSON.parse(
   await evaluate(`(() => {
-    const wanted = ['models', 'wallet', 'worker']
+    const wanted = ['models', 'wallet', 'bridge', 'worker']
     const found = {}
 
     for (const section of wanted) {
@@ -217,7 +217,7 @@ report(
   `settings ${reachable.settings}, theme ${reachable.theme}`
 )
 
-for (const destination of ['models', 'wallet', 'worker']) {
+for (const destination of ['models', 'wallet', 'bridge', 'worker']) {
   const landed = await evaluate(`(async () => {
     document.querySelector('#sidebar [data-section="${destination}"]').click()
     await new Promise((r) => setTimeout(r, 600))
@@ -363,7 +363,10 @@ report(
 report(
   'and the Elsewhere rows still show their icons',
   folded.missing !== true &&
-    folded.elsewhere.length === 3 &&
+    // Four now: Models, Account, Bridge, Earn — the bridge joined the group
+    // when it became a page, and the count is what keeps a row that lost its
+    // icon from passing as "the others are fine".
+    folded.elsewhere.length === 4 &&
     folded.elsewhere.every((i) => i.href !== null && i.visible && i.sized),
   folded.elsewhere?.map((i) => `${i.section}:${i.href ?? 'no icon'}`).join(', ') ?? 'missing'
 )

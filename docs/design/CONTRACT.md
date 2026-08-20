@@ -189,10 +189,18 @@ Navigation order is fixed (plan §1). The room list is the sidebar body;
    |---|---|---|
    | Models | `models` | `#i-models` |
    | Account | `wallet` | `#i-wallet` |
+   | Bridge | `bridge` | `#i-bridge` |
    | Earn | `worker` | `#i-worker` |
 
    (A `chat` nav row exists in the current markup as a transition artefact; it
    is not part of the target IA — no destination appears twice.)
+   
+   The Bridge row arrived with the bridge's promotion to a page (`0aacdf8`):
+   moving LCAI between chains is an irreversible, externally-relayed transfer
+   with a disclosure gate in front of it — too much weight for a modal buried
+   in Account's Advanced disclosure, so it is a nav peer. The old
+   `#bridge-dialog` is **deleted**; `dialogs.html` must never reintroduce a
+   `bridge-` id, or the page and the ghost would answer to the same name.
 4. **Identity row** (avatar, truncated address, network) → opens Account.
 5. **Utility row:** version · theme (`#theme-btn`) · settings (`#settings-btn`).
 
@@ -239,6 +247,26 @@ here **before** the markup that uses it; A2 wires `dom.js`/`main.js`.
 | `worker-register-alert` | W | Step 4's inline error slot. | `fa009aa` |
 | `worker-step-run-title` | W | Step 5 heading ("Run"). | `fa009aa` |
 | `worker-run-alert` | W | Step 5's inline error slot (pull/start/stop). | `fa009aa` |
+| `panel-bridge` | A4 | The bridge page: disclosure gate, transfer form, transfer status. | `0aacdf8` |
+| `bridge-terms` / `bridge-terms-title` | A4 | The "Read this first" card and its heading. | `0aacdf8` |
+| `bridge-disclosure` | A4 | The terms list; the worker writes the lines, the page renders them. | `0aacdf8` |
+| `bridge-accept` | A4 | The consent checkbox — a row beside its sentence, measured by `review.mjs`. | `0aacdf8` |
+| `bridge-form` / `bridge-form-title` | A4 | The transfer card; hidden until the terms are accepted. | `0aacdf8` |
+| `bridge-direction` | A4 | Route picker (Lightchain → Ethereum, Ethereum → Lightchain). | `0aacdf8` |
+| `bridge-amount` / `bridge-balance` | A4 | Amount field and its available-balance hint. | `0aacdf8` |
+| `bridge-error` | A4 | The form's inline error slot ("This cannot be bridged"). | `0aacdf8` |
+| `bridge-review` + `bridge-review-amount/-from/-to/-fee/-note` | A4 | What the worker quoted, shown before anything is signed. | `0aacdf8` |
+| `bridge-quote-btn` / `bridge-approve-btn` / `bridge-send-btn` | A4 | Review, then Approve (its own transaction), then Bridge it. | `0aacdf8` |
+| `bridge-status` / `bridge-status-title` / `bridge-status-note` | A4 | The post-send card: what was sent and where to watch it. | `0aacdf8` |
+| `bridge-status-check` / `bridge-status-explorer` | A4 | Check arrival by the destination balance; view the transaction. | `0aacdf8` |
+| `set-receipts` | A3 | Settings → General privacy toggle: publish read receipts or not. Off keeps every tick on your own messages single. | `865d8f6` |
+
+### Removed ids
+
+| Id | Was | Removed in |
+|---|---|---|
+| `bridge-dialog` | The bridge as a modal in Account's Advanced disclosure. Replaced by `#panel-bridge`; nothing may reintroduce a `bridge-` id in `dialogs.html`. | `0aacdf8` |
+| `asset-buy` | The Buy button on Account. No order flow here; zero matches is asserted by `assets-check.mjs`. | `a6b207f` |
 
 ---
 

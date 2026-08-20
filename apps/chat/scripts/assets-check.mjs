@@ -292,7 +292,14 @@ const shown = JSON.parse(
     address: document.getElementById('receive-address').textContent,
     warning: document.getElementById('receive-warning-title').textContent,
     chains: [...document.getElementById('receive-chain').options].map((o) => o.textContent),
-    qr: document.querySelectorAll('#receive-qr svg').length
+    qr: document.querySelectorAll('#receive-qr svg').length,
+    // The asset picker groups what can be received under the network it lives
+    // on: one optgroup naming the chain, every option inside it, the bare
+    // symbol as the line. The network is the whole safety story on this
+    // screen, and the grouping is how the picker says it.
+    groups: [...document.querySelectorAll('#receive-token optgroup')].map((g) => g.label),
+    loose: document.querySelectorAll('#receive-token > option').length,
+    chain: document.getElementById('receive-chain').selectedOptions[0]?.textContent
   })`)
 )
 
@@ -314,7 +321,11 @@ const surface = JSON.parse(
     sendButtons: document.querySelectorAll('#assets-send-btn').length,
     receiveButtons: document.querySelectorAll('#assets-receive-btn').length,
     actions: ['assets-send-btn', 'assets-receive-btn', 'bridge-open-btn']
-      .filter((id) => document.getElementById(id) !== null).length
+      .filter((id) => document.getElementById(id) !== null).length,
+    // Buying was stripped from the Account page: no order flow here, and a Buy
+    // button opening somebody else's checkout was a product this app is not.
+    // Zero matches is the assertion — one reappearing is the regression.
+    buy: document.querySelectorAll('#asset-buy').length
   })`)
 )
 
@@ -344,6 +355,7 @@ report(
   surface.actions === 3,
   `${surface.actions} of 3`
 )
+report('and there is no Buy anywhere', surface.buy === 0, `${surface.buy} of them`)
 
 report('the receive dialog opens', shown.open === true)
 report('it lists every chain to choose from', shown.chains.length === 6, shown.chains.join(', '))
@@ -353,6 +365,11 @@ report(
   'and its heading names the asset and network before anything else',
   /on/.test(shown.warning) && shown.warning.includes('only'),
   shown.warning
+)
+report(
+  'and the asset picker groups what can be received under its network',
+  shown.groups.length === 1 && shown.groups[0] === shown.chain && shown.loose === 0,
+  `groups: ${shown.groups.join(', ') || 'none'}, loose options: ${shown.loose}`
 )
 
 // Changing the network must not leave the previous address under a new heading.
@@ -366,7 +383,8 @@ const changed = JSON.parse(
     await new Promise((r) => setTimeout(r, 2500))
     return JSON.stringify({
       during,
-      after: document.getElementById('receive-warning-title').textContent
+      after: document.getElementById('receive-warning-title').textContent,
+      group: document.querySelector('#receive-token optgroup')?.label ?? null
     })
   })()`)
 )
@@ -377,6 +395,11 @@ report(
   `showed "${changed.during}"`
 )
 report('and the heading follows the new network', changed.after.includes('BNB'), changed.after)
+report(
+  'and so does the grouping the assets are listed under',
+  changed.group === 'BNB Smart Chain',
+  `grouped under ${changed.group ?? 'nothing'}`
+)
 
 await evaluate(`document.getElementById('receive-dialog').close()`)
 

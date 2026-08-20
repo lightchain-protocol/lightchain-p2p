@@ -206,18 +206,6 @@
   margin-top: var(--lc-space-xs);
 }
 
-/* --- Forms ---------------------------------------------------------------- */
-
-/* Shared with Settings and onboarding, which is why these are not named for
-   the wallet's own parts. They predate the kit; when a second surface needs a
-   field the kit should take them. */
-/* Settings fields hold keys, paths and URLs rather than passwords, and those
-   have real lengths. Here the form takes the reading column it sits in, which
-   at least lines its edge up with the paragraph explaining it. */
-.settings-page .form {
-  max-width: none;
-}
-
 /* --- Holdings -------------------------------------------------------------
    A table rather than a list of cards. These are columns being compared down —
    which is worth most, which moved today — and a card layout makes that
@@ -367,8 +355,10 @@
 }
 
 .holding[role='button']:focus-visible {
-  outline: 2px solid var(--lc-brand);
-  outline-offset: -2px;
+  outline: var(--lc-focus-ring);
+  /* Inset rather than the token's offset: the ring belongs inside the row's
+     own box, beside the hover wash it shares, not clipped by the next row. */
+  outline-offset: calc(-1 * var(--lc-focus-width));
   border-radius: var(--lc-radius-sm);
 }
 

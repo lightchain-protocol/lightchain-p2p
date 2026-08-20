@@ -134,6 +134,34 @@ const messageId = await evaluate(`(() => {
 
 report('a message carries its id for replies to point at', typeof messageId === 'string', messageId)
 
+// --- The sent tick ------------------------------------------------------------
+
+// Your own messages say where they got to: one tick once the room holds the
+// line, a second once somebody else says they have read it. This room has
+// nobody else in it, so the only honest state here is sent — a single check,
+// in the message body, never two.
+const tick = JSON.parse(
+  await evaluate(`(() => {
+    const item = [...document.querySelectorAll('#messages .message')].find(
+      (m) => m.dataset.message === ${JSON.stringify(messageId)}
+    )
+    const mark = item?.querySelector('.message-body .message-receipt')
+    return JSON.stringify({
+      present: Boolean(mark),
+      read: mark?.classList.contains('is-read') ?? null
+    })
+  })()`)
+)
+report(
+  'your own message carries a sent tick',
+  tick.present === true && tick.read === false,
+  tick.present === true
+    ? tick.read === true
+      ? 'two ticks, but nobody else has read it'
+      : 'single, sent'
+    : 'no tick'
+)
+
 // --- Replying ----------------------------------------------------------------
 
 await ask('room.send', { room: created.key, text: 'the answer', replyTo: messageId })

@@ -16,6 +16,7 @@
     partials/panel-models.html      models and inference
     partials/panel-worker.html      worker
     partials/panel-wallet.html      wallet
+    partials/panel-bridge.html      bridge — a page, not a dialog
     partials/content-close.html     shared — closes content and shell
     partials/dialogs.html           shared dialogs: join, invite, pay, rename, move
     partials/dialog-secure.html     how this room is protected
@@ -57,6 +58,7 @@
     <link rel="stylesheet" href="styles/models.css" />
     <link rel="stylesheet" href="styles/worker.css" />
     <link rel="stylesheet" href="styles/wallet.css" />
+    <link rel="stylesheet" href="styles/bridge.css" />
     <link rel="stylesheet" href="styles/settings.css" />
     <link rel="stylesheet" href="styles/onboarding.css" />
 
@@ -117,6 +119,12 @@
           <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
           <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
         </symbol>
+        <symbol id="i-bridge" viewBox="0 0 24 24">
+          <path d="M8 3 4 7l4 4" />
+          <path d="M4 7h16" />
+          <path d="m16 21 4-4-4-4" />
+          <path d="M20 17H4" />
+        </symbol>
         <symbol id="i-settings" viewBox="0 0 24 24">
           <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" />
           <circle cx="12" cy="12" r="3" />
@@ -175,6 +183,10 @@
         </symbol>
         <symbol id="i-check" viewBox="0 0 24 24">
           <path d="M20 6 9 17l-5-5" />
+        </symbol>
+        <symbol id="i-check-check" viewBox="0 0 24 24">
+          <path d="M18 6 7 17l-5-5" />
+          <path d="m22 10-7.5 7.5L13 16" />
         </symbol>
         <symbol id="i-alert" viewBox="0 0 24 24">
           <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
@@ -265,6 +277,10 @@
         <symbol id="i-send" viewBox="0 0 24 24">
           <path d="m5 12 7-7 7 7" />
           <path d="M12 19V5" />
+        </symbol>
+        <symbol id="i-receive" viewBox="0 0 24 24">
+          <path d="M12 5v14" />
+          <path d="m19 12-7 7-7-7" />
         </symbol>
         <symbol id="i-members" viewBox="0 0 24 24">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -841,6 +857,20 @@
                 <option value="0">Never — only on a machine nobody else uses</option>
               </select>
             </label>
+
+            <h3 class="settings-heading">Privacy</h3>
+            <p class="settings-note">
+              A read receipt tells the other people in a room when you have seen what they wrote —
+              it is what turns the tick on their messages into two. That is a fact about you, not
+              about the conversation, so it is off unless you switch it on. Receipts travel over the
+              presence channel and are written nowhere: nothing about what you have read ever
+              enters a room's history. Off, the rooms you are in are told nothing, and other
+              people's switches decide what their ticks tell you — never the other way round.
+            </p>
+            <label class="settings-check">
+              <input type="checkbox" id="set-receipts" />
+              <span>Send read receipts</span>
+            </label>
           </section>
 
           <section class="settings-page" id="settings-wallet" hidden>
@@ -1098,7 +1128,8 @@
               ways to start one pinned under the list header, so they are
               always in the same place and never scroll away or sit stranded
               mid-column
-           3. elsewhere: Models, Account, Earn — visible, named, one press away
+           3. elsewhere: Models, Account, Bridge, Earn — visible, named, one
+              press away
            4. who you are signed in as, which is also the way to Account
            5. version, theme, settings
 
@@ -1164,9 +1195,9 @@
         <!-- Everything that is not a conversation, in the order the contract
              fixes. Visually separated from the list and below it, because the
              conversations are the reason the window is open — but visible and
-             named, because these four destinations were unreachable for a
-             while behind an avatar with no affordance, and a destination
-             nobody can find does not exist. -->
+             named, because these destinations were unreachable for a while
+             behind an avatar with no affordance, and a destination nobody can
+             find does not exist. -->
         <div class="sidebar-elsewhere">
           <p class="sidebar-group-title" aria-hidden="true">Elsewhere</p>
           <ul class="sections" aria-label="Elsewhere">
@@ -1180,6 +1211,12 @@
               <button class="nav-item" type="button" data-section="wallet">
                 <svg class="nav-icon" aria-hidden="true"><use href="#i-wallet" /></svg>
                 <span class="nav-label">Account</span>
+              </button>
+            </li>
+            <li>
+              <button class="nav-item" type="button" data-section="bridge">
+                <svg class="nav-icon" aria-hidden="true"><use href="#i-bridge" /></svg>
+                <span class="nav-label">Bridge</span>
               </button>
             </li>
             <li>
@@ -1532,7 +1569,7 @@
             <section class="ai-thread">
               <header class="page-head ai-head" id="ai-head" hidden>
                 <div class="page-head-main">
-                  <h1 class="page-title ai-title" id="ai-model">—</h1>
+                  <h1 class="page-title ai-title" id="ai-model">Loading…</h1>
                   <!-- Session facts only: the phase in flight, the worker, the
                        session id, the number of turns. Never a failure. -->
                   <p class="page-sub ai-session" id="ai-session">no session</p>
@@ -1890,19 +1927,27 @@
               <svg class="asset-hero-mark" aria-hidden="true">
                 <use href="#c-generic" id="asset-mark" />
               </svg>
-              <h1 class="asset-hero-name" id="asset-title">—</h1>
+              <h1 class="asset-hero-name" id="asset-title">Loading…</h1>
               <!-- The chain, under the name. Three of these pages are called
                    "Ether" and only this line tells them apart, which is the
                    same ambiguity the holdings rows carry a chain to avoid. -->
               <p class="asset-hero-chain" id="asset-chain"></p>
-              <p class="asset-hero-balance" id="asset-balance">—</p>
-              <p class="asset-hero-worth" id="asset-worth">—</p>
+              <p class="asset-hero-balance" id="asset-balance">Loading…</p>
+              <p class="asset-hero-worth" id="asset-worth">Loading…</p>
 
               <div class="asset-actions">
-                <button class="asset-action" type="button" id="asset-receive">Receive</button>
-                <button class="asset-action" type="button" id="asset-send">Send</button>
-                <button class="asset-action" type="button" id="asset-bridge">Bridge</button>
-                <button class="asset-action" type="button" id="asset-buy">Buy</button>
+                <button class="asset-action" type="button" id="asset-receive">
+                  <svg class="icon" aria-hidden="true"><use href="#i-receive" /></svg>
+                  Receive
+                </button>
+                <button class="asset-action" type="button" id="asset-send">
+                  <svg class="icon" aria-hidden="true"><use href="#i-send" /></svg>
+                  Send
+                </button>
+                <button class="asset-action" type="button" id="asset-bridge">
+                  <svg class="icon" aria-hidden="true"><use href="#i-routing" /></svg>
+                  Bridge
+                </button>
               </div>
             </div>
 
@@ -2194,18 +2239,56 @@
                   </div>
                 </section>
 
+                <!-- The address, and the way to the bridge. On the page itself
+                     rather than stranded at the bottom of the disclosure below:
+                     receiving shows this address again with a QR beside it, but
+                     copying it should not take opening Advanced first. The
+                     bridge is its own page now; this button is a deep link to
+                     it, kept here because the networks it moves between are
+                     what the rest of this card is about. -->
+                <section class="kit-card kit-card-flush wallet-account">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">Your address</h2>
+                    <span class="chip" id="wallet-network"></span>
+                  </header>
+                  <div class="kit-card-scroll">
+                    <div class="wallet-address">
+                      <code class="wallet-key" id="wallet-address"></code>
+                      <button
+                        class="button button-sm"
+                        type="button"
+                        id="wallet-copy"
+                        title="Copy address"
+                        aria-label="Copy address"
+                      >
+                        <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
+                      </button>
+                    </div>
+                    <p class="wallet-note">
+                      The same address on all six networks. What decides whether something arrives
+                      is which network it was sent on.
+                    </p>
+                    <div class="wallet-actions">
+                      <button class="button" type="button" id="bridge-open-btn">
+                        <svg class="icon" aria-hidden="true"><use href="#i-routing" /></svg>
+                        Bridge
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
                 <!-- Everything below is the chain showing through: six
-                     networks, a holdings table, per-asset pages and a bridge.
-                     All of it real and none of it what somebody came to this
-                     page for, so it is one press away rather than the first
-                     thing in view. `details` rather than a script: it is
-                     keyboard-operable, it announces its own state, and it
-                     remembers nothing, which is right for a section whose
-                     closed state is the recommendation. -->
+                     networks, a portfolio line and a holdings table. All of it
+                     real and none of it what somebody came to this page for, so
+                     it is one press away rather than the first thing in view.
+                     `details` rather than a script: it is keyboard-operable, it
+                     announces its own state, and it remembers nothing, which is
+                     right for a section whose closed state is the
+                     recommendation. -->
                 <details class="account-advanced" id="account-advanced" data-advanced>
                   <summary class="account-advanced-summary">
                     <svg class="icon" aria-hidden="true"><use href="#i-chevron" /></svg>
-                    Networks, holdings and the bridge
+                    Networks and holdings
                   </summary>
 
                 <div class="wallet-grid">
@@ -2284,61 +2367,164 @@
                     </div>
                   </section>
 
-                  <!-- The address and the four things you can do with it. It
-                       was two cards, one of which spent a whole panel on an
-                       address that matters at exactly one moment — receiving,
-                       which shows it with a QR beside it anyway. -->
-                  <section class="kit-card kit-card-flush wallet-account">
-                    <header class="kit-card-head">
-                      <h2 class="kit-card-title">Account</h2>
-                      <span class="chip" id="wallet-network"></span>
-                    </header>
-                    <div class="kit-card-scroll">
-                      <div class="wallet-address">
-                        <code class="wallet-key" id="wallet-address"></code>
-                        <button
-                          class="button button-sm"
-                          type="button"
-                          id="wallet-copy"
-                          title="Copy address"
-                          aria-label="Copy address"
-                        >
-                          <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
-                        </button>
-                      </div>
-                      <p class="wallet-note">
-                        The same address on all six networks. What decides whether something arrives
-                        is which network it was sent on.
-                      </p>
-
-                      <!-- Send and Receive used to be here too. They are on the
-                           balance card now, where the figure they act on is;
-                           two buttons doing one job is two ids answering to one
-                           name, which is a bug waiting for whichever handler
-                           `getElementById` happens to reach. Bridging stays,
-                           because it belongs with the networks it moves
-                           between. -->
-                      <div class="wallet-actions">
-                        <button class="button" type="button" id="bridge-open-btn">
-                          <svg class="icon" aria-hidden="true"><use href="#i-routing" /></svg>
-                          Bridge
-                        </button>
-                        <button
-                          class="button"
-                          type="button"
-                          data-external="https://www.coingecko.com/en/coins/lightchain-ai#markets"
-                        >
-                          <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
-                          Buy
-                        </button>
-                      </div>
-                    </div>
-                  </section>
-
                 </div>
                 </details>
               </div>
             </section>
+          </div>
+        </div>
+        <!-- Bridge ---------------------------------------------------------->
+        <!-- A page, not a dialog. Moving LCAI between Ethereum and Lightchain
+             is an irreversible, externally-relayed transfer with a disclosure
+             in front of it — that was too much weight for a modal buried in
+             Account's Advanced disclosure, so it is a nav peer now.
+
+             The disclosure stays the first thing and stays a gate rather than
+             a notice: the form card does not exist on screen until the terms
+             have been accepted, and the text stays on the page afterwards so
+             it can be re-read before the next transfer. The worker enforces
+             the same acceptance independently; this page is where the text is
+             read, not where the rule lives. -->
+        <div class="panel" id="panel-bridge" hidden>
+          <div class="console bridge-page">
+            <header class="page-head">
+              <div class="page-head-main">
+                <h1 class="page-title">Bridge</h1>
+                <p class="page-sub">
+                  Move LCAI between Ethereum and Lightchain. It is the same token in two places:
+                  moving it locks it on one side and releases it on the other.
+                </p>
+              </div>
+            </header>
+
+            <div class="console-body bridge-body">
+              <!-- What the route asks somebody to rely on, before it asks for
+                   money. The worker writes the lines; the page renders them. -->
+              <section class="kit-card" id="bridge-terms" aria-labelledby="bridge-terms-title">
+                <header class="kit-card-head">
+                  <h2 class="kit-card-title" id="bridge-terms-title">
+                    <svg class="icon" aria-hidden="true"><use href="#i-shield" /></svg>
+                    Read this first
+                  </h2>
+                </header>
+                <div class="bridge-terms-body">
+                  <!-- Loading is a word: the worker writes the real lines when
+                       the page opens, and until it answers this says why the
+                       list is short. -->
+                  <ul class="bridge-disclosure" id="bridge-disclosure">
+                    <li class="bridge-disclosure-item">Loading…</li>
+                  </ul>
+                  <!-- Not `.field`: that is a vertical stack of label over control,
+                       which made this a full-width bar with its sentence on the
+                       line below — in front of an irreversible transfer.
+                       `.bridge-accept` is a row, and review.mjs measures that it
+                       stays one. -->
+                  <label class="bridge-accept">
+                    <input type="checkbox" id="bridge-accept" />
+                    <span>I have read this and want to continue</span>
+                  </label>
+                </div>
+              </section>
+
+              <!-- The transfer itself. Hidden until the disclosure above has
+                   been accepted: the gate is the point, not the form. -->
+              <section class="kit-card" id="bridge-form" hidden aria-labelledby="bridge-form-title">
+                <header class="kit-card-head">
+                  <h2 class="kit-card-title" id="bridge-form-title">
+                    <svg class="icon" aria-hidden="true"><use href="#i-bridge" /></svg>
+                    New transfer
+                  </h2>
+                </header>
+                <div class="bridge-form-body">
+                  <div class="form">
+                    <label class="field">
+                      <span class="field-label">Direction</span>
+                      <select class="input" id="bridge-direction"></select>
+                    </label>
+
+                    <label class="field">
+                      <span class="field-label">Amount in LCAI</span>
+                      <input
+                        class="input"
+                        id="bridge-amount"
+                        type="text"
+                        inputmode="decimal"
+                        spellcheck="false"
+                        autocomplete="off"
+                        placeholder="0.0"
+                      />
+                    </label>
+                    <p class="field-hint" id="bridge-balance"></p>
+                  </div>
+
+                  <div class="alert" data-tone="error" role="alert" id="bridge-error" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                    <div class="alert-body">
+                      <strong class="alert-title">This cannot be bridged</strong>
+                      <span data-slot="detail"></span>
+                    </div>
+                  </div>
+
+                  <!-- What the worker actually quoted, before anything is
+                       signed. The delivery fee is quoted every time rather
+                       than remembered: it is zero today and the route's owner
+                       can raise it whenever they like. -->
+                  <section class="send-review" id="bridge-review" hidden>
+                    <dl class="facts">
+                      <dt>Moving</dt>
+                      <dd id="bridge-review-amount"></dd>
+                      <dt>From</dt>
+                      <dd id="bridge-review-from"></dd>
+                      <dt>To</dt>
+                      <dd id="bridge-review-to"></dd>
+                      <dt>Delivery fee</dt>
+                      <dd id="bridge-review-fee"></dd>
+                    </dl>
+                    <p class="send-warning" id="bridge-review-note"></p>
+                  </section>
+
+                  <!-- Approving is its own button and its own transaction, so
+                       the allowance being granted is visible rather than folded
+                       into the send. -->
+                  <div class="bridge-actions">
+                    <button class="button" type="button" id="bridge-quote-btn" hidden>Review</button>
+                    <button class="button" type="button" id="bridge-approve-btn" hidden>
+                      Approve first
+                    </button>
+                    <button class="button button-primary" type="button" id="bridge-send-btn" hidden>
+                      Bridge it
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              <!-- After a send: what was sent and where to watch it. Status is
+                   a sentence, not a tracker — no explorer indexes this bridge,
+                   so arrival is inferred from the destination balance, which
+                   the wallet's holdings already show. -->
+              <section class="kit-card" id="bridge-status" hidden aria-labelledby="bridge-status-title">
+                <header class="kit-card-head">
+                  <h2 class="kit-card-title" id="bridge-status-title">
+                    <svg class="icon" aria-hidden="true"><use href="#i-check" /></svg>
+                    Transfer sent
+                  </h2>
+                </header>
+                <p class="bridge-status-note" id="bridge-status-note"></p>
+                <div class="bridge-actions">
+                  <!-- Arrival is inferred, not tracked: no explorer indexes this
+                       bridge, so the check watches the destination balance and
+                       says so. The baseline is read right after the send. -->
+                  <button class="button button-sm" type="button" id="bridge-status-check" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                    Check whether it arrived
+                  </button>
+                  <button class="button button-sm" type="button" id="bridge-status-explorer" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+                    View the transaction
+                  </button>
+                </div>
+              </section>
+            </div>
           </div>
         </div>
       </section>
@@ -2351,7 +2537,13 @@
          ask. That is why the chain is chosen before the address is shown, why
          the warning names both the token and the chain, and why changing the
          picker clears the address and the code rather than leaving a stale one
-         under a new heading. -->
+         under a new heading.
+
+         The network is also the grouping, not a per-option annotation: the
+         asset picker lists bare symbols under a heading that names the chain,
+         because a line reading "ETH — the network's own coin" explains what
+         the select above it already said. The options themselves are built by
+         `fillTokenPicker` in lib/assets.js. -->
     <dialog class="dialog" id="receive-dialog">
       <div class="dialog-form">
         <h2 class="dialog-title">Receive</h2>
@@ -2472,87 +2664,11 @@
       </form>
     </dialog>
 
-    <!-- Bridging ------------------------------------------------------------
-         The disclosure is the first thing and it is a gate, not a notice. This
-         route's safety rests on one key, nothing on chain obliges anyone to
-         deliver, and a stalled transfer cannot be retried from here or looked
-         up anywhere. Somebody is entitled to know that before, not after. The
-         worker refuses to bridge until it has been accepted, so a window that
-         skipped this screen would gain nothing. -->
-    <dialog class="dialog" id="bridge-dialog">
-      <div class="dialog-form">
-        <h2 class="dialog-title">Bridge LCAI</h2>
-
-        <section id="bridge-terms">
-          <p class="dialog-body">
-            LCAI on Ethereum and LCAI on Lightchain are the same token in two places. Moving between
-            them means locking it on one side and releasing it on the other. Before you do that,
-            here is what you are relying on.
-          </p>
-          <ul class="bridge-disclosure" id="bridge-disclosure"></ul>
-          <!-- Not `.field`: that is a vertical stack of label over control,
-               which made this a full-width bar with its sentence on the line
-               below — in front of an irreversible transfer. `.bridge-accept`
-               is a row, and review.mjs measures that it stays one. -->
-          <label class="bridge-accept">
-            <input type="checkbox" id="bridge-accept" />
-            <span>I have read this and want to continue</span>
-          </label>
-        </section>
-
-        <section id="bridge-form" hidden>
-          <label class="field">
-            <span class="field-label">Direction</span>
-            <select class="input" id="bridge-direction"></select>
-          </label>
-
-          <label class="field">
-            <span class="field-label">Amount</span>
-            <input
-              class="input"
-              id="bridge-amount"
-              type="text"
-              inputmode="decimal"
-              spellcheck="false"
-              autocomplete="off"
-              placeholder="0.0"
-            />
-          </label>
-          <p class="field-hint" id="bridge-balance"></p>
-
-          <div class="alert" data-tone="error" role="alert" id="bridge-error" hidden>
-            <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
-            <div class="alert-body">
-              <strong class="alert-title">This cannot be bridged</strong>
-              <span data-slot="detail"></span>
-            </div>
-          </div>
-
-          <section class="send-review" id="bridge-review" hidden>
-            <dl class="facts">
-              <dt>Moving</dt>
-              <dd id="bridge-review-amount"></dd>
-              <dt>From</dt>
-              <dd id="bridge-review-from"></dd>
-              <dt>To</dt>
-              <dd id="bridge-review-to"></dd>
-              <dt>Delivery fee</dt>
-              <dd id="bridge-review-fee"></dd>
-            </dl>
-            <p class="send-warning" id="bridge-review-note"></p>
-          </section>
-        </section>
-
-        <div class="dialog-actions">
-          <button class="button" type="button" data-close="bridge-dialog">Close</button>
-          <button class="button" type="button" id="bridge-quote-btn" hidden>Review</button>
-          <button class="button" type="button" id="bridge-approve-btn" hidden>Approve first</button>
-          <button class="button button-primary" type="button" id="bridge-send-btn" hidden>
-            Bridge it
-          </button>
-        </div>
-      </div>
-    </dialog>
+    <!-- Bridging is a page now, not a dialog: the disclosure gate, the form
+         and the transfer status live in panel-bridge.html, reached from the
+         sidebar's elsewhere group. The ids moved with it — nothing here may
+         reintroduce a `bridge-` id, or the page and this dialog's ghost would
+         answer to the same name. -->
 
     <dialog class="dialog" id="join-dialog">
       <form method="dialog" class="dialog-form" id="join-form">
