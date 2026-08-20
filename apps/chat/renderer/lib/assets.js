@@ -342,8 +342,8 @@ export async function refreshAssets({ refresh = false } = {}) {
   closeAsset()
 
   // Six chains take a couple of seconds, and a bare dash for that long reads as
-  // a wallet holding nothing rather than one still counting.
-  total.textContent = '…'
+  // a wallet holding nothing rather than one still counting. Loading is a word.
+  total.textContent = 'Loading…'
 
   let held
   try {
@@ -353,12 +353,13 @@ export async function refreshAssets({ refresh = false } = {}) {
     // and an unreachable worker look identical, and only one of them is fine.
     partialNote.textContent = err.message
     partial.hidden = false
+    total.textContent = 'Not available'
     return
   }
 
   if (!held?.address) {
     list.replaceChildren()
-    total.textContent = '—'
+    total.textContent = 'Not available'
     empty.hidden = true
     partial.hidden = true
     return
@@ -385,7 +386,7 @@ export async function refreshAssets({ refresh = false } = {}) {
   list.replaceChildren(...holdings.map(assetRow))
   empty.hidden = holdings.length > 0
   document.querySelector('.holdings-head').hidden = holdings.length === 0
-  total.textContent = held.totalUsdText ?? '—'
+  total.textContent = held.totalUsdText ?? 'Not available'
 
   renderNetworks(held)
 

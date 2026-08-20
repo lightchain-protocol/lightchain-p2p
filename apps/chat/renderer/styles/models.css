@@ -164,6 +164,23 @@
   color: var(--lc-fg-dim);
 }
 
+/* Zero published models is a sentence and an action, not a void: what would be
+   here, and the press that could change it. */
+.model-empty {
+  margin: var(--lc-space-md) var(--lc-space-sm);
+  padding: var(--lc-space-lg) var(--lc-space-md);
+  border: 1px dashed var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  text-align: center;
+}
+
+.model-empty-text {
+  margin: 0 0 var(--lc-space-md);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+  text-wrap: pretty;
+}
+
 .ai-past-title {
   margin: var(--lc-space-md) 0 var(--lc-space-xs);
   padding: var(--lc-space-md) var(--lc-space-md) 0;
@@ -196,7 +213,7 @@
 /* One measure for the header, the conversation and the composer, so a wide
    window widens the margins rather than the line length. */
 .ai-head,
-.ai-thread .messages,
+.ai-thread .ai-transcript,
 .ai-foot {
   width: 100%;
   max-width: 104ch;
@@ -246,6 +263,11 @@
 .ai-body > .empty {
   margin: 0;
   padding: 0;
+}
+
+/* The one action an empty state offers, spaced off the sentence it follows. */
+.ai-body .empty-action {
+  margin: var(--lc-space-lg) 0 0;
 }
 
 /* --- A session with nothing in it yet ------------------------------------- */
@@ -364,8 +386,135 @@
 
 /* --- Turns ---------------------------------------------------------------- */
 
+/**
+ * The transcript styles itself.
+ *
+ * These bubbles used to be drawn by room.css's global `.messages` / `.message`
+ * rules, which meant this pane's appearance depended on a stylesheet that
+ * belongs to another surface — and broke the moment that surface scoped its own
+ * rules. Everything the thread needs is declared here, under `.ai-transcript`,
+ * so the two surfaces can change independently.
+ */
+.ai-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  margin: 0;
+  padding: var(--lc-space-lg);
+  overflow-y: auto;
+  /* Spelled out for the same reason the room's list does it: `auto` on one
+     axis promotes the other, and a transcript never scrolls sideways. */
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* A turn. There is no avatar here — a session has exactly two speakers and the
+   alignment says which is which — so the row is the bubble. */
+.ai-transcript .message {
+  display: flex;
+  align-items: flex-end;
+  max-width: min(68ch, 82%);
+  align-self: flex-start;
+}
+
+.ai-transcript .message.is-own {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+/* The hairline is what makes a bubble a bubble on a light background, where
+   the raised surface is only a couple of steps off the page behind it. */
+.ai-transcript .message-bubble {
+  min-width: 0;
+  padding: 6px var(--lc-space-md) var(--lc-space-sm);
+  border-radius: var(--lc-radius-bubble);
+  background: var(--lc-surface-2);
+  box-shadow: inset 0 0 0 1px var(--lc-rule);
+}
+
+/* Accent-tinted rather than one more grey: which side a turn is on is the
+   fastest way to read a conversation. */
+.ai-transcript .message.is-own .message-bubble {
+  background: var(--lc-accent-soft);
+  box-shadow: inset 0 0 0 1px transparent;
+}
+
+/* The corner nearest its speaker is squared off, which is what makes a bubble
+   point at somebody rather than float. */
+.ai-transcript .message .message-bubble {
+  border-bottom-left-radius: var(--lc-radius-sm);
+}
+
+.ai-transcript .message.is-own .message-bubble {
+  border-bottom-left-radius: var(--lc-radius-bubble);
+  border-bottom-right-radius: var(--lc-radius-sm);
+}
+
+.ai-transcript .message-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px var(--lc-space-sm);
+  margin-bottom: 2px;
+  font-size: var(--lc-text-xs);
+  line-height: var(--lc-leading-tight);
+  color: var(--lc-fg-dim);
+}
+
+.ai-transcript .message-author {
+  font-family: var(--lc-mono);
+  font-weight: 500;
+  color: var(--lc-fg-muted);
+}
+
+.ai-transcript .message-text {
+  margin: 0;
+  line-height: var(--lc-leading-normal);
+  /* Preserves the line breaks the model sent without collapsing runs of them. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+/* What the chain said about the answer, beside the author. These had no styles
+   at all while they relied on another surface's sheet; here they are facts
+   about the turn, coloured as one. */
+.ai-transcript .message-proof {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-success);
+}
+
+.ai-transcript .message-warning {
+  font-size: var(--lc-text-xs);
+  color: var(--lc-warning);
+}
+
+/* The offer to continue a saved conversation: the interface talking about the
+   transcript rather than a turn in it, so it reads across rather than sitting
+   in a bubble. */
+.ai-transcript .message-preview-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lc-space-md);
+  align-self: center;
+  max-width: 56ch;
+  margin-top: var(--lc-space-md);
+  text-align: center;
+  font-style: italic;
+  color: var(--lc-text-secondary);
+}
+
+.ai-transcript .message-preview-status {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
+}
+
 /* The assistant's turn while tokens are still arriving. */
-.message.is-streaming .message-text::after {
+.ai-transcript .message.is-streaming .message-text::after {
   content: '▋';
   margin-left: 2px;
   color: var(--lc-fg-dim);
@@ -375,6 +524,16 @@
 @keyframes blink {
   to {
     visibility: hidden;
+  }
+}
+
+/* Waiting indicators that move so a long draw does not read as a hung window.
+   For a reader who asked for no motion they simply hold still — the words
+   already say what is happening. */
+@media (prefers-reduced-motion: reduce) {
+  .ai-dots i,
+  .ai-transcript .message.is-streaming .message-text::after {
+    animation: none;
   }
 }
 

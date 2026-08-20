@@ -619,8 +619,7 @@
   grid-column: span 2;
 }
 
-.wallet-holdings,
-.wallet-transactions {
+.wallet-holdings {
   grid-column: 1 / -1;
 }
 
@@ -628,10 +627,6 @@
    the two and the one that suffers from being squeezed. */
 .wallet-account {
   grid-column: span 1;
-}
-
-.wallet-transactions {
-  grid-column: span 2;
 }
 
 /* One column below the width where three cards stop being readable. Every card
@@ -642,8 +637,7 @@
   }
 
   .wallet-portfolio,
-  .wallet-account,
-  .wallet-transactions {
+  .wallet-account {
     grid-column: 1 / -1;
   }
 }
@@ -723,6 +717,34 @@
   text-align: right;
 }
 
+/* --- Recent activity ---------------------------------------------------------
+   On the Account page itself rather than behind the Advanced disclosure: what
+   the account did is part of the account. The list scrolls within the card so
+   a long history does not bury the disclosure under it. */
+
+.wallet-activity {
+  flex: 0 0 auto;
+}
+
+.wallet-activity .kit-card-scroll {
+  max-height: 22em;
+}
+
+/* Empty is one sentence and one action, centred in the pane the way the kit's
+   empty states are. */
+.ledger-empty {
+  padding: var(--lc-space-lg) 0;
+  text-align: center;
+}
+
+.ledger-empty-text {
+  margin: 0 auto var(--lc-space-md);
+  max-width: 48ch;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-text-secondary);
+  text-wrap: pretty;
+}
+
 /* --- The Account front page -------------------------------------------------- */
 
 /* Two balances and what acts on them. Everything below this on the page is the
@@ -776,23 +798,10 @@
   flex: 0 0 auto;
 }
 
-/* Moving credit back to the wallet is the rarer half of the pair, so it is a
-   link beside the button rather than a second button of equal weight. */
-.button-link {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--lc-text-secondary);
-  font: inherit;
-  font-size: var(--lc-type-caption);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-.button-link:hover {
-  color: var(--lc-text-primary);
-}
+/* The two ways of moving between wallet and credit are a primary/secondary
+   pair of the same control — topping up is what makes inference work, moving
+   back undoes it. A button beside a bare underlined link made the pair read as
+   an action and an afterthought, which neither is. */
 
 .account-backup {
   display: flex;

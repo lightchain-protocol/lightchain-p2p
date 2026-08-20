@@ -89,6 +89,15 @@
                 <div class="empty" id="ai-empty">
                   <h1 class="empty-title">Ask a model</h1>
                   <p class="empty-body">Pick one on the left and ask it anything.</p>
+                  <!-- One action, per the empty-state contract: the sentence says
+                       what will be here and the button starts it. When the list
+                       itself is empty this is also the way to check again. -->
+                  <p class="empty-action">
+                    <button class="button button-sm" type="button" data-ai-reload>
+                      <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                      Check for models
+                    </button>
+                  </p>
                 </div>
 
                 <!-- A session with nothing asked in it yet. Also what fills the
@@ -120,7 +129,10 @@
                 </div>
               </div>
 
-              <div class="messages" id="ai-messages" hidden></div>
+              <!-- Its own class, not the room's `.messages`: the transcript
+                   styles in models.css are scoped to `.ai-transcript` so this
+                   pane is whole whether or not room.css still leaks. -->
+              <div class="ai-transcript" id="ai-messages" hidden></div>
 
               <div class="ai-foot" id="ai-foot" hidden>
                 <!-- What stops this composer sending, beside the composer rather

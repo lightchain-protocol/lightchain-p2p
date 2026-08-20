@@ -90,10 +90,21 @@ function renderChecks({ results, totals }) {
     status.dataset.state = result.status === 'pass' ? 'ok' : result.status
     status.textContent = STATUS_WORD[result.status] ?? result.status
 
+    // Name and observation as separate pieces rather than one run-on string:
+    // the name is what a checklist is scanned by, and a colon-joined sentence
+    // made the reader parse out which requirement each row was about.
     const detail = document.createElement('span')
     detail.className = 'status-line'
-    detail.textContent = `${result.title}: ${result.detail}`
 
+    const name = document.createElement('strong')
+    name.className = 'status-name'
+    name.textContent = result.title
+
+    const observed = document.createElement('span')
+    observed.className = 'status-detail'
+    observed.textContent = result.detail
+
+    detail.append(name, observed)
     row.append(status, detail)
 
     // A failure without the command that fixes it is just bad news. It belongs

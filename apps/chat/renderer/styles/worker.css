@@ -89,6 +89,19 @@
   user-select: text;
 }
 
+/* The requirement's name is what the checklist is scanned by, so it stands off
+   the observation that follows it. Both stay on one line; the remedy, when a
+   check fails, is the line underneath. */
+.worker .status-name {
+  margin-right: var(--lc-space-sm);
+  font-weight: var(--lc-weight-semibold);
+  color: var(--lc-text-primary);
+}
+
+.worker .status-detail {
+  color: var(--lc-text-secondary);
+}
+
 .worker-card-body {
   padding: var(--lc-space-lg);
 }

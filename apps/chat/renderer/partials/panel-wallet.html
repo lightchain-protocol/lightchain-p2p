@@ -222,7 +222,9 @@
                   <div class="account-balance-row">
                     <div class="account-balance-named">
                       <span class="account-balance-label">Wallet</span>
-                      <span class="account-balance-value" id="account-native">—</span>
+                      <!-- Loading is a word, zero is a number. A dash reads as a
+                           load failure, and a balance of nothing is an answer. -->
+                      <span class="account-balance-value" id="account-native">Loading…</span>
                     </div>
                     <div class="account-balance-actions">
                       <button class="button button-sm" type="button" id="assets-receive-btn">
@@ -243,12 +245,23 @@
                   <div class="account-balance-row">
                     <div class="account-balance-named">
                       <span class="account-balance-label">AI credit</span>
-                      <span class="account-balance-value" id="wallet-prepaid">—</span>
+                      <span class="account-balance-value" id="wallet-prepaid">Loading…</span>
                       <span class="account-balance-note" id="account-spent"></span>
                     </div>
                     <div class="account-balance-actions">
-                      <button class="button button-sm" type="button" data-move="fund">Top up</button>
-                      <button class="button-link" type="button" data-move="withdraw">
+                      <!-- A primary/secondary pair, not a button beside a bare
+                           link: two ways of moving the same money should read
+                           as the same kind of control. `deposit` is the key
+                           wallet.js's MOVES table knows; `fund` matched nothing
+                           and the button threw. -->
+                      <button
+                        class="button button-sm button-primary"
+                        type="button"
+                        data-move="deposit"
+                      >
+                        Top up
+                      </button>
+                      <button class="button button-sm" type="button" data-move="withdraw">
                         Move back to wallet
                       </button>
                     </div>
@@ -265,6 +278,47 @@
                   <button class="button button-sm button-primary" type="button" id="account-backup-btn">
                     Back it up
                   </button>
+                </section>
+
+                <!-- Every deposit, withdrawal and payment was already being
+                     recorded and reconciled against the chain; none of it was
+                     ever shown. A wallet that cannot say what it spent is
+                     asking to be trusted rather than read.
+
+                     On the page itself rather than behind the disclosure below:
+                     what the account did is part of the account, not part of
+                     the chain showing through. -->
+                <section class="kit-card kit-card-flush wallet-activity">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">Recent activity</h2>
+                    <button class="button button-sm" type="button" id="wallet-history-refresh">
+                      <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                      Refresh
+                    </button>
+                  </header>
+                  <div class="kit-card-scroll">
+                    <div class="ledger-head" aria-hidden="true" hidden>
+                      <span>What</span>
+                      <span>When</span>
+                      <span>Status</span>
+                      <span>Transaction</span>
+                      <span class="ledger-col-num">Value</span>
+                    </div>
+                    <ul class="ledger-list" id="wallet-history"></ul>
+                    <!-- One sentence and one action. The button presses the
+                         Receive control on the balance card, so there is still
+                         exactly one element with that id. -->
+                    <div class="ledger-empty" id="wallet-history-empty">
+                      <p class="ledger-empty-text">
+                        Nothing sent from this wallet yet. Deposits, withdrawals and payments for
+                        inference appear here once they are signed.
+                      </p>
+                      <button class="button button-sm" type="button" data-open-receive>
+                        <svg class="icon" aria-hidden="true"><use href="#i-receive" /></svg>
+                        Receive
+                      </button>
+                    </div>
+                  </div>
                 </section>
 
                 <!-- Everything below is the chain showing through: six
@@ -297,7 +351,7 @@
                     </header>
                     <div class="kit-card-scroll">
                       <div class="holdings-total">
-                        <span class="holdings-total-value" id="assets-total">—</span>
+                        <span class="holdings-total-value" id="assets-total">Loading…</span>
                         <span class="holdings-total-label" id="portfolio-change"></span>
                       </div>
 
@@ -408,33 +462,6 @@
                     </div>
                   </section>
 
-                  <!-- Every deposit, withdrawal and payment was already being
-                       recorded and reconciled against the chain; none of it was
-                       ever shown. A wallet that cannot say what it spent is
-                       asking to be trusted rather than read. -->
-                  <section class="kit-card kit-card-flush wallet-transactions">
-                    <header class="kit-card-head">
-                      <h2 class="kit-card-title">Transactions</h2>
-                      <button class="button button-sm" type="button" id="wallet-history-refresh">
-                        <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
-                        Refresh
-                      </button>
-                    </header>
-                    <div class="kit-card-scroll">
-                      <div class="ledger-head" aria-hidden="true" hidden>
-                        <span>What</span>
-                        <span>When</span>
-                        <span>Status</span>
-                        <span>Transaction</span>
-                        <span class="ledger-col-num">Value</span>
-                      </div>
-                      <ul class="ledger-list" id="wallet-history"></ul>
-                      <p class="wallet-note" id="wallet-history-empty">
-                        Nothing sent from this wallet yet. Deposits, withdrawals and payments for
-                        inference all appear here once they are signed.
-                      </p>
-                    </div>
-                  </section>
                 </div>
                 </details>
               </div>

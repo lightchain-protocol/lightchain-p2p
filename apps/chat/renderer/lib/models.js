@@ -290,6 +290,27 @@ function renderModels() {
     return
   }
 
+  // Zero published models is an answer, not a void: one sentence about what
+  // would be here, and the one action that could change it.
+  if (models.length === 0) {
+    const item = document.createElement('li')
+    item.className = 'model-empty'
+
+    const text = document.createElement('p')
+    text.className = 'model-empty-text'
+    text.textContent = 'No models are published on the network yet.'
+
+    const button = document.createElement('button')
+    button.className = 'button button-sm'
+    button.type = 'button'
+    button.textContent = 'Check again'
+    button.addEventListener('click', () => void refreshModels())
+
+    item.append(text, button)
+    ai.list.append(item)
+    return
+  }
+
   for (const model of showing) {
     const item = document.createElement('li')
     const button = document.createElement('button')
@@ -345,6 +366,11 @@ document.getElementById('model-filter')?.addEventListener('input', (evt) => {
   filter = evt.target.value.trim().toLowerCase()
   renderModels()
 })
+
+// The empty pane's one action. Refresh re-reads prices, worker counts and the
+// funding state, which is everything that could have changed since the list
+// came back empty.
+document.querySelector('[data-ai-reload]')?.addEventListener('click', () => void refreshModels())
 
 /** A list being fetched, said in the list rather than in a slot beside it. */
 function showWaiting() {

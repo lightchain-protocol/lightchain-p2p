@@ -274,6 +274,13 @@ document
   .getElementById('wallet-history-refresh')
   ?.addEventListener('click', () => void refreshHistory())
 
+// The empty ledger's one action is the balance card's Receive button, pressed
+// on its behalf: the receive flow lives on that id and there is exactly one of
+// it, so this starts it rather than duplicating it.
+document.querySelector('[data-open-receive]')?.addEventListener('click', () => {
+  document.getElementById('assets-receive-btn')?.click()
+})
+
 /**
  * Where a failure goes.
  *
@@ -311,17 +318,33 @@ async function refreshBalances() {
   await refreshTitlebarBalance()
 
   const native = document.getElementById('account-native')
+  const prepaid = document.getElementById('wallet-prepaid')
   const spent = document.getElementById('account-spent')
 
   try {
     const balances = await request('wallet.balances')
-    // A dash where nothing could be read, never a nought. The two call for
-    // opposite reactions and only one of them is "you have no money".
+    // Zero is a number and a read that failed is a sentence: "0 LCAI" and
+    // "Not available" call for opposite reactions, and a dash says neither.
     if (native) {
-      native.textContent = balances?.native == null ? '—' : `${formatLcai(balances.native)} LCAI`
+      native.textContent =
+        balances?.native == null ? 'Not available' : `${formatLcai(balances.native)} LCAI`
     }
   } catch {
-    if (native) native.textContent = '—'
+    if (native) native.textContent = 'Not available'
+  }
+
+  // The AI credit figure was never wired to anything: the element sat on the
+  // card reading its placeholder forever. It is the balance every question is
+  // paid from, so it answers beside the wallet's own — `ai.status` is the same
+  // read the title bar makes.
+  if (prepaid) {
+    try {
+      const ai = await request('ai.status')
+      prepaid.textContent =
+        ai?.balance == null ? 'Not available' : `${formatLcai(ai.balance)} LCAI`
+    } catch {
+      prepaid.textContent = 'Not available'
+    }
   }
 
   if (!spent) return
