@@ -107,7 +107,7 @@ export function register(config: WorkerConfig, keystoreFile: string): DockerComm
 export function runWorker(config: WorkerConfig, keystoreFile: string): DockerCommand {
   if (!isRunnable(config)) {
     throw new WorkerConfigError(
-      'aiConfigAddress and jobRegistryAddress must be resolved before the worker can run. Read them from the registry with aiConfig() and jobRegistry().'
+      `aiConfigAddress and jobRegistryAddress must be resolved before the worker can run. The ${config.network} profile pins none — read them from the WorkerRegistry with resolveContractAddresses(config, rpc) first.`
     )
   }
 

@@ -163,7 +163,7 @@ const STATUS_WORD = { pass: 'Pass', warn: 'Warn', fail: 'Fail' }
  * money reads as the host being at fault. The counts and the chip are computed
  * from the host checks only.
  */
-function renderChecks({ results }) {
+function renderChecks({ results }, network = null) {
   el.workerChecks.replaceChildren()
 
   const host = results.filter((result) => result.id !== 'stake')
@@ -214,7 +214,10 @@ function renderChecks({ results }) {
   else if (warned > 0) setChip(hostState, 'warn', plural(warned, 'warning'))
   else setChip(hostState, 'ok', 'Ready')
 
-  checkedAt.textContent = `Checked ${time(Date.now())}`
+  // Which network the readiness verdict was evaluated against rides on the
+  // stamp: a "Ready" reached against testnet is not a verdict about mainnet,
+  // and the difference used to be invisible.
+  checkedAt.textContent = `Checked ${time(Date.now())}${network ? ` against ${network}` : ''}`
 
   return { ready: failed === 0, failed, warned, passed }
 }
@@ -226,15 +229,28 @@ function renderChecks({ results }) {
 function renderKey(stake) {
   const address = stake?.configured ? stake.address : null
 
+  // A probe failure — "two keystores present, ambiguous", "chain unreadable" —
+  // arrives as a short sentence in `problem`, and must not render like a wiped
+  // install, which it used to: same "No key" chip, same forms, not a word
+  // about what actually happened. A backend that predates the field sends
+  // nothing, and the old behaviour stands.
+  const problem = typeof stake?.problem === 'string' && stake.problem !== '' ? stake.problem : null
+
   keyPresent.hidden = address === null
   keyAbsent.hidden = address !== null
 
   if (address === null) {
-    setChip(keyState, 'warn', 'No key')
+    setChip(keyState, 'warn', problem ? 'Unreadable' : 'No key')
+    stepAlert(
+      'worker-key-alert',
+      problem ? alertNode('warn', 'The worker key could not be read', problem) : null
+    )
   } else {
     setChip(keyState, 'ok', 'Key ready')
     keyAddress.textContent = truncate(address)
     keyAddress.dataset.full = address
+    // A fresh read that found a key settles whatever the forms last reported.
+    stepAlert('worker-key-alert', null)
   }
 
   // The backup block answers a creation from this session; it survives
@@ -423,8 +439,13 @@ function renderContainer(status) {
     // The message from the config layer explains the requirement but not where
     // to satisfy it. It used to name environment variables, which was true
     // before there was anywhere in the app to set them and is now just sending
-    // people to a terminal for something two clicks away.
-    const note = alertNode('info', 'No worker is configured on this machine', status.problem)
+    // people to a terminal for something two clicks away. The fallback covers
+    // a backend that predates `problem`.
+    const note = alertNode(
+      'info',
+      'No worker is configured on this machine',
+      status.problem ?? 'The worker settings are incomplete.'
+    )
 
     const open = document.createElement('button')
     open.className = 'button button-sm'
@@ -467,6 +488,12 @@ function renderContainer(status) {
  * press does next.
  */
 function renderVerdict(host, stake, status) {
+  // Which network the probes were reading when they reached the verdict —
+  // null on a backend that predates the field, and the sentence is simply
+  // left off.
+  const network = stake?.network ?? status?.network ?? null
+  const evaluated = network ? ` Evaluated against ${network}.` : ''
+
   if (!host.ready) {
     const counts = `${host.failed} failed, ${plural(host.warned, 'warning')}, ${host.passed} passed.`
     setVerdict('fail', 'This host cannot run a worker', `${counts} Each failure in step 1 says what to do.`)
@@ -474,7 +501,11 @@ function renderVerdict(host, stake, status) {
   }
 
   if (!stake?.configured) {
-    setVerdict('warn', 'The worker is not configured', stake?.problem ?? 'Open the worker settings.')
+    setVerdict(
+      'warn',
+      'The worker is not configured',
+      `${stake?.problem ?? 'Open the worker settings.'}${evaluated}`
+    )
     return
   }
 
@@ -501,7 +532,7 @@ function renderVerdict(host, stake, status) {
     setVerdict(
       'warn',
       'The chain could not be read',
-      'Check the network setting and that the RPC is reachable, then refresh.'
+      `Check the network setting and that the RPC is reachable, then refresh.${evaluated}`
     )
     return
   }
@@ -549,7 +580,7 @@ export async function refreshWorker({ logs = true } = {}) {
       logs ? request('worker.logs') : Promise.resolve(null)
     ])
 
-    const host = renderChecks(checks)
+    const host = renderChecks(checks, stake?.network ?? status?.network ?? null)
     renderKey(stake)
     renderStake(stake)
     renderRegister(stake)

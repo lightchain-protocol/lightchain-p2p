@@ -46,7 +46,12 @@ import { historyHandlers } from './handlers/history.mjs'
 import { bridgeHandlers } from './handlers/bridge.mjs'
 import { swapHandlers } from './handlers/swap.mjs'
 import { aiHandlers } from './handlers/ai.mjs'
-import { workerHandlers } from './handlers/worker.mjs'
+import {
+  WORKER_PASSWORD_DOC,
+  migrateWorkerPassword,
+  readWorkerPassword,
+  workerHandlers
+} from './handlers/worker.mjs'
 import { settingsHandlers } from './handlers/settings.mjs'
 import { localHandlers } from './handlers/local.mjs'
 
@@ -449,7 +454,8 @@ function readSettings() {
 
 function writeSettings(next) {
   fs.mkdirSync(chatDir, { recursive: true })
-  // Holds the keystore password when one is set, so it is not world-readable.
+  // Not world-readable: an old file may still hold a plaintext keystore
+  // password until the next unlock migrates it into the sealed store.
   fs.writeFileSync(settingsFile, JSON.stringify(next, null, 2), { mode: 0o600 })
 }
 
@@ -794,6 +800,14 @@ function useWalletInRooms() {
   // rooms openable at all — not merely signed.
   void unlockRegistry().catch((err) => console.error('could not open the room list:', err.message))
 
+  // Same moment, same reason: a plaintext workerPassword left in settings.json
+  // by an older version can only be sealed once the wallet's key exists.
+  try {
+    migrateWorkerPassword({ secrets: workerSecrets, settings, saveSettings })
+  } catch (err) {
+    console.error('could not seal the worker keystore password:', err.message)
+  }
+
   const account = wallet.account()
   rooms.useIdentity({
     address: account.address,
@@ -823,7 +837,12 @@ function workerConfig(overrides = {}) {
         network: networkOf(),
         keysDir:
           setting('keysDir', 'KEYS_DIR') ?? path.join(os.homedir(), 'lightchain-worker', 'keys'),
-        keystorePassword: setting('workerPassword', 'WORKER_PASSWORD') ?? '',
+        // Sealed under the wallet, never the settings file: the password is the
+        // sole protection of the key holding the stake, and settings.json was
+        // both plaintext and window-writable. The environment variable remains
+        // for operators. A locked wallet reads as no password, so starting or
+        // registering a worker requires an unlocked wallet — deliberately.
+        keystorePassword: readWorkerPassword(workerSecrets, process.env) ?? '',
         // Unset is fine here: resolveConfig falls back to the network
         // profile's published mainnet proxy addresses, and an explicit
         // setting or environment variable still wins. Leaving these unset
@@ -958,6 +977,47 @@ const localState = new SealedStore(fileByteStore(path.join(chatDir, 'local')), {
 })
 
 /**
+ * The worker's keystore password, sealed under the wallet account.
+ *
+ * It used to sit in settings.json in the clear, written `0600` and called
+ * protected — but that password is the only thing between anybody holding the
+ * keystore file and the 50,000 LCAI stake, and the settings file was writable
+ * from the renderer, the least trusted side of the process boundary. It now
+ * lives where the room registry and local state live: sealed under a key
+ * derived from the wallet, unreadable while the wallet is locked.
+ *
+ * The consequence is deliberate: starting or registering a worker requires an
+ * unlocked wallet. A plaintext `workerPassword` left in settings.json by an
+ * older version is sealed and removed on the first unlock — see
+ * useWalletInRooms.
+ */
+const workerSecrets = new SealedStore(fileByteStore(path.join(chatDir, 'worker')), {
+  purpose: 'worker secrets',
+  account: () => (wallet.status().unlocked ? wallet.account() : null),
+  onDamaged: (name, reason) => console.error(`worker secret "${name}" is unreadable: ${reason}`)
+})
+
+/**
+ * Adopts a freshly verified keystore password: seals it under the wallet and
+ * removes any plaintext copy still sitting in settings.
+ *
+ * Throws when the wallet is locked, because a password that cannot be sealed
+ * must not be adopted — the alternative is writing it somewhere unsealed,
+ * which is the bug this fixes.
+ */
+function adoptWorkerPassword(password) {
+  if (!workerSecrets.write(WORKER_PASSWORD_DOC, password)) {
+    throw new Error('the wallet must be unlocked to set the worker keystore password')
+  }
+
+  if (typeof settings.workerPassword === 'string') {
+    const next = { ...settings }
+    delete next.workerPassword
+    saveSettings(next)
+  }
+}
+
+/**
  * Everything the handlers are allowed to reach.
  *
  * The mutable pieces are accessors rather than values. `network` and `rpc` are
@@ -1032,6 +1092,11 @@ const ctx = {
   transcripts,
   useWalletInRooms,
   workerConfig,
+  // The keystore password, sealed: an accessor for reading it (undefined while
+  // the wallet is locked) and the adopting write, which seals it and strips
+  // any plaintext copy from settings.
+  workerKeystorePassword: () => readWorkerPassword(workerSecrets, process.env),
+  adoptWorkerPassword,
   // The dashboard reports balances, which the wallet already answers for. The
   // alternative is a second copy of that arithmetic, and two copies of a
   // balance is how a screen ends up disagreeing with itself.

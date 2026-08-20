@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import { encodeCall } from '@lcai-p2p/chain'
 import {
   KeystoreError,
   NETWORKS,
+  WORKER_REGISTRY_ADDRESS,
   WorkerConfigError,
   containerKeystorePath,
   defaultOllamaUrl,
+  inspectConfig,
   inspectWorker,
   keystoreFileName,
   logsWorker,
@@ -16,6 +19,7 @@ import {
   pullImage,
   register,
   resolveConfig,
+  resolveContractAddresses,
   runWorker,
   stopWorker
 } from './index.js'
@@ -98,6 +102,136 @@ describe('configuration', () => {
   })
 })
 
+describe('per-field config inspection', () => {
+  it('reports every bad field rather than collapsing at the first', () => {
+    // One bad field used to throw and hide the rest, so a panel could only say
+    // "not configured" when two things were wrong.
+    const { config, problems } = inspectConfig({
+      keysDir: '/k',
+      keystorePassword: '',
+      aiConfigAddress: '0x123',
+      supportedModels: ['llama3-8b:latest']
+    })
+    expect(config).toBeNull()
+    expect(problems.map((p) => p.field)).toEqual([
+      'keystorePassword',
+      'aiConfigAddress',
+      'supportedModels'
+    ])
+  })
+
+  it('names the field and the remedy in each problem', () => {
+    const { problems } = inspectConfig({ keysDir: '', keystorePassword: PASSWORD })
+    expect(problems).toHaveLength(1)
+    expect(problems[0]?.field).toBe('keysDir')
+    expect(problems[0]?.message).toContain('/data')
+  })
+
+  it('says which network the verdict was reached against', () => {
+    expect(inspectConfig({ ...base, network: 'testnet' }).network).toBe('testnet')
+    // An unknown network is the one case where even that cannot be derived.
+    const unknown = inspectConfig({ ...base, network: 'marsnet' as never })
+    expect(unknown.network).toBeNull()
+    expect(unknown.problems[0]?.field).toBe('network')
+    expect(unknown.problems[0]?.message).toContain('"marsnet"')
+  })
+
+  it('hands out a config only when nothing is wrong', () => {
+    const clean = inspectConfig(base)
+    expect(clean.problems).toEqual([])
+    expect(clean.config?.chainId).toBe(9200)
+
+    // A configuration with a bad field is never handed out half-resolved: the
+    // docker builders accept whatever they are given, so the gate is here.
+    const dirty = inspectConfig({ ...base, jobRegistryAddress: 'nope' })
+    expect(dirty.config).toBeNull()
+    expect(dirty.problems[0]?.message).toContain('jobRegistryAddress')
+  })
+
+  it('keeps resolveConfig fail-fast on the same messages', () => {
+    expect(() => resolveConfig({ ...base, keystorePassword: '' })).toThrow(WorkerConfigError)
+    expect(() => resolveConfig({ ...base, network: 'marsnet' as never })).toThrow(
+      /unknown network "marsnet"/
+    )
+  })
+})
+
+describe('registry address resolution', () => {
+  const AI_CONFIG = '0x1111111111111111111111111111111111111111'
+  const JOB_REGISTRY = '0x2222222222222222222222222222222222222222'
+
+  /** An ABI word carrying an address, and a record of what was asked. */
+  function registryRpc() {
+    const calls: { to: string; data: string }[] = []
+    return {
+      calls,
+      async call(request: { to: string; data: string }) {
+        calls.push(request)
+        const address =
+          request.data === encodeCall('aiConfig()') ? AI_CONFIG : JOB_REGISTRY
+        return `0x${'0'.repeat(24)}${address.slice(2)}`
+      }
+    }
+  }
+
+  it('resolves testnet addresses from the WorkerRegistry at runtime', async () => {
+    // The testnet profile pins none, and a baked-in copy would go stale — the
+    // genesis predeploy knows the live pair.
+    const partial = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD, network: 'testnet' })
+    expect(isRunnable(partial)).toBe(false)
+
+    const rpc = registryRpc()
+    const resolved = await resolveContractAddresses(partial, rpc)
+
+    expect(resolved.aiConfigAddress).toBe(AI_CONFIG)
+    expect(resolved.jobRegistryAddress).toBe(JOB_REGISTRY)
+    expect(isRunnable(resolved)).toBe(true)
+    // Both reads went to the genesis predeploy, not to anything configured.
+    expect(rpc.calls.map((c) => c.to)).toEqual([WORKER_REGISTRY_ADDRESS, WORKER_REGISTRY_ADDRESS])
+
+    // And the resolved config now builds the run command it previously refused.
+    const joined = runWorker(resolved, '/data/ks').argv.join(' ')
+    expect(joined).toContain(`AI_CONFIG_ADDRESS=${AI_CONFIG}`)
+    expect(joined).toContain(`JOB_REGISTRY_ADDRESS=${JOB_REGISTRY}`)
+  })
+
+  it('never re-reads addresses that are already pinned', async () => {
+    // Mainnet resolves from its profile alone; asking the registry anyway
+    // would make a registry outage break a network that does not need it.
+    const rpc = registryRpc()
+    const same = await resolveContractAddresses(config, rpc)
+    expect(same).toBe(config)
+    expect(rpc.calls).toEqual([])
+  })
+
+  it('fills only the address that is missing', async () => {
+    const override = '0x3333333333333333333333333333333333333333'
+    const partial = resolveConfig({
+      keysDir: '/k',
+      keystorePassword: PASSWORD,
+      network: 'testnet',
+      aiConfigAddress: override
+    })
+    const resolved = await resolveContractAddresses(partial, registryRpc())
+    expect(resolved.aiConfigAddress).toBe(override)
+    expect(resolved.jobRegistryAddress).toBe(JOB_REGISTRY)
+  })
+
+  it('says which network could not be read when the registry call fails', async () => {
+    const partial = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD, network: 'testnet' })
+    const failing = {
+      async call() {
+        throw new Error('connection refused')
+      }
+    }
+    const err = await resolveContractAddresses(partial, failing).catch((e) => e)
+    expect(err).toBeInstanceOf(WorkerConfigError)
+    expect(err.message).toContain('testnet')
+    expect(err.message).toContain(WORKER_REGISTRY_ADDRESS)
+    expect(err.cause).toBeInstanceOf(Error)
+  })
+})
+
 describe('the Windows Ollama address', () => {
   it('uses the IPv4 gateway on Windows', () => {
     // host.docker.internal resolves IPv6-first on Windows and Go's client
@@ -155,7 +289,7 @@ describe('docker commands', () => {
     // Only reachable on a network the profile publishes no addresses for;
     // mainnet is runnable from its profile alone.
     const partial = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD, network: 'testnet' })
-    expect(() => runWorker(partial, '/data/ks')).toThrow(/aiConfig\(\)/)
+    expect(() => runWorker(partial, '/data/ks')).toThrow(/resolveContractAddresses/)
   })
 
   it('registers against the published mainnet contracts with nothing configured', () => {

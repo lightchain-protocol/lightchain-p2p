@@ -8,8 +8,13 @@ export {
 
 export {
   WorkerConfigError,
+  inspectConfig,
   isRunnable,
   resolveConfig,
+  resolveContractAddresses,
+  type ConfigInspection,
+  type ConfigProblem,
+  type RegistryReader,
   type WorkerConfig,
   type WorkerConfigInput
 } from './config.js'
