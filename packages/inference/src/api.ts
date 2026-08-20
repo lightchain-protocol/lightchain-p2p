@@ -1,4 +1,6 @@
 import fetch from '#fetch'
+import { hashMessageForSigning, recoverAddress } from '@lcai-p2p/chain'
+import { checkSiweChallenge } from './siwe.js'
 
 /**
  * The consumer API.
@@ -30,6 +32,15 @@ export interface ApiOptions {
    * would abandon every draw.
    */
   readonly timeout?: number
+  /**
+   * The chain the caller believes this service anchors to.
+   *
+   * Enforced on the sign-in challenge: a service composing SIWE messages for a
+   * different chain is not the service the caller meant to authenticate to.
+   * Optional only because not every caller has a network profile in hand; pass
+   * it wherever one is.
+   */
+  readonly chainId?: bigint
 }
 
 export interface Model {
@@ -81,6 +92,7 @@ export interface Session {
 export class Api {
   readonly #url: string
   readonly #timeout: number
+  readonly #chainId: bigint | undefined
   #token: string | null = null
   #flavour: Flavour | null = null
 
@@ -90,6 +102,7 @@ export class Api {
     }
     this.#url = options.url.replace(/\/$/, '')
     this.#timeout = options.timeout ?? 90_000
+    this.#chainId = options.chainId
   }
 
   get authenticated(): boolean {
@@ -153,6 +166,16 @@ export class Api {
    * The signature is EIP-191 over a SIWE message the service composes, so the
    * wallet needs no special support — the same call that signs a message
    * anywhere else does this.
+   *
+   * Two checks stand between the service and the key. Before signing, the
+   * challenge is parsed and held to what this client believes: its domain and
+   * URI must name this service, its address must be the one being signed in,
+   * its chain must be the configured one where one is configured, and its
+   * clock fields must still hold. A challenge that fails any of that is
+   * refused unsigned — an unchecked one is an EIP-191 signature over whatever
+   * text the service chose. After signing, the signature is recovered and
+   * compared to the address: a wallet answering for a different account is
+   * told so here, rather than by a 401 it would look identical to.
    */
   async signIn(address: string, sign: (message: string) => string): Promise<void> {
     const challenge = await this.#send<{ message: string }>(
@@ -163,9 +186,35 @@ export class Api {
       throw new ApiError('the service did not offer a message to sign', 0)
     }
 
+    // Throws on anything that should not be signed; the text that comes back
+    // is signed byte-for-byte, never re-rendered.
+    const message = checkSiweChallenge(challenge.message, {
+      address,
+      url: this.#url,
+      chainId: this.#chainId
+    }).raw
+
+    const signature = sign(message)
+
+    let recovered: string
+    try {
+      recovered = recoverAddress(hashMessageForSigning(message), signature)
+    } catch (err) {
+      throw new ApiError(
+        `the signature could not be checked — ${(err as Error).message}. It was not sent.`,
+        0
+      )
+    }
+    if (recovered.toLowerCase() !== address.toLowerCase()) {
+      throw new ApiError(
+        `the signature recovers to ${recovered}, not to ${address} — the wallet answered for a different account. It was not sent.`,
+        0
+      )
+    }
+
     const verified = await this.#send<{ token?: string }>('POST', '/api/auth/verify', {
-      message: challenge.message,
-      signature: sign(challenge.message)
+      message,
+      signature
     })
 
     if (!verified.token) throw new ApiError('signing in produced no token', 0)

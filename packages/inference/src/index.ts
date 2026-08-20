@@ -13,6 +13,14 @@ export {
 export { KeyEncodingError, decodeKey, encodeSealed } from './keys.js'
 
 export {
+  SiweError,
+  checkSiweChallenge,
+  parseSiweChallenge,
+  type SiweChallenge,
+  type SiweExpectation
+} from './siwe.js'
+
+export {
   History,
   withHistory,
   type Log,

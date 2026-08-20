@@ -1,5 +1,6 @@
 import { createServer, type Server } from 'node:http'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { fromPrivateKey } from '@lcai-p2p/chain'
 import { Api, ApiError } from './index.js'
 
 /**
@@ -8,11 +9,40 @@ import { Api, ApiError } from './index.js'
  * expires — are exercised rather than argued about.
  */
 
-const ADDRESS = '0xD1407800Df28ef544Fd0a9cE5f2680Df10917aBe'
-const sign = (message: string) => `0xsigned(${message.length})`
+// A real key, because sign-in now checks that the signature recovers to the
+// address it claims — a stubbed signature no longer passes, which is the point.
+const account = fromPrivateKey(`0x${'11'.repeat(32)}`)
+const otherAccount = fromPrivateKey(`0x${'22'.repeat(32)}`)
+const ADDRESS = account.address
+const sign = (message: string) => account.signMessage(message)
 
 /** A route that never answers, so the client's own timeout is what ends it. */
 const HANGS = Symbol('hangs')
+
+/**
+ * A challenge in the shape the service composes (viem's createSiweMessage:
+ * domain is the host, uri is the origin, no statement). `null` omits the
+ * line, for the malformed cases.
+ */
+const siweMessage = (over: Record<string, string | null> = {}) => {
+  const f: Record<string, string | null> = {
+    domain: new URL(url).host,
+    address: ADDRESS,
+    uri: url,
+    version: '1',
+    chainId: '8200',
+    nonce: 'a-real-nonce',
+    issuedAt: new Date().toISOString(),
+    expirationTime: new Date(Date.now() + 300_000).toISOString(),
+    ...over
+  }
+  const head = `${f.domain} wants you to sign in with your Ethereum account:\n${f.address}\n\n`
+  const lines = [`URI: ${f.uri}`, `Version: ${f.version}`, `Chain ID: ${f.chainId}`]
+  if (f.nonce !== null) lines.push(`Nonce: ${f.nonce}`)
+  lines.push(`Issued At: ${f.issuedAt}`)
+  if (f.expirationTime !== null) lines.push(`Expiration Time: ${f.expirationTime}`)
+  return head + lines.join('\n')
+}
 
 let server: Server
 let url: string
@@ -79,7 +109,7 @@ afterAll(() => {
 })
 
 const happy = (over: Record<string, (body: unknown) => unknown> = {}) => ({
-  'GET /api/auth/challenge': () => ({ message: 'service wants you to sign in\nNonce: abc' }),
+  'GET /api/auth/challenge': () => ({ message: siweMessage() }),
   'POST /api/auth/verify': () => ({ token: 'a-real-token' }),
   'GET /api/models': () => ({ models: [{ id: '0xabc', name: 'gemma4:e2b' }] }),
   'GET /api/balance': () => ({
@@ -117,10 +147,117 @@ describe('signing in', () => {
     expect(api.authenticated).toBe(true)
 
     // The signature is over exactly what was offered, not over anything the
-    // client composed itself.
-    const challenge = 'service wants you to sign in\nNonce: abc'
+    // client composed itself — and it recovers to the address it claims.
     const verify = seen.find((call) => call.path === '/api/auth/verify')
-    expect(verify?.body).toEqual({ message: challenge, signature: `0xsigned(${challenge.length})` })
+    const message = (verify?.body as { message: string }).message
+    expect(message).toContain('wants you to sign in with your Ethereum account:')
+    expect((verify?.body as { signature: string }).signature).toBe(account.signMessage(message))
+  })
+
+  it('refuses to sign something that is not a sign-in challenge', async () => {
+    routes = happy({
+      'GET /api/auth/challenge': () => ({ message: 'service wants you to sign in\nNonce: abc' })
+    })
+    seen = []
+
+    let asked = 0
+    await expect(
+      new Api({ url }).signIn(ADDRESS, (message) => {
+        asked += 1
+        return sign(message)
+      })
+    ).rejects.toThrow(/not a sign-in-with-ethereum message/)
+
+    // Nothing was signed, and nothing was sent to be verified: a refusal that
+    // still asked the key for a signature would be no refusal at all.
+    expect(asked).toBe(0)
+    expect(seen.some((call) => call.path === '/api/auth/verify')).toBe(false)
+  })
+
+  it('refuses a challenge naming a different service', async () => {
+    routes = happy({
+      'GET /api/auth/challenge': () => ({ message: siweMessage({ domain: 'evil.example' }) })
+    })
+    seen = []
+
+    await expect(new Api({ url }).signIn(ADDRESS, sign)).rejects.toThrow(
+      /for "evil\.example", but this service is/
+    )
+    expect(seen.some((call) => call.path === '/api/auth/verify')).toBe(false)
+  })
+
+  it('refuses a challenge addressed to a different account', async () => {
+    const other = `0x${'33'.repeat(20)}`
+    routes = happy({
+      'GET /api/auth/challenge': () => ({ message: siweMessage({ address: other }) })
+    })
+    seen = []
+
+    await expect(new Api({ url }).signIn(ADDRESS, sign)).rejects.toThrow(
+      new RegExp(`addressed to ${other}, not to`)
+    )
+    expect(seen.some((call) => call.path === '/api/auth/verify')).toBe(false)
+  })
+
+  it('refuses a challenge that has already expired', async () => {
+    routes = happy({
+      'GET /api/auth/challenge': () => ({
+        message: siweMessage({ expirationTime: new Date(Date.now() - 1000).toISOString() })
+      })
+    })
+    seen = []
+
+    await expect(new Api({ url }).signIn(ADDRESS, sign)).rejects.toThrow(/expired at/)
+    expect(seen.some((call) => call.path === '/api/auth/verify')).toBe(false)
+  })
+
+  it('refuses a challenge with no nonce, because it does not parse as one', async () => {
+    routes = happy({
+      'GET /api/auth/challenge': () => ({ message: siweMessage({ nonce: null }) })
+    })
+    seen = []
+
+    await expect(new Api({ url }).signIn(ADDRESS, sign)).rejects.toThrow(
+      /not a sign-in-with-ethereum message/
+    )
+    expect(seen.some((call) => call.path === '/api/auth/verify')).toBe(false)
+  })
+
+  it('refuses a challenge for a different chain when the chain is pinned', async () => {
+    routes = happy()
+    seen = []
+
+    await expect(new Api({ url, chainId: 9200n }).signIn(ADDRESS, sign)).rejects.toThrow(
+      /for chain 8200, but this network is chain 9200/
+    )
+    expect(seen.some((call) => call.path === '/api/auth/verify')).toBe(false)
+  })
+
+  it('accepts the pinned chain when the challenge agrees', async () => {
+    routes = happy()
+    const api = new Api({ url, chainId: 8200n })
+    await api.signIn(ADDRESS, sign)
+    expect(api.authenticated).toBe(true)
+  })
+
+  it('refuses a signature that recovers to a different account', async () => {
+    routes = happy()
+    seen = []
+
+    await expect(
+      new Api({ url }).signIn(ADDRESS, (message) => otherAccount.signMessage(message))
+    ).rejects.toThrow(/the wallet answered for a different account/)
+    expect(seen.some((call) => call.path === '/api/auth/verify')).toBe(false)
+  })
+
+  it('refuses a signature that is not one', async () => {
+    routes = happy()
+    seen = []
+
+    await expect(new Api({ url }).signIn(ADDRESS, () => '0x1234')).rejects.toThrow(
+      /could not be checked/
+    )
+    expect(seen.some((call) => call.path === '/api/auth/verify')).toBe(false)
   })
 
   it('sends the token on every later call, and nothing before', async () => {
