@@ -193,8 +193,6 @@ export function receivePresence(msg) {
 function renderRooms() {
   el.roomList.replaceChildren()
   el.sidebarEmpty.hidden = rooms.size > 0
-  el.roomsBadge.hidden = rooms.size === 0
-  el.roomsBadge.textContent = String(rooms.size)
 
   for (const room of rooms.values()) {
     const item = document.createElement('li')
@@ -241,7 +239,12 @@ function renderRoom() {
   if (!room) return
 
   el.roomTitle.textContent = room.name ?? 'Room'
-  el.roomKey.textContent = room.key
+  // Shown short, held whole. Sixty-four hex characters under a room's name is
+  // not something anybody reads; it is what somebody copies, and the copy
+  // control takes it from here rather than from the screen.
+  el.roomKey.textContent = short(room.key)
+  el.roomKey.dataset.full = room.key
+  el.roomKey.title = room.key
   el.roomRole.textContent = room.writable ? 'writer' : 'read only'
   el.roomRole.dataset.role = room.writable ? 'writer' : 'reader'
   el.readonlyNotice.hidden = room.writable

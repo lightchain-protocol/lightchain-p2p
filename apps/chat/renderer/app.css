@@ -128,8 +128,7 @@ body {
    together: the weight is a proportion of the grid, not an absolute. 1.3 was
    right for the 16-grid icons these replaced and renders the new ones at about
    0.9px, which is thin enough to look faded rather than light. */
-.icon,
-.nav-icon {
+.icon {
   width: var(--lc-control-icon);
   height: var(--lc-control-icon);
   flex: 0 0 auto;

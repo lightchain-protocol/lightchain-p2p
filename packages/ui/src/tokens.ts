@@ -414,6 +414,11 @@ export const FOCUS = {
   offset: 2
 } as const
 
+/** `bodyStrong` to `body-strong`, `title1` to `title-1`. */
+function kebab(name: string): string {
+  return name.replace(/([a-z])([A-Z0-9])/g, '$1-$2').toLowerCase()
+}
+
 export type Theme = 'dark' | 'light'
 
 export function palette(theme: Theme): Palette {
@@ -483,7 +488,13 @@ export function cssVariables(theme: Theme): string {
     ...Object.entries(SPACE).map(([k, v]) => `--lc-space-${k}: ${v}px;`),
     ...Object.entries(RADIUS).map(([k, v]) => `--lc-radius-${k}: ${v}px;`),
     ...Object.entries(TYPE.scale).map(([k, v]) => `--lc-text-${k}: ${v}px;`),
-    ...Object.entries(TYPE.role).map(([k, v]) => `--lc-type-${k}: ${v}px;`),
+    // Kebab-cased, because these are CSS names. Digits split as well as
+    // capitals: `bodyStrong` emitted verbatim gives `--lc-type-bodyStrong` and
+    // `title1` gives `--lc-type-title1`, both of which resolve and both of
+    // which read like mistakes. The first stylesheet to reach for either
+    // guessed the hyphenated form and got nothing at all, which is the failure
+    // mode this whole naming exists to avoid.
+    ...Object.entries(TYPE.role).map(([k, v]) => `--lc-type-${kebab(k)}: ${v}px;`),
     ...Object.entries(TYPE.weight).map(([k, v]) => `--lc-weight-${k}: ${v};`),
     ...Object.entries(TYPE.lineHeight).map(([k, v]) => `--lc-leading-${k}: ${v};`),
     ...Object.entries(CONTROL).map(([k, v]) => `--lc-control-${k}: ${v}px;`),

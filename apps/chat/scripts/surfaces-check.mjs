@@ -58,8 +58,38 @@ const ask = (t, fields = {}) =>
     `(async () => { const ask = ${ASK}; return await ask(${JSON.stringify(t)}, ${JSON.stringify(fields)}) })()`
   )
 
+/**
+ * Opens a surface, by name rather than by pressing whatever opens it.
+ *
+ * Clicking `[data-section="..."]` broke the moment Conversations stopped having
+ * a nav row — it is the default surface now, reached by the sidebar being the
+ * sidebar. `?.click()` on the missing button silently did nothing and every
+ * check after it measured the wrong panel. Naming the surface is stable across
+ * a navigation rework, which is exactly what this suite has to survive.
+ *
+ * The panels that cost something to fill are refreshed explicitly, because the
+ * nav button used to do that as a side effect of being pressed.
+ */
 const show = async (section) => {
-  await evaluate(`document.querySelector('[data-section="${section}"]')?.click()`)
+  await evaluate(`(async () => {
+    const { showSection } = await import('./lib/dom.js')
+    showSection(${JSON.stringify(section)})
+
+    if (${JSON.stringify(section)} === 'wallet') {
+      const { refreshWallet } = await import('./lib/wallet.js')
+      const { refreshAssets } = await import('./lib/assets.js')
+      await Promise.allSettled([refreshWallet(), refreshAssets()])
+    }
+    if (${JSON.stringify(section)} === 'models') {
+      const { refreshModels } = await import('./lib/models.js')
+      await refreshModels()
+    }
+    if (${JSON.stringify(section)} === 'worker') {
+      const { refreshWorker } = await import('./lib/worker.js')
+      await refreshWorker()
+    }
+    return true
+  })()`)
   await new Promise((r) => setTimeout(r, 500))
 }
 
@@ -79,20 +109,21 @@ if (!Array.isArray(existing) || existing.length === 0) {
   await ask('room.send', { room: made.key, text: 'a message for the dashboard to count' })
 }
 
-// --- Dashboard: the figures are the worker's, not the panel's own -------------
+// --- The summary the Dashboard used to draw -----------------------------------
 
-await show('dashboard')
-await evaluate(`document.getElementById('dash-refresh')?.click()`)
-await new Promise((r) => setTimeout(r, 1500))
+// The panel is gone. Its three honest facts are not: `dashboard.read` still
+// answers, and the Account page and the sidebar's status strip are what read
+// it now. So the handler is still checked against the worker's own state, and
+// the strip is checked separately below.
 
 const summary = await ask('dashboard.read', { months: 12 })
 const rooms = await ask('room.list')
 const wallet = await ask('wallet.status')
 
 report(
-  'the dashboard counts the rooms the worker actually holds',
+  'the summary counts the rooms the worker actually holds',
   summary?.rooms?.total === (Array.isArray(rooms) ? rooms.length : -1),
-  `panel ${summary?.rooms?.total}, room.list ${Array.isArray(rooms) ? rooms.length : 'n/a'}`
+  `summary ${summary?.rooms?.total}, room.list ${Array.isArray(rooms) ? rooms.length : 'n/a'}`
 )
 
 const counted = Array.isArray(rooms)
@@ -101,15 +132,7 @@ const counted = Array.isArray(rooms)
 report(
   'and the messages in them, rather than a figure of its own',
   summary?.rooms?.messages === counted,
-  `panel ${summary?.rooms?.messages}, summed ${counted}`
-)
-
-report(
-  'the network chip agrees with the worker',
-  (await text('#dash-network'))
-    .toLowerCase()
-    .includes(String(summary?.network ?? '').toLowerCase()),
-  `chip "${await text('#dash-network')}", worker "${summary?.network}"`
+  `summary ${summary?.rooms?.messages}, summed ${counted}`
 )
 
 report(
@@ -118,20 +141,83 @@ report(
   `${summary?.address ?? 'none'}`
 )
 
-// A dash rather than a nought where nothing is known: the two call for
-// different actions and the panel is built to distinguish them.
-const hero = await text('#hero-value')
 report(
-  'the headline figure is a number or a dash, never empty and never NaN',
-  hero !== '' && !/NaN|undefined|\[object/.test(hero),
-  JSON.stringify(hero)
+  'nothing navigates to a Dashboard any more',
+  (await evaluate(`Boolean(document.getElementById('panel-dashboard'))`)) === false &&
+    (await evaluate(`Boolean(document.querySelector('[data-section="dashboard"]'))`)) === false,
+  'no panel and no control'
 )
 
-// --- Dashboard: what a locked wallet does to it -------------------------------
+// --- One primary destination, and a menu for the rest -------------------------
+
+// The claim the whole rework rests on. If four more rows reappear in the left
+// column this is what says so.
+const primary = await evaluate(`(() => {
+  const inSidebar = [...document.querySelectorAll('#sidebar [data-section]')]
+  const inMenu = [...document.querySelectorAll('#account-menu [data-section]')]
+  return JSON.stringify({
+    loose: inSidebar.filter((b) => !b.closest('#account-menu')).length,
+    menu: inMenu.map((b) => b.dataset.section)
+  })
+})()`)
+
+const column = JSON.parse(primary)
+report(
+  'the sidebar offers conversations and nothing else',
+  column.loose === 0,
+  `${column.loose} destinations outside the account menu`
+)
+
+const menu = await evaluate(`(async () => {
+  document.getElementById('account-btn').click()
+  await new Promise((r) => setTimeout(r, 200))
+  const open = !document.getElementById('account-menu').hidden
+  const focused = document.activeElement?.textContent?.trim() ?? ''
+
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  await new Promise((r) => setTimeout(r, 200))
+
+  return JSON.stringify({
+    open,
+    focused,
+    shut: document.getElementById('account-menu').hidden,
+    back: document.activeElement?.id ?? ''
+  })
+})()`)
+
+const menuState = JSON.parse(menu)
+report(
+  'the avatar opens the account menu',
+  menuState.open === true,
+  `focus went to "${menuState.focused}"`
+)
+report(
+  'and Escape closes it, handing focus back',
+  menuState.shut === true && menuState.back === 'account-btn',
+  `shut ${menuState.shut}, focus on ${menuState.back || 'nothing'}`
+)
+
+for (const destination of column.menu) {
+  const landed = await evaluate(`(async () => {
+    document.getElementById('account-btn').click()
+    await new Promise((r) => setTimeout(r, 150))
+    document.querySelector('#account-menu [data-section="${destination}"]').click()
+    await new Promise((r) => setTimeout(r, 600))
+    return document.getElementById('panel-${destination}')?.hidden === false
+  })()`)
+
+  report(`the menu reaches ${destination}`, landed === true, landed ? 'opened' : 'went nowhere')
+}
+
+// --- A locked wallet, and where the interface says so -------------------------
 
 await ask('wallet.lock')
-await evaluate(`document.getElementById('dash-refresh')?.click()`)
-await new Promise((r) => setTimeout(r, 1500))
+await evaluate(`(async () => {
+  const { refreshWallet } = await import('./lib/wallet.js')
+  await refreshWallet()
+  return true
+})()`)
+await new Promise((r) => setTimeout(r, 800))
 
 const locked = await ask('dashboard.read', { months: 12 })
 report(
@@ -146,11 +232,14 @@ report(
   `${locked?.rooms?.total} rooms`
 )
 
-const lockedNotice = await evaluate(`!document.getElementById('dash-locked')?.hidden`)
+// The lock used to be a notice on a panel most people never opened, so the
+// first anybody knew of it was a refused action somewhere else. It is in the
+// sidebar now, which is on screen whatever surface is open.
+const strip = await evaluate(`!document.getElementById('sidebar-locked')?.hidden`)
 report(
-  'and the panel says why the rest is missing',
-  lockedNotice === true,
-  lockedNotice ? 'the locked notice is shown' : 'nothing explains the gap'
+  'and the sidebar says so, wherever you happen to be',
+  strip === true,
+  strip ? 'the strip is shown' : 'nothing on screen mentions it'
 )
 
 // Through the shared helper rather than one password: this instance's wallet
@@ -161,13 +250,17 @@ await unlockForHarness(ask)
 const reopened = await ask('wallet.status')
 if (!reopened?.unlocked) throw new Error('the harness locked the wallet and could not reopen it')
 
-await evaluate(`document.getElementById('dash-refresh')?.click()`)
-await new Promise((r) => setTimeout(r, 1500))
+await evaluate(`(async () => {
+  const { refreshWallet } = await import('./lib/wallet.js')
+  await refreshWallet()
+  return true
+})()`)
+await new Promise((r) => setTimeout(r, 800))
 
 report(
-  'unlocking clears the notice again, without a reload',
-  (await evaluate(`document.getElementById('dash-locked')?.hidden`)) === true,
-  'the notice cleared'
+  'unlocking clears the strip again, without a reload',
+  (await evaluate(`document.getElementById('sidebar-locked')?.hidden`)) === true,
+  'the strip cleared'
 )
 
 // --- Wallet -------------------------------------------------------------------

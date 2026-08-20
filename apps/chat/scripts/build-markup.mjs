@@ -41,7 +41,6 @@ const DOCUMENT = [
   ['shell-open.html', 'shared — opens main.shell'],
   ['sidebar.html', 'sidebar and its footer'],
   ['content-open.html', 'shared — opens section.content'],
-  ['panel-dashboard.html', 'dashboard'],
   ['panel-chat.html', 'chat, the room and its header'],
   ['panel-models.html', 'models and inference'],
   ['panel-worker.html', 'worker'],

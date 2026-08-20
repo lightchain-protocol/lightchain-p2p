@@ -12,7 +12,6 @@
     partials/shell-open.html        shared — opens main.shell
     partials/sidebar.html           sidebar and its footer
     partials/content-open.html      shared — opens section.content
-    partials/panel-dashboard.html   dashboard
     partials/panel-chat.html        chat, the room and its header
     partials/panel-models.html      models and inference
     partials/panel-worker.html      worker
@@ -54,7 +53,6 @@
          and editing the sidebar touch different files. -->
     <link rel="stylesheet" href="styles/titlebar.css" />
     <link rel="stylesheet" href="styles/sidebar.css" />
-    <link rel="stylesheet" href="styles/dashboard.css" />
     <link rel="stylesheet" href="styles/room.css" />
     <link rel="stylesheet" href="styles/models.css" />
     <link rel="stylesheet" href="styles/worker.css" />
@@ -100,12 +98,6 @@
           />
         </symbol>
         <!-- icons:start -->
-        <symbol id="i-dashboard" viewBox="0 0 24 24">
-          <rect width="7" height="9" x="3" y="3" rx="1" />
-          <rect width="7" height="5" x="14" y="3" rx="1" />
-          <rect width="7" height="9" x="14" y="12" rx="1" />
-          <rect width="7" height="5" x="3" y="16" rx="1" />
-        </symbol>
         <symbol id="i-chat" viewBox="0 0 24 24">
           <path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" />
         </symbol>
@@ -1059,9 +1051,21 @@
     </div>
 
     <main class="shell">
-      <nav class="sidebar" id="sidebar" aria-label="Primary">
+      <!-- The room list is the sidebar, not a section inside it.
+           
+           This used to be five destinations in three groups - Dashboard, Chat,
+           Models, Worker, Wallet - with the rooms tucked underneath as a
+           context list that appeared when Chat was chosen. That is an
+           architecture diagram, and it asked somebody opening a messenger to
+           first decide which part of the system they wanted.
+           
+           There is one destination now. Conversations are the sidebar's body,
+           the way they are in every messenger anybody has used, and everything
+           else lives behind the avatar at the bottom: an account is a thing you
+           visit occasionally, not a peer of the conversation you are having. -->
+      <nav class="sidebar" id="sidebar" aria-label="Conversations">
         <div class="sidebar-head">
-          <span class="sidebar-brand">Hub</span>
+          <span class="sidebar-brand">Conversations</span>
           <button
             class="icon-button sidebar-collapse"
             type="button"
@@ -1074,95 +1078,61 @@
           </button>
         </div>
 
-        <!-- The brand row and the footer hold their place; only what is between
-             them scrolls. Without this a long room list pushes the account row
-             and the connection state off the bottom of a short window. -->
-        <div class="sidebar-body">
-          <!-- Grouped rather than one flat list, because the five sections are not
-               peers: three are things you do, two are machinery behind them.
+        <!-- Two facts, at the top, only when they are not the ordinary case.
+             Whether this machine is talking to anybody, and whether the wallet
+             is open. Both were somewhere else entirely: connection rode on the
+             account row as a dot, and the lock state was a notice on a panel
+             most people never opened. -->
+        <div class="sidebar-state">
+          <span class="sidebar-status" id="status" role="status" data-state="busy">starting</span>
+          <button class="sidebar-locked" type="button" id="sidebar-locked" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+            <span>Wallet locked</span>
+          </button>
+        </div>
 
-               The heading names the group to a screen reader as well as to the
-               eye, which a paragraph sitting above a list does not. -->
-          <div class="nav-group">
-            <h2 class="sidebar-title" id="nav-workspace">Workspace</h2>
-            <ul class="sections" aria-labelledby="nav-workspace">
-              <li>
-                <button
-                  class="nav-item is-active"
-                  type="button"
-                  data-section="dashboard"
-                  aria-current="page"
-                >
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-dashboard" /></svg>
-                  <span class="nav-label">Dashboard</span>
-                </button>
-              </li>
-              <li>
-                <button class="nav-item" type="button" data-section="chat">
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-chat" /></svg>
-                  <span class="nav-label">Chat</span>
-                  <span class="nav-badge" id="rooms-badge" hidden></span>
-                </button>
-              </li>
-              <li>
-                <button class="nav-item" type="button" data-section="models">
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-models" /></svg>
-                  <span class="nav-label">Models</span>
-                </button>
-              </li>
-            </ul>
-          </div>
+        <!-- The head, the state strip and the foot hold their place; only the
+             list between them scrolls. Without this a long room list pushes the
+             account row off the bottom of a short window. -->
+        <div class="sidebar-body" id="chat-context">
+          <ul class="room-list" id="room-list" aria-label="Your conversations"></ul>
+          <p class="sidebar-empty" id="sidebar-empty">
+            No conversations yet — start one.
+          </p>
+        </div>
 
-          <div class="nav-group">
-            <h2 class="sidebar-title" id="nav-network">Network</h2>
-            <ul class="sections" aria-labelledby="nav-network">
-              <li>
-                <button class="nav-item" type="button" data-section="worker">
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-worker" /></svg>
-                  <span class="nav-label">Worker</span>
-                </button>
-              </li>
-              <li>
-                <button class="nav-item" type="button" data-section="wallet">
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-wallet" /></svg>
-                  <span class="nav-label">Wallet</span>
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          <div class="sidebar-context" id="chat-context" hidden>
-            <h2 class="sidebar-title" id="nav-rooms">Rooms</h2>
-            <ul class="room-list" id="room-list" aria-labelledby="nav-rooms"></ul>
-            <p class="sidebar-empty" id="sidebar-empty">No rooms yet.</p>
-            <div class="sidebar-actions">
-              <button class="button button-block" type="button" id="create-btn">
-                <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
-                <span class="nav-label">New room</span>
-              </button>
-              <button class="button button-block" type="button" id="join-btn">
-                <span class="nav-label">Join with an invite</span>
-              </button>
-            </div>
-          </div>
+        <div class="sidebar-actions">
+          <button class="button button-primary button-block" type="button" id="create-btn">
+            <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
+            <span class="nav-label">New conversation</span>
+          </button>
+          <button class="button button-block" type="button" id="join-btn">
+            <span class="nav-label">Join with an invite</span>
+          </button>
         </div>
 
         <div class="sidebar-foot">
-          <!-- The wallet is the identity, so it sits where an account does, and
-               the connection state rides on it: a dot on the mark while there is
-               nothing to say, the row above as a banner when there is. One
-               element does both because setStatus writes to one node. -->
-          <div class="sidebar-account">
-            <span class="sidebar-status" id="status" role="status" data-state="busy">starting</span>
-            <button class="account" type="button" id="account-btn" data-kit-focus>
-              <svg class="logo account-logo" aria-hidden="true"><use href="#i-logo" /></svg>
-              <span class="account-text">
-                <span class="account-name" id="account-name">No wallet</span>
-                <span class="account-role" id="account-role">Set one up</span>
-              </span>
-              <svg class="icon account-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
-            </button>
-          </div>
+          <!-- The wallet is the identity, so it sits where an account does. It
+               opens a menu rather than a panel: Account, models, earning and
+               settings are four things somebody reaches for occasionally, and
+               four more rows in the primary column is what this rework exists
+               to undo. -->
+          <button
+            class="account"
+            type="button"
+            id="account-btn"
+            data-kit-focus
+            aria-haspopup="menu"
+            aria-expanded="false"
+            aria-controls="account-menu"
+          >
+            <span class="account-mark" id="account-mark" aria-hidden="true"></span>
+            <span class="account-text">
+              <span class="account-name" id="account-name">No wallet</span>
+              <span class="account-role" id="account-role">Set one up</span>
+            </span>
+            <svg class="icon account-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+          </button>
 
           <!-- Still named for the bar it used to live in. wallet.js finds it by
                id and styles/settings.css by class, so renaming it is not a change
@@ -1175,177 +1145,40 @@
             data-kit-focus
             hidden
           ></button>
+        </div>
 
-          <!-- What the window is, and the two switches that change how it looks
-               and behaves. Both were in the title bar, which is being stripped
-               back to the brand and somewhere to drag. -->
-          <div class="sidebar-tools">
-            <p class="version" id="version"></p>
-            <button
-              class="icon-button"
-              type="button"
-              id="theme-btn"
-              title="Theme"
-              aria-label="Theme"
-            >
-              <svg class="icon" aria-hidden="true"><use href="#i-sun" /></svg>
-            </button>
-            <button
-              class="icon-button"
-              type="button"
-              id="settings-btn"
-              title="Settings"
-              aria-label="Settings"
-            >
-              <svg class="icon" aria-hidden="true"><use href="#i-settings" /></svg>
-            </button>
-          </div>
+        <!-- Everything that is not a conversation. A menu rather than nav rows,
+             so the primary column stays one list of one kind of thing. -->
+        <div class="account-menu" id="account-menu" role="menu" aria-labelledby="account-btn" hidden>
+          <button class="account-menu-item" type="button" role="menuitem" data-section="wallet">
+            <svg class="icon" aria-hidden="true"><use href="#i-wallet" /></svg>
+            <span>Account</span>
+          </button>
+          <button class="account-menu-item" type="button" role="menuitem" data-section="models">
+            <svg class="icon" aria-hidden="true"><use href="#i-models" /></svg>
+            <span>Models</span>
+          </button>
+          <button class="account-menu-item" type="button" role="menuitem" data-section="worker">
+            <svg class="icon" aria-hidden="true"><use href="#i-worker" /></svg>
+            <span>Earn</span>
+          </button>
+
+          <div class="account-menu-rule" role="separator"></div>
+
+          <button class="account-menu-item" type="button" role="menuitem" id="theme-btn">
+            <svg class="icon" aria-hidden="true"><use href="#i-sun" /></svg>
+            <span>Switch theme</span>
+          </button>
+          <button class="account-menu-item" type="button" role="menuitem" id="settings-btn">
+            <svg class="icon" aria-hidden="true"><use href="#i-settings" /></svg>
+            <span>Settings</span>
+          </button>
+
+          <p class="account-menu-version" id="version"></p>
         </div>
       </nav>
 
       <section class="content">
-        <!-- Dashboard ------------------------------------------------------->
-        <!-- Every number here is derived from something this machine already
-             holds. Where there is none the card says so, rather than drawing a
-             zero that reads as a measurement.
-
-             A console page: the balance and the metric row are the answer, the
-             two panes below are the evidence, and the panes scroll rather than
-             the page. -->
-        <div class="panel" id="panel-dashboard">
-          <div class="console dash">
-            <header class="page-head">
-              <div class="page-head-main">
-                <h1 class="page-title">Welcome back</h1>
-                <p class="page-sub" id="dash-sub">
-                  Your models, your workers, and what is prepaid to run them. What you hold across
-                  the six networks is on the Wallet.
-                </p>
-              </div>
-              <div class="page-actions">
-                <span class="chip" id="dash-network">—</span>
-                <div class="segmented" role="group" aria-label="Range">
-                  <button class="segment" type="button" data-months="6">6m</button>
-                  <button class="segment is-active" type="button" data-months="12">12m</button>
-                  <button class="segment" type="button" data-months="24">24m</button>
-                </div>
-                <button class="button button-sm" type="button" id="dash-refresh">
-                  <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
-                  Refresh
-                </button>
-              </div>
-            </header>
-
-            <!-- Where a failed read goes. It used to be written into a stat
-                 card's note, where a chain error rendered as grey caption text
-                 under the word "Dashboard" and read as a description of one. -->
-            <div class="alert" data-tone="error" role="alert" id="dash-error" hidden>
-              <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
-              <div class="alert-body">
-                <strong class="alert-title" id="dash-error-title"></strong>
-                <span id="dash-error-detail"></span>
-              </div>
-            </div>
-
-            <div class="alert" data-tone="warn" id="dash-locked" hidden>
-              <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
-              <div class="alert-body">
-                <strong class="alert-title">Most of this needs the wallet open</strong>
-                Balances are public, but reading them means knowing which address to ask about, and
-                that is not kept anywhere while the wallet is locked. Your conversations need the
-                wallet for a second reason: the key that opens them is derived from it. Rooms and
-                messages are counted either way.
-              </div>
-            </div>
-
-            <!-- Both halves of what the wallet controls, and the two moves
-                 between them. Depositing and withdrawing shift LCAI between the
-                 wallet and the job registry; neither changes this total, which
-                 is the point of showing it above the split. -->
-            <section class="kit-card dash-balance">
-              <div class="dash-balance-main">
-                <!-- Prepaid, not the wallet's total. This page is the AI and
-                     network side; what is held across six chains belongs on the
-                     Wallet, and two pages showing the same headline figure is
-                     two pages that will one day disagree. -->
-                <p class="dash-balance-label">
-                  <span>Prepaid for inference</span>
-                  <button
-                    class="button button-sm dash-balance-hide"
-                    type="button"
-                    id="hero-hide"
-                    title="Hide balances"
-                    aria-label="Hide balances"
-                  >
-                    <svg class="icon" aria-hidden="true"><use href="#i-eye" /></svg>
-                  </button>
-                </p>
-                <p class="dash-balance-value" id="hero-value">—</p>
-                <p class="dash-balance-note" id="hero-note"></p>
-              </div>
-
-              <ul class="dash-splits" id="hero-chips"></ul>
-
-              <div class="dash-balance-actions">
-                <button class="button button-primary" type="button" data-move="deposit">
-                  <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
-                  Deposit
-                </button>
-                <button class="button" type="button" data-move="withdraw">
-                  <svg class="icon" aria-hidden="true"><use href="#i-upload" /></svg>
-                  Withdraw
-                </button>
-              </div>
-            </section>
-
-            <!-- One card holding four cells rather than four cards. They are
-                 read across as a row, and four bordered tiles put a rule
-                 between figures that are meant to be compared. -->
-            <section class="kit-card">
-              <ul class="stats" id="dash-stats"></ul>
-            </section>
-
-            <div class="console-body console-body-split">
-              <div class="dash-column">
-                <section class="kit-card kit-card-flush dash-fill">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title">Inference activity</h2>
-                    <span class="dash-stamp" id="chart-note">
-                      Questions asked and answers returned.
-                    </span>
-                  </header>
-                  <div class="kit-card-scroll">
-                    <div class="chart" id="dash-chart"></div>
-                    <ul class="legend" id="dash-legend"></ul>
-                  </div>
-                </section>
-              </div>
-
-              <div class="dash-column">
-                <section class="kit-card kit-card-flush dash-fill">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title">Recent activity</h2>
-                  </header>
-                  <div class="kit-card-scroll">
-                    <ul class="feed" id="dash-feed"></ul>
-                  </div>
-                </section>
-
-                <section class="kit-card kit-card-flush dash-fill">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title">Models used</h2>
-                  </header>
-                  <div class="kit-card-scroll">
-                    <p class="dash-note">
-                      Conversations per model, and how many of their turns reached the chain.
-                    </p>
-                    <ul class="bars" id="dash-models"></ul>
-                  </div>
-                </section>
-              </div>
-            </div>
-          </div>
-        </div>
         <!-- Chat ------------------------------------------------------------>
         <div class="panel" id="panel-chat" hidden>
           <div class="empty" id="empty">

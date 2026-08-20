@@ -27,7 +27,7 @@ import { ASK, unlockForHarness } from './harness.mjs'
 const port = Number(process.argv[2] ?? 9301)
 const outdir = process.argv[3] ?? join(process.cwd(), 'shots')
 
-const SURFACES = ['dashboard', 'chat', 'models', 'worker', 'wallet']
+const SURFACES = ['chat', 'models', 'worker', 'wallet']
 const THEMES = ['dark', 'light']
 
 /**

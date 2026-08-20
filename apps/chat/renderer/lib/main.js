@@ -7,7 +7,7 @@ import { onAiProgress, onCommitment, openTranscript, refreshModels } from './mod
 import { appendWorkerOutput, refreshWorker, setWorkerBusy } from './worker.js'
 import { refreshWallet, showWallet } from './wallet.js'
 import { refreshAssets } from './assets.js'
-import { refreshDashboard } from './dashboard.js'
+import { refreshActivity } from './activity.js'
 import { startOnboarding } from './onboarding.js'
 // Nothing out here calls into the settings panel, but importing a panel is what
 // attaches its controls, and the button that opens it is one of them.
@@ -127,17 +127,50 @@ el.collapseBtn.addEventListener('click', () => {
   )
 })
 
-el.accountBtn.addEventListener('click', () => {
+// --- The account menu -------------------------------------------------------
+
+/**
+ * Everything that is not a conversation, one press away and no closer.
+ *
+ * A menu rather than four more rows in the left column. The rework's whole
+ * claim is that this application has one primary surface, and a nav list with
+ * Account and Earn in it is five surfaces wearing a different arrangement.
+ */
+function openAccountMenu(open) {
+  el.accountMenu.hidden = !open
+  el.accountBtn.setAttribute('aria-expanded', String(open))
+  if (open) el.accountMenu.querySelector('[role="menuitem"]')?.focus()
+}
+
+el.accountBtn.addEventListener('click', () => openAccountMenu(el.accountMenu.hidden))
+
+// Escape closes it, and so does clicking anywhere that is not it. Both are what
+// a menu is expected to do, and neither is free with a plain element.
+document.addEventListener('keydown', (evt) => {
+  if (evt.key !== 'Escape' || el.accountMenu.hidden) return
+  openAccountMenu(false)
+  el.accountBtn.focus()
+})
+
+document.addEventListener('pointerdown', (evt) => {
+  if (el.accountMenu.hidden) return
+  if (el.accountMenu.contains(evt.target) || el.accountBtn.contains(evt.target)) return
+  openAccountMenu(false)
+})
+
+// The locked strip is a shortcut to the one thing it is complaining about.
+el.sidebarLocked.addEventListener('click', () => {
   showSection('wallet')
   void refreshWallet()
-  void refreshAssets()
 })
 
 // --- Sections --------------------------------------------------------------
 
 for (const button of el.sections) {
   button.addEventListener('click', () => {
+    openAccountMenu(false)
     showSection(button.dataset.section)
+
     // Probing the host costs a few subprocesses and reading balances costs a
     // round trip, so both happen when the panel is opened rather than at launch.
     if (button.dataset.section === 'worker') void refreshWorker()
@@ -146,9 +179,9 @@ for (const button of el.sections) {
       // Started alongside rather than after. Reading six chains takes longer
       // than reading one, and the address and lock state should not wait on it.
       void refreshAssets()
+      void refreshActivity()
     }
     if (button.dataset.section === 'models') void refreshModels()
-    if (button.dataset.section === 'dashboard') void refreshDashboard()
   })
 }
 
@@ -231,8 +264,9 @@ startWorker()
   .then(adopt)
   .then(restorePreferences)
   .then(startOnboarding)
-  // Last, and unable to take the rest down with it. The dashboard is a summary
-  // of the app; the app has to come up whether or not its summary does, and a
-  // broken panel that blocks the unlock prompt locks someone out of everything.
-  .then(() => refreshDashboard().catch((err) => console.error('[dashboard]', err)))
+  // Last, and unable to take the rest down with it. This is a summary of what
+  // the wallet has been doing; the app has to come up whether or not it
+  // arrives, and a failed read that blocked the unlock prompt would lock
+  // somebody out of everything over a figure nobody asked for yet.
+  .then(() => refreshActivity().catch((err) => console.error('[activity]', err)))
   .catch((err) => setStatus(`worker unreachable: ${err.message}`))

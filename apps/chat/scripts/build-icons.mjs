@@ -51,7 +51,6 @@ const END = '<!-- icons:end -->'
  */
 const ICONS = {
   // Navigation
-  'i-dashboard': 'layout-dashboard',
   'i-chat': 'message-square',
   'i-models': 'sparkles',
   'i-worker': 'server',

@@ -22,7 +22,7 @@ import { ASK, unlockForHarness } from './harness.mjs'
 const port = Number(process.argv[2] ?? 9301)
 const outdir = process.argv[3] ?? path.join(process.cwd(), 'shots')
 
-const SURFACES = ['dashboard', 'chat', 'models', 'worker', 'wallet']
+const SURFACES = ['chat', 'models', 'worker', 'wallet']
 const THEMES = ['dark', 'light']
 
 const findings = []
@@ -78,7 +78,12 @@ if (!rooms?.length) {
 // unlabelled ones. So each states the population it searched, and fails if that
 // population is implausibly small — the number is the difference between "this
 // held" and "this never ran".
-const FLOOR = { ids: 100, buttons: 20, panels: 5 }
+// `panels` was 5 and is 4: the Dashboard was dissolved, and its three honest
+// facts moved to the Account page and the sidebar's status strip. Lowered
+// deliberately rather than removed — the number is the difference between "this
+// held" and "this never ran", and a check that cannot fail on an empty document
+// is not a check.
+const FLOOR = { ids: 100, buttons: 20, panels: 4 }
 
 // Two elements answering to one id means getElementById hands both their
 // handlers the same element. It has happened here once already, between the
@@ -443,7 +448,7 @@ const transient = await evaluate(`(async () => {
     opened.push(what)
   }
 
-  document.querySelector('[data-section="chat"]')?.click()
+  (async () => { const { showSection } = await import('./lib/dom.js'); showSection('chat'); return true })()
   await new Promise((r) => setTimeout(r, 300))
   document.querySelector('#room-list .nav-item')?.click()
   await new Promise((r) => setTimeout(r, 500))

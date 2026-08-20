@@ -15,15 +15,20 @@
  * splitting it would mean deciding which panel owns the title bar.
  */
 export const el = {
-  sections: [...document.querySelectorAll('.sections .nav-item')],
+  // Anything carrying a section name, wherever it lives. They used to be the
+  // five nav rows; they are now the account menu's items, and a room list is
+  // not one of them.
+  sections: [...document.querySelectorAll('[data-section]')],
   chatContext: document.getElementById('chat-context'),
   sidebar: document.getElementById('sidebar'),
   collapseBtn: document.getElementById('collapse-btn'),
   themeBtn: document.getElementById('theme-btn'),
-  roomsBadge: document.getElementById('rooms-badge'),
   accountBtn: document.getElementById('account-btn'),
+  accountMenu: document.getElementById('account-menu'),
+  accountMark: document.getElementById('account-mark'),
   accountName: document.getElementById('account-name'),
   accountRole: document.getElementById('account-role'),
+  sidebarLocked: document.getElementById('sidebar-locked'),
   status: document.getElementById('status'),
   version: document.getElementById('version'),
   updateBtn: document.getElementById('update-btn'),
@@ -208,7 +213,24 @@ export function setStatus(text) {
       : 'bad'
 }
 
+/**
+ * Every panel in the document, whether or not anything navigates to it.
+ *
+ * This used to iterate the nav buttons and hide `panel-${button.dataset.section}`
+ * for each, which worked while every panel had a button. It does not any more:
+ * Conversations is the only primary destination, and Account, Models and Earn
+ * are reached from the account menu. Driving the panels from the panels means
+ * a surface can lose its button without becoming unreachable, and a button that
+ * names a panel nobody built throws here rather than silently doing nothing.
+ */
+const panels = () => document.querySelectorAll('[id^="panel-"]')
+
 export function showSection(name) {
+  const wanted = document.getElementById(`panel-${name}`)
+  if (!wanted) throw new Error(`there is no panel called ${name}`)
+
+  for (const panel of panels()) panel.hidden = panel !== wanted
+
   for (const button of el.sections) {
     const selected = button.dataset.section === name
     button.classList.toggle('is-active', selected)
@@ -216,13 +238,13 @@ export function showSection(name) {
     // and a screen reader should announce them as such.
     if (selected) button.setAttribute('aria-current', 'page')
     else button.removeAttribute('aria-current')
-
-    document.getElementById(`panel-${button.dataset.section}`).hidden = !selected
   }
 
-  // The room list belongs to Chat. Leaving it under Models would suggest the
-  // rooms are something Models operates on.
-  el.chatContext.hidden = name !== 'chat'
+  // The conversation list is the sidebar's body, so it stays put. What changes
+  // is whether it is the thing being pointed at: on any other surface it is
+  // still there to switch back from, which is the point of a messenger's
+  // left column.
+  el.sidebar?.classList.toggle('is-aside', name !== 'chat')
 }
 
 let toastTimer = null

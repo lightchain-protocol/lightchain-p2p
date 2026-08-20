@@ -1,6 +1,7 @@
 import { copy, el, el2, formatLcai, shortAddress, showSection, toast } from './dom.js'
+import { avatar } from './members.js'
 import { request } from './ipc.js'
-import { lastSummary, refreshDashboard } from './dashboard.js'
+import { lastSummary, refreshActivity } from './activity.js'
 import { refreshModels } from './models.js'
 
 /**
@@ -29,6 +30,13 @@ export function myAddress() {
 export function renderAccount(status) {
   const address = status?.address ?? null
   signingAs = status?.unlocked ? address : null
+
+  // The same identicon that stands in for this address in every room, so the
+  // account row at the bottom of the sidebar and the avatar beside your own
+  // messages are recognisably the same person. It used to be the product
+  // logomark, which told you which application you had open rather than who you
+  // were signed in as.
+  el.accountMark.replaceChildren(address ? avatar(address, 28) : '')
   el.accountName.textContent = address ? shortAddress(address) : 'No wallet'
   el.accountRole.textContent = address
     ? status.unlocked
@@ -72,12 +80,18 @@ export function showWallet(status) {
   const known = typeof status.address === 'string' && status.address !== ''
   el.walletLockedAddress.closest('.wallet-gate-fact')?.toggleAttribute('hidden', !known)
 
+  // The sidebar says so too, because a locked wallet is a fact about the whole
+  // application rather than about one panel. It used to be a notice on a page
+  // most people never opened, which meant the first anybody knew of it was a
+  // refused action somewhere else entirely.
+  el.sidebarLocked.hidden = !status.exists || status.unlocked
+
   el.walletNetwork.textContent = status.network ?? ''
 
   renderAccount(status)
   // Locking closes the transcripts and unlocking opens them, so the summary is
   // a different one either way.
-  void refreshDashboard().catch(() => {})
+  void refreshActivity().catch(() => {})
 }
 
 export async function refreshWallet() {
@@ -499,7 +513,7 @@ pay.form.addEventListener('submit', async (evt) => {
     toast(`Sent in block ${sent.block}`)
     pay.dialog.close()
     void refreshTitlebarBalance()
-    void refreshDashboard()
+    void refreshActivity()
   } catch (err) {
     pay.error.textContent = err.message
     pay.error.hidden = false
@@ -598,7 +612,7 @@ move.form.addEventListener('submit', async (evt) => {
     void refreshBalances()
     void refreshHistory()
     void refreshTitlebarBalance()
-    void refreshDashboard()
+    void refreshActivity()
     void refreshModels()
   } catch (err) {
     move.error.textContent = err.message

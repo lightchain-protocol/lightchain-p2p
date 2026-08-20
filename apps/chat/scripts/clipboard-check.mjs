@@ -174,7 +174,9 @@ const created = await ask('room.create')
 if (created?.error) throw new Error(`could not create a room: ${created.error}`)
 await ask('room.rename', { room: created.key, name: label })
 
-await evaluate(`document.querySelector('[data-section="chat"]').click()`)
+await evaluate(
+  `(async () => { const { showSection } = await import('./lib/dom.js'); showSection('chat'); return true })()`
+)
 await until(
   `(() => {
      const found = [...document.querySelectorAll('#room-list .nav-item')]

@@ -1,6 +1,18 @@
-      <nav class="sidebar" id="sidebar" aria-label="Primary">
+      <!-- The room list is the sidebar, not a section inside it.
+           
+           This used to be five destinations in three groups - Dashboard, Chat,
+           Models, Worker, Wallet - with the rooms tucked underneath as a
+           context list that appeared when Chat was chosen. That is an
+           architecture diagram, and it asked somebody opening a messenger to
+           first decide which part of the system they wanted.
+           
+           There is one destination now. Conversations are the sidebar's body,
+           the way they are in every messenger anybody has used, and everything
+           else lives behind the avatar at the bottom: an account is a thing you
+           visit occasionally, not a peer of the conversation you are having. -->
+      <nav class="sidebar" id="sidebar" aria-label="Conversations">
         <div class="sidebar-head">
-          <span class="sidebar-brand">Hub</span>
+          <span class="sidebar-brand">Conversations</span>
           <button
             class="icon-button sidebar-collapse"
             type="button"
@@ -13,95 +25,61 @@
           </button>
         </div>
 
-        <!-- The brand row and the footer hold their place; only what is between
-             them scrolls. Without this a long room list pushes the account row
-             and the connection state off the bottom of a short window. -->
-        <div class="sidebar-body">
-          <!-- Grouped rather than one flat list, because the five sections are not
-               peers: three are things you do, two are machinery behind them.
+        <!-- Two facts, at the top, only when they are not the ordinary case.
+             Whether this machine is talking to anybody, and whether the wallet
+             is open. Both were somewhere else entirely: connection rode on the
+             account row as a dot, and the lock state was a notice on a panel
+             most people never opened. -->
+        <div class="sidebar-state">
+          <span class="sidebar-status" id="status" role="status" data-state="busy">starting</span>
+          <button class="sidebar-locked" type="button" id="sidebar-locked" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+            <span>Wallet locked</span>
+          </button>
+        </div>
 
-               The heading names the group to a screen reader as well as to the
-               eye, which a paragraph sitting above a list does not. -->
-          <div class="nav-group">
-            <h2 class="sidebar-title" id="nav-workspace">Workspace</h2>
-            <ul class="sections" aria-labelledby="nav-workspace">
-              <li>
-                <button
-                  class="nav-item is-active"
-                  type="button"
-                  data-section="dashboard"
-                  aria-current="page"
-                >
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-dashboard" /></svg>
-                  <span class="nav-label">Dashboard</span>
-                </button>
-              </li>
-              <li>
-                <button class="nav-item" type="button" data-section="chat">
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-chat" /></svg>
-                  <span class="nav-label">Chat</span>
-                  <span class="nav-badge" id="rooms-badge" hidden></span>
-                </button>
-              </li>
-              <li>
-                <button class="nav-item" type="button" data-section="models">
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-models" /></svg>
-                  <span class="nav-label">Models</span>
-                </button>
-              </li>
-            </ul>
-          </div>
+        <!-- The head, the state strip and the foot hold their place; only the
+             list between them scrolls. Without this a long room list pushes the
+             account row off the bottom of a short window. -->
+        <div class="sidebar-body" id="chat-context">
+          <ul class="room-list" id="room-list" aria-label="Your conversations"></ul>
+          <p class="sidebar-empty" id="sidebar-empty">
+            No conversations yet — start one.
+          </p>
+        </div>
 
-          <div class="nav-group">
-            <h2 class="sidebar-title" id="nav-network">Network</h2>
-            <ul class="sections" aria-labelledby="nav-network">
-              <li>
-                <button class="nav-item" type="button" data-section="worker">
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-worker" /></svg>
-                  <span class="nav-label">Worker</span>
-                </button>
-              </li>
-              <li>
-                <button class="nav-item" type="button" data-section="wallet">
-                  <svg class="nav-icon" aria-hidden="true"><use href="#i-wallet" /></svg>
-                  <span class="nav-label">Wallet</span>
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          <div class="sidebar-context" id="chat-context" hidden>
-            <h2 class="sidebar-title" id="nav-rooms">Rooms</h2>
-            <ul class="room-list" id="room-list" aria-labelledby="nav-rooms"></ul>
-            <p class="sidebar-empty" id="sidebar-empty">No rooms yet.</p>
-            <div class="sidebar-actions">
-              <button class="button button-block" type="button" id="create-btn">
-                <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
-                <span class="nav-label">New room</span>
-              </button>
-              <button class="button button-block" type="button" id="join-btn">
-                <span class="nav-label">Join with an invite</span>
-              </button>
-            </div>
-          </div>
+        <div class="sidebar-actions">
+          <button class="button button-primary button-block" type="button" id="create-btn">
+            <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
+            <span class="nav-label">New conversation</span>
+          </button>
+          <button class="button button-block" type="button" id="join-btn">
+            <span class="nav-label">Join with an invite</span>
+          </button>
         </div>
 
         <div class="sidebar-foot">
-          <!-- The wallet is the identity, so it sits where an account does, and
-               the connection state rides on it: a dot on the mark while there is
-               nothing to say, the row above as a banner when there is. One
-               element does both because setStatus writes to one node. -->
-          <div class="sidebar-account">
-            <span class="sidebar-status" id="status" role="status" data-state="busy">starting</span>
-            <button class="account" type="button" id="account-btn" data-kit-focus>
-              <svg class="logo account-logo" aria-hidden="true"><use href="#i-logo" /></svg>
-              <span class="account-text">
-                <span class="account-name" id="account-name">No wallet</span>
-                <span class="account-role" id="account-role">Set one up</span>
-              </span>
-              <svg class="icon account-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
-            </button>
-          </div>
+          <!-- The wallet is the identity, so it sits where an account does. It
+               opens a menu rather than a panel: Account, models, earning and
+               settings are four things somebody reaches for occasionally, and
+               four more rows in the primary column is what this rework exists
+               to undo. -->
+          <button
+            class="account"
+            type="button"
+            id="account-btn"
+            data-kit-focus
+            aria-haspopup="menu"
+            aria-expanded="false"
+            aria-controls="account-menu"
+          >
+            <span class="account-mark" id="account-mark" aria-hidden="true"></span>
+            <span class="account-text">
+              <span class="account-name" id="account-name">No wallet</span>
+              <span class="account-role" id="account-role">Set one up</span>
+            </span>
+            <svg class="icon account-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+          </button>
 
           <!-- Still named for the bar it used to live in. wallet.js finds it by
                id and styles/settings.css by class, so renaming it is not a change
@@ -114,30 +92,35 @@
             data-kit-focus
             hidden
           ></button>
+        </div>
 
-          <!-- What the window is, and the two switches that change how it looks
-               and behaves. Both were in the title bar, which is being stripped
-               back to the brand and somewhere to drag. -->
-          <div class="sidebar-tools">
-            <p class="version" id="version"></p>
-            <button
-              class="icon-button"
-              type="button"
-              id="theme-btn"
-              title="Theme"
-              aria-label="Theme"
-            >
-              <svg class="icon" aria-hidden="true"><use href="#i-sun" /></svg>
-            </button>
-            <button
-              class="icon-button"
-              type="button"
-              id="settings-btn"
-              title="Settings"
-              aria-label="Settings"
-            >
-              <svg class="icon" aria-hidden="true"><use href="#i-settings" /></svg>
-            </button>
-          </div>
+        <!-- Everything that is not a conversation. A menu rather than nav rows,
+             so the primary column stays one list of one kind of thing. -->
+        <div class="account-menu" id="account-menu" role="menu" aria-labelledby="account-btn" hidden>
+          <button class="account-menu-item" type="button" role="menuitem" data-section="wallet">
+            <svg class="icon" aria-hidden="true"><use href="#i-wallet" /></svg>
+            <span>Account</span>
+          </button>
+          <button class="account-menu-item" type="button" role="menuitem" data-section="models">
+            <svg class="icon" aria-hidden="true"><use href="#i-models" /></svg>
+            <span>Models</span>
+          </button>
+          <button class="account-menu-item" type="button" role="menuitem" data-section="worker">
+            <svg class="icon" aria-hidden="true"><use href="#i-worker" /></svg>
+            <span>Earn</span>
+          </button>
+
+          <div class="account-menu-rule" role="separator"></div>
+
+          <button class="account-menu-item" type="button" role="menuitem" id="theme-btn">
+            <svg class="icon" aria-hidden="true"><use href="#i-sun" /></svg>
+            <span>Switch theme</span>
+          </button>
+          <button class="account-menu-item" type="button" role="menuitem" id="settings-btn">
+            <svg class="icon" aria-hidden="true"><use href="#i-settings" /></svg>
+            <span>Settings</span>
+          </button>
+
+          <p class="account-menu-version" id="version"></p>
         </div>
       </nav>

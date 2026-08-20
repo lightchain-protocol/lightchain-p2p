@@ -197,6 +197,24 @@ describe('the rest of the system', () => {
     }
   })
 
+  // Every role name, hyphenated, rather than the three somebody happened to
+  // list. `title1` emitted as `--lc-type-title1` and the stylesheet that wanted
+  // it wrote `--lc-type-title-1` and got nothing; a spot check of three names
+  // is how that reached a commit.
+  it('emits every role name in a form CSS would guess', () => {
+    const css = cssVariables('dark')
+    for (const name of Object.keys(TYPE.role)) {
+      const kebab = name.replace(/([a-z])([A-Z0-9])/g, '$1-$2').toLowerCase()
+      expect(css, `--lc-type-${kebab}:`).toContain(`--lc-type-${kebab}:`)
+
+      // Only where the two differ. `caption` is its own kebab form, so
+      // asserting the raw name is absent would be asserting the right name is.
+      if (kebab !== name) {
+        expect(css, `${name} also emitted un-hyphenated`).not.toContain(`--lc-type-${name}:`)
+      }
+    }
+  })
+
   it('leaves room for a pointer on every control', () => {
     expect(CONTROL.sm).toBeGreaterThanOrEqual(32)
     expect(CONTROL.md).toBeGreaterThanOrEqual(40)
@@ -243,6 +261,8 @@ describe('the rest of the system', () => {
       '--lc-focus-width:',
       '--lc-radius-bubble:',
       '--lc-type-body:',
+      '--lc-type-body-strong:',
+      '--lc-type-title-1:',
       '--lc-weight-semibold:',
       '--lc-motion-base:',
       '--lc-easing:'
