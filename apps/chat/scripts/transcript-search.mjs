@@ -131,31 +131,59 @@ await ask('wallet.unlock', { password: HARNESS_PASSWORD })
 // only from a keystroke, so a mistake in either is invisible until somebody
 // searches — which is exactly the sort of thing that ships.
 const surface = await evaluate(`(async () => {
-  const open = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })
-  window.dispatchEvent(open)
+  // Closed first, then opened. The shortcut is a toggle, so dispatching it
+  // against a surface a previous run left open closes it instead — and what
+  // follows then reads the last query's note and the last query's rows and
+  // reports them as this query's. That passes, which is worse than failing.
+  document.getElementById('search-dialog')?.close()
+  await new Promise((r) => setTimeout(r, 50))
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
   await new Promise((r) => setTimeout(r, 60))
 
   const dialog = document.getElementById('search-dialog')
   const input = document.getElementById('search-input')
   if (!dialog || !input) return { missing: true }
+  if (!dialog.open) return { missing: true, shut: true }
+
+  const noteNow = () => document.querySelector('.search-status')?.textContent ?? ''
+
+  // Opening runs the empty query first, which writes its own note. Waiting for
+  // "a note that is not Searching…" therefore succeeds instantly against that
+  // one, before a single character has been typed — so what is waited for is a
+  // note that differs from the one already there.
+  const before = noteNow()
 
   input.value = ${JSON.stringify(NEEDLE)}
   input.dispatchEvent(new Event('input', { bubbles: true }))
-  // Longer than the debounce plus two worker round trips.
-  await new Promise((r) => setTimeout(r, 900))
 
-  const note = document.querySelector('.search-status')?.textContent ?? ''
+  // Polled rather than slept through. The old fixed 900ms was two worker round
+  // trips on the machine it was written on; a slower one reads the surface
+  // mid-search and reports the interim 'Searching…' as the outcome.
+  const deadline = Date.now() + 15000
+  let waited = 0
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 100))
+    waited += 100
+    const note = noteNow()
+    if (note !== '' && note !== before && note !== 'Searching\\u2026') break
+  }
+
+  const note = noteNow()
   const rendered = document.querySelectorAll('.search-result').length
   const groups = [...document.querySelectorAll('.search-group-name')].map((n) => n.textContent)
 
   document.getElementById('search-dialog')?.close()
-  return { open: dialog.open === true || dialog.hasAttribute('open'), note, rendered, groups }
+  return { open: dialog.open === true || dialog.hasAttribute('open'), note, rendered, groups, waited }
 })()`)
 
 report(
   'the search dialog opens on the shortcut',
   surface?.missing !== true,
-  surface?.missing ? 'no dialog in the document' : 'present'
+  surface?.shut
+    ? 'the shortcut did not open it'
+    : surface?.missing
+      ? 'no dialog in the document'
+      : `present, answered in ${surface.waited}ms`
 )
 
 report(

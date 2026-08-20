@@ -15,8 +15,8 @@
  * a room if there is none, so it has something to photograph.
  */
 
-import fs from 'node:fs'
 import path from 'node:path'
+import { Page } from './cdp.mjs'
 import { ASK, unlockForHarness } from './harness.mjs'
 
 const port = Number(process.argv[2] ?? 9301)
@@ -31,47 +31,22 @@ const note = (ok, what, detail) => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}${detail ? ` — ${detail}` : ''}`)
 }
 
-const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
-const page = targets.find((t) => t.type === 'page')
-if (!page) throw new Error(`no renderer on ${port}`)
+const page = await Page.attach(port)
+const thrown = page.exceptions
+const evaluate = (expression) => page.evaluate(expression)
 
-const socket = new WebSocket(page.webSocketDebuggerUrl)
-await new Promise((r) => socket.addEventListener('open', r, { once: true }))
+await page.until(`document.readyState === 'complete'`, 'the document')
 
-let id = 1
-const thrown = []
-socket.addEventListener('message', (e) => {
-  const msg = JSON.parse(e.data)
-  if (msg.method === 'Runtime.exceptionThrown') {
-    thrown.push(msg.params.exceptionDetails?.exception?.description ?? 'unknown')
-  }
-})
-
-const send = (method, params = {}, timeout = 30_000) =>
-  new Promise((resolve, reject) => {
-    const mine = id++
-    const bell = setTimeout(() => reject(new Error(`${method} timed out`)), timeout)
-    const onMessage = (e) => {
-      const msg = JSON.parse(e.data)
-      if (msg.id !== mine) return
-      clearTimeout(bell)
-      socket.removeEventListener('message', onMessage)
-      const details = msg.result?.exceptionDetails
-      if (details) reject(new Error(details.exception?.description ?? details.text))
-      else resolve(msg.result)
-    }
-    socket.addEventListener('message', onMessage)
-    socket.send(JSON.stringify({ id: mine, method, params }))
-  })
-
-const evaluate = async (expression) =>
-  (await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }))?.result
-    ?.value
-
-await send('Runtime.enable')
-await evaluate(
-  'new Promise((r) => document.readyState === "complete" ? r() : addEventListener("load", r))'
-)
+/**
+ * A fixed size, because half of what follows is a claim about layout.
+ *
+ * "This page fits without scrolling" is not a property of the page; it is a
+ * property of the page at a size. Left to whatever the window happened to be,
+ * the same build passed on one machine and failed on another — and on a display
+ * at 165% scale the window was 775 by 484 CSS pixels, at which nearly anything
+ * overflows. Pinning it is what turns the check from a coin toss into a claim.
+ */
+await page.viewport(1280, 800)
 
 const ask = (t, fields = {}) =>
   evaluate(
@@ -226,19 +201,35 @@ note(
 const restores = await evaluate(`(async () => {
   const anchor = document.querySelector('[data-section="wallet"]')
   if (!anchor) return { missing: true }
+
+  // Shut before opening. The shortcut toggles, so run against a surface
+  // something earlier left open it closes one instead of opening one, and this
+  // reports a focus fault where there is only a stale dialog.
+  document.getElementById('search-dialog')?.close()
+  await new Promise((r) => setTimeout(r, 50))
+
   anchor.focus()
   const before = document.activeElement
 
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
-  await new Promise((r) => setTimeout(r, 300))
+
+  // Polled, not slept through. Search builds its dialog on first use and runs
+  // the empty query as it opens, and a fixed 300ms was enough on the machine
+  // this was written on and not on a slower one — which is how this check came
+  // to report a focus fault intermittently, on a surface that was working.
+  let opened = false
+  for (let i = 0; i < 50 && !opened; i++) {
+    await new Promise((r) => setTimeout(r, 100))
+    opened = document.getElementById('search-dialog')?.open === true
+  }
 
   const dialog = document.getElementById('search-dialog')
-  const moved = dialog?.open === true && document.activeElement !== before
+  const moved = opened && document.activeElement !== before
 
   dialog?.close()
   await new Promise((r) => setTimeout(r, 300))
 
-  return { missing: false, moved, restored: document.activeElement === before }
+  return { missing: false, opened, moved, restored: document.activeElement === before }
 })()`)
 
 note(
@@ -246,12 +237,10 @@ note(
   'search takes focus and gives it back',
   restores.missing
     ? 'no wallet nav item to focus first'
-    : `moved in: ${restores.moved}, restored: ${restores.restored}`
+    : `opened: ${restores.opened}, moved in: ${restores.moved}, restored: ${restores.restored}`
 )
 
 // --- Every surface, in both themes --------------------------------------------
-
-fs.mkdirSync(outdir, { recursive: true })
 
 for (const theme of THEMES) {
   await evaluate(`(document.documentElement.dataset.theme = '${theme}', true)`)
@@ -300,8 +289,7 @@ for (const theme of THEMES) {
       )
     }
 
-    const { data } = await send('Page.captureScreenshot', { format: 'png' })
-    fs.writeFileSync(path.join(outdir, `${theme}-${surface}.png`), Buffer.from(data, 'base64'))
+    await page.shoot(outdir, `${theme}-${surface}`)
   }
 }
 
@@ -367,8 +355,10 @@ note(
 
 note(thrown.length === 0, 'the renderer threw nothing throughout', thrown[0] ?? 'clean')
 
+await page.clearViewport()
+
 const failed = findings.filter((f) => !f.ok)
 console.log(`\n${findings.length - failed.length} passed, ${failed.length} failed`)
 console.log(`${SURFACES.length * THEMES.length} screenshots in ${outdir}`)
-socket.close()
+page.close()
 process.exit(failed.length ? 1 : 0)
