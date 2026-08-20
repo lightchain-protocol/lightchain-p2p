@@ -18,6 +18,10 @@ import { showBridge } from './bridge.js'
 // Imported for its controls, as settings is: the Swap button on the wallet is
 // one of them, and importing the module is what attaches it.
 import './swap.js'
+// The guard's `wallet.confirm` push is answered here; importing the module is
+// what subscribes it, and an unanswered push is a transfer that can only
+// refuse after five minutes.
+import './confirm.js'
 
 /**
  * The shell around the panels, and the order things come up in.

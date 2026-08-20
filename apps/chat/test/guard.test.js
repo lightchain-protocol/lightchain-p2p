@@ -6,36 +6,35 @@ import { DEFAULT_CONFIRM_ABOVE, createGuard, readableAmount } from '../workers/g
  *
  * Worth testing here rather than only through the interface, because every
  * failure mode has to fail closed and most of them are unreachable from a
- * harness: a dialog nobody answers, a main process that never replies, a
- * malformed line on the pipe. Each of those must refuse, and none of them can
- * be produced by clicking.
+ * harness: a dialog nobody answers, a window that never replies, an answer
+ * quoting an id nobody asked about. Each of those must refuse or be ignored,
+ * and none of them can be produced by clicking.
  */
 
 const ONE = 10n ** 18n
 
-function guardWith({ password = 'right', values = {} } = {}) {
-  const written = []
+function guardWith({ values = {} } = {}) {
+  const pushed = []
   const wallet = {
-    verifyPassword: vi.fn((given) => given === password),
+    verifyPassword: vi.fn((given) => given === 'right'),
     lockIfIdle: vi.fn(() => false),
     touch: vi.fn()
   }
 
   const guard = createGuard({
     wallet,
-    pipe: { write: (line) => written.push(line) },
+    send: (msg) => pushed.push(msg),
     settings: () => values,
     onAutoLock: vi.fn()
   })
 
   /** Answers the most recent dialog the way a person would. */
   const answer = (approved) => {
-    const line = written.findLast((l) => l.startsWith('wallet:confirm '))
-    const { id } = JSON.parse(line.slice('wallet:confirm'.length))
-    guard.handleLine(`wallet:confirmed ${JSON.stringify({ id, approved })}`)
+    const { id } = pushed.findLast((msg) => msg.t === 'wallet.confirm')
+    return guard.settle(id, approved)
   }
 
-  return { guard, wallet, written, answer }
+  return { guard, wallet, pushed, answer }
 }
 
 const details = { amount: '1 LCAI', to: '0xabc', from: '0xdef', network: 'mainnet' }
@@ -68,11 +67,11 @@ describe('showing an amount to a person', () => {
 
 describe('small amounts', () => {
   it('go through without asking anything', async () => {
-    const { guard, wallet, written } = guardWith()
+    const { guard, wallet, pushed } = guardWith()
     await expect(guard.allow({ value: 1n, details })).resolves.toBeUndefined()
 
     expect(wallet.verifyPassword).not.toHaveBeenCalled()
-    expect(written).toHaveLength(0)
+    expect(pushed).toHaveLength(0)
   })
 })
 
@@ -80,12 +79,12 @@ describe('mid-size amounts', () => {
   it('go through without asking anything — the password tier was removed', async () => {
     // There is no dialog that could collect a password, so demanding one was
     // a refusal wearing a prompt's clothes. What remains proportionate is the
-    // operating system's own dialog, and only for the largest moves.
-    const { guard, wallet, written } = guardWith()
+    // confirmation dialog, and only for the largest moves.
+    const { guard, wallet, pushed } = guardWith()
     await expect(guard.allow({ value: 10n ** 18n, details })).resolves.toBeUndefined()
 
     expect(wallet.verifyPassword).not.toHaveBeenCalled()
-    expect(written).toHaveLength(0)
+    expect(pushed).toHaveLength(0)
   })
 
   it('ignore a password that is offered anyway', async () => {
@@ -99,21 +98,22 @@ describe('mid-size amounts', () => {
   it('ignore a reauth threshold left in an old settings file', async () => {
     // The key was never window-writable; now it is not read either. Only
     // `confirmAboveWei` still tunes what the guard asks.
-    const { guard, written } = guardWith({ values: { reauthAboveWei: '1' } })
+    const { guard, pushed } = guardWith({ values: { reauthAboveWei: '1' } })
     await expect(guard.allow({ value: 10n ** 18n, details })).resolves.toBeUndefined()
-    expect(written).toHaveLength(0)
+    expect(pushed).toHaveLength(0)
   })
 })
 
 describe('amounts past the dialog threshold', () => {
   const big = DEFAULT_CONFIRM_ABOVE
 
-  it('ask the operating system, describing the transfer', async () => {
-    const { guard, written, answer } = guardWith()
+  it('ask the window, describing the transfer', async () => {
+    const { guard, pushed, answer } = guardWith()
     const allowed = guard.allow({ value: big, details })
 
-    await vi.waitFor(() => expect(written).toHaveLength(1))
-    const asked = JSON.parse(written[0].slice('wallet:confirm'.length))
+    await vi.waitFor(() => expect(pushed).toHaveLength(1))
+    const asked = pushed[0]
+    expect(asked.t).toBe('wallet.confirm')
     expect(asked).toMatchObject(details)
     expect(asked.id).toBeTruthy()
 
@@ -122,21 +122,21 @@ describe('amounts past the dialog threshold', () => {
   })
 
   it('refuse when the answer is no', async () => {
-    const { guard, written, answer } = guardWith()
+    const { guard, pushed, answer } = guardWith()
     const allowed = guard.allow({ value: big, details })
 
-    await vi.waitFor(() => expect(written).toHaveLength(1))
+    await vi.waitFor(() => expect(pushed).toHaveLength(1))
     answer(false)
     await expect(allowed).rejects.toThrow(/not confirmed/)
   })
 
   it('take the threshold from settings when one is set', async () => {
-    const { guard, written } = guardWith({ values: { confirmAboveWei: '5' } })
+    const { guard, pushed } = guardWith({ values: { confirmAboveWei: '5' } })
     await expect(guard.allow({ value: 4n, details })).resolves.toBeUndefined()
-    expect(written).toHaveLength(0)
+    expect(pushed).toHaveLength(0)
 
     const allowed = guard.allow({ value: 5n, details })
-    await vi.waitFor(() => expect(written).toHaveLength(1))
+    await vi.waitFor(() => expect(pushed).toHaveLength(1))
     guard.stop()
     await expect(allowed).rejects.toThrow(/not confirmed/)
   })
@@ -145,9 +145,9 @@ describe('amounts past the dialog threshold', () => {
     // A settings file that has been edited into nonsense must make the check
     // stricter, never weaker. Falling back to the default does that.
     for (const bad of ['', 'lots', '-1', '1.5', null, {}]) {
-      const { guard, written } = guardWith({ values: { confirmAboveWei: bad } })
+      const { guard, pushed } = guardWith({ values: { confirmAboveWei: bad } })
       const allowed = guard.allow({ value: DEFAULT_CONFIRM_ABOVE, details })
-      await vi.waitFor(() => expect(written).toHaveLength(1))
+      await vi.waitFor(() => expect(pushed).toHaveLength(1))
       guard.stop()
       await expect(allowed).rejects.toThrow(/not confirmed/)
     }
@@ -167,14 +167,25 @@ describe('amounts past the dialog threshold', () => {
     }
   })
 
-  it('refuse when the reply cannot be read', async () => {
+  it('ignore an answer to a question nobody asked', () => {
+    const { guard } = guardWith()
+    // Nothing is waiting, so nothing can be settled — whether the id is
+    // invented, stale, or simply late.
+    expect(guard.settle('999', true)).toBe(false)
+  })
+
+  it('keep waiting when an answer names somebody else', async () => {
     vi.useFakeTimers()
     try {
-      const { guard } = guardWith()
+      const { guard, pushed } = guardWith()
       const allowed = guard.allow({ value: big, details })
       const settled = expect(allowed).rejects.toThrow(/not confirmed/)
 
-      expect(guard.handleLine('wallet:confirmed not json at all')).toBe(true)
+      await vi.waitFor(() => expect(pushed).toHaveLength(1))
+      // A wrong id is a no-op, not a refusal and not an approval: the real
+      // dialog is still open and the request still has its full five minutes.
+      expect(guard.settle('not-the-id-that-was-sent', true)).toBe(false)
+
       await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 1)
       await settled
     } finally {
@@ -182,27 +193,13 @@ describe('amounts past the dialog threshold', () => {
     }
   })
 
-  it('ignore an answer to a question nobody asked', () => {
-    const { guard } = guardWith()
-    expect(guard.handleLine('wallet:confirmed {"id":"999","approved":true}')).toBe(true)
-  })
-
   it('refuse everything outstanding when the worker shuts down', async () => {
-    const { guard, written } = guardWith()
+    const { guard, pushed } = guardWith()
     const allowed = guard.allow({ value: big, details })
 
-    await vi.waitFor(() => expect(written).toHaveLength(1))
+    await vi.waitFor(() => expect(pushed).toHaveLength(1))
     guard.stop()
     await expect(allowed).rejects.toThrow(/not confirmed/)
-  })
-})
-
-describe('the line reader', () => {
-  it('claims only the replies it owns', () => {
-    const { guard } = guardWith()
-    expect(guard.handleLine('{"t":"ok"}')).toBe(false)
-    expect(guard.handleLine('pear:applyUpdate')).toBe(false)
-    expect(guard.handleLine('wallet:confirmed {"id":"1","approved":true}')).toBe(true)
   })
 })
 
@@ -214,7 +211,7 @@ describe('noticing that nobody is there', () => {
       const wallet = { lockIfIdle: vi.fn(() => true), verifyPassword: vi.fn(), touch: vi.fn() }
       const guard = createGuard({
         wallet,
-        pipe: { write: () => {} },
+        send: () => {},
         settings: () => ({}),
         onAutoLock
       })
@@ -236,7 +233,7 @@ describe('noticing that nobody is there', () => {
       const onAutoLock = vi.fn()
       const guard = createGuard({
         wallet: { lockIfIdle: () => false, verifyPassword: vi.fn(), touch: vi.fn() },
-        pipe: { write: () => {} },
+        send: () => {},
         settings: () => ({}),
         onAutoLock
       })
@@ -257,7 +254,7 @@ describe('noticing that nobody is there', () => {
       const onAutoLock = vi.fn()
       const guard = createGuard({
         wallet: { lockIfIdle: () => true, verifyPassword: vi.fn(), touch: vi.fn() },
-        pipe: { write: () => {} },
+        send: () => {},
         settings: () => ({}),
         onAutoLock
       })

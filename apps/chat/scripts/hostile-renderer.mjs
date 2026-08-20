@@ -569,20 +569,17 @@ if (csp === null) {
     )
   }
 
-  // The other way at the same thresholds, and the one that was open. The
-  // confirmation reply is a plain control line on the pipe the window writes
-  // requests to, so for a while a window could simply answer the dialog itself:
-  // read the id off the request the main process was broadcasting, write
-  // `wallet:confirmed`, and the transfer went through with the modal still on
-  // screen and the person's real answer discarded.
-  //
-  // Three things close it and all three are checked here — the window is
-  // refused the control prefix, it is never shown a request, and the id is
-  // random rather than counted.
+  // The confirmation moved into the window deliberately: the dialog is now
+  // the application's own, themed like every other surface, and the window
+  // legitimately answers it with a `wallet.confirmed` request quoting the id
+  // the guard pushed. What must still be true is pinned below: the pipe still
+  // refuses anything that is not a JSON envelope — the old control-line
+  // protocol is simply dead — and an answer quoting an id nobody asked about
+  // settles nothing.
   const forgeries = [
-    ['a forged confirmation', 'wallet:confirmed {"id":"1","approved":true}\n'],
+    ['a forged confirmation line', 'wallet:confirmed {"id":"1","approved":true}\n'],
     [
-      'a sprayed range of ids',
+      'a sprayed range of confirmation lines',
       [...Array(32).keys()].map((i) => `wallet:confirmed {"id":"${i}","approved":true}\n`).join('')
     ],
     ['an updater control line', 'pear:applyUpdate\n'],
@@ -625,11 +622,12 @@ if (csp === null) {
   // Money paths must not move value while nobody is there to mean it. The
   // password re-entry tier is gone — no dialog ever collected one, so it only
   // ever refused — and what a large amount costs now is the confirmation the
-  // operating system draws. This suite cannot click that dialog, which is the
-  // point, so the proof is that the request neither succeeds nor fails on its
-  // own: it waits on a person. (The modal is left to its own timeout and dies
-  // with the instance; the window stays drivable because the dialog lives in
-  // the main process.)
+  // window itself draws. That dialog is reachable from here, so the proof has
+  // three legs rather than one: the dialog opens with the guard's figures, a
+  // `wallet.confirmed` quoting an id nobody asked about settles nothing and
+  // the request keeps waiting, and answering through the dialog's own Cancel
+  // button is what refuses it — which also leaves nothing standing for the
+  // suites that run next.
   //
   // `ai.fund` was the worst of the unguarded paths: the same call raises a
   // delegate's allowance by the amount deposited, and nothing lowers it again,
@@ -641,18 +639,65 @@ if (csp === null) {
   // is how a check like this passes after somebody removes the thing it tests.
   await asWorker('bridge.acknowledge', { accepted: true })
 
-  for (const request of ['ai.fund', 'ai.withdraw']) {
+  // With nothing outstanding, a confirmation naming an invented id is a no-op
+  // rather than an error — a late answer to an already-settled dialog lands
+  // here too, and must not be confused for one.
+  const stray = await asWorker('wallet.confirmed', {
+    id: 'not-an-id-that-was-sent',
+    approved: true
+  })
+  report(
+    'a confirmation for nothing outstanding settles nothing',
+    !stray?.error,
+    stray?.error ?? 'accepted and ignored'
+  )
+
+  for (const endpoint of ['ai.fund', 'ai.withdraw']) {
+    const pendingReply = asWorker(endpoint, { amount: (1000n * 10n ** 18n).toString() })
+
+    // The guard pushes `wallet.confirm` and the window's confirm.js opens the
+    // dialog. Waited for rather than assumed, because the next two assertions
+    // are about what happens while it is open.
+    const shown = await evaluate(`(async () => {
+      for (let i = 0; i < 50; i++) {
+        if (document.getElementById('confirm-dialog')?.open === true) return true
+        await new Promise((r) => setTimeout(r, 100))
+      }
+      return false
+    })()`)
+    report(
+      `${endpoint} opens the app's own confirmation dialog`,
+      shown === true,
+      shown ? 'themed dialog is up' : 'no dialog appeared'
+    )
+
+    // A forged answer quoting an id the guard never sent must settle nothing:
+    // the transfer waits on the person, not on whoever answers first.
+    await asWorker('wallet.confirmed', { id: `forged-${Date.now()}`, approved: true })
     const answered = await Promise.race([
-      asWorker(request, { amount: (1000n * 10n ** 18n).toString() }).then(
-        (reply) => `settled on its own: ${reply?.error ?? 'with no error at all'}`
+      pendingReply.then(
+        (reply) => `settled on a forged id: ${reply?.error ?? 'with no error at all'}`
       ),
       new Promise((resolve) => setTimeout(() => resolve(null), 3000))
     ])
     report(
-      `${request} waits for the operating system's answer rather than signing`,
+      `${endpoint} ignores a forged id and waits for the dialog's answer`,
       answered === null,
-      answered ?? 'still waiting on the dialog after 3s'
+      answered ?? 'still waiting after the forged answer'
     )
+
+    // Declined the way a person declines it: the dialog's own Cancel, which
+    // answers `approved: false` through the same path Confirm uses.
+    await evaluate(`document.getElementById('confirm-cancel')?.click(); true`)
+    const declined = await pendingReply
+    report(
+      `${endpoint} refuses when the dialog is declined`,
+      /not confirmed/.test(declined?.error ?? ''),
+      declined?.error?.slice(0, 60) ?? `returned ${JSON.stringify(declined)}`
+    )
+
+    const closed = await evaluate(`document.getElementById('confirm-dialog')?.open === false`)
+    report('and the dialog is gone afterwards', closed === true, `open: ${closed !== true}`)
   }
 
   // Two separate ceilings stand in front of an approval and either is a pass.

@@ -558,6 +558,16 @@ select.input option {
   gap: var(--lc-space-sm);
 }
 
+/* The confirm dialog's figures are sentences the worker built — "the job
+   registry at 0xfb15…" rather than a bare address — and `.wallet-key` keeps
+   those on one nowrap line sized for an address alone. Here they wrap instead:
+   a horizontal scrollbar over the one screen whose figures must be read whole
+   is worse than a broken line. */
+#confirm-review .wallet-key {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 /* --- Toast ---------------------------------------------------------------- */
 
 /* A notification card, docked at the top right beneath the window chrome —

@@ -91,6 +91,7 @@ import { localHandlers } from './handlers/local.mjs'
  *     { rid, t: 'worker.status' }
  *     { rid, t: 'worker.logs' }
  *     { rid, t: 'wallet.status' }
+ *     { rid, t: 'wallet.confirmed', id, approved }   → the dialog's answer; settles the guard
  *     { rid, t: 'wallet.create',  password }     → also returns the phrase, once
  *     { rid, t: 'wallet.import',  phrase, password }
  *     { rid, t: 'wallet.reveal',  password }
@@ -114,6 +115,8 @@ import { localHandlers } from './handlers/local.mjs'
  *     { t: 'ok',    id, value }
  *     { t: 'error', id, message }
  *     { t: 'room',  room: state }        pushed whenever a room changes
+ *     { t: 'wallet.confirm', id, amount, to, from, network, fee }
+ *                                      pushed when a transfer needs a person's answer
  *     { t: 'wallet.deposit', chainId, chainName, symbol, amountWei, amountText, address }
  *                                      pushed when a watched balance goes up
  *
@@ -964,14 +967,19 @@ const localState = new SealedStore(fileByteStore(path.join(chatDir, 'local')), {
  * the answer is read fresh.
  */
 /**
- * The checks a compromised window cannot answer for itself.
+ * The checks that decide what moving money costs.
+ *
+ * The thresholds and the idle clock live here, on the worker's side of the
+ * seam, where a compromised window cannot rewrite them. The confirmation
+ * itself is answered by the window now — see guard.mjs for the trade that was
+ * accepted and what is still guaranteed.
  *
  * Started here rather than lazily, because the idle timer has to be running
  * from the moment the wallet can be unlocked — not from the first transfer.
  */
 const guard = createGuard({
   wallet,
-  pipe,
+  send,
   settings: () => settings,
   onAutoLock() {
     // Locking has to end the conversation for the same reason `wallet.lock`
@@ -1040,6 +1048,14 @@ const ctx = {
  */
 const handlers = {
   __proto__: null,
+  /**
+   * The window's answer to the guard's `wallet.confirm` push.
+   *
+   * Registered here rather than in a handler module because the guard is the
+   * only state it touches, and the guard belongs to this file. An id nobody
+   * asked about settles nothing — see guard.settle.
+   */
+  'wallet.confirmed': ({ id, approved }) => guard.settle(id, approved === true),
   ...roomHandlers(ctx),
   ...walletHandlers(ctx),
   ...assetHandlers(ctx),
@@ -1076,10 +1092,6 @@ if (config.updates !== false) {
 }
 
 async function onLine(text) {
-  // Before the JSON, because the confirmation channel is plain strings like the
-  // updater's and would otherwise be logged as an unreadable message.
-  if (guard.handleLine(text)) return
-
   if (text === 'pear:applyUpdate') {
     // Answered either way. Only the success was reported before, so an update
     // that threw left the main process waiting on a confirmation that was never

@@ -1,0 +1,56 @@
+    <!-- Confirming a large transfer --------------------------------------------
+         The last word before the worker signs, in the app's own clothes. It
+         used to be the operating system's message box, which a page could not
+         cover or restyle — and which also looked and sounded like somebody
+         else's application. Every figure on this card is pushed by the worker
+         from the transaction it is about to sign; the window is only the
+         frame. A second request arriving while one is open queues rather than
+         clobbering it — see lib/confirm.js. -->
+    <dialog class="dialog" id="confirm-dialog">
+      <div class="dialog-form">
+        <div class="dialog-head">
+          <h2 class="dialog-title">Confirm this transfer</h2>
+          <button
+            class="dialog-close"
+            type="button"
+            id="confirm-close"
+            aria-label="Cancel"
+            title="Cancel"
+          >
+            <svg class="icon" aria-hidden="true"><use href="#i-close" /></svg>
+          </button>
+        </div>
+
+        <!-- What the worker is about to sign, quoted back before anything is.
+             Same card and facts as Send's review step, because a figure that
+             looks different here than there invites the question of which one
+             is real — the answer has to be that both are the worker's. -->
+        <section class="send-review" id="confirm-review">
+          <dl class="facts">
+            <dt>Sending</dt>
+            <dd id="confirm-amount"></dd>
+            <dt>To</dt>
+            <dd><code class="wallet-key" id="confirm-to"></code></dd>
+            <dt>From</dt>
+            <dd><code class="wallet-key" id="confirm-from"></code></dd>
+            <dt>Network</dt>
+            <dd><span class="chip" id="confirm-network"></span></dd>
+            <dt id="confirm-fee-label">Most it can cost in fees</dt>
+            <dd id="confirm-fee"></dd>
+          </dl>
+        </section>
+
+        <div class="alert" data-tone="warn" role="alert">
+          <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+          <div class="alert-body">
+            <strong class="alert-title">This cannot be undone</strong>
+            <span>Nobody can reverse it for you.</span>
+          </div>
+        </div>
+
+        <div class="dialog-actions">
+          <button class="button" type="button" id="confirm-cancel">Cancel</button>
+          <button class="button button-primary" type="button" id="confirm-approve">Confirm</button>
+        </div>
+      </div>
+    </dialog>
