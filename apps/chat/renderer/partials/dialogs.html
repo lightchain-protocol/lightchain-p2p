@@ -144,7 +144,11 @@
             here is what you are relying on.
           </p>
           <ul class="bridge-disclosure" id="bridge-disclosure"></ul>
-          <label class="field bridge-accept">
+          <!-- Not `.field`: that is a vertical stack of label over control,
+               which made this a full-width bar with its sentence on the line
+               below — in front of an irreversible transfer. `.bridge-accept`
+               is a row, and review.mjs measures that it stays one. -->
+          <label class="bridge-accept">
             <input type="checkbox" id="bridge-accept" />
             <span>I have read this and want to continue</span>
           </label>

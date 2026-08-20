@@ -26,8 +26,7 @@ const WORDS_TO_VERIFY = 3
 
 const onboarding = {
   root: document.getElementById('onboarding'),
-  steps: [...document.querySelectorAll('.onboarding .step')],
-  heading: document.getElementById('step-heading')
+  steps: [...document.querySelectorAll('.onboarding .step')]
 }
 
 /** The phrase, held only between showing it and confirming it. */

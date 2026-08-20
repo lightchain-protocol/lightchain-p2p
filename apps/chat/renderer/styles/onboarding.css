@@ -24,7 +24,21 @@
   /* Promoted from visible to auto by overflow-y alone, which paints a
      horizontal track on Windows over content that never needed one. */
   overflow-x: hidden;
-  background: var(--lc-bg);
+  background: var(--lc-surface-1);
+}
+
+/* The overlay appears between one wallet question and the next, so it gets the
+   slow step rather than the fast one — it is a screen arriving, not a control
+   responding. The token is 0ms under reduced motion, which is the whole of the
+   honouring: write the transition once, never branch on the preference. */
+.onboarding:not([hidden]) {
+  animation: onboarding-in var(--lc-motion-slow) var(--lc-easing) both;
+}
+
+@keyframes onboarding-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /* Two soft washes of the accent, well below the text. The card sits on a field
@@ -81,8 +95,8 @@
 }
 
 .onboarding-wordmark {
-  font-size: var(--lc-text-lg);
-  font-weight: 600;
+  font-size: var(--lc-type-title-3);
+  font-weight: var(--lc-weight-semibold);
   letter-spacing: 0.01em;
 }
 
@@ -91,7 +105,7 @@
 /* Each step is a slide. The movement is small on purpose: enough to say the
    screen changed, not enough to make somebody wait for it. */
 .step {
-  animation: onboarding-step-in var(--lc-motion-base) ease-out both;
+  animation: onboarding-step-in var(--lc-motion-base) var(--lc-easing) both;
 }
 
 @keyframes onboarding-step-in {
@@ -110,22 +124,30 @@
 .step-eyebrow {
   display: block;
   margin-bottom: var(--lc-space-sm);
-  color: var(--lc-brand-ink);
-  font-size: var(--lc-text-xs);
-  font-weight: 600;
+  color: var(--lc-accent);
+  font-size: var(--lc-type-caption);
+  font-weight: var(--lc-weight-semibold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
+/* Two title sizes, by role rather than by which screen happens to hold them.
+   A step that opens a route — welcome, unlock, restore — gets the page-sized
+   title. A step inside the numbered create flow is one of three, so its title
+   steps down and the eyebrow above it carries the orientation. */
 .step-title {
   margin: 0 0 var(--lc-space-md);
-  font-size: var(--lc-text-xxl);
-  font-weight: 600;
+  font-size: var(--lc-type-title-1);
+  font-weight: var(--lc-weight-semibold);
   line-height: var(--lc-leading-tight);
   letter-spacing: -0.015em;
   /* Evens the lines of a two-line heading instead of leaving one word alone
      underneath, which at this size is the most visible flaw on the screen. */
   text-wrap: balance;
+}
+
+.step-eyebrow + .step-title {
+  font-size: var(--lc-type-title-2);
 }
 
 /* `pretty` rather than reworded sentences: it stops a paragraph ending on a
@@ -143,7 +165,7 @@
 .step-body {
   margin: 0 0 var(--lc-space-xl);
   max-width: 46ch;
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
   line-height: var(--lc-leading-relaxed);
 }
 
@@ -156,6 +178,10 @@
 
 /* --- Progress ------------------------------------------------------------- */
 
+/* Three segments, one per step of the create flow. The current one is longer
+   and solid accent — "you are here" is positional, not just a darker shade of
+   the same dash, which at 3px tall is the difference between reading it and
+   not. */
 .step-progress {
   display: flex;
   gap: var(--lc-space-xs);
@@ -167,15 +193,19 @@
   width: 22px;
   height: 3px;
   border-radius: var(--lc-radius-pill);
-  background: var(--lc-rule);
+  background: var(--lc-rule-strong);
+  transition:
+    width var(--lc-motion-base) var(--lc-easing),
+    background var(--lc-motion-base) var(--lc-easing);
 }
 
 .step-progress span[data-state='done'] {
-  background: color-mix(in srgb, var(--lc-brand) 55%, transparent);
+  background: color-mix(in srgb, var(--lc-accent) 45%, transparent);
 }
 
 .step-progress span[data-state='here'] {
-  background: var(--lc-brand);
+  width: 32px;
+  background: var(--lc-accent);
 }
 
 /* --- Choices -------------------------------------------------------------- */
@@ -197,20 +227,20 @@
   padding: var(--lc-space-lg);
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-lg);
-  background: var(--lc-bg-elevated);
+  background: var(--lc-surface-2);
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
   transition:
-    border-color var(--lc-motion-fast) ease,
-    background var(--lc-motion-fast) ease,
-    transform var(--lc-motion-fast) ease;
+    border-color var(--lc-motion-fast) var(--lc-easing),
+    background var(--lc-motion-fast) var(--lc-easing),
+    transform var(--lc-motion-fast) var(--lc-easing);
 }
 
 .choice:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--lc-brand) 60%, transparent);
-  background: var(--lc-bg-elevated-2);
+  border-color: color-mix(in srgb, var(--lc-accent) 60%, transparent);
+  background: var(--lc-surface-3);
   transform: translateY(-1px);
 }
 
@@ -230,28 +260,35 @@
 
 .choice-title {
   display: block;
-  font-weight: 600;
+  font-weight: var(--lc-weight-semibold);
 }
 
 .choice-note {
   display: block;
   margin-top: var(--lc-space-xs);
-  color: var(--lc-fg-muted);
-  font-size: var(--lc-text-sm);
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-type-caption);
   line-height: var(--lc-leading-normal);
 }
 
 .choice-mark {
-  color: var(--lc-fg-dim);
-  font-size: var(--lc-text-lg);
+  color: var(--lc-text-tertiary);
+  font-size: var(--lc-type-title-3);
+  transition: color var(--lc-motion-fast) var(--lc-easing);
 }
 
+.choice:hover:not(:disabled) .choice-mark {
+  color: var(--lc-accent);
+}
+
+/* The recommended route is the accent's one job on this screen: a soft wash
+   and a stronger border, so it is findable without shouting over the words. */
 .choice-primary {
-  border-color: color-mix(in srgb, var(--lc-brand) 45%, transparent);
+  border-color: color-mix(in srgb, var(--lc-accent) 45%, transparent);
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--lc-brand) 16%, var(--lc-bg-elevated)),
-    var(--lc-bg-elevated)
+    var(--lc-accent-soft),
+    var(--lc-surface-2)
   );
 }
 
@@ -280,7 +317,7 @@
   padding: var(--lc-space-lg);
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: var(--lc-bg-elevated);
+  background: var(--lc-surface-2);
   list-style: none;
   counter-reset: word;
 }
@@ -291,7 +328,7 @@
   gap: var(--lc-space-sm);
   align-items: baseline;
   font-family: var(--lc-mono);
-  font-size: var(--lc-text-sm);
+  font-size: var(--lc-type-caption);
   /* The body forbids selection as a desktop-app convention. This is one of the
      few things somebody genuinely needs to copy by hand. */
   user-select: text;
@@ -301,7 +338,7 @@
   content: counter(word);
   min-width: 1.4em;
   text-align: right;
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -317,24 +354,25 @@
   justify-items: center;
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: color-mix(in srgb, var(--lc-bg-elevated) 82%, transparent);
+  background: color-mix(in srgb, var(--lc-surface-2) 82%, transparent);
   backdrop-filter: blur(7px);
   cursor: pointer;
   color: inherit;
   font: inherit;
+  transition: border-color var(--lc-motion-fast) var(--lc-easing);
 }
 
 .phrase-cover:hover {
-  border-color: color-mix(in srgb, var(--lc-brand) 55%, transparent);
+  border-color: color-mix(in srgb, var(--lc-accent) 55%, transparent);
 }
 
 .phrase-cover-title {
-  font-weight: 600;
+  font-weight: var(--lc-weight-semibold);
 }
 
 .phrase-cover-note {
-  color: var(--lc-fg-muted);
-  font-size: var(--lc-text-sm);
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-type-caption);
 }
 
 .confirm-fields {
@@ -370,21 +408,21 @@
   border: 0;
   border-radius: var(--lc-radius-sm);
   background: none;
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   font: inherit;
-  font-size: var(--lc-text-xs);
+  font-size: var(--lc-type-caption);
   cursor: pointer;
 }
 
 .field-reveal:hover {
-  color: var(--lc-fg);
+  color: var(--lc-text-primary);
 }
 
 /* Says what the field wants before it is wrong, rather than after. */
 .field-hint {
   margin: calc(-1 * var(--lc-space-xs)) 0 0;
-  color: var(--lc-fg-dim);
-  font-size: var(--lc-text-xs);
+  color: var(--lc-text-tertiary);
+  font-size: var(--lc-type-caption);
 }
 
 .field-hint[data-state='ok'] {
@@ -397,6 +435,10 @@
 
 /* --- Notes ---------------------------------------------------------------- */
 
+/* A note inside a step, tonable. The neutral one is a raised card; the two
+   status tones take the soft backgrounds the alert tokens exist for, with the
+   colour repeated in the border's leading edge because a tint alone is not a
+   signal. */
 .step-note {
   display: grid;
   gap: var(--lc-space-xs);
@@ -405,23 +447,25 @@
   border: 1px solid var(--lc-rule);
   border-left-width: 3px;
   border-radius: var(--lc-radius-md);
-  background: var(--lc-bg-elevated);
-  color: var(--lc-fg-muted);
-  font-size: var(--lc-text-sm);
+  background: var(--lc-surface-2);
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-type-caption);
   line-height: var(--lc-leading-normal);
 }
 
 .step-note strong {
-  color: var(--lc-fg);
-  font-weight: 600;
+  color: var(--lc-text-primary);
+  font-weight: var(--lc-weight-semibold);
 }
 
 .step-note-warn {
   border-left-color: var(--lc-warning);
+  background: var(--lc-warning-soft);
 }
 
 .step-note-danger {
   border-left-color: var(--lc-danger);
+  background: var(--lc-danger-soft);
 }
 
 /* --- The quiet way out ---------------------------------------------------- */
@@ -439,16 +483,16 @@
   border: 0;
   border-radius: var(--lc-radius-sm);
   background: none;
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   font: inherit;
-  font-size: var(--lc-text-sm);
+  font-size: var(--lc-type-caption);
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
 }
 
 .link-button:hover {
-  color: var(--lc-fg);
+  color: var(--lc-text-primary);
 }
 
 /* --- Layout helpers ------------------------------------------------------- */
@@ -465,9 +509,10 @@
 .choice:focus-visible,
 .phrase-cover:focus-visible,
 .link-button:focus-visible,
-.field-reveal:focus-visible {
-  outline: 2px solid var(--lc-brand);
-  outline-offset: 2px;
+.field-reveal:focus-visible,
+.step-link:focus-visible {
+  outline: var(--lc-focus-ring);
+  outline-offset: var(--lc-focus-offset);
 }
 
 /* --- The welcome screen's two controls ------------------------------------ */

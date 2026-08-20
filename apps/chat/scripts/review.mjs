@@ -263,6 +263,52 @@ note(
     : `opened: ${restores.opened}, moved in: ${restores.moved}, restored: ${restores.restored}`
 )
 
+// --- The consent in front of an irreversible transfer -------------------------
+
+/**
+ * The bridge terms gate is a checkbox beside its sentence, on one row.
+ *
+ * It once wore `.field` — a vertical stack of label over control — and a bare
+ * checkbox stretches in a column's cross axis, so the consent rendered as a
+ * full-width bar with "I have read this and want to continue" on the line
+ * below it, in front of a transfer that cannot be recalled. Screenshots of the
+ * dialog looked plausible at a glance; only measuring the box against its
+ * sentence catches it. So this measures: a row, a checkbox no wider than a
+ * checkbox, and the words beginning beside it on the same line.
+ */
+const consent = await evaluate(`(() => {
+  const dialog = document.getElementById('bridge-dialog')
+  const box = document.getElementById('bridge-accept')
+  const label = box?.closest('label')
+  const words = label?.querySelector('span')
+  if (!dialog || !box || !label || !words) return { missing: true }
+
+  dialog.showModal()
+  const style = getComputedStyle(label)
+  const cb = box.getBoundingClientRect()
+  const tx = words.getBoundingClientRect()
+  const measured = {
+    missing: false,
+    row: style.display === 'flex' && style.flexDirection.startsWith('row'),
+    boxWidth: Math.round(cb.width),
+    // The words start on the checkbox's line, not the line below it.
+    sameRow: Math.abs(tx.top - cb.top) <= 6,
+    // And to its right, not wrapped underneath it.
+    beside: tx.left >= cb.right - 1
+  }
+  dialog.close()
+  return measured
+})()`)
+
+note(
+  consent.missing !== true && consent.row && consent.boxWidth <= 32 && consent.sameRow &&
+    consent.beside,
+  'the bridge consent is a checkbox beside its label, on one row',
+  consent.missing
+    ? 'no bridge dialog, checkbox or label found'
+    : `row: ${consent.row}, box ${consent.boxWidth}px wide, same row: ${consent.sameRow}, beside: ${consent.beside}`
+)
+
 // --- What a cold boot actually shows -------------------------------------------
 
 /**

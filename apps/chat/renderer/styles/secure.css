@@ -1,14 +1,18 @@
 /**
- * The encryption explanation, behind the lock in the room header.
+ * The dialogs this agent owns, and the chrome that goes with them.
  *
- * This is the one dialog in the application that is a reading page. The other
+ * The first half is the encryption explanation, behind the lock in the room
+ * header — the one dialog in the application that is a reading page. The other
  * dialogs ask a question and take an answer in a 52ch box; this one has to
  * name four sets of primitives, cite a specification for each, and then say
  * what none of them cover. That does not fit, and squeezing it in is what
  * produced the four lines of prose this replaced.
  *
- * So the dialog is only the frame. Inside it is `.page`, which COMPONENTS.md
- * names the encryption explanation as a case of, and the page is the scroller.
+ * The second half is the pieces `dialogs.html` wears that nothing else styles.
+ * The shared dialog frame (`.dialog`, `.dialog-form`, `.dialog-actions`) lives
+ * in app.css; the stylesheet link list in head.html is shared, so the dialogs
+ * have no sheet of their own and their own pieces live here, beside the other
+ * dialog this file already owns.
  */
 
 /* The closed state comes from the user agent, so the flex layout has to be
@@ -49,7 +53,7 @@
 
 .secure-lede {
   margin: 0;
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
   text-wrap: pretty;
 }
 
@@ -68,13 +72,13 @@
 }
 
 .secure-layer-head .icon {
-  color: var(--lc-brand);
+  color: var(--lc-accent);
 }
 
 .secure-layer-title {
   margin: 0;
-  font-size: var(--lc-text-lg);
-  font-weight: 600;
+  font-size: var(--lc-type-title-3);
+  font-weight: var(--lc-weight-semibold);
   line-height: var(--lc-leading-tight);
 }
 
@@ -102,9 +106,9 @@
 }
 
 .secure-terms dt {
-  color: var(--lc-fg-dim);
-  font-size: var(--lc-text-xs);
-  font-weight: 600;
+  color: var(--lc-text-tertiary);
+  font-size: var(--lc-type-caption);
+  font-weight: var(--lc-weight-semibold);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -128,8 +132,8 @@
   margin: 0;
   padding-left: var(--lc-space-md);
   border-left: 2px solid var(--lc-warning);
-  color: var(--lc-fg-muted);
-  font-size: var(--lc-text-sm);
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-type-caption);
   line-height: var(--lc-leading-normal);
   text-wrap: pretty;
 }
@@ -140,8 +144,8 @@
   margin: 0;
   padding: var(--lc-space-sm) var(--lc-space-md);
   border-radius: var(--lc-radius-md);
-  background: var(--lc-bg-elevated-2);
-  font-size: var(--lc-text-sm);
+  background: var(--lc-surface-3);
+  font-size: var(--lc-type-caption);
   text-wrap: pretty;
 }
 
@@ -161,9 +165,9 @@
 }
 
 .secure-refs-label {
-  color: var(--lc-fg-dim);
-  font-size: var(--lc-text-xs);
-  font-weight: 600;
+  color: var(--lc-text-tertiary);
+  font-size: var(--lc-type-caption);
+  font-weight: var(--lc-weight-semibold);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -185,15 +189,18 @@
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-pill);
   background: none;
-  color: var(--lc-brand-ink);
+  color: var(--lc-accent);
   font: inherit;
-  font-size: var(--lc-text-xs);
+  font-size: var(--lc-type-caption);
   cursor: pointer;
+  transition:
+    border-color var(--lc-motion-fast) var(--lc-easing),
+    background var(--lc-motion-fast) var(--lc-easing);
 }
 
 .secure-ref:hover {
-  border-color: var(--lc-brand);
-  background: color-mix(in srgb, var(--lc-brand) 12%, transparent);
+  border-color: var(--lc-accent);
+  background: var(--lc-accent-soft);
 }
 
 /* Matching `.chip .icon` in the kit, so the pill beside a title and the pill
@@ -201,7 +208,7 @@
 .secure-ref .icon {
   width: 13px;
   height: 13px;
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
 /* --- What none of this hides ---------------------------------------------- */
@@ -219,8 +226,8 @@
 
 .secure-exposed-lede {
   margin: 0;
-  color: var(--lc-fg-muted);
-  font-size: var(--lc-text-sm);
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-type-caption);
   text-wrap: pretty;
 }
 
@@ -234,8 +241,8 @@
 }
 
 .secure-exposures li {
-  color: var(--lc-fg-muted);
-  font-size: var(--lc-text-sm);
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-type-caption);
   line-height: var(--lc-leading-normal);
   text-wrap: pretty;
 }
@@ -244,8 +251,8 @@
    scannable without reading four paragraphs, and it is why these need no
    bullet. */
 .secure-exposures strong {
-  color: var(--lc-fg);
-  font-weight: 600;
+  color: var(--lc-text-primary);
+  font-weight: var(--lc-weight-semibold);
 }
 
 /* Pushed to the right the way every other dialog's actions are, and given a
@@ -279,4 +286,163 @@
   .secure-layer-head .chip {
     margin-left: 0;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   The shared dialogs' own pieces (dialogs.html)
+   ------------------------------------------------------------------------- */
+
+/* An alert inside a dialog takes the soft status tint, not just the coloured
+   border: in a 52ch box the alert is the thing the dialog exists to say, and
+   the border alone was easy to miss next to the card around it. Scoped to
+   `.dialog` so the kit's own rule keeps holding everywhere else. */
+.dialog .alert[data-tone='warn'] {
+  background: var(--lc-warning-soft);
+}
+
+.dialog .alert[data-tone='error'] {
+  background: var(--lc-danger-soft);
+}
+
+.dialog .alert[data-tone='info'] {
+  background: var(--lc-accent-soft);
+}
+
+/* What this route is asking somebody to rely on, before it asks for money.
+   The worker writes the lines; this is only the measure and the rhythm. */
+.bridge-disclosure {
+  display: grid;
+  gap: var(--lc-space-sm);
+  margin: 0;
+  padding-inline-start: 1.2em;
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-type-caption);
+  line-height: var(--lc-leading-normal);
+}
+
+.bridge-disclosure li::marker {
+  color: var(--lc-text-tertiary);
+}
+
+/**
+ * The consent in front of an irreversible transfer.
+ *
+ * This once wore `.field`, a vertical stack of label over control, and a bare
+ * checkbox stretches in a column's cross axis — so it rendered as a full-width
+ * bar with its sentence on the line below. It is a row now, boxed so it reads
+ * as a decision rather than as fine print, and review.mjs measures that the
+ * box and its sentence stay on one row.
+ */
+.bridge-accept {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lc-space-sm);
+  margin-top: var(--lc-space-xs);
+  padding: var(--lc-space-md);
+  border: 1px solid var(--lc-rule-strong);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-surface-2);
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-type-caption);
+  line-height: var(--lc-leading-normal);
+  cursor: pointer;
+  transition: border-color var(--lc-motion-fast) var(--lc-easing);
+}
+
+.bridge-accept:hover {
+  border-color: color-mix(in srgb, var(--lc-accent) 55%, var(--lc-rule-strong));
+}
+
+/* Drawn rather than native, so it takes the theme: an 18px box that fills with
+   the accent when it is ticked, the tick itself a turned corner of two borders.
+   No image, so nothing for the content policy to refuse. */
+.bridge-accept input[type='checkbox'] {
+  appearance: none;
+  display: grid;
+  place-content: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  margin: 1px 0 0;
+  padding: 0;
+  border: 1px solid var(--lc-rule-strong);
+  border-radius: var(--lc-radius-sm);
+  background: var(--lc-surface-1);
+  cursor: pointer;
+  transition:
+    background var(--lc-motion-fast) var(--lc-easing),
+    border-color var(--lc-motion-fast) var(--lc-easing);
+}
+
+.bridge-accept input[type='checkbox']::before {
+  content: '';
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid var(--lc-accent-contrast);
+  border-bottom: 2px solid var(--lc-accent-contrast);
+  transform: rotate(-45deg) translate(1px, -1px) scale(0);
+  transition: transform var(--lc-motion-fast) var(--lc-easing);
+}
+
+.bridge-accept input[type='checkbox']:checked {
+  border-color: var(--lc-accent);
+  background: var(--lc-accent);
+}
+
+.bridge-accept input[type='checkbox']:checked::before {
+  transform: rotate(-45deg) translate(1px, -1px) scale(1);
+}
+
+.bridge-accept input[type='checkbox']:focus-visible {
+  outline: var(--lc-focus-ring);
+  outline-offset: var(--lc-focus-offset);
+}
+
+/* What the worker actually built, quoted back before anything is signed. A
+   card, because the figures in it come from the transaction rather than from
+   the form above, and the box is what says so. */
+.send-review {
+  padding: var(--lc-space-md) var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-surface-2);
+}
+
+.send-warnings {
+  display: grid;
+  gap: var(--lc-space-xs);
+  margin-top: var(--lc-space-md);
+}
+
+/* A warning on a review is read while deciding, so it keeps the warning colour
+   rather than going muted — the one place muted is wrong is the line that
+   might stop the send. */
+.send-warning {
+  margin: 0;
+  color: var(--lc-warning);
+  font-size: var(--lc-type-caption);
+  line-height: var(--lc-leading-normal);
+  text-wrap: pretty;
+}
+
+/* ---------------------------------------------------------------------------
+   The toast
+   ------------------------------------------------------------------------- */
+
+/* The toast's frame lives in app.css with the rest of the shared chrome; these
+   are its colours and its motion, retuned to the tokens. Raised one surface
+   above the page behind it, the elevation token rather than a hand-rolled
+   shadow, and the error tone drawn from the soft status pair instead of a bare
+   colour on grey. */
+.toast {
+  border-color: var(--lc-rule-strong);
+  background: var(--lc-surface-3);
+  box-shadow: var(--lc-shadow-2);
+  animation: toast-in var(--lc-motion-base) var(--lc-easing);
+}
+
+.toast[data-tone='error'] {
+  border-color: color-mix(in srgb, var(--lc-danger) 45%, var(--lc-rule-strong));
+  background: var(--lc-danger-soft);
+  color: var(--lc-danger);
 }

@@ -1,23 +1,52 @@
 /**
- * settings overlay.
+ * The settings overlay.
  *
  * Split out of app.css so this surface can be worked on without touching every
  * other one. app.css keeps what is genuinely shared.
+ *
+ * Everything here is scoped to the overlay's own classes. The nav used to wear
+ * the sidebar's `.nav-item` and its heading wore `.sidebar-title` — two
+ * cross-surface leaks, which meant restyling the sidebar silently restyled
+ * this panel and `.sidebar-title` resolved to nothing at all once the sidebar
+ * stopped defining it. `.settings-nav-item` is the same *pattern* — a row, a
+ * hover, an active state with the accent's soft wash — built from the tokens
+ * rather than borrowed from another surface.
  */
 
-/* --- Settings ------------------------------------------------------------- */
+/* --- The frame ------------------------------------------------------------ */
 
 .settings {
   position: fixed;
   inset: 38px 0 0;
   z-index: 20;
-  background: var(--lc-bg);
+  background: var(--lc-surface-1);
+}
+
+/* The overlay covers the whole window, so it arrives like a screen rather than
+   like a control: slow step, token easing, 0ms under reduced motion. */
+.settings:not([hidden]) {
+  animation: settings-in var(--lc-motion-base) var(--lc-easing) both;
+}
+
+@keyframes settings-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings:not([hidden]) {
+    animation: none;
+  }
 }
 
 .settings-frame {
   display: flex;
   height: 100%;
 }
+
+/* --- The section nav ------------------------------------------------------- */
 
 .settings-nav {
   display: flex;
@@ -26,13 +55,79 @@
   width: 200px;
   padding: var(--lc-space-md);
   border-right: 1px solid var(--lc-rule);
-  background: var(--lc-bg-elevated);
+  background: var(--lc-surface-2);
   flex: 0 0 auto;
+}
+
+/* The heading over the sections. The sidebar's own title class is the
+   sidebar's; this is the same role set from the tokens. */
+.settings-title {
+  margin: 0 0 var(--lc-space-sm);
+  padding: 0 var(--lc-space-sm);
+  color: var(--lc-text-tertiary);
+  font-size: var(--lc-type-caption);
+  font-weight: var(--lc-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* One section in the list. A row tall enough to be a control, quiet until it
+   is hovered or current, and the current one carries the accent's soft wash
+   with a bar on its leading edge — the kit's nav pattern, scoped here. */
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  width: 100%;
+  min-height: var(--lc-control-md);
+  padding: var(--lc-space-xs) var(--lc-space-sm);
+  border: 0;
+  border-radius: var(--lc-radius-sm);
+  background: transparent;
+  color: var(--lc-text-secondary);
+  font: inherit;
+  font-size: var(--lc-type-body);
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  transition:
+    background var(--lc-motion-fast) var(--lc-easing),
+    color var(--lc-motion-fast) var(--lc-easing);
+}
+
+.settings-nav-item:hover {
+  background: var(--lc-surface-hover);
+  color: var(--lc-text-primary);
+}
+
+.settings-nav-item.is-active {
+  background: var(--lc-accent-soft);
+  color: var(--lc-text-primary);
+  font-weight: var(--lc-weight-medium);
+}
+
+.settings-nav-item.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-accent);
+}
+
+.settings-nav-item:focus-visible {
+  outline: var(--lc-focus-ring);
+  outline-offset: var(--lc-focus-offset);
 }
 
 .settings-nav .button-block {
   margin-top: auto;
 }
+
+/* --- The pages ------------------------------------------------------------ */
 
 .settings-body {
   flex: 1 1 auto;
@@ -52,8 +147,8 @@
 
 .settings-heading {
   margin: 0;
-  font-size: var(--lc-text-lg);
-  font-weight: 600;
+  font-size: var(--lc-type-title-3);
+  font-weight: var(--lc-weight-semibold);
   line-height: var(--lc-leading-tight);
 }
 
@@ -68,31 +163,32 @@
 
 .settings-note {
   margin: 0;
-  font-size: var(--lc-text-sm);
+  font-size: var(--lc-type-caption);
   line-height: var(--lc-leading-normal);
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
 }
 
 /* A note describes a setting; this one describes what a setting cannot do. It
    is not styled like the wallet's warning by accident — but it is its own class
    rather than a reuse, because restyling one of them should not silently
-   restyle the other. */
+   restyle the other. The soft warning tint is what the status tokens are for. */
 .settings-warning {
   margin: 0;
   padding: var(--lc-space-md);
-  border: 1px solid var(--lc-rule);
+  border: 1px solid color-mix(in srgb, var(--lc-warning) 40%, var(--lc-rule));
   border-radius: var(--lc-radius-md);
-  font-size: var(--lc-text-sm);
+  background: var(--lc-warning-soft);
+  font-size: var(--lc-type-caption);
   line-height: var(--lc-leading-normal);
-  color: var(--lc-warning);
+  color: var(--lc-text-secondary);
 }
 
 /* What a field resolves to, under the field. Quieter than a note, because it is
    read while typing rather than before deciding. */
 .settings-hint {
   margin: 0;
-  font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+  font-size: var(--lc-type-caption);
+  color: var(--lc-text-tertiary);
   overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
@@ -113,6 +209,8 @@
   gap: var(--lc-space-md);
 }
 
+/* --- Templates -------------------------------------------------------------- */
+
 .template-list {
   display: flex;
   flex-direction: column;
@@ -129,7 +227,7 @@
   padding: var(--lc-space-md);
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: var(--lc-bg-elevated);
+  background: var(--lc-surface-2);
 }
 
 .template-main {
@@ -141,8 +239,8 @@
 }
 
 .template-name {
-  font-size: var(--lc-text-sm);
-  font-weight: 600;
+  font-size: var(--lc-type-caption);
+  font-weight: var(--lc-weight-semibold);
   overflow-wrap: anywhere;
 }
 
@@ -156,9 +254,9 @@
   -webkit-line-clamp: 2;
   line-clamp: 2;
   overflow: hidden;
-  font-size: var(--lc-text-xs);
+  font-size: var(--lc-type-caption);
   line-height: var(--lc-leading-normal);
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
