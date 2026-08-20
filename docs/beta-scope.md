@@ -1,9 +1,26 @@
 # BETA Scope — what is done, what is left, and the path to ship
 
-Compiled 20 August 2026, at commit `d68f9e5` (post Wave-3 QA).
+Compiled 20 August 2026, updated at commit `2e7338d` (post Wave-4 QA).
 Sources: `ROADMAP.md`, `docs/audit-2026-08-18.md`, `docs/gui-rebuild-plan.md`,
 live harness runs, and direct source verification. Where something has not been
 re-verified it is marked **[verify]** rather than assumed.
+
+### Wave-4 additions (20 August, verified live: review 20/20, surfaces 43/43, conversation 43/43, clipboard 25/25, bridge 32/32, assets 49/49)
+
+- **Worker registration works out of the box**: mainnet contract addresses are
+  the default in `packages/worker/src/network.ts` (AIConfig **proxy**
+  `0x24D1…Ce77D`, JobRegistry proxy `0xfB15…C42B0b` — the impl address is never
+  dialed); explicit settings/env still override; testnet profile intact.
+- **Read receipts**: ✓ sent / ✓✓ read ticks on own messages, driven by the
+  presence channel, with a Privacy toggle (default off) in Settings.
+- **Bridge is a page**: nav peer (Models · Account · Bridge · Earn), quote,
+  consent row, status card with arrival check; the dialog is deleted.
+- **Account decluttered**: Buy stripped app-wide, Send/Receive icons render in
+  both themes (the `#i-receive` symbol had never existed in the sprite),
+  receive picker groups assets under network optgroups, Advanced is
+  "Networks and holdings".
+- **Cohesion pass**: the last cross-surface CSS leak closed, focus rings and
+  motion on tokens everywhere, `Loading…` instead of dashes throughout.
 
 ---
 
