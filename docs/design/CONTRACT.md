@@ -209,7 +209,36 @@ here **before** the markup that uses it; A2 wires `dom.js`/`main.js`.
 
 | Id | Owner | Purpose | Added in |
 |---|---|---|---|
-| *(empty — register new ids here)* | | | |
+| `backup-banner-dismiss` | A2 | Closes the backup banner without opening Settings. | `6494f7c` |
+| `worker-step-host-title` | W | Step 1 heading ("Host ready"); the card's `aria-labelledby`. | `fa009aa` |
+| `worker-host-state` | W | Step 1 chip: failures/warnings/Ready. | `fa009aa` |
+| `worker-host-alert` | W | Step 1's inline error slot. | `fa009aa` |
+| `worker-step-key-title` | W | Step 2 heading ("Worker key"). | `fa009aa` |
+| `worker-key-state` | W | Step 2 chip: No key / Key ready. | `fa009aa` |
+| `worker-key-present` | W | Step 2 body when a key exists (address + copy). | `fa009aa` |
+| `worker-key-absent` | W | Step 2 body when there is no key (both forms). | `fa009aa` |
+| `worker-key-address` | W | The worker key's address, truncated; full value on `dataset.full`. | `fa009aa` |
+| `worker-key-copy` | W | Copies the worker key's address. | `fa009aa` |
+| `worker-import-form` | W | Import-an-existing-key form (submits `worker.importKey`). | `fa009aa` |
+| `worker-import-key` | W | Private-key input, cleared the moment it is read. | `fa009aa` |
+| `worker-import-password` | W | Keystore password input for the import. | `fa009aa` |
+| `worker-import-submit` | W | Import form's submit. | `fa009aa` |
+| `worker-create-form` | W | Create-a-new-key form (submits `worker.createKey`). | `fa009aa` |
+| `worker-create-password` | W | Keystore password input for the creation. | `fa009aa` |
+| `worker-create-submit` | W | Create form's submit. | `fa009aa` |
+| `worker-created` | W | The once-only recovery-phrase backup block. | `fa009aa` |
+| `worker-created-phrase` | W | Where the phrase is shown. | `fa009aa` |
+| `worker-created-copy` | W | Copies the phrase. | `fa009aa` |
+| `worker-key-alert` | W | Step 2's inline error slot. | `fa009aa` |
+| `worker-step-stake-title` | W | Step 3 heading ("Stake"). | `fa009aa` |
+| `worker-stake-state` | W | Step 3 chip: Funded / Short N LCAI / Unknown. | `fa009aa` |
+| `worker-stake-body` | W | Step 3 body, rendered from the chain's figures. | `fa009aa` |
+| `worker-step-register-title` | W | Step 4 heading ("Register"). | `fa009aa` |
+| `worker-register-state` | W | Step 4 chip: Waiting / Registered. | `fa009aa` |
+| `worker-register-hint` | W | What registering does, or which step it waits on. | `fa009aa` |
+| `worker-register-alert` | W | Step 4's inline error slot. | `fa009aa` |
+| `worker-step-run-title` | W | Step 5 heading ("Run"). | `fa009aa` |
+| `worker-run-alert` | W | Step 5's inline error slot (pull/start/stop). | `fa009aa` |
 
 ---
 

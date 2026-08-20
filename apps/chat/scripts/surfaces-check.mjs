@@ -227,6 +227,209 @@ for (const destination of ['models', 'wallet', 'worker']) {
   report(`pressing it opens ${destination}`, landed === true, landed ? 'opened' : 'went nowhere')
 }
 
+// --- The way back to a conversation -------------------------------------------
+
+/**
+ * The dead-end this suite now guards forever.
+ *
+ * `select()` used to load the room without showing its panel, and the room
+ * list's own click handler was the one selection path that never called
+ * `showSection('chat')`. So: open Models, click a conversation, and the room
+ * loaded behind the Models panel while the window looked as though it had
+ * ignored the click. There was no way back to a conversation from any of the
+ * elsewhere pages, and every navigation check passed because each one only
+ * ever asked "did the panel I opened open".
+ */
+const roundTrip = await evaluate(`(async () => {
+  // The room above may have been created seconds ago; wait for the list to
+  // draw it rather than clicking nothing and reporting the wrong fault.
+  let first = null
+  for (let i = 0; i < 30 && !first; i++) {
+    first = document.querySelector('#room-list .nav-item')
+    if (!first) await new Promise((r) => setTimeout(r, 200))
+  }
+  if (!first) return { missing: true }
+
+  document.querySelector('#sidebar [data-section="models"]').click()
+  await new Promise((r) => setTimeout(r, 500))
+  const away = {
+    chatHidden: document.getElementById('panel-chat')?.hidden !== false,
+    modelsShown: document.getElementById('panel-models')?.hidden === false
+  }
+
+  first.click()
+  await new Promise((r) => setTimeout(r, 900))
+
+  const chat = document.getElementById('panel-chat')
+  return {
+    missing: false,
+    away,
+    back: {
+      chatShown: chat?.hidden === false && chat?.offsetParent !== null,
+      modelsHidden: document.getElementById('panel-models')?.hidden === true,
+      roomShown: document.getElementById('room')?.hidden === false
+    }
+  }
+})()`)
+
+report(
+  'choosing a conversation from another surface brings the chat panel back',
+  roundTrip.missing !== true &&
+    roundTrip.away.chatHidden &&
+    roundTrip.away.modelsShown &&
+    roundTrip.back.chatShown &&
+    roundTrip.back.modelsHidden &&
+    roundTrip.back.roomShown,
+  roundTrip.missing
+    ? 'no room in the list to click — the check proves nothing'
+    : `away: ${JSON.stringify(roundTrip.away)}, back: ${JSON.stringify(roundTrip.back)}`
+)
+
+// --- The sidebar, folded --------------------------------------------------------
+
+/**
+ * Collapsed, the mark is the whole label.
+ *
+ * A room row used to carry no mark at all, and the elsewhere rows kept their
+ * icons — so folding the sidebar turned every conversation into an empty
+ * coloured block that could not be told apart from its neighbours. This
+ * measures the folded layout rather than reading the stylesheet: every room
+ * row's `.nav-item-mark` on screen with a real box, and every elsewhere row's
+ * icon the same. Then it unfolds again, because the sidebar remembers the
+ * state and the next harness inherits whatever this one leaves.
+ */
+const folded = JSON.parse(
+  await evaluate(`(async () => {
+    const sidebar = document.getElementById('sidebar')
+    const button = document.getElementById('collapse-btn')
+    if (!sidebar || !button) return JSON.stringify({ missing: true })
+
+    if (!sidebar.classList.contains('is-collapsed')) {
+      button.click()
+      await new Promise((r) => setTimeout(r, 500))
+    }
+    const isCollapsed = sidebar.classList.contains('is-collapsed')
+
+    const marks = [...document.querySelectorAll('#room-list .nav-item')].map((item) => {
+      const mark = item.querySelector('.nav-item-mark')
+      const box = mark?.getBoundingClientRect()
+      return {
+        present: Boolean(mark),
+        visible: Boolean(mark && mark.offsetParent !== null),
+        sized: Boolean(box && box.width > 0 && box.height > 0)
+      }
+    })
+
+    const elsewhere = [...document.querySelectorAll('.sidebar-elsewhere [data-section]')].map(
+      (b) => {
+        const icon = b.querySelector('svg')
+        const use = b.querySelector('use')
+        const box = icon?.getBoundingClientRect()
+        return {
+          section: b.dataset.section,
+          href: use?.getAttribute('href') ?? null,
+          visible: Boolean(icon && icon.offsetParent !== null),
+          sized: Boolean(box && box.width > 0 && box.height > 0)
+        }
+      }
+    )
+
+    if (sidebar.classList.contains('is-collapsed')) {
+      button.click()
+      await new Promise((r) => setTimeout(r, 500))
+    }
+
+    return JSON.stringify({
+      missing: false,
+      isCollapsed,
+      marks,
+      elsewhere,
+      expandedAgain: !sidebar.classList.contains('is-collapsed')
+    })
+  })()`)
+)
+
+report(
+  'every room row still shows its face when the sidebar is folded',
+  folded.missing !== true &&
+    folded.isCollapsed === true &&
+    folded.marks.length > 0 &&
+    folded.marks.every((m) => m.present && m.visible && m.sized),
+  folded.missing
+    ? 'no sidebar or collapse control — the check proves nothing'
+    : `${folded.marks.length} room rows, collapsed: ${folded.isCollapsed}`
+)
+
+report(
+  'and the Elsewhere rows still show their icons',
+  folded.missing !== true &&
+    folded.elsewhere.length === 3 &&
+    folded.elsewhere.every((i) => i.href !== null && i.visible && i.sized),
+  folded.elsewhere?.map((i) => `${i.section}:${i.href ?? 'no icon'}`).join(', ') ?? 'missing'
+)
+
+report(
+  'and the sidebar unfolds again afterwards',
+  folded.expandedAgain === true,
+  `expanded: ${folded.expandedAgain}`
+)
+
+// --- A toast docks under the chrome and can be dismissed ------------------------
+
+/**
+ * The toast used to land bottom-centre, on top of whatever paragraph ran to
+ * the foot of the page — a notification that covers the text it interrupts is
+ * one you have to wait out to keep reading. It is a top-right card now, docked
+ * by measurement under the titlebar (or the backup banner when that is up),
+ * with a close button because anything that covers something must be
+ * dismissible on demand rather than on a timer.
+ *
+ * Asserted by measuring, not by reading `style.top`: the box must begin at or
+ * below the titlebar's bottom edge, and pressing the close control must hide
+ * it well before the 3.2s timer would.
+ */
+const docked = JSON.parse(
+  await evaluate(`(async () => {
+    const { toast } = await import('./lib/dom.js')
+    toast('a notification the harness sent')
+    await new Promise((r) => setTimeout(r, 150))
+
+    const node = document.getElementById('toast')
+    if (!node || node.hidden) return JSON.stringify({ missing: true })
+
+    const box = node.getBoundingClientRect()
+    const titlebar = document.getElementById('titlebar')?.getBoundingClientRect()
+    const close = node.querySelector('.toast-close')
+
+    close?.click()
+    await new Promise((r) => setTimeout(r, 60))
+
+    return JSON.stringify({
+      missing: false,
+      top: Math.round(box.top),
+      titlebarBottom: Math.round(titlebar?.bottom ?? 0),
+      insideViewport: box.right <= innerWidth && box.left >= 0,
+      closeExists: Boolean(close),
+      closeLabelled: Boolean(close?.getAttribute('aria-label') ?? close?.title),
+      dismissed: node.hidden === true
+    })
+  })()`)
+)
+
+report(
+  'a toast docks below the titlebar rather than over the page',
+  docked.missing !== true && docked.top >= docked.titlebarBottom && docked.insideViewport,
+  docked.missing
+    ? 'the toast never showed — the check proves nothing'
+    : `top ${docked.top}px, titlebar bottom ${docked.titlebarBottom}px`
+)
+
+report(
+  'and its close button dismisses it on demand',
+  docked.closeExists === true && docked.closeLabelled === true && docked.dismissed === true,
+  `close ${docked.closeExists ? (docked.dismissed ? 'worked' : 'did nothing') : 'absent'}`
+)
+
 // --- A locked wallet, and where the interface says so -------------------------
 
 await ask('wallet.lock')
@@ -426,6 +629,85 @@ report(
   'worker status answers rather than hanging, with or without Docker',
   dockerless !== undefined,
   dockerless?.error ? dockerless.error.slice(0, 50) : 'answered'
+)
+
+// --- Earn reads as five named steps ---------------------------------------------
+
+/**
+ * The guided flow, asserted as a flow.
+ *
+ * Earn is a checklist now — host, key, stake, register, run — rather than a
+ * console of loose controls. The step headings are how somebody tells where
+ * they are, so they are asserted by name; Register is asserted against the
+ * stake the chain actually reported, enabled exactly when it could succeed
+ * and otherwise disabled with the reason named; and the CLI footnote it
+ * replaced must not come back — sending people to a terminal for what the
+ * panel now does is the failure this page exists to remove.
+ *
+ * Waited on rather than sampled: the refresh that fills the steps probes the
+ * host first, and reading the hint mid-probe measures a panel that has not
+ * answered yet.
+ */
+await evaluate(`(async () => {
+  for (let i = 0; i < 60; i++) {
+    const saying = document.getElementById('worker-summary')?.textContent ?? ''
+    if (saying !== '' && !saying.startsWith('Checking the host')) return
+    await new Promise((r) => setTimeout(r, 250))
+  }
+})()`)
+
+const flow = JSON.parse(
+  await evaluate(`(() => {
+    const steps = ['host', 'key', 'stake', 'register', 'run'].map((name) => {
+      const title = document.getElementById('worker-step-' + name + '-title')
+      return { name, says: (title?.textContent ?? '').trim() }
+    })
+    const register = document.getElementById('worker-register')
+    return JSON.stringify({
+      steps,
+      register: {
+        present: Boolean(register),
+        disabled: register?.disabled ?? null,
+        hint: (document.getElementById('worker-register-hint')?.textContent ?? '').trim()
+      },
+      cliFootnote: (document.getElementById('panel-worker')?.textContent ?? '').includes(
+        'lcai-supervisor import-key'
+      )
+    })
+  })()`)
+)
+
+const STEP_WORDS = { host: 'Host ready', key: 'Worker key', stake: 'Stake', register: 'Register', run: 'Run' }
+for (const step of flow.steps) {
+  report(
+    `the Earn flow has a step named "${STEP_WORDS[step.name]}"`,
+    step.says.includes(STEP_WORDS[step.name]),
+    step.says === '' ? 'no heading at all' : `says "${step.says}"`
+  )
+}
+
+const stakeNow = await ask('worker.stake')
+const covered =
+  stakeNow?.configured === true &&
+  stakeNow.address !== null &&
+  stakeNow.minimum !== null &&
+  stakeNow.balance !== null &&
+  BigInt(stakeNow.balance) > BigInt(stakeNow.minimum)
+
+report(
+  covered
+    ? 'registering is enabled, because the stake is covered'
+    : 'registering stays disabled while the stake is short, with the reason named',
+  covered
+    ? flow.register.disabled === false
+    : flow.register.disabled === true && flow.register.hint !== '',
+  `disabled: ${flow.register.disabled}, hint: "${flow.register.hint.slice(0, 60)}"`
+)
+
+report(
+  'and the panel no longer sends people to a terminal for a key',
+  flow.cliFootnote === false,
+  flow.cliFootnote ? '"lcai-supervisor import-key" is back' : 'no CLI footnote'
 )
 
 // --- Nothing advertises what does not exist -----------------------------------
