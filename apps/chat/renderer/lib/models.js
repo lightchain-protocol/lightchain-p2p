@@ -227,7 +227,17 @@ function turn(who, text, own) {
   body.className = 'message-text'
   body.textContent = text
 
-  item.append(meta, body)
+  // Same bubble as a room message, so one transcript does not quietly become a
+
+  // different shape from the other.
+
+  const bubble = document.createElement('div')
+
+  bubble.className = 'message-bubble'
+
+  bubble.append(meta, body)
+
+  item.append(bubble)
 
   // The first turn is what replaces the empty state, rather than the session
   // opening: a session with nothing in it still has nothing to show. The state

@@ -17,7 +17,7 @@ import { renderText } from './format.js'
 import { addressedToModel, ensureModels } from './models.js'
 import { myAddress, openPay } from './wallet.js'
 import { closeEmojiPicker, emojiPicker, reactionBar } from './reactions.js'
-import { memberList, nameSelfControl } from './members.js'
+import { avatar, memberList, nameSelfControl } from './members.js'
 import { announcement, bodyFor } from './notify-body.js'
 import { clearQr, drawQr } from './qr.js'
 import { chooseMention, closeMentions, mentionState, moveMention, offerModels } from './mentions.js'
@@ -294,8 +294,26 @@ function renderRoom() {
 
   const byId = new Map(shown.map((m) => [m.id, m]))
   let previous = null
+  let onDay = null
 
   for (const message of shown) {
+    // A day boundary, once, above the first message of it. Without these a
+    // conversation is a wall of clock times with no way to tell last Tuesday
+    // from twenty minutes ago — the timestamp on each line answers "when in the
+    // day" and nothing answers "which day".
+    const day = dayOf(message.at)
+    if (day !== onDay) {
+      onDay = day
+      const rule = document.createElement('li')
+      rule.className = 'day-rule'
+      rule.append(el2('span', 'day-rule-label', dayLabel(message.at)))
+      el.messages.append(rule)
+      // A new day is a new run whatever the clock says, so the author's name
+      // appears again under the date rather than the first line of the day
+      // arriving unattributed.
+      previous = null
+    }
+
     // Something that happened to the room rather than something someone said.
     // Rendered as a line across the conversation instead of a bubble, because
     // it is not addressed to anybody.
@@ -491,7 +509,22 @@ function renderRoom() {
 
     if (room.writable) item.append(messageActions(message, room))
 
-    item.append(meta, body)
+    // The bubble is a box inside the row rather than the row itself, so an
+    // avatar can sit beside it. `.message` keeps the id and the alignment; what
+    // moved is only the background and the padding.
+    const bubble = el2('div', 'message-bubble', '')
+    bubble.append(meta, body)
+
+    // Beside incoming messages only, and only on the first of a run. Your own
+    // face next to everything you said is noise — you know who you are — and a
+    // column of identical avatars down a run is the same face six times.
+    if (!mine) {
+      const face = el2('div', 'message-avatar', '')
+      if (!run) face.append(avatar(message.verified === true ? message.author : message.from, 28))
+      item.append(face)
+    }
+
+    item.append(bubble)
     el.messages.append(item)
   }
 
@@ -509,6 +542,34 @@ function renderRoom() {
  * Whether the reader is following the conversation rather than reading back up
  * it, which decides whether anything arriving may move the view.
  */
+
+/** A local calendar day, for deciding where a date separator goes. */
+function dayOf(at) {
+  const when = new Date(at)
+  return `${when.getFullYear()}-${when.getMonth()}-${when.getDate()}`
+}
+
+/**
+ * What to call that day.
+ *
+ * Today and Yesterday by name, because those are the two people actually
+ * reason about; anything older gets a date, and anything from a previous year
+ * gets the year with it. A conversation from January reading "12 March" with no
+ * year is a conversation that looks like it happened this spring.
+ */
+function dayLabel(at) {
+  const when = new Date(at)
+  const now = new Date()
+
+  if (dayOf(at) === dayOf(now.getTime())) return 'Today'
+  if (dayOf(at) === dayOf(now.getTime() - 24 * 60 * 60 * 1000)) return 'Yesterday'
+
+  return when.toLocaleDateString([], {
+    day: 'numeric',
+    month: 'long',
+    ...(when.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' })
+  })
+}
 
 /** How to refer to whoever wrote a message, preferring what they chose to be called. */
 function whoWrote(message, room, names) {

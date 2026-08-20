@@ -195,7 +195,13 @@ export function previewItem(preview) {
   const body = el2('div', 'message-body')
   body.append(el2('p', 'message-text'), el2('p', 'message-preview-status'))
 
-  item.append(meta, body)
+  // The same row-and-bubble shape every other message has, so an answer being
+  // drawn does not become the one line in the conversation with a different
+  // silhouette.
+  const bubble = el2('div', 'message-bubble')
+  bubble.append(meta, body)
+  item.append(bubble)
+
   dressPreview(item, preview)
   return item
 }

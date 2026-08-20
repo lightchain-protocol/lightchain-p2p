@@ -89,6 +89,17 @@ async function until(expression, what, timeout = 20_000) {
 const signing = await unlockForHarness(ask)
 report('there is an unlocked wallet to sign with', signing?.unlocked === true, signing?.address)
 
+// The unlock above went straight to the worker, which is not how a person does
+// it — they type into a form and the window learns the address as a result. The
+// window is told here so the rest of this suite sees what a person would: a
+// roster that knows who you are, authors that can be paid, a name field. Without
+// it every check below is measuring an application that thinks it is signed out.
+await evaluate(`(async () => {
+  const { refreshWallet } = await import('./lib/wallet.js')
+  await refreshWallet()
+  return true
+})()`)
+
 // --- A room of its own, selected through the sidebar -------------------------
 
 const label = `conversation ${Date.now().toString(36)}`
@@ -290,7 +301,16 @@ report(
 // attaches to a member only once that member has signed something in the room.
 
 const naming = await evaluate(`(async () => {
-  document.getElementById('members-btn')?.click()
+  // Shut, then opened. Neither "click it" nor "click it if hidden" is enough:
+  // the button toggles, and the panel is on screen from the start on a wide
+  // window but is not filled until the button has been pressed. So this drives
+  // it to closed first and then opens it, which is the one sequence that ends
+  // both visible and rendered whatever state it was found in.
+  const holder = document.getElementById('members')
+  const button = document.getElementById('members-btn')
+  if (holder && !holder.hidden) button?.click()
+  await new Promise((r) => setTimeout(r, 200))
+  button?.click()
   await new Promise((r) => setTimeout(r, 400))
 
   const form = document.querySelector('form.name-self')
@@ -666,6 +686,66 @@ report(
   'the renderer threw nothing throughout',
   problems.length === 0,
   problems.slice(0, 2).join(' | ') || 'clean'
+)
+
+// --- How the conversation reads ------------------------------------------------
+
+// The shape of a message list is not something a screenshot proves and not
+// something a stylesheet proves either. These are the three rules the layout
+// rests on, asserted against what the document actually holds.
+
+const shape = JSON.parse(
+  await evaluate(`(async () => {
+    const rows = [...document.querySelectorAll('#messages .message')]
+    const runs = rows.filter((r) => r.classList.contains('is-run'))
+
+    return JSON.stringify({
+      rows: rows.length,
+      // Every message is a row holding a bubble, so the id and the alignment
+      // stay on the row and the box that gets a background is inside it.
+      bubbles: rows.filter((r) => r.querySelector(':scope > .message-bubble')).length,
+      // A face beside incoming messages and none beside your own.
+      ownWithFace: rows.filter(
+        (r) => r.classList.contains('is-own') && r.querySelector('.message-avatar')
+      ).length,
+      // And within a run, only the first of them carries one.
+      runsWithFace: runs.filter((r) => r.querySelector('.message-avatar svg')).length,
+      days: document.querySelectorAll('#messages .day-rule').length,
+      dayLabels: [...document.querySelectorAll('#messages .day-rule-label')].map((n) =>
+        n.textContent.trim()
+      )
+    })
+  })()`)
+)
+
+report(
+  'every message is a row with a bubble inside it',
+  shape.rows > 0 && shape.bubbles === shape.rows,
+  `${shape.bubbles} of ${shape.rows}`
+)
+
+report(
+  'your own messages carry no avatar, because you know who you are',
+  shape.ownWithFace === 0,
+  `${shape.ownWithFace} of your own had one`
+)
+
+report(
+  'and a run shows one face rather than the same face repeated',
+  shape.runsWithFace === 0,
+  `${shape.runsWithFace} repeats within runs`
+)
+
+report(
+  'the conversation is divided by day',
+  shape.days > 0,
+  shape.dayLabels.join(', ') || 'no separators'
+)
+
+report(
+  'and today is named rather than dated',
+  shape.dayLabels.includes('Today'),
+  shape.dayLabels.join(', ')
 )
 
 const failed = results.filter((r) => !r.ok)

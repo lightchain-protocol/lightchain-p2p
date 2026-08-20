@@ -314,20 +314,68 @@
   min-height: 0;
 }
 
-/* The hairline is what makes a bubble a bubble on a light background, where the
-   raised surface is only a couple of steps off the page behind it. */
+/* A row, holding an avatar and a bubble.
+   
+   The bubble used to be this element. Splitting them is what lets a face sit
+   beside an incoming message without being inside the box the message is drawn
+   in — and it costs nothing, because the id and the alignment stay here where
+   everything already looks for them. */
 .message {
-  max-width: min(68ch, 76%);
-  padding: 6px var(--lc-space-md) var(--lc-space-sm);
-  border-radius: var(--lc-radius-lg);
-  background: var(--lc-bg-elevated);
-  box-shadow: inset 0 0 0 1px var(--lc-rule);
+  display: flex;
+  align-items: flex-end;
+  gap: var(--lc-space-sm);
+  max-width: min(68ch, 82%);
   align-self: flex-start;
 }
 
 .message.is-own {
   align-self: flex-end;
-  background: var(--lc-bg-elevated-2);
+  flex-direction: row-reverse;
+}
+
+/* Always the same width, whether or not it holds a face. A run of messages
+   whose bubbles shift left when the avatar disappears reads as two people. */
+.message-avatar {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: var(--lc-radius-sm);
+  overflow: hidden;
+}
+
+.message-avatar svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* The hairline is what makes a bubble a bubble on a light background, where the
+   raised surface is only a couple of steps off the page behind it. */
+.message-bubble {
+  min-width: 0;
+  padding: 6px var(--lc-space-md) var(--lc-space-sm);
+  border-radius: var(--lc-radius-bubble);
+  background: var(--lc-surface-2);
+  box-shadow: inset 0 0 0 1px var(--lc-rule);
+}
+
+/* Accent-tinted rather than one more grey. Which side a message is on is the
+   fastest way to read a conversation and colour is the second; two neutrals a
+   step apart give you neither at a glance. */
+.message.is-own .message-bubble {
+  background: var(--lc-accent-soft);
+  box-shadow: inset 0 0 0 1px transparent;
+}
+
+/* The corner nearest its owner is squared off, which is what makes a bubble
+   point at somebody rather than float. */
+.message .message-bubble {
+  border-bottom-left-radius: var(--lc-radius-sm);
+}
+
+.message.is-own .message-bubble {
+  border-bottom-left-radius: var(--lc-radius-bubble);
+  border-bottom-right-radius: var(--lc-radius-sm);
 }
 
 /* Consecutive turns from one person are one utterance broken over several
@@ -336,12 +384,41 @@
    metadata ends up outweighing what was actually said. */
 .message.is-run {
   margin-top: calc(-1 * var(--lc-space-sm));
+}
+
+.message.is-run .message-bubble {
   border-top-left-radius: var(--lc-radius-sm);
 }
 
-.message.is-run.is-own {
-  border-top-left-radius: var(--lc-radius-lg);
+.message.is-run.is-own .message-bubble {
+  border-top-left-radius: var(--lc-radius-bubble);
   border-top-right-radius: var(--lc-radius-sm);
+}
+
+/* --- Which day it was ------------------------------------------------------ */
+
+/* A rule with the date in it, once per day. Without these a conversation is a
+   wall of clock times: each line answers "when in the day" and nothing answers
+   "which day". */
+.day-rule {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-md);
+  margin: var(--lc-space-md) 0 var(--lc-space-xs);
+  color: var(--lc-text-tertiary);
+  font-size: var(--lc-type-caption);
+}
+
+.day-rule::before,
+.day-rule::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--lc-rule);
+}
+
+.day-rule-label {
+  flex: 0 0 auto;
 }
 
 .message.is-run .message-author,

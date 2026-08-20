@@ -273,6 +273,16 @@ startWorker()
   .then(adopt)
   .then(restorePreferences)
   .then(startOnboarding)
+  // Who this window is signed in as, which nothing else established.
+  //
+  // The worker outlives the window, so reloading the renderer — or opening a
+  // second one — meets a wallet that is already unlocked and an onboarding
+  // flow that correctly gets out of the way. Nothing then told the renderer
+  // whose address it was holding, and `myAddress()` stayed null: no name
+  // control in the roster, no payable authors, and a members panel that listed
+  // the room's own writer as a stranger. Everything worked again the moment
+  // somebody happened to open Account.
+  .then(() => refreshWallet().catch((err) => console.error('[wallet]', err)))
   // Last, and unable to take the rest down with it. This is a summary of what
   // the wallet has been doing; the app has to come up whether or not it
   // arrives, and a failed read that blocked the unlock prompt would lock
