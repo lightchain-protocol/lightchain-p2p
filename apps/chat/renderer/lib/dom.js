@@ -294,6 +294,9 @@ if (el.toast) {
 
 function dismissToast() {
   clearTimeout(toastTimer)
+  // The popover first: an open popover holds its place in the top layer, and
+  // `hidePopover` on one that is not open throws rather than nothing.
+  if (el.toast.matches(':popover-open')) el.toast.hidePopover()
   el.toast.hidden = true
 }
 
@@ -322,6 +325,14 @@ export function toast(text, tone) {
   el.toast.dataset.tone = tone ?? 'info'
   dockToast()
   el.toast.hidden = false
+  // Shown as a popover so the message is in the top layer: a `<dialog>` opened
+  // modal sits above everything ordinary, and a "copied" confirmation behind
+  // the dialog it was clicked from reads as a button that did nothing — which
+  // is what this used to do. The `hidden` attribute is kept in step regardless,
+  // so anything asking `toast.hidden` — the harnesses do — gets the truth.
+  if (typeof el.toast.showPopover === 'function' && !el.toast.matches(':popover-open')) {
+    el.toast.showPopover()
+  }
   clearTimeout(toastTimer)
   toastTimer = setTimeout(dismissToast, 3200)
 }

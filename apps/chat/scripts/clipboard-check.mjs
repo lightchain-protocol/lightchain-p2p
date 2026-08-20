@@ -120,6 +120,13 @@ const clear = () => evaluate(`window.bridge.copy(${JSON.stringify(SENTINEL)})`)
 
 await unlockForHarness(ask)
 
+// The receive dialog refuses an un-backed-up wallet, on purpose. Record the
+// backup through the app's own path — the same call the Settings reveal flow
+// makes — rather than by writing the store behind its back.
+await evaluate(
+  `(async () => { const { markBackedUp } = await import('./lib/backup.js'); await markBackedUp('the clipboard harness'); return true })()`
+)
+
 const wired = await evaluate(`typeof window.bridge.copy`)
 report('the bridge exposes copy', wired === 'function', `got ${wired}`)
 if (wired !== 'function') process.exit(1)
@@ -279,6 +286,61 @@ if (address) {
 } else {
   report('Copy address works', false, 'no address was on screen to copy')
 }
+
+// --- the toast shows above an open dialog ------------------------------------
+
+/**
+ * The receive dialog is a modal `<dialog>`, which lives in the top layer above
+ * everything ordinary in the document — including, until it was one itself, the
+ * toast. Copying an address from inside it wrote the clipboard and announced
+ * it behind the dialog, where nobody could see: the button looked dead at the
+ * exact moment it had worked.
+ *
+ * Asserted three ways rather than one: the toast is open as a popover, which is
+ * what puts it in the top layer; it is painted and inside the viewport rather
+ * than merely marked shown; and the clipboard still got the address, because a
+ * toast fixed at the cost of the copy would be no fix at all.
+ */
+await evaluate(`document.getElementById('assets-receive-btn').click()`)
+await until(
+  `document.getElementById('receive-address').textContent.startsWith('0x')`,
+  'the receive dialog to show an address'
+)
+
+const received = await evaluate(`document.getElementById('receive-address').textContent`)
+await clear()
+await evaluate(`document.getElementById('receive-copy').click()`)
+await wait(400)
+
+report(
+  'Copy address works from inside the dialog',
+  (await readClipboard()) === received,
+  await readClipboard()
+)
+report(
+  'and the toast names it while the dialog is open',
+  (await toastText()).includes('Address copied'),
+  await toastText()
+)
+report(
+  'and the toast rides in the top layer above the dialog',
+  await evaluate(`(() => {
+    const toast = document.getElementById('toast')
+    if (!toast.matches(':popover-open')) return false
+    if (getComputedStyle(toast).display === 'none') return false
+    const box = toast.getBoundingClientRect()
+    return box.width > 0 && box.right <= innerWidth && box.top >= 0
+  })()`)
+  // Not elementFromPoint: with a modal dialog open, Chromium's hit test
+  // answers the dialog's backdrop for every point outside the dialog's own
+  // box, toast or no toast. The popover check is the truthful one — being
+  // :popover-open at all is what puts the card in the top layer, and it was
+  // added after the dialog, which is what puts it on top. A screenshot in
+  // docs/design/after/wave5 shows it painting over the Receive dialog.
+)
+
+await evaluate(`document.getElementById('receive-dialog').close()`)
+await wait(200)
 
 // A transaction hash. This is the caller that passed no label and produced
 // "undefined copied", then claimed success in a second toast regardless.

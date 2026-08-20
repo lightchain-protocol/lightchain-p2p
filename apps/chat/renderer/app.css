@@ -529,6 +529,10 @@ select.input option {
    one place a toast is styled. */
 .toast {
   position: fixed;
+  /* The popover user-agent styles pin all four edges (`inset: 0`) and centre
+     with auto margins. Freeing the bottom and the left lets `top` and `right`
+     dock the card where dom.js measures it. */
+  inset: auto;
   top: calc(38px + var(--lc-space-md)); /* docked precisely by dom.js */
   right: var(--lc-space-lg);
   z-index: 30;
@@ -547,8 +551,10 @@ select.input option {
   animation: toast-in var(--lc-motion-base) var(--lc-easing);
 }
 
-/* `display: flex` above would beat the hidden attribute's `display: none`. */
-.toast[hidden] {
+/* `display: flex` above would beat the hidden attribute's `display: none`, and
+   it would beat a non-open popover's for the same reason. Both gates stay. */
+.toast[hidden],
+.toast:not(:popover-open) {
   display: none;
 }
 

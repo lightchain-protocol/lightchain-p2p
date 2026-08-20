@@ -25,7 +25,11 @@
       </form>
     </dialog>
 
-    <p class="toast" id="toast" hidden></p>
+    <!-- `popover="manual"` rather than an ordinary fixed element: an open
+         dialog lives in the top layer, above everything in the document, so a
+         toast that is not itself in the top layer renders *behind* it and a
+         "copied" confirmation made from inside a dialog is never seen. -->
+    <p class="toast" id="toast" hidden popover="manual"></p>
 
     <script type="module" src="./lib/main.js"></script>
   </body>
