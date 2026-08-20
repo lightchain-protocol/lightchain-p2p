@@ -32,8 +32,17 @@
 }
 
 /**
- * The card that absorbs whatever height the others do not want. One per column:
- * the checks on the left, the log on the right.
+ * The steps column is a checklist: four cards that hug their content and scroll
+ * as one when they outgrow the pane. A growing card must not push its siblings
+ * out of view — the whole column scrolls instead.
+ */
+.worker-steps {
+  overflow-y: auto;
+}
+
+/**
+ * The card that absorbs whatever height the other does not want: the log on the
+ * right.
  *
  * The basis is zero rather than auto so that what is inside never bids for
  * space. Sized from its content, a log two hundred lines long asks for two
@@ -121,6 +130,101 @@
   margin-top: var(--lc-space-md);
 }
 
+/* --- Step heads and bodies --------------------------------------------------- */
+
+/* Chip, timestamp and action buttons share the head with the title. */
+.worker-head-side {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lc-space-md);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.worker-step-actions {
+  display: inline-flex;
+  gap: var(--lc-space-sm);
+}
+
+.worker-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  padding: var(--lc-space-lg);
+}
+
+/* A step's error or guidance belongs on the step, not in a floating toast.
+   The flush variant sits under the container facts, which carry their own
+   padding. */
+.worker-step-alert:not([hidden]) {
+  margin-top: var(--lc-space-sm);
+}
+
+.worker-step-alert-flush:not([hidden]) {
+  margin: 0 var(--lc-space-lg) var(--lc-space-lg);
+}
+
+/* Guidance text inside a step: quieter than the verdict, louder than a
+   timestamp. */
+.worker-hint {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-text-secondary);
+  text-wrap: pretty;
+}
+
+/* --- Keys and addresses ------------------------------------------------------ */
+
+/* An address is copied, not read: mono, shortened, with the button beside it. */
+.worker-address {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  margin: 0;
+}
+
+.worker-address-text {
+  font-family: var(--lc-mono);
+  color: var(--lc-text-primary);
+}
+
+/* The two ways a key arrives, one above the other. */
+.worker-key-form + .worker-key-form {
+  margin-top: var(--lc-space-md);
+  padding-top: var(--lc-space-md);
+  border-top: 1px solid var(--lc-rule);
+}
+
+/**
+ * The recovery phrase, shown once after a key is created. Warning-toned because
+ * it is the only backup there is — losing it and the password loses the key.
+ */
+.worker-created {
+  padding: var(--lc-space-md);
+  border: 1px solid var(--lc-rule-strong);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-warning-soft);
+}
+
+.worker-created p {
+  margin: 0 0 var(--lc-space-sm);
+}
+
+.worker-phrase {
+  font-family: var(--lc-mono);
+  line-height: var(--lc-leading-relaxed);
+  color: var(--lc-text-primary);
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+
+.worker-qr {
+  display: flex;
+  justify-content: center;
+  margin: var(--lc-space-sm) 0 0;
+}
+
 /* --- The log -------------------------------------------------------------- */
 
 /**
@@ -142,23 +246,6 @@
      not have, so the text wraps here rather than scrolling sideways. */
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  user-select: text;
-}
-
-/* --- The key note --------------------------------------------------------- */
-
-/* Subordinate to the checks it sits under: it explains what Register does and
-   why importing a key is deliberately not on this page. */
-.worker-note {
-  margin: 0;
-  font-size: var(--lc-text-sm);
-  line-height: var(--lc-leading-normal);
-  color: var(--lc-fg-dim);
-  text-wrap: pretty;
-}
-
-.worker-note code {
-  font-family: var(--lc-mono);
   user-select: text;
 }
 
@@ -189,6 +276,11 @@
 
   .worker-fill {
     flex: 0 0 auto;
+  }
+
+  /* The page scrolls now, so the steps column must not scroll within itself. */
+  .worker-steps {
+    overflow-y: visible;
   }
 
   .worker .worker-log {
