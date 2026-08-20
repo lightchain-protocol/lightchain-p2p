@@ -519,7 +519,7 @@ async function inference() {
 
   if (api && apiFor === identity) return api
 
-  const next = new Api({ url: NETWORKS[network].consumerApiUrl })
+  const next = new Api({ url: NETWORKS[network].consumerApiUrl, chainId: BigInt(NETWORKS[network].chainId) })
   await next.signIn(account.address, (message) => account.signMessage(message))
 
   api = next
