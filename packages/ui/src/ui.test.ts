@@ -6,6 +6,7 @@ import {
   BRAND,
   CONTROL,
   DARK,
+  FOCUS,
   LIGHT,
   MONO,
   MOTION,
@@ -239,6 +240,16 @@ describe('the rest of the system', () => {
   it('reserves the mono stack for things that are compared character by character', () => {
     expect(MONO).toContain('monospace')
     expect(MONO).not.toContain('Segoe UI,')
+  })
+
+  it('draws the focus ring from the accent, so it follows both themes', () => {
+    // The accent is the one colour already held to AA against every surface,
+    // which makes it the only safe source for a ring that has to be visible on
+    // all of them. Repeating a hex here instead would pin the ring to one theme.
+    expect(FOCUS.ring).toBe(`${FOCUS.width}px solid var(--lc-accent)`)
+    for (const theme of ['dark', 'light'] as const) {
+      expect(cssVariables(theme)).toContain(`--lc-focus-ring: ${FOCUS.ring};`)
+    }
   })
 
   it('emits every new token as a CSS variable', () => {

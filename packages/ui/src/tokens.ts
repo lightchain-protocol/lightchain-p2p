@@ -411,7 +411,17 @@ export const MOTION = {
  */
 export const FOCUS = {
   width: 2,
-  offset: 2
+  offset: 2,
+  /**
+   * The whole ring, as one value, for `outline`.
+   *
+   * `width` and `offset` exist for the cases that have to compose the ring
+   * themselves; everything else should use this, because a ring assembled at
+   * the call site is a ring that will be assembled slightly differently at the
+   * next one. It references the accent rather than repeating its hex, so the
+   * ring follows the theme without this file knowing either palette.
+   */
+  ring: '2px solid var(--lc-accent)'
 } as const
 
 /** `bodyStrong` to `body-strong`, `title1` to `title-1`. */
@@ -484,6 +494,7 @@ export function cssVariables(theme: Theme): string {
     `--lc-mono: ${MONO};`,
     `--lc-focus-width: ${FOCUS.width}px;`,
     `--lc-focus-offset: ${FOCUS.offset}px;`,
+    `--lc-focus-ring: ${FOCUS.ring};`,
 
     ...Object.entries(SPACE).map(([k, v]) => `--lc-space-${k}: ${v}px;`),
     ...Object.entries(RADIUS).map(([k, v]) => `--lc-radius-${k}: ${v}px;`),
