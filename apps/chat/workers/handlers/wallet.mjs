@@ -2,17 +2,22 @@ import {
   FEE_PER_GAS_CEILING,
   cancel,
   fromPrivateKey,
-  fromQuantity,
   keccak256,
   prepaidBalance,
   resolveAddresses,
   sendTransaction,
   speedUp,
-  toChecksumAddress
+  toChecksumAddress,
+  upfrontCost
 } from '@lcai-p2p/chain'
 import { REPLACE_CONFIRMATION, derivePrivateKey } from '@lcai-p2p/wallet'
 import { NETWORKS } from '@lcai-p2p/worker'
 import { readableAmount } from '../guard.mjs'
+import {
+  isDecimal,
+  recordTransaction as recordOnChain,
+  transactionLedger
+} from '../ledger.mjs'
 
 /**
  * The wallet: an identity, a balance, and the ability to sign for both.
@@ -38,25 +43,11 @@ import { readableAmount } from '../guard.mjs'
  */
 
 /**
- * The name of this account's ledger in {@link SealedStore}.
- *
- * Document names are restricted to plain words, and this one is scoped to the
- * account by the store itself — two accounts of one phrase keep two ledgers
- * without either knowing about the other.
+ * The ledger itself — the sealed `transactions` document, the reconcile pass
+ * and the chain-aware {@link recordTransaction} — lives in `../ledger.mjs`,
+ * extracted so that handlers sending on chains other than the connected one can
+ * write to it too. What stays here is the wallet's own use of it.
  */
-const LEDGER = 'transactions'
-const LEDGER_VERSION = 1
-
-/**
- * How many settled entries to keep.
- *
- * Trimming loses history that genuinely cannot be recovered from anywhere, so
- * the bound is generous and pending entries are never dropped: an entry still
- * waiting is the one thing here that has to survive to be reconciled. A
- * hundred kilobytes or so of sealed document is resealed and rewritten on every
- * update, which is the reason there is a bound at all.
- */
-const LEDGER_KEEP = 500
 
 /**
  * How many accounts of a phrase are worth listing.
@@ -84,7 +75,6 @@ const KEPT_ON_DISK = true
 const isAddress = (value) => typeof value === 'string' && /^0x[0-9a-fA-F]{40}$/.test(value)
 const isHash = (value) => typeof value === 'string' && /^0x[0-9a-fA-F]{64}$/.test(value)
 const isCallData = (value) => typeof value === 'string' && /^0x([0-9a-fA-F]{2})*$/.test(value)
-const isDecimal = (value) => typeof value === 'string' && /^[0-9]+$/.test(value)
 
 /**
  * A quantity the renderer sent, as a bigint, or nothing.
@@ -158,318 +148,23 @@ function requireUnlocked(wallet) {
 }
 
 /**
- * What this wallet has sent, written down locally because nothing else will.
- *
- * **This is not an account history and an interface must not present it as
- * one.** It holds the transactions *this application* made from *this account*
- * on *this machine*, and nothing else. A payment sent from MetaMask, from a
- * hardware wallet, from this same phrase on a second computer, or by anyone
- * else to this address, will never appear here. Restoring the phrase somewhere
- * new starts an empty ledger. A screen labelled "your transactions" over this
- * data is telling somebody their account did less than it did, which is worse
- * than showing nothing: the number they cannot see is the one they would have
- * wanted. Label it as this application's own activity, and point anyone who
- * needs the real thing at an explorer.
- *
- * The alternative was not available. There is no indexer for this chain, and a
- * native transfer emits no log, so `eth_getLogs` cannot find one — the only way
- * to recover an account's transfers from the chain itself is to walk every
- * block since genesis, which is not something a chat application is going to
- * do. What can be known locally is what this process broadcast, so that is what
- * is kept.
- *
- * Sealed under the account like everything else in `localState`, which has a
- * consequence worth stating: a locked wallet cannot read its own ledger, and
- * switching account switches ledgers.
- *
- * ## What an entry holds
- *
- * Enough to show a row, and enough to rebuild the `SentTransaction` that
- * {@link speedUp} and {@link cancel} need — `to`, `value`, `data`, `gas`,
- * `nonce` and both fee caps — because that object lives in the memory of the
- * process that sent it and a replacement assembled from anything less is a
- * different transaction wearing the same nonce.
- *
- *     hash, kind, status                'send' | 'fund' | 'withdraw' | 'cancel',
- *                                       and 'pending' | 'confirmed' | 'failed'
- *     from, to, value, data             what was signed
- *     gas, maxFeePerGas,                and what it was signed to cost
- *       maxPriorityFeePerGas, nonce
- *     chainId, network                  which chain it was signed for
- *     at, settledAt                     epoch milliseconds
- *     block, gasUsed,                   from the receipt, null until there is one
- *       effectiveGasPrice, fee
- *     replaces, replacedBy              the other half of a speed-up or a cancel
- *     detail                            why a failed entry failed, in words
- *
- * A speed-up keeps the kind of the transaction it replaces, because it is the
- * same payment bid higher. A cancel does not: it is a zero-value transfer to
- * oneself and calling it a send would be a lie about where the money went.
- *
- * One ledger per context, so that these handlers and the ones that will call
- * {@link recordTransaction} share it rather than each keeping a separate idea
- * of what has been written.
+ * The words for "the balance does not cover this", written once so that the
+ * pre-check in `wallet.send` and the node's own refusal — which arrives as a
+ * raw "insufficient funds for gas * price + value…" RPC string — read
+ * identically to the person who has to act on them.
  */
-const ledgers = new WeakMap()
-
-function transactionLedger(ctx) {
-  const held = ledgers.get(ctx)
-  if (held) return held
-
-  const made = createLedger(ctx)
-  ledgers.set(ctx, made)
-  return made
-}
-
-function createLedger(ctx) {
-  /**
-   * The entries, with anything that is not one discarded.
-   *
-   * The same shape of defence the room registry uses, and for a better reason
-   * than paranoia: `localState` is a directory of documents that other handlers
-   * write to as well, and a record with no hash cannot be shown, settled or
-   * replaced. Dropping it here means one bad row costs a row rather than
-   * throwing from underneath every reply that touches the ledger. A record that
-   * is present but incomplete is left alone and refused later, by name, where
-   * somebody can be told which field was missing.
-   */
-  const entries = () => {
-    const document = ctx.localState.read(LEDGER, { version: LEDGER_VERSION, entries: [] })
-    if (!Array.isArray(document?.entries)) return []
-    return document.entries.filter((entry) => entry && typeof entry.hash === 'string')
-  }
-
-  /**
-   * Read, change, write — and deliberately synchronous throughout.
-   *
-   * The sealed store's own reads and writes are synchronous, so a change
-   * applied here cannot interleave with another one; nothing else gets a turn
-   * in between. That is what makes it safe for the slow work — asking a node
-   * for a chain id, or for a receipt — to happen outside this function and hand
-   * in a change to apply afterwards, rather than holding a copy of the document
-   * across an await and writing back over whatever arrived meanwhile.
-   */
-  const update = (change) => {
-    const next = change(entries())
-    if (!next) return false
-
-    const written = ctx.localState.write(LEDGER, { version: LEDGER_VERSION, entries: trim(next) })
-    if (!written) {
-      // Only reachable if the wallet locked between broadcasting and writing.
-      // Reported rather than thrown: the transaction is on the chain either
-      // way, and the entry is a record of it rather than part of it.
-      console.error('the wallet locked before its transaction record could be written')
-    }
-    return written
-  }
-
-  const settle = (hash, receipt) =>
-    update((current) => {
-      if (!current.some((entry) => entry.hash === hash)) return null
-      return current.map((entry) => (entry.hash === hash ? settled(entry, receipt) : entry))
-    })
-
-  /**
-   * Appends a pending entry for something already broadcast.
-   *
-   * The chain id is asked for rather than taken from `NETWORKS`, because it is
-   * the chain the transaction was actually signed against — `sendTransaction`
-   * used this same answer moments ago — and reconciliation compares the two. A
-   * node that disagrees with the table would otherwise leave every entry
-   * permanently unrecognised.
-   */
-  const record = async (kind, sent, { replaces = null } = {}) => {
-    const chainId = await ctx
-      .rpc()
-      .chainId()
-      .catch(() => NETWORKS[ctx.network()].chainId)
-
-    const entry = {
-      hash: sent.hash,
-      kind,
-      status: 'pending',
-      from: ctx.wallet.status().address,
-      to: sent.to,
-      value: sent.value.toString(),
-      data: sent.data,
-      gas: sent.gas.toString(),
-      maxFeePerGas: sent.maxFeePerGas.toString(),
-      maxPriorityFeePerGas: sent.maxPriorityFeePerGas.toString(),
-      nonce: sent.nonce.toString(),
-      chainId,
-      network: ctx.network(),
-      at: Date.now(),
-      settledAt: null,
-      block: null,
-      gasUsed: null,
-      effectiveGasPrice: null,
-      fee: null,
-      detail: null,
-      replaces,
-      replacedBy: null
-    }
-
-    update((current) =>
-      current
-        // A hash appears once. Recording the same one twice would be a
-        // duplicated row for a single transaction, which reads as a double
-        // spend to the only person who cannot check.
-        .filter((held) => held.hash !== entry.hash)
-        .map((held) => (held.hash === replaces ? { ...held, replacedBy: entry.hash } : held))
-        .concat(entry)
-    )
-
-    return entry
-  }
-
-  /**
-   * Settles an entry in the background when its receipt turns up.
-   *
-   * Polls gently, because nothing is waiting on the answer: a settle that
-   * arrives four seconds late costs nobody anything, while a second poller at
-   * the foreground's pace would double the traffic on a hash somebody is
-   * already watching. A wait that runs out of patience is not a failure and is
-   * not reported as one — the entry stays pending and the next history read
-   * reconciles it, which is the path that has to work regardless for anything
-   * still in flight when the application was closed.
-   */
-  const follow = (sent) => {
-    void sent
-      .wait({ interval: 4_000, timeout: 600_000 })
-      .then((receipt) => settle(sent.hash, receipt))
-      .catch(() => {})
-  }
-
-  /**
-   * Catches every pending entry up with the chain.
-   *
-   * A `wait` lives in the memory of the process that started it, so anything
-   * still in flight when the application closed comes back marked pending and
-   * would stay that way for good. This is the answer: on every read, ask the
-   * chain about each one directly.
-   */
-  const reconcile = async () => {
-    const current = entries()
-    const waiting = current.filter((entry) => entry.status === 'pending')
-    if (waiting.length === 0) return current
-
-    const rpc = ctx.rpc()
-
-    let chainId
-    try {
-      chainId = await rpc.chainId()
-    } catch {
-      // No node to ask. Pending is then the truthful state rather than a stale
-      // one, so it stays.
-      return current
-    }
-
-    // Only what was sent to the chain now being spoken to. One account keeps
-    // one ledger across both networks — the store is scoped per identity, not
-    // per chain — and asking mainnet about a testnet hash gets a confident
-    // "never heard of it" that would be read below as a transaction which never
-    // happened.
-    const mine = waiting.filter((entry) => entry.chainId === chainId)
-    if (mine.length === 0) return current
-
-    // `Rpc.transactionCount` asks for the pending count, which includes the
-    // very transactions being reconciled and so always sits above their nonces.
-    // The mined count answers the question actually worth asking: whether this
-    // nonce has already been spent by something else, which is the only way to
-    // establish that a pending transaction can never now be mined.
-    const address = ctx.wallet.status().address
-    const spent = await rpc
-      .send('eth_getTransactionCount', [address, 'latest'])
-      .then((count) => fromQuantity(count))
-      .catch(() => null)
-
-    const resolved = new Map()
-
-    await Promise.all(
-      mine.map(async (entry) => {
-        try {
-          const receipt = await rpc.transactionReceipt(entry.hash)
-          if (receipt) {
-            resolved.set(entry.hash, settled(entry, receipt))
-            return
-          }
-
-          // Held in a mempool, or mined in the moment between these two calls.
-          // Either way it resolves itself and there is nothing to write.
-          if (await rpc.transactionByHash(entry.hash)) return
-
-          // The node has never heard of it and the nonce is spent, so something
-          // else took it: a replacement of ours, or this same account signing
-          // somewhere else. Whichever it was, this transaction cannot now
-          // happen, and that is a definite answer rather than a guess.
-          if (spent !== null && isDecimal(entry.nonce) && BigInt(entry.nonce) < spent) {
-            resolved.set(entry.hash, {
-              ...entry,
-              status: 'failed',
-              settledAt: Date.now(),
-              detail: entry.replacedBy
-                ? `replaced by ${entry.replacedBy}, which took nonce ${entry.nonce}`
-                : `nonce ${entry.nonce} was spent by another transaction, so this one can never be mined`
-            })
-          }
-
-          // Otherwise the nonce is still free and the node has merely forgotten
-          // the transaction. It stays pending, because it can still be
-          // rebroadcast and mined — deciding it is dead is how a wallet tells
-          // somebody a payment failed shortly before it arrives.
-        } catch {
-          // One transaction the node will not answer for should not stop the
-          // others being caught up.
-        }
-      })
-    )
-
-    if (resolved.size === 0) return current
-
-    update((held) => held.map((entry) => resolved.get(entry.hash) ?? entry))
-    return entries()
-  }
-
-  return { entries, record, settle, follow, reconcile }
-}
-
-/** An entry, given the receipt that ended its wait. */
-function settled(entry, receipt) {
-  return {
-    ...entry,
-    status: receipt.status ? 'confirmed' : 'failed',
-    settledAt: Date.now(),
-    block: receipt.blockNumber.toString(),
-    gasUsed: receipt.gasUsed.toString(),
-    effectiveGasPrice: receipt.effectiveGasPrice.toString(),
-    // What it really cost, which is the only fee figure worth showing: the caps
-    // above are what was offered, and the difference is refunded.
-    fee: (receipt.gasUsed * receipt.effectiveGasPrice).toString(),
-    detail: receipt.status
-      ? null
-      : 'mined, and reverted. The gas was still spent; the transfer did not happen.'
-  }
-}
+const cannotCover = (symbol) =>
+  `this wallet cannot cover that — the amount plus the network fee is more than it holds. Lower the amount, or receive some ${symbol} first.`
 
 /**
- * Drops the oldest settled entries once there are too many.
+ * Records an outgoing transaction in this wallet's ledger, on the connected
+ * chain.
  *
- * Pending ones are kept whatever the count, since they are the entries with
- * work left to do and the only ones the chain can still change.
- */
-function trim(entries) {
-  if (entries.length <= LEDGER_KEEP) return entries
-
-  let toDrop = entries.length - LEDGER_KEEP
-  return entries.filter((entry) => {
-    if (toDrop === 0 || entry.status === 'pending') return true
-    toDrop -= 1
-    return false
-  })
-}
-
-/**
- * Records an outgoing transaction in this wallet's ledger.
+ * The Lightchain-side convenience form of `../ledger.mjs`'s chain-aware
+ * `recordTransaction(ctx, rpc, txish)`: the sending client is `ctx.rpc()` and
+ * the chain-id fallback is the connected network's table entry, exactly as it
+ * was before the extraction. Handlers broadcasting on another chain — swap and
+ * bridge — call the ledger module directly with that chain's client.
  *
  * Exported for `handlers/ai.mjs`, whose `ai.fund` and `ai.withdraw` are the
  * other two places this application broadcasts anything. All three now record,
@@ -484,10 +179,7 @@ function trim(entries) {
  * wallet knowing that it does.
  */
 export async function recordTransaction(ctx, kind, sent) {
-  const ledger = transactionLedger(ctx)
-  const entry = await ledger.record(kind, sent)
-  ledger.follow(sent)
-  return entry
+  return recordOnChain(ctx, ctx.rpc(), { kind, ...sent })
 }
 
 export function walletHandlers(ctx) {
@@ -905,6 +597,38 @@ export function walletHandlers(ctx) {
       }
 
       const value = whole(req.amount, 'amount') ?? 0n
+      const maxFeePerGas = feePerGas(req.maxFeePerGas, 'maxFeePerGas')
+      const maxPriorityFeePerGas = feePerGas(req.maxPriorityFeePerGas, 'maxPriorityFeePerGas')
+      const symbol = NETWORKS[network()].symbol
+
+      // Cheap truth before an expensive failure. Without this, a transfer the
+      // balance cannot cover is signed, broadcast and refused by the node,
+      // whose answer is a raw "insufficient funds for gas * price + value…"
+      // string naming nothing anybody can act on. The arithmetic is the same
+      // one the node applies before accepting a transaction — the gas limit
+      // times the fee cap, plus the value itself — so the refusal arrives
+      // here instead, before a dialog, a signature or a broadcast, and in
+      // plain words.
+      const [balance, market] = await Promise.all([
+        rpc().balanceOf(account.address),
+        // Only needed when the caller has not named a fee cap of their own.
+        maxFeePerGas === undefined ? rpc().fees() : Promise.resolve(null)
+      ])
+
+      // The estimate mirrors sendTransaction's, margin included. When the
+      // estimate itself cannot be had — a recipient whose code reverts, a node
+      // that will not answer — the intrinsic cost of a plain transfer stands
+      // in: the real send hits the same failure and reports it, while the
+      // common case this check exists for, an empty or nearly empty wallet, is
+      // still caught.
+      const gas = await rpc()
+        .estimateGas({ from: account.address, to, data: '0x', value })
+        .then((estimate) => (estimate * 125n) / 100n)
+        .catch(() => (21_000n * 125n) / 100n)
+
+      if (balance < upfrontCost(gas, maxFeePerGas ?? market.maxFeePerGas, value)) {
+        throw new Error(cannotCover(symbol))
+      }
 
       // Before anything is signed, and describing the transfer from the values
       // about to be used rather than from the request. A window that asked for
@@ -912,7 +636,7 @@ export function walletHandlers(ctx) {
       await guard.allow({
         value,
         details: {
-          amount: readableAmount(value, NETWORKS[network()].symbol),
+          amount: readableAmount(value, symbol),
           // Checksummed, because the dialog is where somebody checks the
           // destination character by character and mixed case is what makes a
           // wrong one visible.
@@ -922,17 +646,30 @@ export function walletHandlers(ctx) {
         }
       })
 
-      const sent = await sendTransaction(rpc(), account, {
-        to,
-        value,
-        maxFeePerGas: feePerGas(req.maxFeePerGas, 'maxFeePerGas'),
-        maxPriorityFeePerGas: feePerGas(req.maxPriorityFeePerGas, 'maxPriorityFeePerGas'),
-        nonce: whole(req.nonce, 'nonce'),
-        chainId: ctx.chainId()
-      })
+      let sent
+      try {
+        sent = await sendTransaction(rpc(), account, {
+          to,
+          value,
+          maxFeePerGas,
+          maxPriorityFeePerGas,
+          nonce: whole(req.nonce, 'nonce'),
+          chainId: ctx.chainId()
+        })
+      } catch (err) {
+        // The balance can move between the check above and the node seeing the
+        // transaction — the fee market jumps, or another transaction of ours
+        // lands first and takes the nonce's worth out of the balance. The node
+        // reports it as the same raw RPC string; say what is actually missing
+        // instead.
+        if (/insufficient funds/.test(err?.message ?? '')) {
+          throw new Error(cannotCover(symbol), { cause: err })
+        }
+        throw err
+      }
 
       // Written down before the wait, not after it. See recordTransaction.
-      await ledger.record('send', sent)
+      await ledger.record(rpc(), 'send', sent)
 
       const receipt = await sent.wait()
       ledger.settle(sent.hash, receipt)
@@ -972,7 +709,7 @@ export function walletHandlers(ctx) {
       const { entry, sent } = await toReplace(String(req.hash ?? ''), 'speed up')
 
       const faster = await speedUp(rpc(), wallet.account(), sent, undefined, ctx.chainId())
-      await ledger.record(entry.kind, faster, { replaces: entry.hash })
+      await ledger.record(rpc(), entry.kind, faster, { replaces: entry.hash })
       ledger.follow(faster)
 
       return { hash: faster.hash }
@@ -991,7 +728,7 @@ export function walletHandlers(ctx) {
       const { entry, sent } = await toReplace(String(req.hash ?? ''), 'cancel')
 
       const stopped = await cancel(rpc(), wallet.account(), sent, undefined, ctx.chainId())
-      await ledger.record('cancel', stopped, { replaces: entry.hash })
+      await ledger.record(rpc(), 'cancel', stopped, { replaces: entry.hash })
       ledger.follow(stopped)
 
       return { hash: stopped.hash }
