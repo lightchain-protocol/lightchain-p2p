@@ -210,7 +210,8 @@ const DIALOGS = [
   // whole run out. Photograph it by hand when its design changes.
   { name: 'secure', surface: 'chat', press: '#room-secure', dialog: '#secure-dialog' },
   { name: 'receive', surface: 'wallet', press: '#assets-receive-btn', dialog: '#receive-dialog' },
-  { name: 'send', surface: 'wallet', press: '#assets-send-btn', dialog: '#send-dialog' }
+  { name: 'send', surface: 'wallet', press: '#assets-send-btn', dialog: '#send-dialog' },
+  { name: 'swap', surface: 'wallet', press: '#assets-swap-btn', dialog: '#swap-dialog' }
   // The bridge is a page now, not a dialog: it is one of the SURFACES above and
   // is photographed like every other panel, in both themes at both sizes.
 ]

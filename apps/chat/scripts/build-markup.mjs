@@ -48,6 +48,7 @@ const DOCUMENT = [
   ['panel-bridge.html', 'bridge — a page, not a dialog'],
   ['content-close.html', 'shared — closes content and shell'],
   ['dialogs.html', 'shared dialogs: join, invite, pay, rename, move'],
+  ['dialog-swap.html', 'swap — Ethereum assets into LCAI over Uniswap'],
   ['dialog-secure.html', 'how this room is protected'],
   ['foot.html', 'shared — toast, module script, closing tags']
 ]

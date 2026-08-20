@@ -122,6 +122,8 @@ const ICONS = {
   'i-shield': 'shield-check',
 
   'i-routing': 'route',
+  // Swapping, beside bridge's left-right arrows: the pair trade vertical.
+  'i-swap': 'arrow-down-up',
   'i-storage': 'database'
 }
 

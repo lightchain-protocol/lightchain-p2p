@@ -19,6 +19,7 @@
     partials/panel-bridge.html      bridge — a page, not a dialog
     partials/content-close.html     shared — closes content and shell
     partials/dialogs.html           shared dialogs: join, invite, pay, rename, move
+    partials/dialog-swap.html       swap — Ethereum assets into LCAI over Uniswap
     partials/dialog-secure.html     how this room is protected
     partials/foot.html              shared — toast, module script, closing tags
 -->
@@ -347,6 +348,12 @@
           <circle cx="6" cy="19" r="3" />
           <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
           <circle cx="18" cy="5" r="3" />
+        </symbol>
+        <symbol id="i-swap" viewBox="0 0 24 24">
+          <path d="m3 16 4 4 4-4" />
+          <path d="M7 20V4" />
+          <path d="m21 8-4-4-4 4" />
+          <path d="M17 4v16" />
         </symbol>
         <symbol id="i-storage" viewBox="0 0 24 24">
           <ellipse cx="12" cy="5" rx="9" ry="3" />
@@ -870,6 +877,18 @@
             <label class="settings-check">
               <input type="checkbox" id="set-receipts" />
               <span>Send read receipts</span>
+            </label>
+
+            <h3 class="settings-heading">Notifications</h3>
+            <p class="settings-note">
+              When one of the balances this wallet watches grows — a deposit landing, on any of
+              the six networks — a message says what arrived and on which chain. The message shows
+              either way; this switch is only about the sound that comes with it. On by default,
+              because money arriving is news worth noticing.
+            </p>
+            <label class="settings-check">
+              <input type="checkbox" id="set-deposit-sound" />
+              <span>Play a sound when a deposit lands</span>
             </label>
           </section>
 
@@ -2149,6 +2168,10 @@
                         <svg class="icon" aria-hidden="true"><use href="#i-receive" /></svg>
                         Receive
                       </button>
+                      <button class="button button-sm" type="button" id="assets-swap-btn">
+                        <svg class="icon" aria-hidden="true"><use href="#i-swap" /></svg>
+                        Swap
+                      </button>
                       <button
                         class="button button-sm button-primary"
                         type="button"
@@ -2832,6 +2855,125 @@
       </form>
     </dialog>
 
+    <!-- Swapping -----------------------------------------------------------
+         What this wallet holds on Ethereum into LCAI, over Uniswap v3, without
+         leaving the app. Same two-step discipline as Send: the quote is read
+         live from the chain (QuoterV2 over eth_call — no API key, nothing told
+         to anyone), and the confirm button only appears over figures the
+         worker produced. Approving stays its own visible transaction, as on
+         the bridge, because the allowance is the part worth seeing.
+
+         The destination is fixed — LCAI on Ethereum — so it is stated rather
+         than picked: the only choice a swap screen could offer here is the one
+         that buys the wrong token. -->
+    <dialog class="dialog" id="swap-dialog">
+      <form method="dialog" class="dialog-form" id="swap-form">
+        <h2 class="dialog-title">Swap into LCAI</h2>
+        <p class="dialog-body">
+          Trades on Uniswap v3 on Ethereum, straight from this wallet. LCAI trades in one thin
+          pool, so the price can move between the quote and the swap — the "at least" figure is
+          the deal you are actually agreeing to.
+        </p>
+
+        <div class="alert" data-tone="warn" role="alert" id="swap-unavailable" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+          <div class="alert-body">
+            <strong class="alert-title">Swapping needs Ethereum</strong>
+            <span data-slot="detail"></span>
+          </div>
+        </div>
+
+        <label class="field">
+          <span class="field-label">From</span>
+          <select class="input" id="swap-from"></select>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Amount</span>
+          <span class="field-with-button">
+            <input
+              class="input"
+              id="swap-amount"
+              type="text"
+              inputmode="decimal"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="0.0"
+            />
+            <button class="field-reveal" type="button" id="swap-max">Max</button>
+          </span>
+        </label>
+        <p class="field-hint" id="swap-balance"></p>
+
+        <label class="field">
+          <span class="field-label">To</span>
+          <span class="chip">
+            <svg class="icon" aria-hidden="true"><use href="#i-logo" /></svg>
+            LCAI · Lightchain AI on Ethereum
+          </span>
+        </label>
+        <p class="field-hint" id="swap-receive-line">Enter an amount for a live quote.</p>
+
+        <label class="field">
+          <span class="field-label">Slippage tolerance</span>
+          <select class="input" id="swap-slippage">
+            <option value="10">0.1%</option>
+            <option value="50" selected>0.5%</option>
+            <option value="100">1.0%</option>
+          </select>
+        </label>
+
+        <div class="alert" data-tone="error" role="alert" id="swap-error" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+          <div class="alert-body">
+            <strong class="alert-title">This cannot be swapped</strong>
+            <span data-slot="detail"></span>
+          </div>
+        </div>
+
+        <!-- What the worker actually quoted. Everything here comes from the
+             chain rather than from the form above it. -->
+        <section class="send-review" id="swap-review" hidden>
+          <dl class="facts">
+            <dt>You receive</dt>
+            <dd id="swap-review-receive"></dd>
+            <dt>At least, after slippage</dt>
+            <dd id="swap-review-min"></dd>
+            <dt>Pool</dt>
+            <dd id="swap-review-pool"></dd>
+            <dt>Most it can cost in fees</dt>
+            <dd id="swap-review-fee"></dd>
+            <dt>Network</dt>
+            <dd><span class="chip" id="swap-review-network"></span></dd>
+          </dl>
+          <div class="send-warnings" id="swap-review-warnings"></div>
+        </section>
+
+        <!-- The outcome, kept on screen rather than toasted away: a swap is
+             money moving, and what happened deserves more than three seconds. -->
+        <section class="send-review" id="swap-result" hidden>
+          <dl class="facts">
+            <dt>Swapped</dt>
+            <dd id="swap-result-amount"></dd>
+            <dt>Received</dt>
+            <dd id="swap-result-received"></dd>
+            <dt>Transaction</dt>
+            <dd><code class="wallet-key" id="swap-result-hash"></code></dd>
+          </dl>
+          <div class="dialog-actions">
+            <button class="button" type="button" id="swap-result-explorer">View on explorer</button>
+          </div>
+        </section>
+
+        <div class="dialog-actions" id="swap-actions">
+          <button class="button" type="button" data-close="swap-dialog">Cancel</button>
+          <button class="button" type="button" id="swap-approve-btn" hidden>Approve first</button>
+          <button class="button button-primary" type="button" id="swap-confirm-btn" hidden>
+            Swap it
+          </button>
+        </div>
+      </form>
+    </dialog>
     <!--
       A reading page rather than a dialog body. COMPONENTS.md names the
       encryption explanation as a `.page` case, and it is: four layers of prose
@@ -3151,7 +3293,11 @@
       </form>
     </dialog>
 
-    <p class="toast" id="toast" hidden></p>
+    <!-- `popover="manual"` rather than an ordinary fixed element: an open
+         dialog lives in the top layer, above everything in the document, so a
+         toast that is not itself in the top layer renders *behind* it and a
+         "copied" confirmation made from inside a dialog is never seen. -->
+    <p class="toast" id="toast" hidden popover="manual"></p>
 
     <script type="module" src="./lib/main.js"></script>
   </body>

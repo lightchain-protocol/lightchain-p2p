@@ -92,6 +92,24 @@ export {
 } from './rpc.js'
 
 export {
+  LCAI_MAINNET,
+  POOL_FEES,
+  UNISWAP,
+  decodePoolAddress,
+  decodeQuotedSwap,
+  exactInputSingleCall,
+  findPool,
+  getPoolCall,
+  liquidityCall,
+  minimumReceived,
+  multicallWithDeadline,
+  quoteExactInputSingle,
+  quoteExactInputSingleCall,
+  type QuotedSwap,
+  type SwapLeg
+} from './uniswap.js'
+
+export {
   FEE_PER_GAS_CEILING,
   REPLACEMENT_BUMP_PERCENT,
   cancel,
