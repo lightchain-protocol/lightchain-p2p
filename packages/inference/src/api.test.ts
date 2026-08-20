@@ -154,6 +154,27 @@ describe('signing in', () => {
     expect((verify?.body as { signature: string }).signature).toBe(account.signMessage(message))
   })
 
+  it('accepts the message the live service actually writes, with no statement', async () => {
+    // The test composer above follows viem's layout; the live chat API follows
+    // the Spruce library's, which still writes both separators when there is
+    // no statement — `address\n\n\nURI:`. A parser tuned to only one layout
+    // refuses the other's real sign-ins.
+    const message =
+      `${new URL(url).host} wants you to sign in with your Ethereum account:\n` +
+      `${ADDRESS}\n\n\n` +
+      `URI: ${url}\nVersion: 1\nChain ID: 8200\nNonce: a-real-nonce\n` +
+      `Issued At: ${new Date().toISOString()}\n` +
+      `Expiration Time: ${new Date(Date.now() + 300_000).toISOString()}`
+    routes = happy({ 'GET /api/auth/challenge': () => ({ message }) })
+    seen = []
+
+    await new Api({ url }).signIn(ADDRESS, sign)
+
+    // Signed byte-for-byte as offered, and sent to be verified.
+    const verify = seen.find((call) => call.path === '/api/auth/verify')
+    expect((verify?.body as { message: string }).message).toBe(message)
+  })
+
   it('refuses to sign something that is not a sign-in challenge', async () => {
     routes = happy({
       'GET /api/auth/challenge': () => ({ message: 'service wants you to sign in\nNonce: abc' })

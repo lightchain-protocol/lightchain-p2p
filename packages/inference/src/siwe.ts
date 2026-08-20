@@ -59,11 +59,18 @@ export interface SiweExpectation {
 // composes these on the service — writes it. Every field the scheme makes
 // mandatory is mandatory here too: a message that omits one does not parse,
 // and what does not parse does not get signed.
+//
+// The statement is the subtle line, because the two composers in the wild
+// disagree about it. viem writes `address\n\n URI:` when there is none; the
+// Spruce library — which the live service uses — still writes both
+// separators, giving `address\n\n\n URI:`. With a statement both write
+// `address\n\n statement\n\n URI:`. An optional statement line followed by an
+// optional extra blank accepts all three, and nothing that is not SIWE.
 const SIWE = new RegExp(
   '^' +
     '(?<domain>[^\\n]+) wants you to sign in with your Ethereum account:\\n' +
     '(?<address>0x[0-9a-fA-F]{40})\\n\\n' +
-    '((?<statement>[^\\n]+)\\n\\n)?' +
+    '((?<statement>[^\\n]+)\\n)?\\n?' +
     'URI: (?<uri>[^\\n]+)\\n' +
     'Version: (?<version>[^\\n]+)\\n' +
     'Chain ID: (?<chainId>[0-9]+)\\n' +
