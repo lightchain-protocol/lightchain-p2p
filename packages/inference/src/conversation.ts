@@ -85,6 +85,20 @@ export class Conversation {
   #sessionId: string | null = null
   #worker: string | null = null
   #socket: { close(): void } | null = null
+  /** Non-null while a start is in flight, so a second one is refused rather than leaked. */
+  #starting: Promise<void> | null = null
+  /**
+   * Bumped every time the socket is replaced. Handlers capture the generation
+   * they were registered with, so a socket a reopen left behind cannot settle
+   * a wait that outlived it.
+   */
+  #generation = 0
+  /**
+   * The job currently being answered, if any. Frames naming any other job —
+   * or arriving while no job is waiting — are the tail of one that timed out
+   * or was cancelled, and are dropped rather than collected.
+   */
+  #activeJob: string | null = null
 
   /** Resolvers for the answer currently in flight, if any. */
   #pending: { resolve(text: string): void; reject(error: Error): void } | null = null
@@ -132,7 +146,26 @@ export class Conversation {
    */
   async start(onProgress: (progress: Progress) => void = () => {}): Promise<void> {
     if (this.open) return
+    // A start takes the better part of a minute — a draw, a transaction, a
+    // socket — and nothing in that time sets `open`, so a second call before
+    // the first finished would draw a second worker and leak the first one's
+    // session and socket. Refuse it instead.
+    if (this.#starting) {
+      throw new ConversationError(
+        'the conversation is already being started. Wait for that to finish first.'
+      )
+    }
 
+    const starting = this.#open(onProgress)
+    this.#starting = starting
+    try {
+      await starting
+    } finally {
+      this.#starting = null
+    }
+  }
+
+  async #open(onProgress: (progress: Progress) => void): Promise<void> {
     const flavour = await this.#api.flavour()
 
     onProgress({ phase: 'drawing' })
@@ -181,20 +214,44 @@ export class Conversation {
     }
 
     const token = await this.#api.relayToken(sessionId)
+    // Handlers are pinned to the generation they were registered with, so a
+    // socket that a reopen replaced cannot reject — or resolve — a wait that
+    // outlived it.
+    const generation = ++this.#generation
     this.#socket = await connect(`${this.#relayUrl}?token=${token}`, {
       onMessage: (frame) => this.#onFrame(frame, onProgress),
       onClose: () => {
+        if (generation !== this.#generation) return
         this.#socket = null
         this.#pending?.reject(new ConversationError('the relay closed before the answer finished'))
         this.#pending = null
       },
       onError: (error) => {
+        if (generation !== this.#generation) return
         this.#pending?.reject(error)
         this.#pending = null
       }
     })
 
     onProgress({ phase: 'ready', sessionId, worker: drawn.worker })
+  }
+
+  /**
+   * Opens a fresh session in place of one the chain expired.
+   *
+   * The question in flight is deliberately kept waiting across the reopen —
+   * the asker asked once and should be answered once. The generation is
+   * bumped before the old socket is closed, so its close event reaching the
+   * handlers afterwards cannot reject that wait.
+   */
+  async #reopen(onProgress: (progress: Progress) => void): Promise<void> {
+    const socket = this.#socket
+    this.#generation++
+    this.#socket = null
+    this.#sessionKey = null
+    this.#sessionId = null
+    socket?.close()
+    await this.start(onProgress)
   }
 
   /** The service sends the transaction, having drawn the worker itself. */
@@ -300,13 +357,24 @@ export class Conversation {
       return
     }
 
+    // The job a frame belongs to, when it says. Frames keep arriving for jobs
+    // nobody is waiting on any more — the tail of an answer that timed out,
+    // or of one that was cancelled — and are dropped rather than collected:
+    // what is gathered here is the evidence `commitment()` and `dispute()`
+    // quote, and frames gathered after the wait ended make a partial answer
+    // indistinguishable from a short one.
+    const frameJob =
+      message.jobId === undefined || message.jobId === null ? null : String(message.jobId)
+    const stale =
+      this.#activeJob === null || (frameJob !== null && frameJob !== this.#activeJob)
+
     // Any frame may carry text, and which one does is a property of the
     // deployment rather than of the protocol: testnet streams `chunk` frames
     // and ends with an empty `complete`, while mainnet sends the whole answer
     // as the payload of a single `complete`. Keying on the payload rather than
     // on the type handles both, and would have saved a paid job that arrived
     // and was thrown away.
-    if (message.payload && this.#sessionKey) {
+    if (message.payload && this.#sessionKey && !stale) {
       // Keyed by sequence number, because the same text arrives twice: testnet
       // streams a `chunk` and then repeats the last one as the payload of
       // `complete`. Appending blindly answered "okok" to a one-word question.
@@ -358,6 +426,7 @@ export class Conversation {
     }
 
     if (message.type === 'complete') {
+      if (stale) return
       const text = this.#assemble()
       if (text === '') {
         // The job was submitted and paid for. Saying so beats a blank bubble
@@ -375,6 +444,7 @@ export class Conversation {
     }
 
     if (message.type === 'error') {
+      if (stale) return
       this.#pending?.reject(new ConversationError(message.error ?? 'the worker reported an error'))
       this.#pending = null
     }
@@ -411,33 +481,84 @@ export class Conversation {
       encrypt(this.#sessionKey, new TextEncoder().encode(prompt))
     ).toString('base64')
 
-    const blobHash = await this.#api.putBlob(this.#sessionId, ciphertext)
-    const jobId = await this.#api.submit(this.#sessionId, blobHash)
+    let jobId: string
+    try {
+      try {
+        jobId = await this.#submit(ciphertext)
+      } catch (err) {
+        // The chain expires a session that has sat idle for
+        // `sessionInactivityTimeout` (thirty minutes), and everything
+        // submitted to it afterwards reverts with SessionNotActive. That is a
+        // fact about the session, not about the question, so the question
+        // survives it: open a fresh session and submit once more.
+        if (!isSessionNotActive(err)) throw err
+        await this.#reopen(onProgress)
+        jobId = await this.#submit(ciphertext)
+      }
+    } catch (err) {
+      // Whatever failed, nothing will settle the promise above now. Clear the
+      // pending slot so the next ask is not told a question is in flight
+      // forever — until today, a failed submit wedged the session exactly so —
+      // and give the abandoned promise a rejection handler, because the relay
+      // closing later would otherwise reject it unhandled, which in a Bare
+      // worker is a process crash.
+      answer.catch(() => {})
+      this.#pending = null
+      throw err
+    }
+
+    this.#activeJob = jobId
     onProgress({ phase: 'waiting', jobId })
 
     let timer: ReturnType<typeof setTimeout> | undefined
-    const text = await Promise.race([
-      answer,
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(
-          () =>
-            reject(
-              // The job is submitted and paid whether or not the answer
-              // arrives, so this says so rather than implying a retry is free.
-              new ConversationError(
-                `job ${jobId} produced no answer within ${Math.round(timeout / 1000)}s. It was submitted and paid for; the worker may still respond.`
-              )
-            ),
-          timeout
-        )
-      })
-    ]).finally(() => {
+    let text: string
+    try {
+      text = await Promise.race([
+        answer,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () =>
+              reject(
+                // The job is submitted and paid whether or not the answer
+                // arrives, so this says so rather than implying a retry is free.
+                new ConversationError(
+                  `job ${jobId} produced no answer within ${Math.round(timeout / 1000)}s. It was submitted and paid for; the worker may still respond.`
+                )
+              ),
+            timeout
+          )
+        })
+      ])
+    } catch (err) {
+      // Whatever ended the wait — timeout, relay close, worker error, a frame
+      // that failed verification — what was gathered is part of an answer,
+      // and part of an answer is not evidence: `commitment()` would be
+      // checking a ciphertext against a hash nobody committed to as one.
+      this.#chunks.clear()
+      this.#evidence.clear()
+      throw err
+    } finally {
       clearTimeout(timer)
       this.#pending = null
-    })
+      this.#activeJob = null
+    }
 
     onProgress({ phase: 'done', jobId })
     return { jobId, text }
+  }
+
+  /**
+   * Uploads the prompt blob and submits the job against the current session.
+   *
+   * One method because the two are retried together after a session expiry:
+   * the blob upload carries the session id too, so uploading against the dead
+   * one and only failing at submit would leave a blob nobody can reference.
+   */
+  async #submit(ciphertext: string): Promise<string> {
+    const sessionId = this.#sessionId
+    if (!sessionId) throw new ConversationError('the conversation has not been started')
+    const blobHash = await this.#api.putBlob(sessionId, ciphertext)
+    return this.#api.submit(sessionId, blobHash)
   }
 
   /**
@@ -567,14 +688,35 @@ export class Conversation {
       new ConversationError('stopped waiting. The job was already submitted and paid for.')
     )
     this.#pending = null
+    this.#activeJob = null
+    // Whatever arrives now is the tail of a job nobody is waiting on; keeping
+    // it would pass part of an answer off as the evidence for one.
+    this.#chunks.clear()
+    this.#evidence.clear()
     return true
   }
 
   close(): void {
     this.cancel()
+    this.#generation++
     this.#socket?.close()
     this.#socket = null
     this.#sessionKey = null
     this.#sessionId = null
   }
+}
+
+/**
+ * Whether an API failure is the chain refusing a session that sat idle too
+ * long.
+ *
+ * `AIConfig.sessionInactivityTimeout` is thirty minutes, after which the
+ * session is expired on chain and every submission to it reverts with
+ * `SessionNotActive`. The service passes the revert reason through in the
+ * error message, which is the only place it can be read from.
+ */
+function isSessionNotActive(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return false
+  const text = `${err.code ?? ''} ${err.message}`.replace(/[^a-z0-9]/gi, '')
+  return /sessionnotactive/i.test(text)
 }
