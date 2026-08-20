@@ -717,8 +717,23 @@ const shape = JSON.parse(
       ownWithFace: rows.filter(
         (r) => r.classList.contains('is-own') && r.querySelector('.message-avatar')
       ).length,
-      // And within a run, only the first of them carries one.
-      runsWithFace: runs.filter((r) => r.querySelector('.message-avatar svg')).length,
+      // And within a run, exactly one face — on its last row, so the face
+      // sits beside the message the run ends on rather than the one it
+      // began with. A run start is a row without is-run; every run has
+      // exactly one start and exactly one last row, so faces === starts.
+      faces: rows.filter(
+        (r) => !r.classList.contains('is-own') && r.querySelector('.message-avatar svg')
+      ).length,
+      runStarts: rows.filter(
+        (r) => !r.classList.contains('is-own') && !r.classList.contains('is-run')
+      ).length,
+      // The face is on the LAST row of a run: a row carrying a face is never
+      // followed by a continuation of the same run.
+      faceNotLast: rows.filter(
+        (r) =>
+          r.querySelector('.message-avatar svg') &&
+          r.nextElementSibling?.classList?.contains('is-run')
+      ).length,
       days: document.querySelectorAll('#messages .day-rule').length,
       dayLabels: [...document.querySelectorAll('#messages .day-rule-label')].map((n) =>
         n.textContent.trim()
@@ -741,8 +756,8 @@ report(
 
 report(
   'and a run shows one face rather than the same face repeated',
-  shape.runsWithFace === 0,
-  `${shape.runsWithFace} repeats within runs`
+  shape.faces === shape.runStarts && shape.faceNotLast === 0,
+  `${shape.faces} faces across ${shape.runStarts} runs, ${shape.faceNotLast} not on the last row`
 )
 
 report(

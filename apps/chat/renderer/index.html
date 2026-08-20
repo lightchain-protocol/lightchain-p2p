@@ -354,13 +354,12 @@
         <!-- coins:end -->
       </svg>
 
-    <!-- Drawn by us on Windows and Linux; on macOS the traffic lights sit here
-         and the content is inset to clear them. -->
+    <!-- Window chrome and nothing else: somewhere to grab the window, inset
+         clear of the platform's own controls, plus the one control that
+         belongs to the window itself. The brand moved to the top of the
+         sidebar — the app title was in two places, and a strip whose whole
+         job is to be draggable earns the simplicity. -->
     <header class="titlebar" id="titlebar">
-      <div class="titlebar-brand">
-        <svg class="logo" aria-hidden="true"><use href="#i-logo" /></svg>
-        <span class="wordmark">Lightchain</span>
-      </div>
       <!-- The only control the bar ever carries, and it is hidden until there
            is something to apply. renderer/lib/ipc.js resolves it by id. -->
       <button
@@ -795,12 +794,18 @@
     <div class="settings" id="settings" hidden>
       <div class="settings-frame">
         <nav class="settings-nav" aria-label="Settings">
-          <h2 class="sidebar-title">Settings</h2>
-          <button class="nav-item is-active" type="button" data-settings="general">General</button>
-          <button class="nav-item" type="button" data-settings="wallet">Wallet</button>
-          <button class="nav-item" type="button" data-settings="inference">Inference</button>
-          <button class="nav-item" type="button" data-settings="worker">Worker</button>
-          <button class="nav-item" type="button" data-settings="advanced">Advanced</button>
+          <h2 class="settings-title">Settings</h2>
+          <button class="settings-nav-item is-active" type="button" data-settings="general">
+            General
+          </button>
+          <button class="settings-nav-item" type="button" data-settings="wallet">Wallet</button>
+          <button class="settings-nav-item" type="button" data-settings="inference">
+            Inference
+          </button>
+          <button class="settings-nav-item" type="button" data-settings="worker">Worker</button>
+          <button class="settings-nav-item" type="button" data-settings="advanced">
+            Advanced
+          </button>
           <button class="button button-block" type="button" id="settings-close">Done</button>
         </nav>
 
@@ -1086,21 +1091,27 @@
     </div>
 
     <main class="shell">
-      <!-- The room list is the sidebar, not a section inside it.
-           
-           This used to be five destinations in three groups - Dashboard, Chat,
-           Models, Worker, Wallet - with the rooms tucked underneath as a
-           context list that appeared when Chat was chosen. That is an
-           architecture diagram, and it asked somebody opening a messenger to
-           first decide which part of the system they wanted.
-           
-           There is one destination now. Conversations are the sidebar's body,
-           the way they are in every messenger anybody has used, and everything
-           else lives behind the avatar at the bottom: an account is a thing you
-           visit occasionally, not a peer of the conversation you are having. -->
+      <!-- One navigation, five zones, top to bottom:
+
+           1. the brand, and whether this machine is talking to anybody
+           2. the conversation list — the sidebar's whole body — with the two
+              ways to start one pinned under the list header, so they are
+              always in the same place and never scroll away or sit stranded
+              mid-column
+           3. elsewhere: Models, Account, Earn — visible, named, one press away
+           4. who you are signed in as, which is also the way to Account
+           5. version, theme, settings
+
+           "Conversations" labels the room list and is nothing else. It was
+           briefly both the label and a nav row, which put the same destination
+           on screen twice and read as two navigation systems stapled together.
+           No destination appears twice. -->
       <nav class="sidebar" id="sidebar" aria-label="Conversations">
         <div class="sidebar-head">
-          <span class="sidebar-brand">Conversations</span>
+          <span class="sidebar-brand">
+            <svg class="logo" aria-hidden="true"><use href="#i-logo" /></svg>
+            <span class="sidebar-wordmark">Lightchain</span>
+          </span>
           <button
             class="icon-button sidebar-collapse"
             type="button"
@@ -1126,65 +1137,65 @@
           </button>
         </div>
 
-        <!-- Where everything else is.
-             
-             These were removed and put behind a chevron on the account row, on
-             the argument that a messenger should have one primary surface. The
-             argument is not wrong and the execution was: a menu with no
-             affordance is not a second level of navigation, it is four
-             destinations that no longer exist as far as anybody using the
-             application can tell. Models, the wallet, earning and settings
-             became unreachable unless you already knew to press an avatar.
-             
-             They are visible again. Compact and below the conversations rather
-             than above them, because the conversations are still the reason the
-             window is open - but visible, named, and one press away. -->
-        <div class="sidebar-body" id="chat-context">
-          <ul class="room-list" id="room-list" aria-label="Your conversations"></ul>
-          <p class="sidebar-empty" id="sidebar-empty">No conversations yet — start one.</p>
+        <!-- The list, its header, and the two ways to add to it. The actions
+             are pinned between the header and the scrolling list: they used to
+             float below the rooms, which put the primary action of a messenger
+             at the mercy of how many rooms happened to be open. -->
+        <div class="sidebar-rooms">
+          <div class="sidebar-rooms-head">
+            <span class="sidebar-rooms-title">Conversations</span>
+          </div>
+          <div class="sidebar-actions">
+            <button class="button button-primary button-block" type="button" id="create-btn">
+              <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
+              <span class="nav-label">New conversation</span>
+            </button>
+            <button class="button button-block" type="button" id="join-btn">
+              <svg class="icon" aria-hidden="true"><use href="#i-invite" /></svg>
+              <span class="nav-label">Join with an invite</span>
+            </button>
+          </div>
+          <div class="sidebar-body" id="chat-context">
+            <ul class="room-list" id="room-list" aria-label="Your conversations"></ul>
+            <p class="sidebar-empty" id="sidebar-empty">No conversations yet — start one.</p>
+          </div>
         </div>
 
-        <div class="sidebar-actions">
-          <button class="button button-primary button-block" type="button" id="create-btn">
-            <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
-            <span class="nav-label">New conversation</span>
-          </button>
-          <button class="button button-block" type="button" id="join-btn">
-            <span class="nav-label">Join with an invite</span>
-          </button>
+        <!-- Everything that is not a conversation, in the order the contract
+             fixes. Visually separated from the list and below it, because the
+             conversations are the reason the window is open — but visible and
+             named, because these four destinations were unreachable for a
+             while behind an avatar with no affordance, and a destination
+             nobody can find does not exist. -->
+        <div class="sidebar-elsewhere">
+          <p class="sidebar-group-title" aria-hidden="true">Elsewhere</p>
+          <ul class="sections" aria-label="Elsewhere">
+            <li>
+              <button class="nav-item" type="button" data-section="models">
+                <svg class="nav-icon" aria-hidden="true"><use href="#i-models" /></svg>
+                <span class="nav-label">Models</span>
+              </button>
+            </li>
+            <li>
+              <button class="nav-item" type="button" data-section="wallet">
+                <svg class="nav-icon" aria-hidden="true"><use href="#i-wallet" /></svg>
+                <span class="nav-label">Account</span>
+              </button>
+            </li>
+            <li>
+              <button class="nav-item" type="button" data-section="worker">
+                <svg class="nav-icon" aria-hidden="true"><use href="#i-worker" /></svg>
+                <span class="nav-label">Earn</span>
+              </button>
+            </li>
+          </ul>
         </div>
-
-        <ul class="sections" aria-label="Elsewhere">
-          <li>
-            <button class="nav-item" type="button" data-section="chat">
-              <svg class="nav-icon" aria-hidden="true"><use href="#i-chat" /></svg>
-              <span class="nav-label">Conversations</span>
-            </button>
-          </li>
-          <li>
-            <button class="nav-item" type="button" data-section="models">
-              <svg class="nav-icon" aria-hidden="true"><use href="#i-models" /></svg>
-              <span class="nav-label">Models</span>
-            </button>
-          </li>
-          <li>
-            <button class="nav-item" type="button" data-section="wallet">
-              <svg class="nav-icon" aria-hidden="true"><use href="#i-wallet" /></svg>
-              <span class="nav-label">Account</span>
-            </button>
-          </li>
-          <li>
-            <button class="nav-item" type="button" data-section="worker">
-              <svg class="nav-icon" aria-hidden="true"><use href="#i-worker" /></svg>
-              <span class="nav-label">Earn</span>
-            </button>
-          </li>
-        </ul>
 
         <div class="sidebar-foot">
-          <!-- Who you are signed in as, and a way to the account page. Not a
-               menu any more: the four things it hid are nav rows above, where
-               they can be seen. -->
+          <!-- Who you are signed in as — identicon, truncated address, network
+               — and a way to the account page. Not a menu: the destinations a
+               menu here used to hide are the nav rows above, where they can be
+               seen. -->
           <button class="account" type="button" id="account-btn" data-kit-focus>
             <span class="account-mark" id="account-mark" aria-hidden="true"></span>
             <span class="account-text">
@@ -1206,10 +1217,8 @@
             hidden
           ></button>
 
-          <!-- Theme and settings, back on screen. Both were plain icon buttons
-               in this corner for good reason: they are the two controls people
-               look for in exactly this place, and a person hunting for Settings
-               does not think to press their own avatar. -->
+          <!-- Version, theme and settings: the two controls people look for in
+               exactly this corner, and the build number under them. -->
           <div class="sidebar-tools">
             <p class="version" id="version"></p>
             <button
@@ -1235,15 +1244,19 @@
       </nav>
 
       <section class="content">
-        <!-- Standing until the words are written down.
-             
+        <!-- Standing until the words are written down — but it can rest.
+
              Deferring the backup has to be a real option or people photograph
              the setup screen to get past it, which is worse. So this is the
-             price of deferring: one quiet line, on every surface, that does not
-             go away by itself and cannot be dismissed. It is not a modal and it
-             does not interrupt anything - what it blocks is receiving funds,
-             and that gate lives on the button that would have shown an
-             address. -->
+             price of deferring: one quiet line, on every surface, that does
+             not go away by itself. It is not a modal and it does not interrupt
+             anything — what it blocks is receiving funds, and that gate lives
+             on the button that would have shown an address.
+
+             It can be put down for the session. A reminder with no way to rest
+             becomes a thing people learn to look past; this one comes back at
+             the next launch, because the twelve words are still the only way
+             back in. -->
         <div class="backup-banner" id="backup-banner" role="status" hidden>
           <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
           <p class="backup-banner-text">
@@ -1251,6 +1264,15 @@
           </p>
           <button class="button button-sm" type="button" id="backup-banner-btn">
             Back it up
+          </button>
+          <button
+            class="icon-button backup-banner-dismiss"
+            type="button"
+            id="backup-banner-dismiss"
+            title="Remind me later"
+            aria-label="Dismiss the backup reminder until the app restarts"
+          >
+            <svg class="icon" aria-hidden="true"><use href="#i-close" /></svg>
           </button>
         </div>
         <!-- Chat ------------------------------------------------------------>
@@ -1275,6 +1297,18 @@
           <div class="empty" id="empty">
             <h1 class="empty-title">No conversations yet</h1>
             <p class="empty-body">Start one, or join with an invite someone sent you.</p>
+            <!-- The one action the sentence promises. rooms.js presses the
+                 sidebar's own New-conversation button on its behalf, so the two
+                 can never disagree about what starting one does. Hidden when
+                 the nothing on screen is "none chosen" rather than "none at
+                 all", where the next step is picking from the list. -->
+            <button
+              class="button button-primary empty-action"
+              type="button"
+              id="empty-create-btn"
+            >
+              Start a conversation
+            </button>
           </div>
 
           <div class="room" id="room" hidden>
@@ -1382,6 +1416,12 @@
                    what it is not is something anybody needs to look at. -->
               <code class="key room-key" id="room-key" title="Room key" hidden></code>
             </header>
+
+            <!-- What the room has pinned, between the header and the
+                 conversation. Filled by rooms.js from the room's own `pinned`
+                 list and hidden while nothing is pinned — an empty bar is
+                 chrome, not information. -->
+            <div class="pinned-bar" id="pinned-bar" hidden></div>
 
             <div class="room-body">
               <!-- Announced to screen readers as messages arrive, since they
@@ -1525,6 +1565,15 @@
                 <div class="empty" id="ai-empty">
                   <h1 class="empty-title">Ask a model</h1>
                   <p class="empty-body">Pick one on the left and ask it anything.</p>
+                  <!-- One action, per the empty-state contract: the sentence says
+                       what will be here and the button starts it. When the list
+                       itself is empty this is also the way to check again. -->
+                  <p class="empty-action">
+                    <button class="button button-sm" type="button" data-ai-reload>
+                      <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                      Check for models
+                    </button>
+                  </p>
                 </div>
 
                 <!-- A session with nothing asked in it yet. Also what fills the
@@ -1556,7 +1605,10 @@
                 </div>
               </div>
 
-              <div class="messages" id="ai-messages" hidden></div>
+              <!-- Its own class, not the room's `.messages`: the transcript
+                   styles in models.css are scoped to `.ai-transcript` so this
+                   pane is whole whether or not room.css still leaks. -->
+              <div class="ai-transcript" id="ai-messages" hidden></div>
 
               <div class="ai-foot" id="ai-foot" hidden>
                 <!-- What stops this composer sending, beside the composer rather
@@ -1913,7 +1965,9 @@
                   <div class="account-balance-row">
                     <div class="account-balance-named">
                       <span class="account-balance-label">Wallet</span>
-                      <span class="account-balance-value" id="account-native">—</span>
+                      <!-- Loading is a word, zero is a number. A dash reads as a
+                           load failure, and a balance of nothing is an answer. -->
+                      <span class="account-balance-value" id="account-native">Loading…</span>
                     </div>
                     <div class="account-balance-actions">
                       <button class="button button-sm" type="button" id="assets-receive-btn">
@@ -1934,12 +1988,23 @@
                   <div class="account-balance-row">
                     <div class="account-balance-named">
                       <span class="account-balance-label">AI credit</span>
-                      <span class="account-balance-value" id="wallet-prepaid">—</span>
+                      <span class="account-balance-value" id="wallet-prepaid">Loading…</span>
                       <span class="account-balance-note" id="account-spent"></span>
                     </div>
                     <div class="account-balance-actions">
-                      <button class="button button-sm" type="button" data-move="fund">Top up</button>
-                      <button class="button-link" type="button" data-move="withdraw">
+                      <!-- A primary/secondary pair, not a button beside a bare
+                           link: two ways of moving the same money should read
+                           as the same kind of control. `deposit` is the key
+                           wallet.js's MOVES table knows; `fund` matched nothing
+                           and the button threw. -->
+                      <button
+                        class="button button-sm button-primary"
+                        type="button"
+                        data-move="deposit"
+                      >
+                        Top up
+                      </button>
+                      <button class="button button-sm" type="button" data-move="withdraw">
                         Move back to wallet
                       </button>
                     </div>
@@ -1956,6 +2021,47 @@
                   <button class="button button-sm button-primary" type="button" id="account-backup-btn">
                     Back it up
                   </button>
+                </section>
+
+                <!-- Every deposit, withdrawal and payment was already being
+                     recorded and reconciled against the chain; none of it was
+                     ever shown. A wallet that cannot say what it spent is
+                     asking to be trusted rather than read.
+
+                     On the page itself rather than behind the disclosure below:
+                     what the account did is part of the account, not part of
+                     the chain showing through. -->
+                <section class="kit-card kit-card-flush wallet-activity">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">Recent activity</h2>
+                    <button class="button button-sm" type="button" id="wallet-history-refresh">
+                      <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                      Refresh
+                    </button>
+                  </header>
+                  <div class="kit-card-scroll">
+                    <div class="ledger-head" aria-hidden="true" hidden>
+                      <span>What</span>
+                      <span>When</span>
+                      <span>Status</span>
+                      <span>Transaction</span>
+                      <span class="ledger-col-num">Value</span>
+                    </div>
+                    <ul class="ledger-list" id="wallet-history"></ul>
+                    <!-- One sentence and one action. The button presses the
+                         Receive control on the balance card, so there is still
+                         exactly one element with that id. -->
+                    <div class="ledger-empty" id="wallet-history-empty">
+                      <p class="ledger-empty-text">
+                        Nothing sent from this wallet yet. Deposits, withdrawals and payments for
+                        inference appear here once they are signed.
+                      </p>
+                      <button class="button button-sm" type="button" data-open-receive>
+                        <svg class="icon" aria-hidden="true"><use href="#i-receive" /></svg>
+                        Receive
+                      </button>
+                    </div>
+                  </div>
                 </section>
 
                 <!-- Everything below is the chain showing through: six
@@ -1988,7 +2094,7 @@
                     </header>
                     <div class="kit-card-scroll">
                       <div class="holdings-total">
-                        <span class="holdings-total-value" id="assets-total">—</span>
+                        <span class="holdings-total-value" id="assets-total">Loading…</span>
                         <span class="holdings-total-label" id="portfolio-change"></span>
                       </div>
 
@@ -2099,33 +2205,6 @@
                     </div>
                   </section>
 
-                  <!-- Every deposit, withdrawal and payment was already being
-                       recorded and reconciled against the chain; none of it was
-                       ever shown. A wallet that cannot say what it spent is
-                       asking to be trusted rather than read. -->
-                  <section class="kit-card kit-card-flush wallet-transactions">
-                    <header class="kit-card-head">
-                      <h2 class="kit-card-title">Transactions</h2>
-                      <button class="button button-sm" type="button" id="wallet-history-refresh">
-                        <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
-                        Refresh
-                      </button>
-                    </header>
-                    <div class="kit-card-scroll">
-                      <div class="ledger-head" aria-hidden="true" hidden>
-                        <span>What</span>
-                        <span>When</span>
-                        <span>Status</span>
-                        <span>Transaction</span>
-                        <span class="ledger-col-num">Value</span>
-                      </div>
-                      <ul class="ledger-list" id="wallet-history"></ul>
-                      <p class="wallet-note" id="wallet-history-empty">
-                        Nothing sent from this wallet yet. Deposits, withdrawals and payments for
-                        inference all appear here once they are signed.
-                      </p>
-                    </div>
-                  </section>
                 </div>
                 </details>
               </div>
@@ -2281,7 +2360,11 @@
             here is what you are relying on.
           </p>
           <ul class="bridge-disclosure" id="bridge-disclosure"></ul>
-          <label class="field bridge-accept">
+          <!-- Not `.field`: that is a vertical stack of label over control,
+               which made this a full-width bar with its sentence on the line
+               below — in front of an irreversible transfer. `.bridge-accept`
+               is a row, and review.mjs measures that it stays one. -->
+          <label class="bridge-accept">
             <input type="checkbox" id="bridge-accept" />
             <span>I have read this and want to continue</span>
           </label>

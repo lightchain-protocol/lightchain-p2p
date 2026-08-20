@@ -169,7 +169,7 @@ report(
  */
 const reachable = JSON.parse(
   await evaluate(`(() => {
-    const wanted = ['chat', 'models', 'wallet', 'worker']
+    const wanted = ['models', 'wallet', 'worker']
     const found = {}
 
     for (const section of wanted) {
@@ -187,6 +187,10 @@ const reachable = JSON.parse(
 
     return JSON.stringify({
       nav: found,
+      // The chat destination is the room list itself, not a nav row — the
+      // rebuild's "no destination appears twice" rule. It is asserted as what
+      // it is: a visible list somebody can press.
+      rooms: Boolean(document.getElementById('room-list')?.offsetParent),
       settings: Boolean(document.getElementById('settings-btn')?.offsetParent),
       theme: Boolean(document.getElementById('theme-btn')?.offsetParent)
     })
@@ -202,12 +206,18 @@ for (const [section, state] of Object.entries(reachable.nav)) {
 }
 
 report(
+  'and the conversation list itself is visible — it is the chat destination',
+  reachable.rooms === true,
+  `room list visible: ${reachable.rooms}`
+)
+
+report(
   'and so can Settings and the theme switch',
   reachable.settings === true && reachable.theme === true,
   `settings ${reachable.settings}, theme ${reachable.theme}`
 )
 
-for (const destination of ['models', 'wallet', 'worker', 'chat']) {
+for (const destination of ['models', 'wallet', 'worker']) {
   const landed = await evaluate(`(async () => {
     document.querySelector('#sidebar [data-section="${destination}"]').click()
     await new Promise((r) => setTimeout(r, 600))
