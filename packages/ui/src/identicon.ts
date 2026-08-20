@@ -25,7 +25,7 @@
  * underneath remains the thing that is actually checked.
  */
 
-import { BRAND, LIGHT } from './tokens.js'
+import { BRAND } from './tokens.js'
 
 /** Grid edge length, in cells. */
 export const IDENTICON_SIZE = 5
@@ -52,11 +52,16 @@ export const IDENTICON_SIZE = 5
  * `BRAND.border` survives too and is deliberately absent. It is eleven units of
  * CIE76 from `BRAND.violet`, which is to say the same colour to anyone glancing
  * at a 32px square, and a fourth colour nobody can tell from the first is not a
- * fourth colour. `LIGHT.success` is here for its value and not its meaning —
- * nothing about a green avatar says success; it is simply the only non-violet
- * mid-tone the palette owns.
+ * fourth colour.
+ *
+ * The green is `BRAND.avatar` and it used to be `LIGHT.success`, borrowed for
+ * its value rather than its meaning. That coupling broke the first time the
+ * status green was darkened to meet contrast on a hovered light row: every
+ * avatar drawn in it fell below three to one on the dark page. A status colour
+ * is tuned against one theme's surfaces and an avatar ink against both, so they
+ * are now separate values that are free to move independently.
  */
-export const IDENTICON_INK: readonly string[] = [BRAND.violet, BRAND.magenta, LIGHT.success]
+export const IDENTICON_INK: readonly string[] = [BRAND.violet, BRAND.magenta, BRAND.avatar]
 
 /**
  * Columns drawn from the hash. The remainder of each row is their reflection,

@@ -2,12 +2,16 @@ export {
   BRAND,
   CONTROL,
   DARK,
+  FOCUS,
   LIGHT,
+  MONO,
+  MOTION,
   RADIUS,
   SPACE,
   TYPE,
   cssVariables,
   palette,
+  type Neutrals,
   type Palette,
   type Theme
 } from './tokens.js'
