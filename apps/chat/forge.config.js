@@ -123,6 +123,16 @@ module.exports = {
       }
     },
     {
+      // The Windows fallback a beta actually needs: an MSIX signed by a
+      // build-minted development certificate installs only after the machine
+      // trusts that certificate, which is real friction for a tester. The zip
+      // unpacks and runs. The signature gate globs *.msix and never sees this
+      // — portable archives carry no install-time identity anywhere.
+      name: '@electron-forge/maker-zip',
+      platforms: ['win32'],
+      config: {}
+    },
+    {
       name: 'pear-electron-forge-maker-appimage',
       platforms: ['linux'],
       config: {

@@ -127,7 +127,11 @@ jobs:
           chmod +x "$bin" 2>/dev/null || true
           "$bin" --version
 
+      # `always`: a failed verify gate is exactly when the artifacts matter —
+      # an unsigned build is something to inspect, not something to lose. The
+      # job still goes red; the release workflow's own gates decide what ships.
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: ${{ matrix.app.name }}-${{ matrix.target.host }}
           path: apps/${{ matrix.app.name }}/out/${{ matrix.target.host }}
@@ -193,7 +197,11 @@ jobs:
             *)       node scripts/check-signing.mjs --require "apps/chat/out/make" ;;
           esac
 
+      # `always` here for the same reason as the binary matrix above: the
+      # unsigned-installer gate should cost the build its green checkmark, not
+      # the artifacts somebody needs to look at.
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: desktop-${{ matrix.target.host }}
           path: apps/chat/out/make
