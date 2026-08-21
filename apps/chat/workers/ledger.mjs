@@ -78,6 +78,32 @@ const LEDGER_VERSION = 1
 const LEDGER_KEEP = 500
 
 /**
+ * How young a settled entry has to be before {@link reconcile} asks about it
+ * again, in blocks: 64.
+ *
+ * A receipt is not finality. The block holding it can still be reorganised
+ * away — this chain's mainnet halted outright on 11 August 2026 — and an
+ * entry that said "confirmed" about a block the chain has since unpicked is
+ * a phantom success in the one record this wallet keeps. So settled entries
+ * inside this window are re-checked on every reconcile: a receipt that is
+ * gone sends the entry back to pending, where the ordinary pending logic can
+ * find it re-mined, still held, or genuinely dead.
+ *
+ * Sixty-four blocks is about six and a half minutes at Lightchain's
+ * six-second block time, and about thirteen on Ethereum's twelve-second one.
+ * That covers every reorg either chain has a plausible mechanism for — real
+ * reorgs are a block or two, and the halt-and-restart case replays minutes,
+ * not hours — while bounding the re-checks each history read pays for to the
+ * entries a reorg could still reach. Older entries are trusted, because a
+ * chain that reorganised days of history would have worse problems than this
+ * ledger.
+ *
+ * A node that will not answer changes nothing: the entry stays as it stands,
+ * because an unreachable chain is not evidence of a reorg.
+ */
+const REORG_WINDOW_BLOCKS = 64n
+
+/**
  * A decimal string, the shape quantities take once they are in the document.
  *
  * Shared with `handlers/wallet.mjs`, whose replacement logic refuses an entry
@@ -271,12 +297,21 @@ function createLedger(ctx) {
   }
 
   /**
-   * Catches every pending entry up with the chain.
+   * Catches every pending entry up with the chain, and re-checks the settled
+   * ones a reorg could still reach.
    *
    * A `wait` lives in the memory of the process that started it, so anything
    * still in flight when the application closed comes back marked pending and
-   * would stay that way for good. This is the answer: on every read, ask the
-   * chain about each one directly.
+   * would stay that way for good. Asking the chain about each pending entry
+   * on every read is the answer to that.
+   *
+   * The second pass is the reorg answer. A settled entry younger than
+   * {@link REORG_WINDOW_BLOCKS} is asked for its receipt again: if the
+   * receipt is gone, the block it was settled from was reorganised away and
+   * the entry goes back to pending rather than standing in history as a
+   * success that never happened; if it re-mined in a different block, the
+   * entry follows it there. A node that will not answer is not evidence of
+   * anything, and leaves every entry exactly as it stands.
    *
    * The chain asked is the connected one, `ctx.rpc()`, and only entries whose
    * recorded chain id matches are queried — an entry made on another chain is
@@ -285,7 +320,10 @@ function createLedger(ctx) {
   const reconcile = async () => {
     const current = entries()
     const waiting = current.filter((entry) => entry.status === 'pending')
-    if (waiting.length === 0) return current
+    // Settled and carrying a block — the only entries a reorg can reach. A
+    // failure written from a spent nonce has no block and is already final.
+    const young = current.filter((entry) => entry.status !== 'pending' && isDecimal(entry.block))
+    if (waiting.length === 0 && young.length === 0) return current
 
     const rpc = ctx.rpc()
 
@@ -294,7 +332,7 @@ function createLedger(ctx) {
       chainId = await rpc.chainId()
     } catch {
       // No node to ask. Pending is then the truthful state rather than a stale
-      // one, so it stays.
+      // one, and settled stays settled: an unreachable chain is not a reorg.
       return current
     }
 
@@ -304,7 +342,22 @@ function createLedger(ctx) {
     // "never heard of it" that would be read below as a transaction which never
     // happened.
     const mine = waiting.filter((entry) => entry.chainId === chainId)
-    if (mine.length === 0) return current
+    const mineYoung = young.filter((entry) => entry.chainId === chainId)
+
+    // The head is what "young" is measured against. Fetched only when there
+    // is a settled entry to re-check, so the common path — everything either
+    // pending or long settled — pays nothing for this.
+    const head =
+      mineYoung.length === 0
+        ? null
+        : await rpc.blockNumber().catch(() => null)
+
+    const recheck =
+      head === null
+        ? []
+        : mineYoung.filter((entry) => head - BigInt(entry.block) < REORG_WINDOW_BLOCKS)
+
+    if (mine.length === 0 && recheck.length === 0) return current
 
     // `Rpc.transactionCount` asks for the pending count, which includes the
     // very transactions being reconciled and so always sits above their nonces.
@@ -312,15 +365,18 @@ function createLedger(ctx) {
     // nonce has already been spent by something else, which is the only way to
     // establish that a pending transaction can never now be mined.
     const address = ctx.wallet.status().address
-    const spent = await rpc
-      .send('eth_getTransactionCount', [address, 'latest'])
-      .then((count) => fromQuantity(count))
-      .catch(() => null)
+    const spent =
+      mine.length === 0
+        ? null
+        : await rpc
+            .send('eth_getTransactionCount', [address, 'latest'])
+            .then((count) => fromQuantity(count))
+            .catch(() => null)
 
     const resolved = new Map()
 
-    await Promise.all(
-      mine.map(async (entry) => {
+    await Promise.all([
+      ...mine.map(async (entry) => {
         try {
           const receipt = await rpc.transactionReceipt(entry.hash)
           if (receipt) {
@@ -355,8 +411,43 @@ function createLedger(ctx) {
           // One transaction the node will not answer for should not stop the
           // others being caught up.
         }
+      }),
+      ...recheck.map(async (entry) => {
+        try {
+          const receipt = await rpc.transactionReceipt(entry.hash)
+
+          if (!receipt) {
+            // The receipt is gone: the block this was settled from was
+            // reorganised away. Back to pending — not failed, because the
+            // transaction may simply be waiting to be mined again, and the
+            // pending logic above is exactly the judgement for which. The
+            // settled fields go with the receipt, so a phantom block, gas
+            // figure and fee do not stand in history while it waits.
+            resolved.set(entry.hash, {
+              ...entry,
+              status: 'pending',
+              settledAt: null,
+              block: null,
+              gasUsed: null,
+              effectiveGasPrice: null,
+              fee: null,
+              detail: null
+            })
+            return
+          }
+
+          if (receipt.blockNumber.toString() !== entry.block) {
+            // Re-mined in a different block: a reorg moved it rather than
+            // dropping it. The entry follows to the new block rather than
+            // round-tripping through pending over a move nobody need see.
+            resolved.set(entry.hash, settled(entry, receipt))
+          }
+        } catch {
+          // A node that answers some hashes and not others leaves this one
+          // as it stands. Settled it stays, until a pass that can ask.
+        }
       })
-    )
+    ])
 
     if (resolved.size === 0) return current
 

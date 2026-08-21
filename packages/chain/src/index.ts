@@ -38,7 +38,7 @@ export {
   type Call3Result
 } from './multicall.js'
 
-export { RpcPool, type PoolOptions } from './pool.js'
+export { FailoverRpc, RpcPool, type PoolOptions } from './pool.js'
 
 export { TOKENS, tokensOn, type Token } from './tokens.js'
 
@@ -112,6 +112,7 @@ export {
 export {
   FEE_PER_GAS_CEILING,
   REPLACEMENT_BUMP_PERCENT,
+  SETTLE_CONFIRMATIONS,
   cancel,
   sendTransaction,
   speedUp,

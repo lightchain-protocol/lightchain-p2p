@@ -1,5 +1,6 @@
 import {
   FEE_PER_GAS_CEILING,
+  SETTLE_CONFIRMATIONS,
   cancel,
   fromPrivateKey,
   keccak256,
@@ -12,7 +13,7 @@ import {
 } from '@lcai-p2p/chain'
 import { REPLACE_CONFIRMATION, derivePrivateKey } from '@lcai-p2p/wallet'
 import { NETWORKS } from '@lcai-p2p/worker'
-import { readableAmount } from '../guard.mjs'
+import { DEFAULT_CONFIRM_ABOVE, readableAmount } from '../guard.mjs'
 import {
   isDecimal,
   recordTransaction as recordOnChain,
@@ -185,6 +186,21 @@ export async function recordTransaction(ctx, kind, sent) {
 export function walletHandlers(ctx) {
   const { wallet, rpc, network, useWalletInRooms, forgetInference, guard, saveSettings } = ctx
   const ledger = transactionLedger(ctx)
+
+  /**
+   * The guard's confirmation threshold, read the way the guard reads it.
+   *
+   * This is the line between a send that waits one block and a send that
+   * waits three: below it a transfer goes fast, because speed is the point of
+   * a small payment and the guard already priced its risk; at or above it the
+   * wait goes {@link SETTLE_CONFIRMATIONS} deep before anybody is told the
+   * money arrived. The setting is honoured rather than the default alone, so
+   * the line a person moved is the line both behaviours follow.
+   */
+  const confirmThreshold = () => {
+    const raw = ctx.settings?.()?.confirmAboveWei
+    return typeof raw === 'string' && /^[0-9]+$/.test(raw) ? BigInt(raw) : DEFAULT_CONFIRM_ABOVE
+  }
 
   /**
    * Points the rooms and the conversation at whichever identity the wallet
@@ -671,7 +687,13 @@ export function walletHandlers(ctx) {
       // Written down before the wait, not after it. See recordTransaction.
       await ledger.record(rpc(), 'send', sent)
 
-      const receipt = await sent.wait()
+      // Depth matched to the amount. One confirmation is inclusion, not
+      // finality — the block can still be reorganised away — so a send at or
+      // above the guard's own threshold waits three deep before reporting
+      // success, while a small one keeps the shallow wait it always had.
+      const receipt = await sent.wait(
+        value >= confirmThreshold() ? { confirmations: SETTLE_CONFIRMATIONS } : undefined
+      )
       ledger.settle(sent.hash, receipt)
 
       if (!receipt.status) throw new Error(`the transfer reverted (${sent.hash})`)

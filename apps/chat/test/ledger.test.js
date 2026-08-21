@@ -37,6 +37,7 @@ function context({ chainId = 9200, rpcOver = {} } = {}) {
     send: vi.fn(async () => '0x0'),
     transactionReceipt: vi.fn(async () => null),
     transactionByHash: vi.fn(async () => null),
+    blockNumber: vi.fn(async () => 100n),
     ...rpcOver
   }
 
@@ -257,5 +258,103 @@ describe('reconciling against the chain', () => {
     const [entry] = await transactionLedger(ctx).reconcile()
 
     expect(entry.status).toBe('pending')
+  })
+})
+
+describe('re-validating settled entries a reorg could still reach', () => {
+  /** Settles the recorded entry from its receipt, the way a history read does. */
+  async function settleNow(ctx, rpc, perHash = () => receipt()) {
+    rpc.transactionReceipt.mockImplementation(async (hash) => perHash(hash))
+    await transactionLedger(ctx).reconcile()
+    rpc.transactionReceipt.mockClear()
+  }
+
+  it('sends a reorged-out entry back to pending rather than leaving a phantom success', async () => {
+    const { ctx, rpc } = context()
+    await recordTransaction(ctx, rpc, { kind: 'bridge', ...sent() })
+    await settleNow(ctx, rpc) // confirmed at block 12
+
+    // The chain unpicked the block: the hash has no receipt at all now, and
+    // the head is close enough that the entry is still inside the window.
+    rpc.transactionReceipt.mockResolvedValue(null)
+    rpc.blockNumber.mockResolvedValue(20n)
+
+    const [entry] = await transactionLedger(ctx).reconcile()
+
+    expect(entry.status).toBe('pending')
+    // The settled fields went with the receipt: no phantom block, gas or fee
+    // stands in history while the transaction waits to be mined again.
+    expect(entry.block).toBe(null)
+    expect(entry.settledAt).toBe(null)
+    expect(entry.gasUsed).toBe(null)
+    expect(entry.fee).toBe(null)
+  })
+
+  it('follows an entry that re-mined in a different block to the new block', async () => {
+    const { ctx, rpc } = context()
+    await recordTransaction(ctx, rpc, { kind: 'send', ...sent() })
+    await settleNow(ctx, rpc) // confirmed at block 12
+
+    // A reorg moved rather than dropped it: the receipt is back, one block on.
+    rpc.transactionReceipt.mockResolvedValue(receipt({ blockNumber: 13n }))
+    rpc.blockNumber.mockResolvedValue(20n)
+
+    const [entry] = await transactionLedger(ctx).reconcile()
+
+    expect(entry.status).toBe('confirmed')
+    expect(entry.block).toBe('13')
+  })
+
+  it('re-checks inside the 64-block window and not past it', async () => {
+    const { ctx, rpc } = context()
+    await recordTransaction(ctx, rpc, { kind: 'send', ...sent() })
+    await recordTransaction(ctx, rpc, { kind: 'send', ...sent({ hash: HASH_B, nonce: 4n }) })
+    await settleNow(ctx, rpc, (hash) =>
+      receipt({ blockNumber: hash === HASH_A ? 12n : 13n })
+    )
+
+    // Head 76: A sits 64 deep, exactly at the window's edge and trusted; B
+    // sits 63 deep and is asked again. B's receipt is gone — reorged out.
+    rpc.blockNumber.mockResolvedValue(76n)
+    rpc.transactionReceipt.mockResolvedValue(null)
+
+    const entries = await transactionLedger(ctx).reconcile()
+
+    expect(entries.find((entry) => entry.hash === HASH_A).status).toBe('confirmed')
+    expect(entries.find((entry) => entry.hash === HASH_B).status).toBe('pending')
+    // The old entry was not even asked about: the window bounds what each
+    // history read pays for.
+    expect(rpc.transactionReceipt).toHaveBeenCalledTimes(1)
+    expect(rpc.transactionReceipt).toHaveBeenCalledWith(HASH_B)
+  })
+
+  it('leaves a settled entry alone when the chain cannot say how high it is', async () => {
+    const { ctx, rpc } = context()
+    await recordTransaction(ctx, rpc, { kind: 'send', ...sent() })
+    await settleNow(ctx, rpc)
+
+    // An unreachable head is not evidence of a reorg: nothing is re-checked
+    // and nothing moves.
+    rpc.blockNumber.mockRejectedValue(new Error('node down'))
+
+    const [entry] = await transactionLedger(ctx).reconcile()
+
+    expect(entry.status).toBe('confirmed')
+    expect(entry.block).toBe('12')
+    expect(rpc.transactionReceipt).not.toHaveBeenCalled()
+  })
+
+  it('leaves a settled entry alone when its receipt cannot be re-read', async () => {
+    const { ctx, rpc } = context()
+    await recordTransaction(ctx, rpc, { kind: 'send', ...sent() })
+    await settleNow(ctx, rpc)
+
+    rpc.blockNumber.mockResolvedValue(20n)
+    rpc.transactionReceipt.mockRejectedValue(new Error('node down'))
+
+    const [entry] = await transactionLedger(ctx).reconcile()
+
+    expect(entry.status).toBe('confirmed')
+    expect(entry.block).toBe('12')
   })
 })

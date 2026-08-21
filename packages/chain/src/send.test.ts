@@ -6,6 +6,7 @@ import {
   FEE_PER_GAS_CEILING,
   Rpc,
   RpcError,
+  SETTLE_CONFIRMATIONS,
   cancel,
   fromPrivateKey,
   sendTransaction,
@@ -881,5 +882,15 @@ describe('upfront cost', () => {
     // can have a nearly empty account rejected.
     expect(upfrontCost(21_000n, 15n, 1000n)).toBe(316_000n)
     expect(upfrontCost(21_000n, 15n)).toBe(315_000n)
+  })
+})
+
+describe('settle confirmations', () => {
+  it('is three blocks, as one named policy every money move shares', () => {
+    // A pin rather than an argument: one confirmation is inclusion, not
+    // finality, and the callers that wait this deep — bridge transfers, swaps,
+    // wallet sends above the guard's threshold — must never drift apart. If
+    // this number ever moves, it moves for all of them at once, here.
+    expect(SETTLE_CONFIRMATIONS).toBe(3)
   })
 })

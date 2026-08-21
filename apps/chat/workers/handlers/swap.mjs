@@ -1,5 +1,6 @@
 import {
   LCAI_MAINNET,
+  SETTLE_CONFIRMATIONS,
   UNISWAP,
   allowance,
   approveCall,
@@ -552,7 +553,12 @@ export function swapHandlers(ctx) {
       // approval above: broadcast is the point of no return, not mining.
       await record(ctx, on, 'swap', sent, CHAIN_ID)
 
-      const receipt = await sent.wait()
+      // Waited the full settlement depth, as every money move is: a receipt
+      // at depth one can still be reorganised away, and a swap reported as
+      // done that the chain then unpicked would be a phantom success in the
+      // ledger and on screen. The approvals above keep the shallow wait —
+      // they grant permission, they do not move money.
+      const receipt = await sent.wait({ confirmations: SETTLE_CONFIRMATIONS })
       if (!receipt.status) throw new Error(`the swap reverted (${sent.hash})`)
 
       return {

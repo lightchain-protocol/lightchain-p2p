@@ -2,6 +2,7 @@ import {
   BRIDGE,
   ETHEREUM_DOMAIN,
   LIGHTCHAIN_DOMAIN,
+  SETTLE_CONFIRMATIONS,
   allowance,
   approveCall,
   balanceOf,
@@ -461,7 +462,12 @@ export function bridgeHandlers(ctx) {
       // approval above: broadcast is the point of no return, not mining.
       await record(ctx, on, 'bridge', sent, route.from.id)
 
-      const receipt = await sent.wait()
+      // Waited the full settlement depth. A bridge transfer is the least
+      // recoverable send this application makes — no explorer indexes the
+      // route and nobody can retry it — so the one-confirmation receipt,
+      // which a reorg can still take back, is not enough to report success
+      // on. Approvals keep the shallow wait: they move no money.
+      const receipt = await sent.wait({ confirmations: SETTLE_CONFIRMATIONS })
       if (!receipt.status) throw new Error(`the transfer reverted (${sent.hash})`)
 
       // The message id the mailbox assigned, when it said so: the one artifact

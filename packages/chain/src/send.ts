@@ -114,6 +114,33 @@ export const FEE_PER_GAS_CEILING = 10_000n * 10n ** 9n
  */
 export const REPLACEMENT_BUMP_PERCENT = 10n
 
+/**
+ * How deep a money move waits before the caller is told it landed: three
+ * confirmations.
+ *
+ * One confirmation — {@link WaitOptions.confirmations}' default — is inclusion,
+ * not finality: the including block can still be reorganised away, taking the
+ * receipt with it, and this is not hypothetical on a chain whose mainnet
+ * halted outright on 11 August 2026. A wallet that reports success at depth
+ * one is repeating a promise the chain has not finished making. Three blocks
+ * is the compromise: it costs two more blocks of waiting — about twelve
+ * seconds on Lightchain's six-second blocks, twenty-four on Ethereum's — and
+ * it catches the shallow reorgs that actually happen. The deeper tail a fixed
+ * depth cannot cover is the ledger's job: its reconcile pass re-validates
+ * young settled entries and sends a reorged-out one back to pending.
+ *
+ * One constant for every money move rather than a judgement per call site,
+ * for the same reason as {@link FEE_PER_GAS_CEILING}: the policy should be a
+ * single decision made once. A depth a caller tunes per send is a depth that
+ * gets tuned down the first time somebody is impatient.
+ *
+ * Small wallet sends are the exception, and it is the callers' to apply: below
+ * the guard's confirmation threshold they keep the one-block wait, because
+ * speed is the point of a small transfer and the guard already priced the
+ * risk. Bridge transfers and swaps always wait the full depth.
+ */
+export const SETTLE_CONFIRMATIONS = 3
+
 /** Nonces are a uint64 on the wire, and a node will not hold one above that. */
 const MAX_NONCE = 2n ** 64n
 
