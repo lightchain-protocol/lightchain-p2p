@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Lightchain
+Comment=Peer-to-peer rooms and paid AI inference
+Exec=lightchain
+Icon=ai.lightchain.Hub
+Type=Application
+Terminal=false
+Categories=Network;InstantMessaging;
+MimeType=x-scheme-handler/lightchain;

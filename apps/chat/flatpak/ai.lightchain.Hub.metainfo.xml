@@ -2,10 +2,13 @@
 <!--
   AppStream metadata for the Flatpak build.
 
-  Flatpak is not a decided distribution channel: packages installed through a
-  store cannot receive the peer-to-peer updates this application is built
-  around, so shipping here means shipping something that stops updating itself.
-  See the open decisions in ROADMAP.md.
+  Flatpak is a self-build path, not a store channel: nothing is published to
+  Flathub, because an install managed by a store cannot receive the
+  peer-to-peer updates this application is built around. See
+  docs/decisions/0007-flatpak-snap.md.
+
+  The visible name is "Lightchain", matching the shipped window title, while
+  the id stays ai.lightchain.Hub to match the flatpak maker in forge.config.js.
 -->
 <component type="desktop-application">
   <id>ai.lightchain.Hub</id>
@@ -25,6 +28,23 @@
   <url type="homepage">https://lightchain.ai</url>
   <url type="help">https://github.com/lightchain-protocol/lightchain-p2p/issues/new/choose</url>
   <url type="bugtracker">https://github.com/lightchain-protocol/lightchain-p2p/issues</url>
+
+  <!--
+    The design-final captures kept in the repository, served raw. Replace with
+    screenshots captured from a running release if store presence is ever
+    revisited. apps/chat/assets/flatpak-screenshot.png is a template leftover
+    ("Hello Pear v1.0.0") and is deliberately not used.
+  -->
+  <screenshots>
+    <screenshot type="default">
+      <caption>A room that keeps working while its creator is offline</caption>
+      <image type="source">https://raw.githubusercontent.com/lightchain-protocol/lightchain-p2p/main/docs/design/after/final/dark-collapsed.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The same rooms in a narrow window</caption>
+      <image type="source">https://raw.githubusercontent.com/lightchain-protocol/lightchain-p2p/main/docs/design/after/final/dark-narrow-chat.png</image>
+    </screenshot>
+  </screenshots>
 
   <releases>
     <release date="2026-08-18" version="0.1.0" />
@@ -51,6 +71,10 @@
       <li>A wallet that is also your identity, backed up as twelve words</li>
       <li>Peer-to-peer over-the-air updates</li>
     </ul>
+    <p>
+      Note: a Flatpak install is managed by Flatpak, not by the application's own update
+      channel. It is not expected to update itself — updating means installing a newer build.
+    </p>
   </description>
 
   <launchable type="desktop-id">ai.lightchain.Hub.desktop</launchable>
