@@ -1,4 +1,5 @@
 import { copy, el, el2, skeleton, svg, time } from './dom.js'
+import { firstOutstanding, isReachable, workerRoute } from './route.js'
 import { bridge, request } from './ipc.js'
 import { openSettings } from './settings.js'
 import { drawQr } from './qr.js'
@@ -256,10 +257,7 @@ function markStep(mark, index, done) {
 }
 
 /** Which step the route says somebody is on: the first that is not behind them. */
-function currentStep() {
-  const at = route.findIndex((state) => state !== 'done')
-  return at === -1 ? STEPS.length - 1 : at
-}
+const currentStep = () => firstOutstanding(route)
 
 /** Puts one step on screen, and marks the rail to match. */
 function show(index) {
@@ -274,7 +272,7 @@ function paint() {
   const waiting = document.getElementById('worker-waiting')
   if (waiting) waiting.hidden = true
 
-  const firstOutstanding = currentStep()
+
 
   for (const [index, step] of STEPS.entries()) {
     const card = document.getElementById(step.id)
@@ -304,7 +302,7 @@ function paint() {
       // earlier is not — the key exists whether or not a model is chosen, and
       // hiding a finished step to enforce an order it does not depend on would
       // be a different kind of lie.
-      pip.disabled = !(route[index] === 'done' || index <= firstOutstanding)
+      pip.disabled = !isReachable(route, index)
 
       // A finished step shows the interface's own tick rather than its number.
       // This used to be `font-size: 0` on the digit with the tick drawn as
@@ -319,68 +317,6 @@ function paint() {
   backButton.onclick = () => show(Math.max(0, at - 1))
 
   setAction(stepAction(at, offers))
-}
-
-/**
- * Where somebody is in the route, from the same answers the steps render.
- *
- * `blocked` is distinct from `todo` on purpose: a step not yet reached and a
- * step that is refusing look identical in a checklist and are not the same
- * situation at all.
- */
-function stepStates({ host, models, stake, status }) {
-  const states = new Array(STEPS.length).fill('todo')
-
-  states[0] = host.failed > 0 ? 'blocked' : 'done'
-
-  const offered = models?.models ?? null
-  if (offered !== null) {
-    const chosen = offered.filter((model) => model.chosen)
-    const missing = chosen.filter((model) => !model.installed)
-
-    /*
-     * Not having chosen yet is not a blockage.
-     *
-     * `blocked` paints the pip red, and this step was claiming it the moment
-     * nothing was ticked — so the step somebody had just arrived at, whose
-     * entire job is to be filled in, greeted them in the failure colour while
-     * the steps on either side of it were green. Nothing had gone wrong; they
-     * simply had not done it yet, which is what `todo` means.
-     *
-     * A model chosen but not on the machine is a real impediment: the choice
-     * has been made and the step still cannot pass. That keeps `blocked`.
-     */
-    if (missing.length > 0) states[1] = 'blocked'
-    else if (chosen.length === 0) states[1] = 'todo'
-    else states[1] = 'done'
-  }
-
-  if (stake?.configured && stake.address !== null) states[2] = 'done'
-
-  if (stake?.registered) {
-    states[3] = 'done'
-    states[4] = 'done'
-  } else if (
-    stake?.configured &&
-    stake.address !== null &&
-    stake.minimum !== null &&
-    stake.balance !== null
-  ) {
-    states[3] = BigInt(stake.balance) > BigInt(stake.minimum) ? 'done' : 'blocked'
-  }
-
-  if (status?.configured && status.healthy) states[5] = 'done'
-
-  // Nothing past the first unfinished step is allowed to claim a problem. A
-  // later step that cannot pass yet is usually only waiting on this one, and
-  // four red marks at once says "everything is broken" when the truth is
-  // "fix this, then look again".
-  const at = states.findIndex((state) => state !== 'done')
-  for (let i = at + 1; i < states.length; i++) {
-    if (states[i] === 'blocked') states[i] = 'todo'
-  }
-
-  return states
 }
 
 /**
@@ -1370,7 +1306,7 @@ export async function refreshWorker({ logs = true } = {}) {
     renderVerdict(host, models, stake, status)
     // Last, so the route reflects everything the steps have just rendered
     // rather than a subset of it.
-    applySteps(stepStates({ host, models, stake, status }))
+    applySteps(workerRoute({ host, models, stake, status }))
 
     if (containerLogs) {
       el.workerLogs.textContent = containerLogs.configured

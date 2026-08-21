@@ -97,11 +97,16 @@
  * the screen be empty. Empty is not wasted here — it is what makes the one
  * thing on screen obviously the one thing on screen.
  */
+/* The column both this and the page's header keep to. */
+.console.worker {
+  --lc-page-column: 46rem;
+}
+
 .wizard {
   display: flex;
   flex-direction: column;
   gap: var(--lc-space-xl);
-  width: min(46rem, 100%);
+  width: min(var(--lc-page-column), 100%);
   margin: 0 auto;
   padding-bottom: var(--lc-space-xl);
   overflow-y: auto;
@@ -774,14 +779,12 @@
   margin-top: var(--lc-space-sm);
 }
 
-/* A step nothing has reached yet: still legible, plainly not a destination. */
+/* A step nothing has reached yet: still legible, plainly not a destination.
+   Dimmed and nothing else — a dashed edge among solid ones put a second
+   difference on the row for one distinction. */
 .wizard-pip:disabled {
   cursor: not-allowed;
   opacity: 0.45;
-}
-
-.wizard-pip:disabled .wizard-pip-mark {
-  border-style: dashed;
 }
 
 /* --- What registering costs --------------------------------------------------- */

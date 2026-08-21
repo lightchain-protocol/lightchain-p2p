@@ -13,8 +13,13 @@
  * failed rather than one that has chosen a measure. The wallet centres every
  * one of its cards for the same reason.
  */
+/* The column both this and the page's header keep to. */
+.bridge-page {
+  --lc-page-column: 64ch;
+}
+
 .bridge-page .console-body {
-  grid-template-columns: minmax(0, 64ch);
+  grid-template-columns: minmax(0, var(--lc-page-column));
   justify-content: center;
   align-content: start;
   overflow-y: auto;

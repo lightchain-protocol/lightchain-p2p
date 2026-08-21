@@ -1,4 +1,5 @@
 import { copy, showSection, svg } from './dom.js'
+import { firstOutstanding, isReachable, validatorRoute } from './route.js'
 import { bridge, request } from './ipc.js'
 
 /**
@@ -85,10 +86,7 @@ function markStep(mark, index, done) {
 }
 
 /** Which step the route says somebody is on: the first that is not behind them. */
-function currentStep() {
-  const at = route.findIndex((state) => state !== 'done')
-  return at === -1 ? STEPS.length - 1 : at
-}
+const currentStep = () => firstOutstanding(route)
 
 function show(index) {
   viewing = index
@@ -133,7 +131,7 @@ function paint() {
   const waiting = document.getElementById('validator-waiting')
   if (waiting) waiting.hidden = true
 
-  const firstOutstanding = currentStep()
+
 
   for (const [index, step] of STEPS.entries()) {
     const card = document.getElementById(step.id)
@@ -160,7 +158,7 @@ function paint() {
       // earlier is not — the key exists whether or not a model is chosen, and
       // hiding a finished step to enforce an order it does not depend on would
       // be a different kind of lie.
-      pip.disabled = !(route[index] === 'done' || index <= firstOutstanding)
+      pip.disabled = !isReachable(route, index)
 
       // A finished step shows the interface's own tick rather than its number.
       // This used to be `font-size: 0` on the digit with the tick drawn as
@@ -657,23 +655,6 @@ function renderVerdict(info, keys) {
   offers[0] = null
 }
 
-function stepStates(info, keys) {
-  const states = ['todo', 'todo', 'todo', 'todo']
-  const entries = keys?.keys ?? []
-  const active = entries.filter((entry) => entry.status?.startsWith('active')).length
-
-  if (pending !== null || entries.length > 0) states[0] = 'done'
-  if (entries.length > 0) states[1] = 'done'
-  if (active > 0) {
-    states[2] = 'done'
-    states[3] = 'done'
-  }
-
-  const at = states.findIndex((state) => state !== 'done')
-  if (at !== -1) states[at] = 'active'
-  return states
-}
-
 let refreshing = false
 
 export async function refreshValidator() {
@@ -698,7 +679,7 @@ export async function refreshValidator() {
     renderClients(info)
     renderWatch(keys, info)
     renderVerdict(info, keys)
-    applySteps(stepStates(info, keys))
+    applySteps(validatorRoute({ keys, pending }))
   } catch (err) {
     setVerdict('fail', 'Could not read the beacon chain', err.message)
   } finally {

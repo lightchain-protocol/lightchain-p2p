@@ -77,11 +77,27 @@
 
 /* --- Page head ------------------------------------------------------------ */
 
+/**
+ * A page's header keeps to the page's column.
+ *
+ * Three surfaces set their content in a centred column narrower than the panel
+ * — the two wizards at 46rem, the bridge at 64ch — and on all three the header
+ * stayed full width. So the title sat flush against the page's gutter while
+ * everything it introduced began a hundred and twenty pixels further in, which
+ * reads as two pages stacked rather than one.
+ *
+ * `--lc-page-column` is declared by whichever surface has a column, and both
+ * the header and that surface's body read it. One value, so they cannot drift
+ * apart again; pages without one are unaffected, because the fallback is the
+ * full width they already had.
+ */
 .page-head {
   display: flex;
   align-items: flex-start;
   flex-wrap: wrap;
   gap: var(--lc-space-md) var(--lc-space-lg);
+  width: min(var(--lc-page-column, 100%), 100%);
+  margin-inline: auto;
 }
 
 .page-head-main {
