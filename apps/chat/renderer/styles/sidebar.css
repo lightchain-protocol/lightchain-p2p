@@ -428,6 +428,22 @@
   white-space: nowrap;
 }
 
+/* The network under the address. Mainnet is the ordinary case and stays
+   plain; anything else wears the same warning treatment as the locked strip
+   at the top of the column, because a balance read from testnet or devnet is
+   not the real thing and the difference has to survive a glance, not just a
+   careful read of the word. */
+.account-role[data-network='testnet'],
+.account-role[data-network='devnet'] {
+  align-self: flex-start;
+  padding: 0 var(--lc-space-xs);
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-warning-soft);
+  color: var(--lc-warning);
+  font-weight: var(--lc-weight-semibold);
+  letter-spacing: 0.04em;
+}
+
 .account-chevron {
   flex: 0 0 auto;
   color: var(--lc-text-tertiary);

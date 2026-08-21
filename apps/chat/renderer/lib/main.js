@@ -219,6 +219,34 @@ el.backupBannerDismiss?.addEventListener('click', () => {
   el.backupBanner.hidden = true
 })
 
+// --- The network badge -------------------------------------------------------
+
+/**
+ * Marks the account row when the wallet is on anything but mainnet.
+ *
+ * The word under the address — the network name, or the lock state when there
+ * is no network to name — is wallet.js's to write and not this module's. What
+ * this adds is only the presentation: an attribute for the stylesheet, kept in
+ * step with whatever the word currently is, so "testnet" and "devnet" wear the
+ * warning treatment and everything else ("Locked", "Set one up") stays plain.
+ * Same arrangement as the banner above: that module decides what the text is,
+ * this one watches it.
+ */
+const KNOWN_NETWORKS = new Set(['mainnet', 'testnet', 'devnet'])
+
+function badgeNetwork() {
+  const name = el.accountRole.textContent.trim().toLowerCase()
+  if (KNOWN_NETWORKS.has(name)) el.accountRole.dataset.network = name
+  else delete el.accountRole.dataset.network
+}
+
+new MutationObserver(badgeNetwork).observe(el.accountRole, {
+  childList: true,
+  characterData: true,
+  subtree: true
+})
+badgeNetwork()
+
 // --- Sections --------------------------------------------------------------
 
 for (const button of el.sections) {

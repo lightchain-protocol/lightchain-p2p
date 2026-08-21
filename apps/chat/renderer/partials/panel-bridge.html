@@ -23,6 +23,21 @@
             </header>
 
             <div class="console-body bridge-body">
+              <!-- Shown in place of everything below when the network is
+                   devnet: the route exists between Ethereum and Lightchain
+                   mainnet only, and the worker refuses the actions — this is
+                   the page not asking. bridge.js swaps this in for the cards. -->
+              <div class="alert" data-tone="info" id="bridge-devnet" hidden>
+                <svg class="icon" aria-hidden="true"><use href="#i-info" /></svg>
+                <div class="alert-body">
+                  <strong class="alert-title">Mainnet only</strong>
+                  <p>
+                    The bridge runs between Ethereum and Lightchain mainnet. Switch the network in
+                    Settings to use it.
+                  </p>
+                </div>
+              </div>
+
               <!-- What the route asks somebody to rely on, before it asks for
                    money. The worker writes the lines; the page renders them. -->
               <section class="kit-card" id="bridge-terms" aria-labelledby="bridge-terms-title">

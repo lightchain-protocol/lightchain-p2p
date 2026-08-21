@@ -24,13 +24,16 @@
             <h3 class="settings-heading">Network</h3>
             <p class="settings-note">
               Which chain balances are read from and transactions are signed for. Changing it does
-              not move anything — a wallet has the same address on both.
+              not move anything — a wallet has the same address on every network. Devnet is for
+              trying things out: asking models works, but it has no explorer and no worker hosting
+              yet.
             </p>
             <label class="field">
               <span class="field-label">Network</span>
               <select class="input" id="set-network">
                 <option value="mainnet">Mainnet</option>
                 <option value="testnet">Testnet</option>
+                <option value="devnet">Devnet</option>
               </select>
             </label>
             <dl class="facts" id="network-facts"></dl>

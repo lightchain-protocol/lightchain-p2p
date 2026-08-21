@@ -27,6 +27,8 @@ const checkedAt = document.getElementById('worker-checked')
 const containerState = document.getElementById('worker-state')
 const logScroll = document.getElementById('worker-log')
 const workerBusy = document.getElementById('worker-busy')
+const devnetNotice = document.getElementById('worker-devnet')
+const workerBody = document.getElementById('worker-body')
 
 const hostState = document.getElementById('worker-host-state')
 const keyState = document.getElementById('worker-key-state')
@@ -571,9 +573,22 @@ export async function refreshWorker({ logs = true } = {}) {
   if (refreshing) return
   refreshing = true
   el.workerRefresh.disabled = true
-  setVerdict(null, 'Checking the host…')
 
   try {
+    // Devnet has no worker gateway, so there is nothing to check: the page is
+    // one sentence rather than five steps that would each fail in their own
+    // way. The worker refuses the actions as well — this keeps it from being
+    // asked. Read fresh on every refresh, so switching the network in Settings
+    // and coming back here lands on the right page either way round.
+    const { network } = await request('wallet.status').catch(() => ({}))
+    const onDevnet = network === 'devnet'
+    devnetNotice.hidden = !onDevnet
+    verdict.hidden = onDevnet
+    workerBody.hidden = onDevnet
+    if (onDevnet) return
+
+    setVerdict(null, 'Checking the host…')
+
     // In parallel, because the host probes are the slow part and nothing else
     // should queue behind them.
     const [checks, status, stake, containerLogs] = await Promise.all([

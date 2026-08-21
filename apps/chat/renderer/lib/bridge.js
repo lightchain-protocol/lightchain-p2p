@@ -33,6 +33,8 @@ const status = document.getElementById('bridge-status')
 const statusNote = document.getElementById('bridge-status-note')
 const statusExplorer = document.getElementById('bridge-status-explorer')
 const statusCheck = document.getElementById('bridge-status-check')
+const devnetNotice = document.getElementById('bridge-devnet')
+const termsCard = document.getElementById('bridge-terms')
 
 /** LCAI is eighteen decimals on both sides, which is what makes this symmetrical. */
 const DECIMALS = 18
@@ -150,6 +152,24 @@ function restorePending(transfer) {
 export async function showBridge() {
   unquote()
 
+  // The route exists between Ethereum and Lightchain mainnet, and nowhere
+  // else. Asked of the wallet rather than discovered from a refused quote:
+  // on devnet the page is one sentence, and the round trips below — terms,
+  // routes, the pending record — have nothing to answer with. The gate stands
+  // down the same way on the way back, because the page is re-read every time
+  // it is navigated to.
+  const { network } = await request('wallet.status').catch(() => ({}))
+  const onDevnet = network === 'devnet'
+
+  devnetNotice.hidden = !onDevnet
+  termsCard.hidden = onDevnet
+  if (onDevnet) {
+    form.hidden = true
+    quoteBtn.hidden = true
+    status.hidden = true
+    return
+  }
+
   try {
     showTerms(await request('bridge.terms'))
   } catch (err) {
@@ -259,8 +279,11 @@ sendBtn?.addEventListener('click', async () => {
     pending = { fromChainId: quoted.fromChainId, hash: sent.hash, before: null }
 
     statusNote.textContent = sent.note
-    statusExplorer.dataset.href = sent.explorerUrl
-    statusExplorer.hidden = false
+    // Devnet has no explorer, so the worker answers with no link. The button
+    // goes away rather than carrying the word "null" as its address — the
+    // same rule restorePending applies to a stored transfer.
+    if (sent.explorerUrl) statusExplorer.dataset.href = sent.explorerUrl
+    statusExplorer.hidden = !sent.explorerUrl
     statusCheck.hidden = false
     status.hidden = false
 

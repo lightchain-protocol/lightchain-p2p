@@ -839,13 +839,16 @@
             <h3 class="settings-heading">Network</h3>
             <p class="settings-note">
               Which chain balances are read from and transactions are signed for. Changing it does
-              not move anything — a wallet has the same address on both.
+              not move anything — a wallet has the same address on every network. Devnet is for
+              trying things out: asking models works, but it has no explorer and no worker hosting
+              yet.
             </p>
             <label class="field">
               <span class="field-label">Network</span>
               <select class="input" id="set-network">
                 <option value="mainnet">Mainnet</option>
                 <option value="testnet">Testnet</option>
+                <option value="devnet">Devnet</option>
               </select>
             </label>
             <dl class="facts" id="network-facts"></dl>
@@ -1769,7 +1772,23 @@
               <span class="verdict-detail" id="worker-verdict-detail"></span>
             </div>
 
-            <div class="console-body console-body-split">
+            <!-- Said once, up front, rather than as five steps that each fail
+                 in their own way: devnet has no worker gateway yet, so there
+                 is nothing to set up. The worker refuses the actions too; this
+                 is the page not asking. worker.js swaps this in for the
+                 verdict and the steps. -->
+            <div class="alert" data-tone="info" id="worker-devnet" hidden>
+              <svg class="icon" aria-hidden="true"><use href="#i-info" /></svg>
+              <div class="alert-body">
+                <strong class="alert-title">No worker hosting on devnet</strong>
+                <p>
+                  Worker hosting isn't available on devnet yet. Asking models, the wallet and
+                  conversations all work here — switch the network in Settings to run a worker.
+                </p>
+              </div>
+            </div>
+
+            <div class="console-body console-body-split" id="worker-body">
               <div class="worker-column worker-steps">
                 <section class="kit-card" aria-labelledby="worker-step-host-title">
                   <header class="kit-card-head">
@@ -2480,6 +2499,21 @@
             </header>
 
             <div class="console-body bridge-body">
+              <!-- Shown in place of everything below when the network is
+                   devnet: the route exists between Ethereum and Lightchain
+                   mainnet only, and the worker refuses the actions — this is
+                   the page not asking. bridge.js swaps this in for the cards. -->
+              <div class="alert" data-tone="info" id="bridge-devnet" hidden>
+                <svg class="icon" aria-hidden="true"><use href="#i-info" /></svg>
+                <div class="alert-body">
+                  <strong class="alert-title">Mainnet only</strong>
+                  <p>
+                    The bridge runs between Ethereum and Lightchain mainnet. Switch the network in
+                    Settings to use it.
+                  </p>
+                </div>
+              </div>
+
               <!-- What the route asks somebody to rely on, before it asks for
                    money. The worker writes the lines; the page renders them. -->
               <section class="kit-card" id="bridge-terms" aria-labelledby="bridge-terms-title">

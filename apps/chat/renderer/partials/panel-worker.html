@@ -28,7 +28,23 @@
               <span class="verdict-detail" id="worker-verdict-detail"></span>
             </div>
 
-            <div class="console-body console-body-split">
+            <!-- Said once, up front, rather than as five steps that each fail
+                 in their own way: devnet has no worker gateway yet, so there
+                 is nothing to set up. The worker refuses the actions too; this
+                 is the page not asking. worker.js swaps this in for the
+                 verdict and the steps. -->
+            <div class="alert" data-tone="info" id="worker-devnet" hidden>
+              <svg class="icon" aria-hidden="true"><use href="#i-info" /></svg>
+              <div class="alert-body">
+                <strong class="alert-title">No worker hosting on devnet</strong>
+                <p>
+                  Worker hosting isn't available on devnet yet. Asking models, the wallet and
+                  conversations all work here — switch the network in Settings to run a worker.
+                </p>
+              </div>
+            </div>
+
+            <div class="console-body console-body-split" id="worker-body">
               <div class="worker-column worker-steps">
                 <section class="kit-card" aria-labelledby="worker-step-host-title">
                   <header class="kit-card-head">
