@@ -60,6 +60,16 @@ const run = (command, args, cwd) => {
   if (status !== 0) process.exit(status ?? 1)
 }
 
+// `make` builds the decided targets only. Snap and flatpak stay configured in
+// forge.config.js but undecided (neither can receive peer-to-peer updates —
+// ROADMAP.md), and the CI runner has no snapcraft/lxd, so resolving every
+// configured maker fails before anything is built.
+const MAKE_TARGETS = {
+  darwin: ['@electron-forge/maker-dmg'],
+  win32: ['@electron-forge/maker-msix', '@electron-forge/maker-zip'],
+  linux: ['pear-electron-forge-maker-appimage']
+}
+
 // The renderer's tokens are generated, and deploy copies what is on disk.
 run('node', [join(appDir, 'scripts', 'build-tokens.mjs')], appDir)
 
@@ -74,7 +84,26 @@ run(
   rootDir
 )
 
-run('npx', ['electron-forge', step], stagingDir)
+// pnpm deploy copies packages without running their install scripts, and
+// macos-alias — the alias writer inside the DMG maker's chain — compiles
+// volume.node at install time. The staging copy therefore lacks the binary
+// and maker-dmg dies demanding it. Rebuild just that package, in the staging
+// tree, and only where the DMG maker runs.
+if (step === 'make' && process.platform === 'darwin') {
+  run('npm', ['rebuild', 'macos-alias'], stagingDir)
+}
+
+const forgeArgs = ['electron-forge', step]
+if (step === 'make') {
+  const targets = MAKE_TARGETS[process.platform]
+  if (!targets) {
+    console.error(`no decided make targets for ${process.platform}`)
+    process.exit(1)
+  }
+  forgeArgs.push('--targets', targets.join(','))
+}
+
+run('npx', forgeArgs, stagingDir)
 
 // Back to where the workflow uploads from, and where `out/` has always been.
 const produced = join(stagingDir, 'out')
