@@ -1,10 +1,13 @@
 import {
+  JOB_STATE,
   WORKER_REGISTRY_ADDRESS,
   decodeUint256,
   depositAndAuthorize,
   encodeCall,
   resolveAddresses,
   sendTransaction,
+  setDelegateAllowance,
+  setDelegateAuthorization,
   toBytes,
   toHex,
   withdrawBalance
@@ -77,6 +80,85 @@ function whole(value, field) {
   if (amount < 0n) throw new Error(`${field} cannot be negative, got ${amount}`)
   return amount
 }
+
+/**
+ * A job as the registry has it, with the timestamps `job()` does not decode.
+ *
+ * The struct is eighteen static words (`IJobRegistry.sol`), and the
+ * package-level `job()` in `@lcai-p2p/chain` reads six of them — the ones the
+ * commitment check needed. The refund and dispute handlers need the rest of
+ * the timing: `deadline` (set at submit, after which a silent worker's fee is
+ * claimable), `completedAt` (which the dispute window runs from) and
+ * `disputeCreatedAt` (which the resolution timeout runs from). Decoded here
+ * rather than added there because that file belongs to another change in
+ * flight; the layout below is the contract's and the two will agree or one is
+ * wrong about the chain itself.
+ */
+async function readJob(rpc, jobRegistry, jobId) {
+  const raw = await rpc.call({
+    to: jobRegistry,
+    data: encodeCall('getJob(uint256)', ['uint256'], [jobId])
+  })
+
+  const bytes = toBytes(raw)
+  if (bytes.length < 18 * 32) {
+    throw new Error(
+      `the registry's answer for job ${jobId} was ${bytes.length} bytes, not the ${18 * 32} a job record is — check the network in Settings`
+    )
+  }
+  const word = (index) => toHex(bytes.slice(index * 32, index * 32 + 32))
+
+  const stateIndex = Number(decodeUint256(word(2)))
+
+  return {
+    state: JOB_STATE[stateIndex] ?? 'submitted',
+    escrowedFee: decodeUint256(word(3)),
+    submittedAt: decodeUint256(word(6)),
+    completedAt: decodeUint256(word(8)),
+    deadline: decodeUint256(word(9)),
+    disputeCreatedAt: decodeUint256(word(14))
+  }
+}
+
+/**
+ * One uint256 from AIConfig, or null when the chain would not say.
+ *
+ * Null rather than a thrown error because the callers treat the two cases
+ * differently: an unreadable dispute bond refuses outright (sending the wrong
+ * amount still costs the gas), while an unreadable resolution timeout only
+ * skips the early refusal and lets the contract decide.
+ */
+async function configUint(rpc, aiConfig, signature) {
+  try {
+    return decodeUint256(await rpc.call({ to: aiConfig, data: encodeCall(signature) }))
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The dispute window to assume when the chain will not say, in seconds.
+ *
+ * One hour, as the contracts audit documents it, and deliberately on the
+ * generous side: underestimating the window would tell somebody their only
+ * quality remedy had lapsed while it was still open, which is the one
+ * direction this figure must never be wrong in.
+ */
+const DISPUTE_WINDOW_FALLBACK = 3600n
+
+/**
+ * The signed evidence behind each paid answer, by job id, in local state.
+ *
+ * The remedies this file offers — a quality dispute, a timeout claim, an
+ * equivocation dispute — all have windows measured in hours, and a
+ * conversation's in-memory evidence dies with the process. Written to the
+ * same sealed store as the ledger the moment an answer lands, so closing the
+ * app inside the window does not forfeit the remedy.
+ */
+const EVIDENCE = 'evidence'
+
+/** Far beyond anything an hour-long dispute window can still cover. */
+const EVIDENCE_LIMIT = 200
 
 /** Which day a spend belongs to, in local time, because that is the day a person means. */
 const today = () => {
@@ -378,6 +460,58 @@ export function aiHandlers(ctx) {
 
   const limits = spending(localState)
 
+  /**
+   * Evidence kept for the jobs this identity has paid for, keyed by job id.
+   *
+   * Durable across restarts because local state is — that durability is the
+   * entire point, since every remedy the protocol offers is on a deadline
+   * that outlives a conversation's memory. `ai.jobState` reports what is
+   * held, so the interface can show whether a remedy is still actionable.
+   */
+  const evidence = {
+    for: (jobId) => localState.read(EVIDENCE, {})[jobId] ?? null,
+
+    keep(jobId, bundle) {
+      const held = { ...localState.read(EVIDENCE, {}) }
+
+      // Oldest first out past the limit, by when the answer landed.
+      while (Object.keys(held).length >= EVIDENCE_LIMIT && !(jobId in held)) {
+        const oldest = Object.entries(held).reduce((a, b) =>
+          (a[1].at ?? 0) <= (b[1].at ?? 0) ? a : b
+        )
+        delete held[oldest[0]]
+      }
+
+      // Not thrown when the write fails: a locked wallet means the evidence
+      // cannot be sealed away, but the answer it proves was still paid for
+      // and delivered — losing the remedy must not lose the reply.
+      localState.write(EVIDENCE, { ...held, [jobId]: bundle })
+    }
+  }
+
+  /**
+   * A dialog that always shows, for the sends that carry no native value.
+   *
+   * `guard.allow` only asks above a value threshold, which is right for
+   * transfers and wrong here: revoking a delegate or claiming a fee back
+   * moves nothing at the moment it is sent, yet changes what a third party
+   * may do with the balance afterwards — exactly the sort of thing somebody
+   * should have said yes to with their eyes open.
+   */
+  const confirmPlainly = async (details) => {
+    if (!(await guard.confirmVisibly(details))) throw new Error('that was not confirmed')
+  }
+
+  /** A job id the request must carry, as a bigint, or a plain refusal. */
+  const requiredJobId = (value) => {
+    const jobId = whole(value, 'the job id')
+    if (jobId === undefined) throw new Error('which job? Pass its id.')
+    return jobId
+  }
+
+  /** Current unix seconds, the unit every deadline on these contracts is in. */
+  const nowSeconds = () => BigInt(Math.floor(Date.now() / 1000))
+
   /** Whether a room has asked for its conversation to be sent with questions. */
   const contextEnabled = (roomKey) => localState.read(ROOM_CONTEXT, []).includes(roomKey)
 
@@ -558,7 +692,9 @@ export function aiHandlers(ctx) {
         // knows it happened.
         await recordTransaction(ctx, 'fund', sent)
 
-        const receipt = await sent.wait()
+        // Three confirmations, not one: this is a money move, and on this
+        // chain one confirmation is not enough to treat it as settled.
+        const receipt = await sent.wait({ confirmations: 3 })
         if (!receipt.status) throw new Error(`the deposit reverted (${sent.hash})`)
 
         return { hash: sent.hash, block: receipt.blockNumber.toString() }
@@ -611,7 +747,9 @@ export function aiHandlers(ctx) {
         })
         await recordTransaction(ctx, 'withdraw', sent)
 
-        const receipt = await sent.wait()
+        // Three confirmations, the same line ai.fund and every send added
+        // since is held to: a money move is not settled at one.
+        const receipt = await sent.wait({ confirmations: 3 })
         if (!receipt.status) throw new Error(`the withdrawal reverted (${sent.hash})`)
 
         return { hash: sent.hash, block: receipt.blockNumber.toString() }
@@ -622,6 +760,375 @@ export function aiHandlers(ctx) {
         if (/insufficient funds/.test(err?.message ?? '')) {
           throw new Error(
             'withdrawing sends a transaction on chain, and this wallet has nothing for gas — receive some LCAI first',
+            { cause: err }
+          )
+        }
+        throw err
+      }
+    },
+
+    /**
+     * What the delegate may do with the prepaid balance, for the Wallet panel.
+     *
+     * Exactly `{ authorized, allowance, balance }` — the interface codes
+     * against that shape. `allowance` is null when the chain would not say,
+     * which is not the same as zero: zero is "the delegate can spend nothing"
+     * and null is "nobody here knows".
+     */
+    'ai.delegateStatus': async () => {
+      const account = wallet.account()
+      const api = await inference()
+      const { balance, delegate, delegateAuthorized } = await api.balance()
+      const { jobRegistry } = await resolveAddresses(rpc())
+
+      const allowance = await rpc()
+        .call({
+          to: jobRegistry,
+          data: encodeCall(
+            'delegateAllowance(address,address)',
+            ['address', 'address'],
+            [account.address, delegate]
+          )
+        })
+        .then(decodeUint256)
+        .catch(() => null)
+
+      return {
+        authorized: delegateAuthorized,
+        allowance: allowance === null ? null : allowance.toString(),
+        balance: balance.toString()
+      }
+    },
+
+    /**
+     * Ends the delegate's spending authority: authorisation off, allowance zero.
+     *
+     * Both halves, because either alone is incomplete. Revoking authorisation
+     * leaves the allowance standing, so re-authorising would silently restore
+     * it; zeroing the allowance alone leaves an authorised delegate a future
+     * deposit would re-arm. Authorisation goes first so that if only one
+     * transaction lands, the partial state is the one where nothing can be
+     * spent.
+     */
+    'ai.revokeDelegate': async () => {
+      const account = wallet.account()
+      const api = await inference()
+      const { delegate } = await api.balance()
+      const { jobRegistry } = await resolveAddresses(rpc())
+
+      // Always asked, though no native value moves: this ends a standing
+      // authority over the prepaid balance, and discovering that happened
+      // afterwards is not a thing anybody should have to do.
+      await confirmPlainly({
+        amount: `revoke the delegate at ${delegate}`,
+        to: `the job registry at ${jobRegistry}`,
+        from: account.address,
+        network: network(),
+        fee: `this ends the delegate's ability to spend the prepaid balance — authorisation is switched off and the allowance set to zero, so nothing can be submitted on your behalf until you fund again. No funds move; the balance stays where it is and can still be withdrawn.`
+      })
+
+      const revoked = await sendTransaction(rpc(), account, {
+        to: jobRegistry,
+        data: setDelegateAuthorization(delegate, false),
+        chainId: ctx.chainId()
+      })
+      await recordTransaction(ctx, 'revokeDelegate', revoked)
+
+      const revokedReceipt = await revoked.wait({ confirmations: 3 })
+      if (!revokedReceipt.status) {
+        throw new Error(`revoking the delegate reverted (${revoked.hash})`)
+      }
+
+      const zeroed = await sendTransaction(rpc(), account, {
+        to: jobRegistry,
+        data: setDelegateAllowance(delegate, 0n),
+        chainId: ctx.chainId()
+      })
+      await recordTransaction(ctx, 'revokeDelegate', zeroed)
+
+      const zeroedReceipt = await zeroed.wait({ confirmations: 3 })
+      if (!zeroedReceipt.status) {
+        throw new Error(`zeroing the delegate allowance reverted (${zeroed.hash})`)
+      }
+
+      return {
+        authorizationHash: revoked.hash,
+        allowanceHash: zeroed.hash,
+        block: zeroedReceipt.blockNumber.toString()
+      }
+    },
+
+    /**
+     * Where a job stands, and what can still be done about it.
+     *
+     * The read behind the interface's remedy buttons: `claimable` says a
+     * timeout claim would be accepted now, `disputable` says a quality
+     * dispute would, and `hasEvidence` says the signed answer survived a
+     * restart, which is what makes either remedy worth showing.
+     */
+    'ai.jobState': async (req) => {
+      const jobId = requiredJobId(req.jobId)
+      const { aiConfig, jobRegistry } = await resolveAddresses(rpc())
+      const record = await readJob(rpc(), jobRegistry, jobId)
+      const now = nowSeconds()
+
+      let deadlinePassed = null
+      let claimable = false
+      let disputable = false
+      let disputeWindowEnds = null
+
+      if (record.state === 'submitted' || record.state === 'acknowledged') {
+        // The deadline is the job's own word, written at submit — no config
+        // read is needed to know whether it has passed.
+        deadlinePassed = now > record.deadline
+        claimable = deadlinePassed
+      } else if (record.state === 'completed') {
+        const disputeWindow =
+          (await configUint(rpc(), aiConfig, 'getDisputeWindow()')) ?? DISPUTE_WINDOW_FALLBACK
+        const ends = record.completedAt + disputeWindow
+        disputeWindowEnds = ends.toString()
+        disputable = now < ends
+      } else if (record.state === 'disputed') {
+        // A disputed job's fee becomes claimable once the foundation's
+        // resolution timeout lapses. When the chain will not say how long
+        // that is, the answer is genuinely unknown — the claim is not
+        // payable, so sending it and letting the contract decide costs gas
+        // and nothing else.
+        const resolutionTimeout = await configUint(rpc(), aiConfig, 'getResolutionTimeout()')
+        deadlinePassed =
+          resolutionTimeout === null
+            ? null
+            : now >= record.disputeCreatedAt + resolutionTimeout
+        claimable = deadlinePassed === true
+      }
+
+      return {
+        jobId: jobId.toString(),
+        state: record.state,
+        escrowedFee: record.escrowedFee.toString(),
+        deadline: record.deadline.toString(),
+        deadlinePassed,
+        claimable,
+        disputable,
+        disputeWindowEnds,
+        hasEvidence: evidence.for(jobId.toString()) !== null
+      }
+    },
+
+    /**
+     * Claims back the fee for a question that was never answered.
+     *
+     * Also the exit from a dispute the foundation never resolved: the same
+     * contract call handles a disputed job whose resolution timeout has
+     * lapsed, and the state check below covers both.
+     */
+    'ai.claimTimeout': async (req) => {
+      const jobId = requiredJobId(req.jobId)
+      const account = wallet.account()
+      const { aiConfig, jobRegistry } = await resolveAddresses(rpc())
+      const record = await readJob(rpc(), jobRegistry, jobId)
+      const now = nowSeconds()
+
+      // Refused early, with the reason in plain language, rather than sent to
+      // revert: a reverted claim still costs the gas.
+      if (record.state === 'submitted' || record.state === 'acknowledged') {
+        if (now <= record.deadline) {
+          throw new Error(
+            `job ${jobId} has not timed out yet — the worker has ${record.deadline - now} more seconds to answer. Nothing was sent.`
+          )
+        }
+      } else if (record.state === 'disputed') {
+        const resolutionTimeout = await configUint(rpc(), aiConfig, 'getResolutionTimeout()')
+        if (resolutionTimeout !== null && now < record.disputeCreatedAt + resolutionTimeout) {
+          const left = record.disputeCreatedAt + resolutionTimeout - now
+          throw new Error(
+            `job ${jobId} is disputed, and the disputer has ${left} more seconds to resolve it before the fee can be claimed. Nothing was sent.`
+          )
+        }
+      } else {
+        throw new Error(
+          `job ${jobId} is ${record.state} — a fee can only be claimed back while a job is unanswered or stuck in a dispute. Nothing was sent.`
+        )
+      }
+
+      await confirmPlainly({
+        amount: `claim back the ${record.escrowedFee} wei fee for job ${jobId}`,
+        to: `the job registry at ${jobRegistry}`,
+        from: account.address,
+        network: network(),
+        fee: 'this claims back the fee for an unanswered question — the escrowed fee is refunded to you and the worker that did not answer is slashed'
+      })
+
+      try {
+        // Encoded here rather than imported: the chain package's claimTimeout
+        // encoder is landing in a parallel change, and swapping this line for
+        // the import is the whole of wiring that in.
+        const sent = await sendTransaction(rpc(), account, {
+          to: jobRegistry,
+          data: encodeCall('claimTimeout(uint256)', ['uint256'], [jobId]),
+          chainId: ctx.chainId()
+        })
+        await recordTransaction(ctx, 'claimTimeout', sent)
+
+        const receipt = await sent.wait({ confirmations: 3 })
+        if (!receipt.status) throw new Error(`the timeout claim reverted (${sent.hash})`)
+
+        return {
+          hash: sent.hash,
+          block: receipt.blockNumber.toString(),
+          jobId: jobId.toString(),
+          state: record.state
+        }
+      } catch (err) {
+        // The same mapping ai.fund gives a deposit: a claim is a transaction
+        // too, and an empty wallet learns that as a raw RPC string otherwise.
+        if (/insufficient funds/.test(err?.message ?? '')) {
+          throw new Error(
+            'claiming sends a transaction on chain, and this wallet has nothing for gas — receive some LCAI first',
+            { cause: err }
+          )
+        }
+        throw err
+      }
+    },
+
+    /**
+     * Collects a refund the registry is holding.
+     *
+     * Timeout claims and won disputes do not pay out directly; they credit
+     * `pendingRefunds`, and this is the second step that brings the money
+     * home. The contract call takes no argument — it pays out whatever the
+     * sender is owed — so a job id in the request is context for the dialog
+     * and the answer, not something that is encoded.
+     */
+    'ai.claimRefund': async (req) => {
+      const account = wallet.account()
+      const { jobRegistry } = await resolveAddresses(rpc())
+
+      const pending = decodeUint256(
+        await rpc().call({
+          to: jobRegistry,
+          data: encodeCall('pendingRefund(address)', ['address'], [account.address])
+        })
+      )
+      if (pending === 0n) {
+        throw new Error(
+          'no refund is waiting for this wallet — a refund appears here after a timeout claim or a dispute resolved in your favour, and is collected from here'
+        )
+      }
+
+      const mention =
+        req.jobId === undefined || req.jobId === null
+          ? ''
+          : ` (from job ${requiredJobId(req.jobId)})`
+
+      await confirmPlainly({
+        amount: `${readableAmount(pending, NETWORKS[network()].symbol)} refund out of prepaid inference${mention}`,
+        to: account.address,
+        from: `the job registry at ${jobRegistry}`,
+        network: network(),
+        fee: 'this collects a refund the registry is holding for you — the fee for a question that went unanswered or a dispute resolved in your favour'
+      })
+
+      try {
+        const sent = await sendTransaction(rpc(), account, {
+          to: jobRegistry,
+          data: encodeCall('claimRefund()'),
+          chainId: ctx.chainId()
+        })
+        await recordTransaction(ctx, 'claimRefund', sent)
+
+        const receipt = await sent.wait({ confirmations: 3 })
+        if (!receipt.status) throw new Error(`the refund claim reverted (${sent.hash})`)
+
+        return { hash: sent.hash, block: receipt.blockNumber.toString(), amount: pending.toString() }
+      } catch (err) {
+        if (/insufficient funds/.test(err?.message ?? '')) {
+          throw new Error(
+            'claiming sends a transaction on chain, and this wallet has nothing for gas — receive some LCAI first',
+            { cause: err }
+          )
+        }
+        throw err
+      }
+    },
+
+    /**
+     * Files a quality dispute over a completed answer, with the bond.
+     *
+     * The protocol's only quality lever, and separate from `ai.dispute`,
+     * which is for the narrower case of a worker that signed one answer and
+     * recorded another. Here the answer was delivered and committed to; the
+     * claim is that it was a bad answer, and a foundation-operated disputer
+     * settles that by re-running the question and scoring the similarity.
+     */
+    'ai.disputeJob': async (req) => {
+      const jobId = requiredJobId(req.jobId)
+      const account = wallet.account()
+      const { aiConfig, jobRegistry } = await resolveAddresses(rpc())
+      const record = await readJob(rpc(), jobRegistry, jobId)
+      const now = nowSeconds()
+
+      if (record.state !== 'completed') {
+        throw new Error(
+          `job ${jobId} is ${record.state} — a quality dispute can only be filed on a completed answer. For a question that was never answered, claim the timeout instead.`
+        )
+      }
+
+      const disputeWindow =
+        (await configUint(rpc(), aiConfig, 'getDisputeWindow()')) ?? DISPUTE_WINDOW_FALLBACK
+      const ends = record.completedAt + disputeWindow
+      if (now >= ends) {
+        throw new Error(
+          `the dispute window for job ${jobId} closed ${now - ends} seconds ago. Nothing was sent.`
+        )
+      }
+
+      // The bond is the escrowed fee scaled by the on-chain multiplier
+      // (JobRegistry.sol: escrowedFee * getDisputeBondMultiplier() / 10_000).
+      // Read rather than assumed, and refused rather than guessed: a bond
+      // that is short reverts after the gas is spent, and one that is over
+      // sends money that has to be trusted to come back.
+      const multiplier = await configUint(rpc(), aiConfig, 'getDisputeBondMultiplier()')
+      if (multiplier === null) {
+        throw new Error(
+          'the dispute bond could not be read from the chain, and filing blind risks sending the wrong amount. Nothing was submitted — check the network in Settings and try again.'
+        )
+      }
+      const bond = (record.escrowedFee * multiplier) / 10_000n
+
+      await confirmPlainly({
+        amount: `${readableAmount(bond, NETWORKS[network()].symbol)} dispute bond for job ${jobId}`,
+        to: `the job registry at ${jobRegistry}`,
+        from: account.address,
+        network: network(),
+        fee: `this files a quality dispute over the answer to job ${jobId}. The bond is ${bond} wei. A foundation-operated disputer re-runs the question and resolves the dispute by similarity scoring: if the worker is found at fault the bond and the fee come back to you; if not, the bond is forfeit to the treasury.`
+      })
+
+      try {
+        // Encoded here for the same reason as claimTimeout: the chain
+        // package's disputeJob encoder is landing in a parallel change.
+        const sent = await sendTransaction(rpc(), account, {
+          to: jobRegistry,
+          value: bond,
+          data: encodeCall('disputeJob(uint256)', ['uint256'], [jobId]),
+          chainId: ctx.chainId()
+        })
+        await recordTransaction(ctx, 'disputeJob', sent)
+
+        const receipt = await sent.wait({ confirmations: 3 })
+        if (!receipt.status) throw new Error(`the dispute reverted (${sent.hash})`)
+
+        return {
+          hash: sent.hash,
+          block: receipt.blockNumber.toString(),
+          jobId: jobId.toString(),
+          bond: bond.toString()
+        }
+      } catch (err) {
+        if (/insufficient funds/.test(err?.message ?? '')) {
+          throw new Error(
+            'filing a dispute sends the bond on chain, and this wallet cannot cover the bond and gas — receive some LCAI first',
             { cause: err }
           )
         }
@@ -684,6 +1191,16 @@ export function aiHandlers(ctx) {
 
       session.id =
         earlier?.id ?? `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+
+      // Resuming needs nothing copied into the fresh Conversation for the
+      // remedies to keep working: the evidence behind the earlier session's
+      // jobs is in the sealed store by job id, which is where `ai.jobState`
+      // and the refund and dispute handlers read it — the store surviving the
+      // restart *is* the rehydration. The one gap is an equivocation dispute
+      // through `ai.dispute`, which reads the conversation's own in-memory
+      // evidence; handing persisted bundles back into a fresh Conversation
+      // needs the per-job tracking the inference package is gaining, and the
+      // store above is what it will be fed from.
 
       if (!earlier) await log.opened(session.id, model.name)
 
@@ -764,6 +1281,27 @@ export function aiHandlers(ctx) {
       }
 
       await log.said(session.id, model, 'model', answer.text, answer.jobId)
+
+      // Sealed away with the answer, because the dispute window outlives the
+      // process: the signed evidence is what a quality dispute, a timeout
+      // claim or an equivocation dispute is made of, and a restart inside the
+      // window must not forfeit any of them. `evidenceFor` is the per-job
+      // accessor the inference package is gaining with job tracking; until it
+      // lands, `evidence()` is the single signed frame behind the answer just
+      // delivered, keyed here by the job it answered.
+      const proof =
+        session.conversation.evidenceFor?.(String(answer.jobId)) ??
+        session.conversation.evidence?.()
+      if (proof) {
+        evidence.keep(String(answer.jobId), {
+          jobId: String(answer.jobId),
+          ciphertext: proof.ciphertext,
+          signatures: proof.signatures ?? (proof.signature ? [proof.signature] : []),
+          sessionKey: proof.sessionKey ?? null,
+          worker: session.conversation.worker ?? null,
+          at: Date.now()
+        })
+      }
 
       // Counted only once the answer exists, for the same reason `room.ask`
       // records after rather than before: a job that never ran cost nothing.
@@ -963,6 +1501,18 @@ export function aiHandlers(ctx) {
             'the worker sent part of this answer unsigned, so it cannot be quoted into the room with proof. It was still paid for.'
           )
         }
+
+        // Sealed away for the same reason as on the Models page: a room ask
+        // is a paid job too, and its remedies run on the same windows.
+        evidence.keep(String(answer.jobId), {
+          jobId: String(answer.jobId),
+          ciphertext: quoted.frames.length === 1 ? quoted.frames[0].ciphertext : null,
+          signatures: quoted.frames.map((frame) => frame.signature).filter(Boolean),
+          sessionKey: quoted.sessionKey,
+          worker: String(asking.worker),
+          at: Date.now(),
+          ...(quoted.frames.length === 1 ? {} : { frames: quoted.frames })
+        })
 
         await rooms.relay(roomKey, answer.text, {
           model: model.name,
