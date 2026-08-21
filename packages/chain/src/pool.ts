@@ -42,16 +42,26 @@ export interface PoolOptions extends Omit<RpcOptions, 'url'> {
   readonly urls: readonly string[]
   /** Injectable so the bench can be tested without waiting a minute. */
   readonly now?: () => number
+  /**
+   * Called each time an endpoint is benched, with which one and why.
+   *
+   * Optional, but a bench nobody hears about is an outage that looks like slow
+   * answers. Whoever owns the process should log this rather than discover the
+   * failure later from a graph that went flat.
+   */
+  readonly onBench?: (url: string, err: unknown) => void
 }
 
 export class RpcPool {
   readonly #endpoints: Endpoint[]
   readonly #now: () => number
+  readonly #onBench: ((url: string, err: unknown) => void) | undefined
 
   constructor(options: PoolOptions) {
     if (options.urls.length === 0) throw new RpcError('a pool needs at least one url')
 
     this.#now = options.now ?? Date.now
+    this.#onBench = options.onBench
     this.#endpoints = options.urls.map((url) => ({
       url,
       rpc: new Rpc({ ...options, url }),
@@ -107,6 +117,7 @@ export class RpcPool {
         endpoint.benchedUntil = this.#now() + BENCH_MS
         tried.push(endpoint.url)
         last = err
+        this.#onBench?.(endpoint.url, err)
       }
     }
 
@@ -134,5 +145,57 @@ export class RpcPool {
 
   balanceOf(address: string): Promise<bigint> {
     return this.use((rpc) => rpc.balanceOf(address))
+  }
+}
+
+/**
+ * A whole chain client whose reads survive an endpoint dying.
+ *
+ * `RpcPool` answers one call at a time and stops there; this is the rest of
+ * the surface — `fees`, `estimateGas`, receipts, everything `Rpc` offers —
+ * with every method routed the same way, because they all bottom out in
+ * `send`. Anything but a broadcast fails over: the first endpoint is asked
+ * first, a transport failure benches it, and the next one answers. A node
+ * that answered is never second-guessed — the pool's own rule, kept here.
+ *
+ * ## Why broadcast is the exception
+ *
+ * `eth_sendRawTransaction` goes to the first endpoint, once, and nowhere
+ * else. A read asked twice is the same question twice; a broadcast repeated
+ * is not. When the connection drops after the bytes left there is no telling
+ * "the node never got it" from "it got it and the reply died on the way
+ * back", and a nonce read from one node paired with a broadcast to another
+ * is how two transactions leave against the same funds. The pool above keeps
+ * `sendRawTransaction` out of its retry for this reason; this class keeps the
+ * same split by pinning the one broadcast method to the primary.
+ *
+ * What a failed broadcast raises is exactly what the single-endpoint client
+ * raised — an `RpcError` from the primary — so every caller that handles that
+ * failure today handles this one unchanged.
+ */
+export class FailoverRpc extends Rpc {
+  readonly #pool: RpcPool
+
+  constructor(options: PoolOptions) {
+    const primary = options.urls[0]
+    if (primary === undefined) throw new RpcError('a pool needs at least one url')
+    super({ ...options, url: primary })
+    this.#pool = new RpcPool(options)
+  }
+
+  /** Every endpoint this reads through, primary first. */
+  get urls(): readonly string[] {
+    return this.#pool.urls
+  }
+
+  /**
+   * Reads fail over; broadcast does not.
+   *
+   * This is the single choke point every other method in `Rpc` flows through,
+   * so overriding it here splits the whole surface without re-listing it.
+   */
+  override send<T>(method: string, params: readonly unknown[] = []): Promise<T> {
+    if (method === 'eth_sendRawTransaction') return super.send(method, params)
+    return this.#pool.use((rpc) => rpc.send<T>(method, params))
   }
 }

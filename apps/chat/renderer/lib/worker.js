@@ -321,7 +321,10 @@ function renderStake(stake) {
   const facts = document.createElement('dl')
   facts.className = 'facts'
   facts.append(
-    ...line('Registering stakes', `${lcai(stake.minimum)} LCAI, the minimum set by governance`),
+    ...line(
+      'Registering stakes',
+      `${lcai(stake.minimum)} LCAI — the live minimum set by governance, read from the chain just now — posted to the worker registry`
+    ),
     ...line('This key holds', `${lcai(stake.balance)} LCAI`)
   )
   stakeBody.append(facts)
@@ -412,7 +415,7 @@ function renderRegister(stake) {
 
   clearChip(registerState)
   button.disabled = false
-  registerHint.textContent = `Registering is one on-chain transaction that posts ${lcai(stake.minimum)} LCAI from ${truncate(stake.address)}.`
+  registerHint.textContent = `Registering stakes ${lcai(stake.minimum)} LCAI — the live minimum — plus gas from ${truncate(stake.address)}. Before anything leaves the key you will be asked to confirm that exact amount and the worker registry it goes to.`
 }
 
 /** Docker's container health as a word, and how much alarm it deserves. */
@@ -687,6 +690,11 @@ export function appendWorkerOutput({ text }) {
  * The four Docker verbs. Failures land inline on the step the verb belongs to
  * — register's on step 4, the rest on step 5 — with docker's reason in the log
  * where several lines of it are worth reading.
+ *
+ * Register is the one verb that asks first: the stake is confirmed in a dialog
+ * before the container may sign, so the log says the question is coming, and a
+ * refusal is reported as a refusal — nothing staked, nothing launched — rather
+ * than as a failure that needs fixing.
  */
 for (const [id, action, label, alertSlot] of [
   ['worker-pull', 'worker.pull', 'Pulling the image', 'worker-run-alert'],
@@ -697,15 +705,35 @@ for (const [id, action, label, alertSlot] of [
   document.getElementById(id).addEventListener('click', async () => {
     stepAlert(alertSlot, null)
     el.workerLogs.textContent = `${label}…\n`
+    if (action === 'worker.register') {
+      appendWorkerOutput({
+        text: 'Confirm the stake in the dialog that appears — the container does not start without it.\n'
+      })
+    }
     try {
       await request(action)
       // Status only. The log is still showing what docker just said.
       void refreshWorker({ logs: false })
     } catch (err) {
+      const refused = action === 'worker.register' && /not confirmed/.test(err.message)
       // Left in the log rather than only in an alert: docker's reason is
-      // usually several lines and worth reading.
-      appendWorkerOutput({ text: `\n${err.message}` })
-      stepAlert(alertSlot, alertNode('error', null, err.message.split('\n')[0]))
+      // usually several lines and worth reading. A refusal has no such reason —
+      // it is the guard doing exactly what it is for.
+      appendWorkerOutput({
+        text: refused
+          ? '\nRegistration was not confirmed. Nothing was staked and the container never started.'
+          : `\n${err.message}`
+      })
+      stepAlert(
+        alertSlot,
+        refused
+          ? alertNode(
+              'info',
+              'Registration not confirmed',
+              'The stake was not approved, so nothing left the worker key. Register again whenever you are ready.'
+            )
+          : alertNode('error', null, err.message.split('\n')[0])
+      )
     }
   })
 }

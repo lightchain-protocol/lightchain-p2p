@@ -19,7 +19,8 @@ import RocksDB from 'rocksdb-native'
 import ID from 'hypercore-id-encoding'
 import { NETWORKS, resolveConfig } from '@lcai-p2p/worker'
 import {
-  Rpc,
+  FailoverRpc,
+  chainById,
   hashMessageForSigning,
   keccak256,
   lightchainErrors,
@@ -601,10 +602,30 @@ async function resolveAnswerChecks() {
  *
  * Called at boot and again whenever the setting changes. Nothing derived from
  * the old chain survives it: an answer proved against one registry proves
- * nothing about another, so the checks are dropped and resolved again.
+ * nothing about another, so the checks are dropped and resolved again, and the
+ * pool itself is rebuilt — a bench earned against one network's endpoints says
+ * nothing about another's.
+ *
+ * Reads go through every endpoint the chain registry lists for the network,
+ * failing over when one stops answering: a balance read that throws gets
+ * swallowed somewhere upstream and renders as zero, and a user cannot tell an
+ * outage from a theft. Broadcasts are the exception and go to the profile's
+ * own endpoint once, never retried and never moved — `FailoverRpc` in
+ * `@lcai-p2p/chain` holds that split, and its comment holds the why.
  */
 function reconnectChain() {
-  rpc = new Rpc({ url: NETWORKS[network].rpcUrl, errors: lightchainErrors() })
+  const profile = NETWORKS[network]
+  const listed = chainById(profile.chainId)?.rpcUrls ?? []
+  // The profile's endpoint leads whatever the registry knows, so the one place
+  // a broadcast may go is always the endpoint the profile named.
+  const urls = [profile.rpcUrl, ...listed.filter((url) => url !== profile.rpcUrl)]
+  rpc = new FailoverRpc({
+    urls,
+    errors: lightchainErrors(),
+    // A benched endpoint is a node that just failed somebody; silence here is
+    // how an outage becomes a wrong number with no explanation.
+    onBench: (url, err) => console.error(`chain endpoint ${url} benched after failing:`, err.message)
+  })
   answerChecks = null
   void resolveAnswerChecks()
 }

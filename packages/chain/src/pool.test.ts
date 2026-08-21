@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { RpcPool } from './pool.js'
-import { RpcError } from './rpc.js'
-import { CHAINS, chainById } from './chains.js'
+import { FailoverRpc, RpcPool } from './pool.js'
+import { Rpc, RpcError } from './rpc.js'
+import { CHAINS, LIGHTCHAIN_TESTNET, chainById } from './chains.js'
 
 /**
  * The pool exists for one failure that has to be impossible.
@@ -223,5 +223,136 @@ describe('the chain registry', () => {
       expect(chain.symbol, chain.name).toMatch(/^[A-Z]{2,5}$/)
       expect(chain.decimals, chain.name).toBe(18)
     }
+  })
+})
+
+describe('a client that fails over on reads and never on broadcast', () => {
+  const PRIMARY = 'https://rpc.mainnet.lightchain.ai'
+  const ARCHIVE = 'https://archive.mainnet.lightchain.ai'
+
+  /**
+   * What each endpoint was asked, as [url, method] pairs, so a test can say
+   * not just how often a host was called but what it was asked to do.
+   */
+  function watchingFetch(answers: Record<string, 'ok' | 'down'>, result: unknown = '0x1') {
+    const seen: [string, string][] = []
+    const fetcher = vi.fn(async (url: string, init: { body: string }) => {
+      const { method } = JSON.parse(init.body)
+      seen.push([String(url), method])
+      if (answers[String(url)] === 'down') throw new Error('connect ECONNREFUSED')
+      return { ok: true, status: 200, json: async () => ({ jsonrpc: '2.0', id: 1, result }) }
+    })
+    return { fetcher, seen }
+  }
+
+  it('answers a read from the archive when the primary is down', async () => {
+    const { fetcher, seen } = watchingFetch({ [PRIMARY]: 'down', [ARCHIVE]: 'ok' })
+    globalThis.fetch = fetcher as never
+
+    const rpc = new FailoverRpc({ urls: [PRIMARY, ARCHIVE] })
+    expect(await rpc.balanceOf('0x0000000000000000000000000000000000000001')).toBe(1n)
+    // The primary was asked first and benched; the answer came from the archive.
+    expect(seen).toEqual([
+      [PRIMARY, 'eth_getBalance'],
+      [ARCHIVE, 'eth_getBalance']
+    ])
+  })
+
+  it('says when an endpoint is benched, because silence is how outages hide', async () => {
+    const { fetcher } = watchingFetch({ [PRIMARY]: 'down', [ARCHIVE]: 'ok' })
+    globalThis.fetch = fetcher as never
+
+    const onBench = vi.fn()
+    const rpc = new FailoverRpc({ urls: [PRIMARY, ARCHIVE], onBench })
+    await rpc.chainId()
+
+    expect(onBench).toHaveBeenCalledTimes(1)
+    expect(onBench.mock.calls[0]?.[0]).toBe(PRIMARY)
+    expect(onBench.mock.calls[0]?.[1]).toBeInstanceOf(Error)
+  })
+
+  it('sends a signed transaction to the primary alone, exactly once', async () => {
+    const { fetcher, seen } = watchingFetch({ [PRIMARY]: 'ok', [ARCHIVE]: 'ok' }, '0xhash')
+    globalThis.fetch = fetcher as never
+
+    const rpc = new FailoverRpc({ urls: [PRIMARY, ARCHIVE] })
+    expect(await rpc.sendRawTransaction('0xsigned')).toBe('0xhash')
+
+    const broadcasts = seen.filter(([, method]) => method === 'eth_sendRawTransaction')
+    expect(broadcasts).toEqual([[PRIMARY, 'eth_sendRawTransaction']])
+  })
+
+  it('a broadcast the primary could not hear is not repeated elsewhere', async () => {
+    // A dropped connection cannot tell "never arrived" from "arrived and the
+    // reply died", and guessing wrong spends twice — so nobody guesses.
+    const { fetcher, seen } = watchingFetch({ [PRIMARY]: 'down', [ARCHIVE]: 'ok' })
+    globalThis.fetch = fetcher as never
+
+    const rpc = new FailoverRpc({ urls: [PRIMARY, ARCHIVE] })
+    await expect(rpc.sendRawTransaction('0xsigned')).rejects.toThrow(RpcError)
+
+    const broadcasts = seen.filter(([, method]) => method === 'eth_sendRawTransaction')
+    expect(broadcasts).toEqual([[PRIMARY, 'eth_sendRawTransaction']])
+  })
+
+  it('a broadcast the node refused is handed back as the node said it', async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        jsonrpc: '2.0',
+        id: 1,
+        error: { code: -32000, message: 'nonce too low' }
+      })
+    })) as never
+
+    const rpc = new FailoverRpc({ urls: [PRIMARY, ARCHIVE] })
+    const error = await rpc.sendRawTransaction('0xsigned').catch((err: unknown) => err)
+    expect(error).toBeInstanceOf(RpcError)
+    expect((error as RpcError).message).toMatch(/nonce too low/)
+    expect((error as RpcError).code).toBe(-32000)
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('a total outage reads exactly like the single-endpoint failure did', async () => {
+    // Callers today catch an RpcError with no code; the pooled client must
+    // raise the same shape, not a new kind of failure nobody handles.
+    const { fetcher } = watchingFetch({ [PRIMARY]: 'down', [ARCHIVE]: 'down' })
+    globalThis.fetch = fetcher as never
+
+    const pooled = await new FailoverRpc({ urls: [PRIMARY, ARCHIVE] })
+      .balanceOf('0x0000000000000000000000000000000000000001')
+      .catch((err: unknown) => err)
+    const lone = await new Rpc({ url: PRIMARY })
+      .balanceOf('0x0000000000000000000000000000000000000001')
+      .catch((err: unknown) => err)
+
+    expect(pooled).toBeInstanceOf(RpcError)
+    expect((pooled as RpcError).code).toBe((lone as RpcError).code)
+    expect((pooled as RpcError).code).toBeNull()
+    expect((pooled as RpcError).message).toMatch(/no endpoint answered/)
+  })
+
+  it('rebuilds per network: mainnet fails over, testnet stands alone', async () => {
+    // The worker derives each network's endpoints the same way it switches
+    // profiles: the profile's own url first, then whatever the registry adds.
+    // The testnet is deliberately not in `chainById` — it is kept out of the
+    // list holding real money — so its profile's single url is all there is.
+    const mainnet = chainById(9200)
+    expect(mainnet?.rpcUrls).toEqual([PRIMARY, ARCHIVE])
+    expect(chainById(8200)).toBeNull()
+    expect(LIGHTCHAIN_TESTNET.rpcUrls).toEqual(['https://rpc.testnet.lightchain.ai'])
+
+    const { fetcher, seen } = watchingFetch({ [PRIMARY]: 'down', [ARCHIVE]: 'ok' })
+    globalThis.fetch = fetcher as never
+
+    const onMainnet = new FailoverRpc({ urls: [...(mainnet?.rpcUrls ?? [])] })
+    expect(await onMainnet.chainId()).toBe(1)
+    expect(seen.map(([url]) => url)).toEqual([PRIMARY, ARCHIVE])
+
+    // A second build carries none of the first's benching or endpoints.
+    const onTestnet = new FailoverRpc({ urls: [...LIGHTCHAIN_TESTNET.rpcUrls] })
+    expect(onTestnet.urls).toEqual(['https://rpc.testnet.lightchain.ai'])
+    expect(onMainnet.urls).toEqual([PRIMARY, ARCHIVE])
   })
 })
