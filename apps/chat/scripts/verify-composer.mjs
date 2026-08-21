@@ -73,7 +73,11 @@ await page.shoot(outdir, 'dark-chat-composer')
 
 if (page.exceptions.length) {
   console.log('renderer exceptions:', page.exceptions)
-  process.exitCode = 1
 } else {
   console.log('done, no renderer exceptions')
 }
+
+// The DevTools socket keeps the event loop alive on its own, so without this
+// the script prints its last line and then hangs forever.
+page.close()
+process.exit(page.exceptions.length ? 1 : 0)

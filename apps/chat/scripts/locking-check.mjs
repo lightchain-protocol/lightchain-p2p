@@ -6,11 +6,13 @@
  * proves nothing. What this asserts is that the refusals happen on the far side
  * of the IPC seam, where a window running injected script cannot reach them.
  *
- * The native dialog is deliberately not exercised here. It is drawn by the
- * operating system and cannot be clicked through the DevTools protocol, which
- * is exactly the property that makes it worth having — so the threshold is
- * raised out of the way first, and the dialog is covered by unit tests over the
- * guard instead.
+ * The confirmation dialog is exercised end to end here. It is an ordinary
+ * dialog in the app's own clothes now, answered over the same IPC channel by
+ * quoting the question's id — so a harness can watch the question arrive and
+ * answer it the way a person would. What no harness can simulate — somebody
+ * walking away, a wedged renderer, the worker shutting down mid-question — is
+ * covered by the guard's unit tests instead, where every one of those must
+ * refuse.
  *
  *     node scripts/locking-check.mjs [port]
  */
@@ -102,43 +104,163 @@ report(
   (await ask('wallet.touch')).unlocked === true
 )
 
-// --- a large transfer costs the password ------------------------------------
+// --- the dialog guard is the re-entry control --------------------------------
 
-const guarded = await ask('wallet.send', {
-  to: '0x000000000000000000000000000000000000dEaD',
-  // One whole token, which is the default threshold. Nothing is signed: the
-  // refusal happens before the transaction is built.
-  amount: (10n ** 18n).toString()
-})
+// The password re-entry tier is gone: no dialog ever collected one, so the
+// tier's only effect was refusing outright. What stands between a window and a
+// large transfer now is the guard's confirmation dialog alone, answered by
+// quoting an unguessable id. These probes prove the posture that leaves: no
+// send asks for a password at any amount, a transfer that cannot happen never
+// produces a dialog to forge an answer to, and a guarded move asks first and
+// refuses when the answer is no.
+
+const ONE = 10n ** 18n
+const SOMEWHERE = '0x000000000000000000000000000000000000dEaD'
+
+// Watch the worker's pushes. The guard's question arrives as a `wallet.confirm`
+// push rather than as a reply to a request, so the request plumbing above never
+// sees it — the same framing rules apply.
+await evaluate(`(() => {
+  window.__confirmPushes = []
+  const decoder = new TextDecoder()
+  let held = ''
+  window.bridge.onWorkerIPC('/workers/main.mjs', (data) => {
+    held += decoder.decode(data, { stream: true })
+    const lines = held.split('\\n')
+    held = lines.pop() ?? ''
+    for (const line of lines) {
+      if (!line.startsWith('{')) continue
+      try {
+        const msg = JSON.parse(line)
+        if (msg.t === 'wallet.confirm') window.__confirmPushes.push(msg)
+      } catch {}
+    }
+  })
+  return true
+})()`)
+
+const pushesSoFar = () => evaluate(`window.__confirmPushes.length`)
+const lastPush = () => evaluate(`window.__confirmPushes[window.__confirmPushes.length - 1] ?? null`)
+
+// One whole token is exactly where the removed tier used to ask. The wallet on
+// this instance is empty, so the send is refused on the balance — and the
+// refusal is the entire proof: had any password tier survived, the request
+// would never have got far enough to learn what the balance is.
+const midSend = await ask('wallet.send', { to: SOMEWHERE, amount: ONE.toString() })
 report(
-  'moving a large amount without the password is refused',
-  /password/i.test(guarded?.error ?? ''),
-  guarded?.error
+  'a send at the old re-auth tier asks for no password',
+  /cannot cover/.test(midSend?.error ?? '') && !/password/i.test(midSend?.error ?? ''),
+  midSend?.error
 )
 
 const wrongPassword = await ask('wallet.send', {
-  to: '0x000000000000000000000000000000000000dEaD',
-  amount: (10n ** 18n).toString(),
+  to: SOMEWHERE,
+  amount: ONE.toString(),
   password: 'not the password'
 })
 report(
-  'and a wrong password is refused',
-  /not right/i.test(wrongPassword?.error ?? ''),
+  'a wrong password is not even consulted',
+  wrongPassword?.error === midSend?.error,
   wrongPassword?.error
 )
 
-// With the right password it gets past the guard and fails on the balance
-// instead, which is the proof that the guard is what was stopping it.
-const allowed = await ask('wallet.send', {
-  to: '0x000000000000000000000000000000000000dEaD',
-  amount: (10n ** 18n).toString(),
-  password
-})
+const withPassword = await ask('wallet.send', { to: SOMEWHERE, amount: ONE.toString(), password })
 report(
-  'the right password gets past the guard',
-  !/password/i.test(allowed?.error ?? ''),
-  allowed?.error ?? 'no error'
+  'and neither is the right one — there is no password gate on a send',
+  withPassword?.error === midSend?.error,
+  withPassword?.error
 )
+
+// Two hundred tokens is over the confirmation threshold, but the balance check
+// stands before the guard: a transfer that cannot happen must not produce a
+// dialog whose answer could be forged, so nothing is pushed and the refusal is
+// the balance's.
+const beforeBig = await pushesSoFar()
+const bigSend = await ask('wallet.send', { to: SOMEWHERE, amount: (200n * ONE).toString() })
+report(
+  'a large send that cannot happen is refused on the balance',
+  /cannot cover/.test(bigSend?.error ?? ''),
+  bigSend?.error
+)
+report(
+  'and no confirmation dialog was raised for it',
+  (await pushesSoFar()) === beforeBig
+)
+
+// An answer to a question nobody asked settles nothing — whether the id is
+// invented, stale, or simply late.
+const forgedAnswer = await ask('wallet.confirmed', { id: 'dead'.repeat(8), approved: true })
+report(
+  'an answer to a dialog nobody opened settles nothing',
+  forgedAnswer === false,
+  String(forgedAnswer)
+)
+
+// `ai.withdraw` is the one guarded money move with no balance pre-check of its
+// own — the contract refuses an empty wallet on its own — so it is where the
+// dialog can be watched end to end. Two hundred tokens is over the threshold,
+// so the guard must ask before anything is signed.
+const WITHDRAW = (200n * ONE).toString()
+
+const nextQuestion = async (before) => {
+  for (let i = 0; i < 50; i++) {
+    await wait(200)
+    if ((await pushesSoFar()) > before) return lastPush()
+  }
+  return null
+}
+
+const declined = ask('ai.withdraw', { amount: WITHDRAW })
+const question = await nextQuestion(await pushesSoFar())
+report(
+  'a guarded withdrawal asks before anything is signed',
+  question?.t === 'wallet.confirm' && typeof question?.id === 'string' && question.id.length > 0,
+  question?.amount
+)
+
+// An answer quoting some other id is not an answer to this question.
+const wrongId = await ask('wallet.confirmed', { id: 'dead'.repeat(8), approved: true })
+report('an answer naming another id settles nothing', wrongId === false, String(wrongId))
+
+const declineTaken = await ask('wallet.confirmed', { id: question?.id, approved: false })
+report('the outstanding dialog accepts its own answer', declineTaken === true, String(declineTaken))
+
+const declinedResult = await declined
+report(
+  'and declining refuses the withdrawal',
+  /not confirmed/.test(declinedResult?.error ?? ''),
+  declinedResult?.error
+)
+
+// The same request, approved this time. What follows is the proof the dialog
+// was the thing stopping it: the guard steps aside, and the transfer fails on
+// the empty wallet's gas instead.
+const approved = ask('ai.withdraw', { amount: WITHDRAW })
+const approvedQuestion = await nextQuestion(await pushesSoFar())
+report(
+  'asking again asks again — no answer is remembered',
+  approvedQuestion?.t === 'wallet.confirm' && approvedQuestion?.id !== question?.id,
+  approvedQuestion?.id
+)
+
+const approveTaken = await ask('wallet.confirmed', { id: approvedQuestion?.id, approved: true })
+report('an approval quoting the id is taken', approveTaken === true, String(approveTaken))
+
+const approvedResult = await approved
+report(
+  'and the transfer then fails on funds, not on the guard',
+  // Where the refusal comes from is the node's, not the guard's: gas estimation
+  // stops at the contract's own InsufficientBalance revert, or at "insufficient
+  // funds" for the gas itself — either way the money, not the dialog, said no.
+  /nothing for gas|insufficient funds|InsufficientBalance/.test(approvedResult?.error ?? '') &&
+    !/not confirmed/.test(approvedResult?.error ?? ''),
+  approvedResult?.error
+)
+
+// The renderer's own dialog is still open on both questions — the harness
+// answered over IPC, not through the buttons. Closing it answers false for
+// ids the guard has already settled, which settles nothing, as designed.
+await evaluate(`(document.getElementById('confirm-dialog')?.close(), true)`)
 
 // --- a passphrase changes which wallet a phrase opens -----------------------
 
@@ -188,6 +310,22 @@ report(
 report(
   'and the live wallet still holds its timeout',
   (await ask('wallet.status')).autoLockMs === 28_800_000
+)
+
+// The same wall around the dialog's threshold. A window able to write
+// `confirmAboveWei` could raise it and then send anything with the guard never
+// firing — which would make the guard a setting the attacker configures. It is
+// settable with an editor, like the lock time used to be; what it is not is
+// reachable from the thing being guarded against.
+const thresholdWrite = await ask('settings.write', { values: { confirmAboveWei: '0' } })
+report(
+  'the confirmation threshold cannot be switched off from the window',
+  /not a setting this app writes/.test(thresholdWrite?.error ?? ''),
+  thresholdWrite?.error ?? 'accepted, which it should not be'
+)
+report(
+  'and the stored settings took no such value',
+  (await ask('settings.read'))?.values?.confirmAboveWei === undefined
 )
 
 const forged = await ask('wallet.confirm', { id: '1', approved: true })
