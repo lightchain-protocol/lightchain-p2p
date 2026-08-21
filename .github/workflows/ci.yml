@@ -213,29 +213,31 @@ jobs:
       - name: Drive the application
         working-directory: apps/chat
         run: |
-          set -e
-          rm -rf /tmp/ci-chat
-          xvfb-run --auto-servernum \
+          # Everything under ONE xvfb-run: xvfb-run sets DISPLAY only for its
+          # own child, so harnesses run beside it get no X display and the
+          # clipboard suite cannot read the selection the app wrote. Sharing
+          # the server is also what the assertions mean — the clipboard being
+          # read must be the one the window wrote.
+          xvfb-run --auto-servernum bash -e -c '
+            rm -rf /tmp/ci-chat
             pnpm exec electron . --no-updates --remote-debugging-port=9222 --storage /tmp/ci-chat &
-          echo $! > /tmp/app.pid
+            APP_PID=$!
+            trap "kill $APP_PID 2>/dev/null || true" EXIT
 
-          for i in $(seq 1 40); do
-            if curl -sf http://127.0.0.1:9222/json/list > /dev/null; then break; fi
-            sleep 3
-          done
-          curl -sf http://127.0.0.1:9222/json/list > /dev/null || { echo 'the window never came up'; exit 1; }
+            for i in $(seq 1 40); do
+              if curl -sf http://127.0.0.1:9222/json/list > /dev/null; then break; fi
+              sleep 3
+            done
+            curl -sf http://127.0.0.1:9222/json/list > /dev/null || { echo "the window never came up"; exit 1; }
 
-          for harness in onboarding-check hostile-renderer conversation-check transcript-search \
-                         clipboard-check locking-check assets-check send-check \
-                         asset-page-check bridge-check; do
-            echo "--- $harness"
-            node "scripts/$harness.mjs" 9222
-          done
-          node scripts/review.mjs 9222 /tmp/ci-shots
-
-      - name: Stop the application
-        if: always()
-        run: kill "$(cat /tmp/app.pid)" 2>/dev/null || true
+            for harness in onboarding-check hostile-renderer conversation-check transcript-search \
+                           clipboard-check locking-check assets-check send-check \
+                           asset-page-check bridge-check; do
+              echo "--- $harness"
+              node "scripts/$harness.mjs" 9222
+            done
+            node scripts/review.mjs 9222 /tmp/ci-shots
+          '
 
       # A picture of every surface in both themes, which is the only way to see
       # a layout regression in a pull request.
