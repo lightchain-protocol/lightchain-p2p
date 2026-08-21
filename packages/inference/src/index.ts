@@ -34,7 +34,10 @@ export {
   Conversation,
   ConversationError,
   type Answer,
+  type ConversationJob,
+  type ConversationJobState,
   type ConversationOptions,
+  type JobEvidence,
   type Progress
 } from './conversation.js'
 

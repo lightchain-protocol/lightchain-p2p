@@ -31,7 +31,7 @@ const REGISTRY = '0x0000000000000000000000000000000000001002'
 const AI_CONFIG = '0x1111111111111111111111111111111111111111'
 const USER = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'
 const WORKER = '0x2546BcD3c84621e976D8185a91A922aE77ECEc30'
-const MODEL_ID = `0x${'ab'.repeat(32)}`
+const MODEL_ID = `0x${'ab'.repeat(32)}` as `0x${string}`
 
 /** A fake RPC, so the tests assert what goes on the wire, not what a node says. */
 function stubRpc(result: string) {
@@ -121,8 +121,8 @@ describe('the dispute bond', () => {
 
     expect(multiplier).toBe(5_000n)
     expect(requests).toHaveLength(1)
-    expect(requests[0].to).toBe(AI_CONFIG)
-    expect(requests[0].data).toBe(
+    expect(requests[0]!.to).toBe(AI_CONFIG)
+    expect(requests[0]!.data).toBe(
       encodeFunctionData({
         abi: parseAbi(['function getDisputeBondMultiplier() returns (uint256)']),
         functionName: 'getDisputeBondMultiplier'
@@ -148,8 +148,8 @@ describe('reads for the recovery surface', () => {
     const amount = await pendingRefund(rpc, REGISTRY, USER)
 
     expect(amount).toBe(777n)
-    expect(requests[0].to).toBe(REGISTRY)
-    expect(requests[0].data).toBe(
+    expect(requests[0]!.to).toBe(REGISTRY)
+    expect(requests[0]!.data).toBe(
       encodeFunctionData({
         abi: parseAbi(['function pendingRefund(address account) returns (uint256)']),
         functionName: 'pendingRefund',
@@ -180,8 +180,8 @@ describe('reads for the recovery surface', () => {
     for (const [read, name] of cases) {
       const { rpc, requests } = stubRpc(word(3600n))
       expect(await read(rpc, AI_CONFIG), name).toBe(3600n)
-      expect(requests[0].to, name).toBe(AI_CONFIG)
-      expect(requests[0].data, name).toBe(
+      expect(requests[0]!.to, name).toBe(AI_CONFIG)
+      expect(requests[0]!.data, name).toBe(
         encodeFunctionData({ abi: ABI, functionName: name })
       )
     }
@@ -194,8 +194,8 @@ describe('decoding a session', () => {
     'function getSession(uint256 sessionId) returns (Session memory)'
   ])
 
-  const ENC_WORKER_KEY = `0x04${'11'.repeat(64)}`
-  const ENC_DISPUTER_KEY = `0x04${'22'.repeat(64)}`
+  const ENC_WORKER_KEY = `0x04${'11'.repeat(64)}` as `0x${string}`
+  const ENC_DISPUTER_KEY = `0x04${'22'.repeat(64)}` as `0x${string}`
 
   const FIELDS = {
     user: USER,
@@ -220,8 +220,8 @@ describe('decoding a session', () => {
 
     const result = await session(rpc, REGISTRY, 9n)
 
-    expect(requests[0].to).toBe(REGISTRY)
-    expect(requests[0].data).toBe(
+    expect(requests[0]!.to).toBe(REGISTRY)
+    expect(requests[0]!.data).toBe(
       encodeFunctionData({ abi: ABI, functionName: 'getSession', args: [9n] })
     )
 

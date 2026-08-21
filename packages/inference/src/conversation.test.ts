@@ -383,7 +383,7 @@ describe('the job lifecycle', () => {
   })
 
   it('marks a job timed-out — visibly refundable — when the wait expires', async () => {
-    const { api, mocks } = makeApi()
+    const { api } = makeApi()
     const conversation = makeConversation(api)
     await conversation.start()
 
