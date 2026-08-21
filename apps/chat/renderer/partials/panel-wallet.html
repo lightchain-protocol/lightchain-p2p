@@ -259,6 +259,11 @@
                       <span class="account-balance-label">AI credit</span>
                       <span class="account-balance-value" id="wallet-prepaid">Loading…</span>
                       <span class="account-balance-note" id="account-spent"></span>
+                      <!-- What the delegate can currently reach, said beside the
+                           balance it is authorised against rather than in
+                           Settings: the disclosure there explains the
+                           arrangement, this line reports its live state. -->
+                      <span class="account-balance-note" id="delegate-status"></span>
                     </div>
                     <div class="account-balance-actions">
                       <!-- A primary/secondary pair, not a button beside a bare
@@ -275,6 +280,18 @@
                       </button>
                       <button class="button button-sm" type="button" data-move="withdraw">
                         Move back to wallet
+                      </button>
+                      <!-- Shown only while there is an authorisation to take
+                           back; a revoke button with nothing to revoke is a
+                           button that can only disappoint. Secondary weight:
+                           revoking undoes what topping up did, like withdrawing. -->
+                      <button
+                        class="button button-sm"
+                        type="button"
+                        id="delegate-revoke"
+                        hidden
+                      >
+                        Revoke delegate
                       </button>
                     </div>
                   </div>

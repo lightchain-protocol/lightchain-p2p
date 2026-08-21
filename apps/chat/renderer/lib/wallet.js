@@ -347,6 +347,8 @@ async function refreshBalances() {
     }
   }
 
+  void refreshDelegate()
+
   if (!spent) return
   const summary = lastSummary()
   const month = summary?.inference?.months?.at(-1) ?? null
@@ -363,6 +365,75 @@ async function refreshBackupCard() {
   if (!card) return
   card.hidden = await backedUp()
 }
+
+// --- The delegate -------------------------------------------------------------
+
+/**
+ * What the delegate can currently reach, beside the balance it spends from.
+ *
+ * Funding the prepaid balance authorises the delegate — the service that
+ * submits jobs for you — and sets how much of the balance it may spend. Both
+ * facts are chain state, and both stand until they are changed on chain:
+ * withdrawing the balance does not revoke the authorisation. Settings explains
+ * the arrangement; this line reports where it currently stands, in the place
+ * somebody looks when they want to know what their money can be made to do.
+ */
+const delegate = {
+  status: document.getElementById('delegate-status'),
+  revoke: document.getElementById('delegate-revoke')
+}
+
+async function refreshDelegate() {
+  if (!delegate.status || !delegate.revoke) return
+
+  let state
+  try {
+    state = await request('ai.delegateStatus')
+  } catch {
+    // A read that failed says nothing, like a balance that did not load: blank
+    // rather than a guess, and no toast on a refresh nobody asked for.
+    delegate.status.textContent = ''
+    delegate.revoke.hidden = true
+    return
+  }
+
+  if (state?.authorized) {
+    delegate.status.dataset.state = 'on'
+    delegate.status.textContent = `The service that submits jobs for you can spend up to ${formatLcai(state.allowance ?? '0')} LCAI from this balance. That stands until you revoke it.`
+    delegate.revoke.hidden = false
+  } else {
+    // Revoked or never authorised look the same from here, and the consequence
+    // is the same either way: asks cannot run, and topping up is what turns
+    // the delegate back on.
+    delegate.status.dataset.state = 'off'
+    delegate.status.textContent =
+      'The service that submits jobs for you is not authorised, so new asks cannot run. Topping up authorises it again.'
+    delegate.revoke.hidden = true
+  }
+}
+
+delegate.revoke?.addEventListener('click', async () => {
+  // The same idiom as the stuck-transaction actions: a plain confirm that says
+  // what the gesture does and what it does not do, before anything is signed.
+  const sure = window.confirm(
+    'Revoke the delegate?\n\nThe service that submits jobs for you loses its authorisation and its allowance goes to zero, so new asks cannot run. What is left of the prepaid balance stays yours and can still be moved back to your wallet. Topping up later authorises the delegate again.'
+  )
+  if (!sure) return
+
+  delegate.revoke.disabled = true
+  delegate.revoke.textContent = 'Revoking…'
+
+  try {
+    await request('ai.revokeDelegate')
+    toast('Delegate revoked. New asks cannot run until you top up again.')
+    void refreshDelegate()
+  } catch (err) {
+    toast(err.message, 'error')
+  } finally {
+    delegate.revoke.disabled = false
+    delegate.revoke.textContent = 'Revoke delegate'
+  }
+})
 
 el.walletCreateForm.addEventListener('submit', async (evt) => {
   evt.preventDefault()

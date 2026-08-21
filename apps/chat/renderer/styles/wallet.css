@@ -785,6 +785,14 @@
   color: var(--lc-text-tertiary);
 }
 
+/* The delegate line is the one note on the card that can be a warning: an
+   unauthorised delegate means asks cannot run, and that is worth the colour
+   the ledger gives a pending transaction rather than the grey of a footnote.
+   Authorised stays quiet — it is the ordinary state, not news. */
+.account-balance-note[data-state='off'] {
+  color: var(--lc-warning);
+}
+
 .account-balance-actions {
   display: flex;
   align-items: center;
