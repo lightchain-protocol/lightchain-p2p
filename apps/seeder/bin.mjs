@@ -82,6 +82,28 @@ try {
   console.error('Continuing with whatever is held. Status below will show what is complete.\n')
 }
 
+// Mirror continuously, not once. The download inside waitUntilComplete()
+// snapshots the listing at call time, so without live ranges the seeder would
+// hold the boot-time release forever and a staged update would never reach it.
+// end: -1 keeps requesting appended blocks from connected peers, which is what
+// carries a new stage onto the seeders without a restart.
+//
+// Skipped when nothing has replicated yet: cores() reads the drive header,
+// which blocks until the first block arrives, and a key nobody seeds would
+// otherwise hang the status loop below. Such a seeder holds nothing anyway —
+// restart it once the link is seeded elsewhere.
+if (seeder.entries().some((e) => e.version > 1)) {
+  try {
+    for (const { metadata, blobs } of await seeder.cores()) {
+      metadata.download({ start: 0, end: -1 })
+      blobs.download({ start: 0, end: -1 })
+    }
+  } catch (err) {
+    console.error(`live mirroring not set up: ${err.message}`)
+    console.error('Restart once the link is seeded elsewhere, or updates will not flow.\n')
+  }
+}
+
 const blindKeys = [].concat(cmd.flags.blindPeer ?? [])
 let registry = null
 
