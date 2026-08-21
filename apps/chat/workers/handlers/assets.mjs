@@ -638,8 +638,14 @@ export function assetHandlers(ctx) {
 
       const plan = await planSend(req, from)
       if (!plan.enough) {
+        // Name the balance that is actually short. A token send fails for two
+        // different reasons — not enough of the token, or not enough of the
+        // coin the fee is paid in — and blaming the token when it is the fee
+        // balance sends somebody topping up the wrong one.
         throw new Error(
-          `there is not enough ${plan.symbol} on ${plan.chainName} for this — the balance is ${readableAmount(plan.balance, plan.symbol, plan.decimals)}`
+          plan.isNative || plan.balance < plan.amount
+            ? `there is not enough ${plan.symbol} on ${plan.chainName} for this — the balance is ${readableAmount(plan.balance, plan.symbol, plan.decimals)}`
+            : `there is not enough ${plan.nativeSymbol} on ${plan.chainName} to pay the network fee — the balance is ${readableAmount(plan.nativeBalance, plan.nativeSymbol, 18)}, and the fee alone is up to ${readableAmount(plan.maxFee, plan.nativeSymbol, 18)}`
         )
       }
 
@@ -766,6 +772,9 @@ export function assetHandlers(ctx) {
       fees,
       maxFee,
       balance,
+      // The fee-paying coin's balance, exposed alongside the token's so a
+      // refusal can name whichever one is actually short.
+      nativeBalance,
       toIsContract,
       enough: isNative
         ? nativeBalance >= upfrontCost(gas, fees.maxFeePerGas, amount)

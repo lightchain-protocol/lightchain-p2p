@@ -228,6 +228,12 @@ export function swapHandlers(ctx) {
    *
    * Quote and send both call this, so the figures on the confirmation screen
    * are the figures that get signed — re-derived rather than remembered.
+   *
+   * Two honesty rules live here. A swap whose worst-case network fee exceeds
+   * the ether-denominated notional moving through it is refused as dust. And
+   * `degraded` on the returned plan is true whenever a gas figure is a
+   * fallback rather than a measurement, so a quote built on a stand-in can
+   * never pass for a measured one.
    */
   async function plan(req) {
     const input = inputFor(req)
@@ -268,7 +274,12 @@ export function swapHandlers(ctx) {
     // allowance is missing — the simulation reverts on the transfer the swap
     // would make — so then the quoter's own figure stands in, with the same
     // margin send.ts would have added.
+    //
+    // `degraded` marks every figure that is a stand-in rather than a
+    // measurement. A plan built on a fallback is a guess with margin, and the
+    // quote says so rather than wearing the same face as a measured one.
     let gas
+    let degraded = false
     try {
       gas =
         ((await pool.use((rpc) =>
@@ -283,6 +294,7 @@ export function swapHandlers(ctx) {
         4n
     } catch {
       gas = (quoted.gasEstimate * 5n) / 4n
+      degraded = true
     }
 
     const needsApproval = !input.isNative && allowed < input.amount
@@ -303,10 +315,26 @@ export function swapHandlers(ctx) {
         if (allowed > 0n) approveGas *= 2n
       } catch {
         approveGas = 60_000n
+        degraded = true
       }
     }
 
     const maxFee = (gas + approveGas) * fees.maxFeePerGas
+
+    // A swap whose worst-case fee outweighs everything moving through it is
+    // not a swap, it is a fee with a swap attached. The floor is the fee
+    // itself rather than a dollar figure: for ether-denominated inputs —
+    // ether, or the WETH that is ether by construction and the only token the
+    // LCAI pool takes — the fee and the notional share a unit, so one wei in
+    // is refused exactly like any other amount smaller than its own fee. No
+    // price is consulted, because a price that could refuse a swap is a price
+    // a manipulated feed could weaponise; other tokens share no unit with the
+    // fee without one, and are left to the balance checks below.
+    if (input.tokenIn === UNISWAP.weth && maxFee > input.amount) {
+      throw new Error(
+        `this swap is too small to be worth its network fee — swapping ${readableAmount(input.amount, input.symbol, input.decimals)} would pay up to ${readableAmount(maxFee, 'ETH')} in fees alone`
+      )
+    }
     const enough = input.isNative
       ? nativeBalance >= upfrontCost(gas, fees.maxFeePerGas, input.amount)
       : tokenBalance >= input.amount && nativeBalance >= maxFee
@@ -327,6 +355,12 @@ export function swapHandlers(ctx) {
       tokenBalance,
       needsApproval,
       enough,
+      // True when any gas figure above is a stand-in rather than a
+      // measurement — the swap estimate fell back to the quoter's own figure,
+      // or the approval estimate to a fixed limit. The fee ceiling on such a
+      // plan is a guess with margin, and the flag lets a screen say so
+      // instead of presenting it with the same confidence as a measured one.
+      degraded,
       feeUsdText:
         usd === null ? null : formatUsd((maxFee * usd) / 10n ** 18n)
     }
@@ -410,6 +444,10 @@ export function swapHandlers(ctx) {
         ),
         needsApproval: plan.needsApproval,
         enough: plan.enough,
+        // Passed through from the plan: true when a gas figure on this quote
+        // is a fallback rather than a measurement, so the fee shown is a
+        // guess with margin and can be drawn as one.
+        degraded: plan.degraded,
         recipient: input.address,
         explorerUrl: plan.chain.explorerUrl
       }

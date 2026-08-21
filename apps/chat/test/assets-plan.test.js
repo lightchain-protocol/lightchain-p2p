@@ -217,15 +217,19 @@ describe('token planning', () => {
     expect(sendTransaction).not.toHaveBeenCalled()
   })
 
-  it('refuses a token send the native balance cannot pay the fee for', async () => {
-    // Plenty of USDC, no ether for gas. The refusal must come before the
-    // guard and before anything is signed.
+  it('refuses a token send the native balance cannot pay the fee for, naming the fee balance', async () => {
+    // Plenty of USDC, no ether for gas. The refusal names the coin that is
+    // actually short — the one the fee is paid in — rather than the token
+    // balance, which is fine. It must come before the guard and before
+    // anything is signed.
     const { ctx } = context({ balance: 0n, tokenBalance: 5_000_000n })
     const send = assetHandlers(ctx)['assets.send']
 
     await expect(
       send({ chainId: ETHEREUM, to: TO_RAW, token: USDC, amount: '1000000' })
-    ).rejects.toThrow(/there is not enough/)
+    ).rejects.toThrow(
+      'there is not enough ETH on Ethereum to pay the network fee — the balance is 0 ETH, and the fee alone is up to'
+    )
     expect(ctx.guard.allow).not.toHaveBeenCalled()
     expect(sendTransaction).not.toHaveBeenCalled()
   })

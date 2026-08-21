@@ -160,21 +160,50 @@ describe('the refusals that fire before any round trip', () => {
     await expect(quote({ amount: '1000' })).rejects.toThrow('unlock the wallet to swap anything')
     expect(findPool).not.toHaveBeenCalled()
   })
+})
 
-  it('plans a one-wei swap rather than refusing it as dust', async () => {
-    // There is no dust floor in the planner: a single wei of ether is
-    // discovered, quoted and gas-estimated like any other amount, for a plan
-    // whose network fee is thousands of times the value moving. Pinned as the
-    // behaviour that exists, not endorsed as the behaviour that should.
+describe('the dust floor', () => {
+  it('refuses a one-wei swap once its fee is known — the fee alone outweighs it', async () => {
+    // The floor is the fee itself, no price consulted: a native or WETH input
+    // shares a unit with the network fee, and a swap whose worst-case fee
+    // exceeds the notional moving is a fee with a swap attached. One wei of
+    // ether against a 1.25-million-wei fee ceiling is refused. The refusal
+    // comes after the plan is costed rather than before any round trip — the
+    // fee figure is what the floor is measured against.
     const { ctx } = swapCtx()
     const quote = swapHandlers(ctx)['swap.quote']
 
-    const result = await quote({ amount: '1' })
+    await expect(quote({ amount: '1' })).rejects.toThrow(/too small to be worth its network fee/)
+    expect(ctx.guard.allow).not.toHaveBeenCalled()
+  })
 
-    expect(quoteExactInputSingle).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ amountIn: 1n })
+  it('refuses the dust send the same way, before asking or signing', async () => {
+    const { ctx } = swapCtx()
+    const send = swapHandlers(ctx)['swap.send']
+
+    await expect(send({ amount: '1' })).rejects.toThrow(/too small to be worth its network fee/)
+    expect(ctx.guard.allow).not.toHaveBeenCalled()
+    expect(sendTransaction).not.toHaveBeenCalled()
+  })
+
+  it('floors a WETH input too — wrapped ether is ether by construction', async () => {
+    const weth = tokensOn(1).find((t) => t.symbol === 'WETH')
+    const { ctx } = swapCtx()
+    const quote = swapHandlers(ctx)['swap.quote']
+
+    await expect(quote({ token: weth.address, amount: '1' })).rejects.toThrow(
+      /too small to be worth its network fee/
     )
+  })
+
+  it('does not floor a token that shares no unit with the fee', async () => {
+    // USDC's notional cannot be weighed against a wei fee without trusting a
+    // price, and prices decide nothing about amounts here — the dust floor
+    // leaves such inputs to the balance checks.
+    const { ctx } = swapCtx()
+    const quote = swapHandlers(ctx)['swap.quote']
+
+    const result = await quote({ token: USDC.address, amount: '1' })
     expect(result.amount).toBe('1')
   })
 })
@@ -201,6 +230,9 @@ describe('the minimum-received floor', () => {
     // The price feed is not mocked, and a failed read is decoration omitted,
     // not a failed quote.
     expect(result.maxFeeUsdText).toBeNull()
+    // Every gas figure was measured against the real call, so nothing is
+    // flagged as a stand-in.
+    expect(result.degraded).toBe(false)
   })
 
   it('floors at a tenth of a percent and at one percent when asked', async () => {
@@ -323,6 +355,9 @@ describe('gas and the approval step', () => {
     const result = await quote({ amount: ETH(1).toString() })
 
     expect(result.gas).toBe(((QUOTED.gasEstimate * 5n) / 4n).toString())
+    // A stand-in figure is marked, not worn silently: a degraded plan can
+    // never pass for a measured one.
+    expect(result.degraded).toBe(true)
   })
 
   it('measures a native swap with the ether attached as value', async () => {
@@ -351,6 +386,8 @@ describe('gas and the approval step', () => {
     )
     // The plan's fee ceiling covers both transactions.
     expect(result.maxFee).toBe(((SWAP_GAS * 5n) / 4n + APPROVE_GAS) * FEES.maxFeePerGas + '')
+    // Both estimates measured the real calls, so the plan is not degraded.
+    expect(result.degraded).toBe(false)
   })
 
   it('prices the approval twice over when a stale allowance must pass through zero', async () => {
@@ -394,6 +431,7 @@ describe('gas and the approval step', () => {
     const result = await quote({ token: USDC.address, amount: USDC_AMOUNT.toString() })
 
     expect(result.approveGas).toBe('60000')
+    expect(result.degraded).toBe(true)
   })
 })
 
