@@ -4,8 +4,10 @@ name: build-matrix
 # Apple, MSIX packaging on Windows), so cross-compiling a release artifact is
 # not viable — each target builds on its own OS.
 #
-# Unsigned at this stage. Signing secrets are added once certificates exist;
-# see docs/signing-procurement.md.
+# Signature verification is blocking: after every package step, the produced
+# binary or installer is checked with the platform's own tooling, and an
+# unsigned or mis-signed artifact fails the build. Signing secrets live in the
+# repository settings; see docs/signing-procurement.md.
 
 on:
   workflow_dispatch:
@@ -100,6 +102,19 @@ jobs:
           NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
         run: node scripts/notarize-macos.mjs apps/${{ matrix.app.name }}/out/${{ matrix.target.host }}/${{ matrix.app.binary }}
 
+      # The gate. The signing steps above skip silently when their secrets are
+      # absent, so "no error" never meant "signed" — this checks the produced
+      # binary itself, with the platform's own tooling: signtool on Windows,
+      # codesign (rejecting ad-hoc signatures) on macOS. Linux has no
+      # signature scheme in this pipeline, so there it checks existence only.
+      # Deliberately after signing and notarization, which rewrite the file.
+      - name: Verify signature
+        shell: bash
+        run: |
+          bin="apps/${{ matrix.app.name }}/out/${{ matrix.target.host }}/${{ matrix.app.binary }}"
+          if [ "${{ runner.os }}" = "Windows" ]; then bin="$bin.exe"; fi
+          node scripts/check-signing.mjs --require "$bin"
+
       # Every runner is native to the target it builds, so all of them can
       # execute what they produce. An artifact that compiles but has never been
       # run is not evidence of anything. Deliberately after signing, because
@@ -161,6 +176,22 @@ jobs:
           KEYCHAIN_PROFILE: ${{ secrets.NOTARY_PROFILE }}
           WINDOWS_SIGN_HOOK: ${{ secrets.WINDOWS_SIGN_HOOK }}
         run: pnpm make
+
+      # The same gate for the installers people actually download. The MSIX is
+      # signed through WINDOWS_SIGN_HOOK inside `pnpm make`, the app inside the
+      # DMG through MAC_CODESIGN_IDENTITY — this step trusts neither claim and
+      # checks the artifact. An unsigned DMG passes only when the .app inside
+      # it is signed and notarized, which is what Gatekeeper evaluates. The
+      # patterns are quoted so check-signing.mjs expands the globs itself and
+      # the step is identical on every shell.
+      - name: Verify installer signatures
+        shell: bash
+        run: |
+          case "${{ runner.os }}" in
+            Windows) node scripts/check-signing.mjs --require "apps/chat/out/make/**/*.msix" ;;
+            macOS)   node scripts/check-signing.mjs --require "apps/chat/out/make/**/*.dmg" ;;
+            *)       node scripts/check-signing.mjs --require "apps/chat/out/make" ;;
+          esac
 
       - uses: actions/upload-artifact@v4
         with:
