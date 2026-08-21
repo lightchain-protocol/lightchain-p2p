@@ -153,13 +153,8 @@ jobs:
   # unprotected by CI, so a renderer regression passed on green.
   #
   # A separate job because it is slower and because Electron needs a display.
-  # `continue-on-error` while it settles: a suite that goes red for
-  # environmental reasons is worse than no suite, since the first thing people
-  # learn is to ignore it. Promote it to blocking once it has been green for a
-  # while, and delete this paragraph when you do.
   harnesses:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
