@@ -12,6 +12,7 @@ import {
   parseContainerState,
   pullImage,
   register as registerWorker,
+  resolveContractAddresses,
   runWorker,
   selectKeystore,
   stopWorker
@@ -294,18 +295,28 @@ export function workerHandlers(ctx) {
     send({ t: 'worker.busy', doing: busyWith })
 
     try {
+      // Registering is not a key ceremony. It opens a keystore already
+      // on disk and sends a transaction, which is the same shape as
+      // starting — unlike import-key, which reads a private key from
+      // stdin so it never reaches argv, the environment or a log.
+      //
+      // Register and start both need the contract addresses. Mainnet's
+      // profile pins them; testnet's deliberately does not, so the live
+      // pair is read from the WorkerRegistry predeploy — without this a
+      // testnet worker could never leave the panel.
+      const resolved =
+        req.t === 'worker.register' || req.t === 'worker.start'
+          ? await resolveContractAddresses(config, rpc())
+          : config
+
       const command =
         req.t === 'worker.pull'
-          ? pullImage(config)
+          ? pullImage(resolved)
           : req.t === 'worker.stop'
-            ? stopWorker(config)
-            : // Registering is not a key ceremony. It opens a keystore already
-              // on disk and sends a transaction, which is the same shape as
-              // starting — unlike import-key, which reads a private key from
-              // stdin so it never reaches argv, the environment or a log.
-              req.t === 'worker.register'
-              ? registerWorker(config, keystoreFor(config))
-              : runWorker(config, keystoreFor(config))
+            ? stopWorker(resolved)
+            : req.t === 'worker.register'
+              ? registerWorker(resolved, keystoreFor(resolved))
+              : runWorker(resolved, keystoreFor(resolved))
 
       let streamed = false
       const res = await runAsync('docker', command.argv, {
@@ -470,6 +481,23 @@ export function workerHandlers(ctx) {
       const address = writeKeystore(config, derivePrivateKey(phrase))
       adoptPassword(config, password)
       return { address: `0x${address}`, phrase }
+    },
+
+    /**
+     * Replaces the password of the keystore already on disk — the Settings
+     * page's one worker-secret action. It goes through the same proof as a
+     * fresh key: the password has to open the file before it is sealed under
+     * the wallet, so a typo fails here and not inside the container. The
+     * settings file never sees it; `settings.write` refuses the key outright.
+     */
+    'worker.setPassword': (req) => {
+      const password = passwordFrom(req)
+
+      const { config, problem } = workerConfig({ keystorePassword: password })
+      if (!config) throw new Error(problem ?? 'the worker is not configured')
+
+      adoptPassword(config, password)
+      return { ok: true }
     },
 
     'worker.logs': async () => {

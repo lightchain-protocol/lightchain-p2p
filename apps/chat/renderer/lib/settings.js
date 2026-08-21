@@ -241,11 +241,14 @@ document.getElementById('worker-settings-form').addEventListener('submit', async
   const password = document.getElementById('set-worker-password').value
 
   try {
+    // The password never travels in settings.write: it is proven against the
+    // keystore and sealed under the wallet by the worker itself. Left blank
+    // means "leave it alone", not "clear it".
+    if (password !== '') {
+      await request('worker.setPassword', { password })
+    }
     await request('settings.write', {
       values: {
-        // Left blank means "leave it alone", not "clear it" — otherwise
-        // opening settings and saving anything would wipe the password.
-        ...(password === '' ? {} : { workerPassword: password }),
         // `keysDir` and `containerName` are shown above and deliberately not
         // sent. Both are arguments to Docker — a bind mount and the subject of
         // `rm -f` — so the worker refuses them from a window, and sending them

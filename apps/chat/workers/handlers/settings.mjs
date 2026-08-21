@@ -68,8 +68,11 @@ const WRITABLE = new Set([
   //
   // They stay settable with an editor, like the transfer thresholds above. What
   // they stop being is reachable from the untrusted side.
+  //
+  // `workerPassword` is absent for a stronger reason: it is the sole protection
+  // of the key holding the worker's stake, so it lives in the wallet-sealed
+  // store now, not the settings file — a window never gets to write it at all.
   // The worker this machine can run
-  'workerPassword',
   'supportedModels',
   'ollamaUrl'
 ])
@@ -84,10 +87,10 @@ export function settingsHandlers(ctx) {
     reconnectChain,
     rooms,
     saveSettings,
-    setting,
     settings,
     swarm,
-    workerConfig
+    workerConfig,
+    workerKeystorePassword
   } = ctx
 
   return {
@@ -104,8 +107,10 @@ export function settingsHandlers(ctx) {
       return {
         // The password is never sent back, only whether one is set. Round
         // tripping a secret through a view to redisplay it is how they leak.
+        // "Set" now means the sealed store (or the operator's environment
+        // variable), not the settings key, which nothing reads any more.
         values: { ...settings(), workerPassword: undefined },
-        workerPasswordSet: Boolean(setting('workerPassword', 'WORKER_PASSWORD')),
+        workerPasswordSet: Boolean(workerKeystorePassword()),
         effective: {
           network: net,
           keysDir: shown.keysDir,
