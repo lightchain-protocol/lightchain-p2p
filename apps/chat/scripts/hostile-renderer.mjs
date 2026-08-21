@@ -16,7 +16,7 @@
  * Needs the application running with --remote-debugging-port.
  */
 
-import { ASK, unlockForHarness } from './harness.mjs'
+import { ASK, HARNESS_PASSWORD, passwordForHarness, unlockForHarness } from './harness.mjs'
 
 const port = Number(process.argv[2] ?? 9301)
 
@@ -72,6 +72,12 @@ async function evaluate(expression, timeout = 30_000) {
 }
 
 await send('Runtime.enable')
+// A window nobody is looking at gets its timers intensively throttled, which
+// turns the dialog-watching loops below into minutes-long stalls and the
+// guard's five-minute timeout into a forged-looking refusal. Bringing the page
+// to the front keeps the timers honest.
+await send('Page.enable')
+await send('Page.bringToFront')
 await evaluate(
   'new Promise((r) => document.readyState === "complete" ? r() : addEventListener("load", r))'
 )
@@ -118,15 +124,17 @@ const permitted = await asWorker('settings.write', { values: { theme: 'dark' } }
 report('and still takes one the interface owns', !permitted?.error, permitted?.error ?? 'theme set')
 
 // Worth stating plainly rather than leaving as a gap somebody rediscovers: the
-// worker's keystore password IS writable from here, because the Settings form
-// legitimately sets it. The allowlist narrows what a compromised window can
-// reach from every setting the worker reads to the twelve the interface owns —
-// it does not make that window harmless.
+// worker's keystore password used to be writable from here, because the
+// Settings form legitimately set it. It lives in the wallet-sealed store now —
+// the form sets it through worker.importKey / worker.createKey, which open the
+// keystore locally before adopting the password — and it is off the settings
+// allowlist entirely, so the write below must be refused. This probe asserted
+// the old, weaker posture until Sprint 3; a pass now means the hardening held.
 const ownsIt = await asWorker('settings.write', { values: { workerPassword: '' } })
 report(
-  'the keystore password stays writable, which the interface needs',
-  !ownsIt?.error,
-  'narrowed, not eliminated'
+  'the keystore password is no longer a setting the window can write',
+  /not a setting this app writes/.test(ownsIt?.error ?? ''),
+  ownsIt?.error?.slice(0, 58) ?? 'still writable — the sealed-store move has not held'
 )
 
 // --- The two handlers that replace a transaction --------------------------------
@@ -758,6 +766,224 @@ if (csp === null) {
     /cannot be recovered/.test(receive?.warning ?? ''),
     receive?.warning?.slice(0, 50)
   )
+}
+
+// --- The Sprint 1-2 handlers, from the same window --------------------------------
+
+// Five requests landed on the worker after this suite was written —
+// ai.revokeDelegate, ai.jobState, ai.claimTimeout, ai.claimRefund and
+// ai.disputeJob — plus the worker stake guard and the diagnostics export.
+// Four of them sign transactions, so each gets the same treatment ai.fund
+// did: what it refuses, and whether anything moves without the person.
+
+// A job id crosses as a decimal string and is parsed by the same `whole()`
+// that guards amounts. The refusal happens before the chain is ever read,
+// so these hold with the network down.
+for (const endpoint of ['ai.jobState', 'ai.claimTimeout', 'ai.disputeJob']) {
+  for (const [what, jobId] of [
+    ['nothing at all', undefined],
+    ['text that is not a number', 'not-a-job'],
+    ['a float as text', '1.5'],
+    ['a negative', '-1']
+  ]) {
+    const reply = await asWorker(endpoint, { jobId })
+    report(
+      `${endpoint} refuses a job id given as ${what}`,
+      Boolean(reply?.error),
+      reply?.error?.slice(0, 60) ?? `returned ${JSON.stringify(reply)}`
+    )
+  }
+}
+
+// A well-formed id for a job this wallet never opened: whatever the chain
+// says about job 0, the reply is an error and no confirmation ever stands
+// open — and if the chain does consider it actionable, the guard's dialog is
+// the thing standing in front of the transaction, so declining it must be
+// what refuses.
+//
+// The dialog is watched from here rather than by a loop inside the page: each
+// read is a single evaluate with no timers, so an occluded window's timer
+// throttling cannot stall it into the guard's five-minute timeout.
+const dialogIsOpen = () =>
+  evaluate(`document.getElementById('confirm-dialog')?.open === true`).catch(() => false)
+
+const refusedOrGuarded = async (endpoint, fields) => {
+  let settled = false
+  const pendingReply = asWorker(endpoint, fields).then((reply) => {
+    settled = true
+    return reply
+  })
+  let shown = await dialogIsOpen()
+  for (let i = 0; i < 60 && !settled && !shown; i++) {
+    await new Promise((r) => setTimeout(r, 250))
+    shown = await dialogIsOpen()
+  }
+  if (shown) await evaluate(`document.getElementById('confirm-cancel')?.click(); true`)
+  return { reply: await pendingReply, shown }
+}
+
+for (const [endpoint, fields] of [
+  ['ai.claimTimeout', { jobId: '0' }],
+  ['ai.disputeJob', { jobId: '0' }]
+]) {
+  const { reply, shown } = await refusedOrGuarded(endpoint, fields)
+  report(
+    `${endpoint} sends nothing for a job this wallet never opened`,
+    Boolean(reply?.error) && (!shown || /not confirmed/.test(reply?.error ?? '')),
+    shown
+      ? `the guard's dialog stood in front of it; declined: ${reply?.error?.slice(0, 46)}`
+      : (reply?.error?.slice(0, 60) ?? `returned ${JSON.stringify(reply)}`)
+  )
+}
+
+// The refund claim pays out whatever the registry owes this wallet, and this
+// wallet is owed nothing — so the refusal must arrive before any dialog does.
+const { reply: refund, shown: refundShown } = await refusedOrGuarded('ai.claimRefund', {})
+report(
+  'ai.claimRefund refuses a wallet owed nothing, before any dialog',
+  Boolean(refund?.error) && (!refundShown || /not confirmed/.test(refund?.error ?? '')),
+  refundShown
+    ? `the guard's dialog stood in front of it; declined: ${refund?.error?.slice(0, 46)}`
+    : (refund?.error?.slice(0, 60) ?? `returned ${JSON.stringify(refund)}`)
+)
+
+// Revoking the delegate moves nothing, but it ends a standing authority over
+// the prepaid balance — exactly the send the always-ask dialog exists for.
+// Same three legs as ai.fund: the dialog opens, a forged id settles nothing,
+// and the dialog's own Cancel is what refuses.
+{
+  const pendingReply = asWorker('ai.revokeDelegate')
+
+  let shown = false
+  for (let i = 0; i < 60 && !shown; i++) {
+    shown = await dialogIsOpen()
+    if (!shown) await new Promise((r) => setTimeout(r, 250))
+  }
+  report(
+    'ai.revokeDelegate opens the app\u2019s own confirmation dialog',
+    shown === true,
+    shown ? 'themed dialog is up' : 'no dialog appeared'
+  )
+
+  await asWorker('wallet.confirmed', { id: `forged-${Date.now()}`, approved: true })
+  const answered = await Promise.race([
+    pendingReply.then(
+      (reply) => `settled on a forged id: ${reply?.error ?? 'with no error at all'}`
+    ),
+    new Promise((resolve) => setTimeout(() => resolve(null), 3000))
+  ])
+  report(
+    'ai.revokeDelegate ignores a forged id and waits for the dialog\u2019s answer',
+    answered === null,
+    answered ?? 'still waiting after the forged answer'
+  )
+
+  await evaluate(`document.getElementById('confirm-cancel')?.click(); true`)
+  const declined = await pendingReply
+  report(
+    'ai.revokeDelegate refuses when the dialog is declined',
+    /not confirmed/.test(declined?.error ?? ''),
+    declined?.error?.slice(0, 60) ?? `returned ${JSON.stringify(declined)}`
+  )
+}
+
+// --- The stake guard and what the worker pages hand back -------------------------
+
+// Registering stakes the chain's minimum out of the worker key from inside a
+// container, and confirmStake is the only thing between this request and
+// `docker run`. From here the reachable assertions are the two ends of that:
+// the request cannot proceed silently — it errors, or it stops at the guard's
+// dialog — and the answers the worker pages live on never carry the keystore
+// password the container signs with.
+{
+  const { reply, shown } = await refusedOrGuarded('worker.register', {})
+  report(
+    'worker.register cannot proceed without the person or a configuration',
+    Boolean(reply?.error) && (!shown || /not confirmed/.test(reply?.error ?? '')),
+    shown
+      ? `the stake dialog stood in front of docker; declined: ${reply?.error?.slice(0, 40)}`
+      : (reply?.error?.slice(0, 60) ?? `returned ${JSON.stringify(reply)}`)
+  )
+
+  for (const endpoint of ['worker.status', 'worker.stake']) {
+    const reply = await asWorker(endpoint)
+    const text = JSON.stringify(reply ?? {})
+    report(
+      `${endpoint} hands the window no keystore password`,
+      !text.includes(HARNESS_PASSWORD) && !/"keystorePassword"/.test(text),
+      text.includes(HARNESS_PASSWORD) ? 'the wallet password is in the reply' : 'clean'
+    )
+  }
+}
+
+// --- The diagnostics export, read as the stranger it is meant for ------------------
+
+// The export is built to be emailed to somebody helping with a broken
+// machine, so the window asking for one is legitimate — what it must never do
+// is carry a secret out. The ZIP is stored, not compressed, so its bytes are
+// the entries' text and can be scanned as-is. The wallet password, the seed
+// phrase and this suite's own message payloads are the needles: the first two
+// are secrets outright, and message text in the export would mean a room's
+// contents reach whoever the ZIP is sent to.
+{
+  const password = await passwordForHarness(asWorker)
+  // doctor's probes run inside the export and can take longer than the
+  // harness's usual patience, so this one asks with a longer clock.
+  const askLong = ASK.replace('20000', '120000').replace('20s', '120s')
+
+  const scan = await evaluate(
+    `(async () => {
+      const ask = ${askLong}
+      const revealed = await ask('wallet.reveal', { password: ${JSON.stringify('PLACEHOLDER')} })
+      const phrase = revealed?.phrase ?? null
+      const exported = await ask('diagnostics.export')
+      if (exported?.error) return { error: exported.error }
+      const bytes = exported.bytes
+      let text = ''
+      for (let i = 0; i < bytes.length; i += 65536) {
+        text += String.fromCharCode.apply(null, bytes.slice(i, i + 65536))
+      }
+      return {
+        name: exported.name,
+        size: bytes.length,
+        zip: bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 3 && bytes[3] === 4,
+        phraseInFull: phrase !== null && text.includes(phrase),
+        phraseWords: phrase === null ? null : phrase.split(' ').filter((w) => text.includes(w)).length,
+        passwordFound: text.includes(${JSON.stringify(HARNESS_PASSWORD)}),
+        stampFound: text.includes(${JSON.stringify(stamp)}),
+        payloadFound: text.includes('__pwned')
+      }
+    })()`.replace('PLACEHOLDER', password),
+    150_000
+  )
+
+  if (scan?.error) {
+    report('the diagnostics export can be produced at all', false, scan.error.slice(0, 60))
+  } else {
+    report(
+      'the diagnostics export is a real ZIP',
+      scan?.zip === true,
+      scan ? `${scan.name}, ${scan.size} bytes` : 'no answer'
+    )
+    report(
+      'the export carries neither the seed phrase nor the wallet password',
+      scan?.phraseInFull === false && scan?.passwordFound === false,
+      scan
+        ? scan.phraseInFull || scan.passwordFound
+          ? 'a secret is in the archive'
+          : `neither found (${scan.phraseWords ?? '?'} phrase words appear incidentally)`
+        : 'no answer'
+    )
+    report(
+      'the export carries no message content',
+      scan?.stampFound === false && scan?.payloadFound === false,
+      scan
+        ? scan.stampFound || scan.payloadFound
+          ? "this suite's own payloads are in the archive"
+          : 'none of the payloads sent above are in it'
+        : 'no answer'
+    )
+  }
 }
 
 // --- Errors the window logged while all of that happened ------------------------------
