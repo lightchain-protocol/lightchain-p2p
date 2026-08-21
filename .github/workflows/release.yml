@@ -1,0 +1,256 @@
+name: release
+
+# The desktop application release: installers for the three platforms, then a
+# draft GitHub Release with them attached. A human publishes the draft — the
+# workflow never does, because the last check on a release is a person reading
+# the notes against what actually changed.
+#
+# build-matrix.yml already builds these installers on tags; this workflow is
+# the one that turns them into a release, and so it carries the gates that
+# matter at that point: the upgrade links must be distinct (a release with a
+# clashing pear link overwrites another app's installs), and signing must be
+# present where a release expects it rather than silently absent.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    # Everything here is dependency-free node and runs without an install, so
+    # the whole gate is seconds long and fails before a single minute is spent
+    # packaging. A release that fails one of these is worse than no release:
+    # the damage each one catches only shows on somebody else's machine.
+    name: release gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # A pear:// link is an update channel, not a name. Two apps sharing one
+      # means staging either pushes it to the other's installs — it happened
+      # here, and nothing but this check would ever have caught it.
+      - name: Apps have distinct upgrade links
+        run: node scripts/check-links.mjs
+
+      # `lightchain://` is written down in four places in four languages and
+      # nothing makes them agree. When they disagreed, the only symptom was an
+      # installed release ignoring invite links.
+      - name: Deep link scheme agrees everywhere
+        run: node apps/chat/scripts/check-scheme.mjs
+
+      # A tag that disagrees with the package version produces installers that
+      # report a different version than the release they were downloaded from.
+      - name: Tag matches the app version
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./apps/chat/package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "tag is v$tag but apps/chat/package.json says $pkg"
+            exit 1
+          fi
+
+  desktop:
+    # Native runners per platform: signing invokes platform tooling (codesign
+    # on Apple, MSIX packaging on Windows), so cross-compiling a release
+    # artifact is not viable. Same matrix as the desktop job in
+    # build-matrix.yml — Forge builds for the architecture it runs on, and the
+    # arm64 runners are not needed until there is demand for them.
+    name: desktop ${{ matrix.target.host }}
+    needs: [gate]
+    runs-on: ${{ matrix.target.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - { runner: ubuntu-latest, host: linux-x64 }
+          - { runner: macos-latest, host: darwin-arm64 }
+          - { runner: windows-latest, host: win32-x64 }
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # Before anything is built: signing is required where a release expects
+      # it. Every signing step skips itself when its secret is absent — right
+      # for CI, wrong for a release, where an unsigned artifact looks exactly
+      # like a signed one until somebody downloads it and SmartScreen or
+      # Gatekeeper refuses it. `--require` turns that silent skip into a stop.
+      # See docs/decisions/0003-windows-signing.md and
+      # docs/signing-procurement.md.
+      - name: Signing is present where a release expects it
+        if: runner.os != 'Linux'
+        env:
+          WINDOWS_CERT_SHA1: ${{ secrets.WINDOWS_CERT_SHA1 }}
+          WINDOWS_SIGN_HOOK: ${{ secrets.WINDOWS_SIGN_HOOK }}
+          MAC_CODESIGN_IDENTITY: ${{ secrets.MAC_CODESIGN_IDENTITY }}
+          NOTARY_PROFILE: ${{ secrets.NOTARY_PROFILE }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+        run: node scripts/check-signing.mjs --require
+
+      # Linux ships unsigned, and that is the current posture rather than a
+      # gap: there is no signature format for an AppImage that the ecosystem
+      # verifies, and the flatpak/snap makers are configured but undecided
+      # (ROADMAP.md). Report only, never fail.
+      - name: Signing posture (Linux ships unsigned)
+        if: runner.os == 'Linux'
+        run: node scripts/check-signing.mjs
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Workspace packages must be compiled before the app can import them.
+      - name: Build packages
+        run: pnpm build
+
+      # `pnpm make` is scripts/forge.mjs make: it deploys a self-contained
+      # copy of the app (pnpm's hoisted layout is one Forge cannot walk) and
+      # runs electron-forge make there, copying the installers back to
+      # apps/chat/out/make. Signing is by presence of the secrets, read by
+      # forge.config.js; the --require gate above has already guaranteed them
+      # on the platforms that need them.
+      - name: Package installers
+        working-directory: apps/chat
+        env:
+          MAC_CODESIGN_IDENTITY: ${{ secrets.MAC_CODESIGN_IDENTITY }}
+          KEYCHAIN_PROFILE: ${{ secrets.NOTARY_PROFILE }}
+          WINDOWS_SIGN_HOOK: ${{ secrets.WINDOWS_SIGN_HOOK }}
+        run: pnpm make
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.target.host }}
+          path: apps/chat/out/make
+          if-no-files-found: error
+
+  release:
+    # Draft only. Publishing is a human act: somebody reads the notes against
+    # the milestone, confirms the installers open on a clean machine, and then
+    # presses the button.
+    name: draft release
+    needs: [desktop]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      # On a tag push the tag is the ref. On a manual dispatch there is no
+      # tag, so it is derived from the app version — gh creates the tag from
+      # the checked-out commit when the release is created.
+      - name: Resolve the release tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="v$(node -p "require('./apps/chat/package.json').version")"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      # The release body is the version's section of CHANGELOG.md. Matches
+      # `## 1.2.3`, `## [1.2.3]` and `## [v1.2.3]`; anything else, including a
+      # missing file, falls back to a note saying so — a draft with a
+      # placeholder body is still a draft, and the notes are edited before
+      # publishing anyway.
+      - name: Extract the changelog section
+        shell: bash
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs')
+          const version = process.env.VERSION
+          let body = null
+          try {
+            const text = fs.readFileSync('CHANGELOG.md', 'utf8')
+            const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const re = new RegExp(`^## \\[?v?${escaped}\\]?[^\\n]*\\n([\\s\\S]*?)(?=^## |$(?![\\s\\S]))`, 'm')
+            const match = re.exec(text)
+            if (match && match[1].trim()) body = match[1].trim()
+          } catch {
+            // No CHANGELOG.md yet — the fallback below says so in the notes.
+          }
+          if (!body) {
+            body = `Draft release ${process.env.TAG}.\n\nNo CHANGELOG.md section matches ${version}; add one before this draft is published.`
+          }
+          fs.writeFileSync('release-notes.md', body + '\n')
+          EOF
+
+      - name: Collect the installers
+        shell: bash
+        run: |
+          mkdir -p dist
+          find ./artifacts -type f \
+            \( -name '*.dmg' -o -name '*.msix' -o -name '*.AppImage' \
+               -o -name '*.zip' -o -name '*.flatpak' -o -name '*.snap' \) \
+            -exec cp {} dist/ \;
+          ls -la dist
+          test -n "$(ls -A dist)"
+
+      # A prerelease tag (v0.9.0-beta.1) becomes a prerelease on GitHub too,
+      # so it never reads as the latest stable release.
+      - name: Create the draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          args=(--draft --title "$TAG" --notes-file release-notes.md)
+          case "$TAG" in *-*) args+=(--prerelease);; esac
+          gh release create "$TAG" "${args[@]}" dist/*
+
+      # ── Pear staging and seeding — DISABLED until the key ceremony ────────
+      #
+      # These two steps publish the release to the Pear update channel, which
+      # is how installed applications receive it. They stay `if: false` until
+      # two things exist, and neither is in this repository yet:
+      #
+      #   1. A production upgrade link from `pear touch`, owned by a multisig
+      #      quorum. The link committed in apps/chat/package.json is a
+      #      development link whose secret sits on one machine, and the file
+      #      itself says not to ship it (docs/decisions/0002-publish-round-trip.md,
+      #      "What it changed").
+      #   2. Real public keys in apps/chat/pear.json, which currently carries
+      #      `<PUBKEY_HERE>` placeholders under the template's namespace.
+      #
+      # Activating early is not a no-op: staging pushes this build to the
+      # development channel and every dev install receives it. Before the
+      # first real run, check what would be staged with `pear stage --dry-run`
+      # — pear stage does not read .gitignore, and the failure is silent and
+      # expensive rather than loud.
+      - name: Pear stage (disabled until the key ceremony)
+        if: false
+        env:
+          PEAR_UPGRADE_LINK: ${{ vars.PEAR_PRODUCTION_LINK }}
+        run: pear stage "$PEAR_UPGRADE_LINK" apps/chat
+
+      # A release nobody seeds is a release nobody can install, and right now
+      # nothing seeds (docs/decisions/0002-publish-round-trip.md, follow-up 3).
+      # When this activates, seeding needs to be always-on infrastructure, not
+      # a CI job that exits — this step announces the release, it does not
+      # keep it available.
+      - name: Pear seed (disabled until the key ceremony)
+        if: false
+        env:
+          PEAR_UPGRADE_LINK: ${{ vars.PEAR_PRODUCTION_LINK }}
+        run: pear seed --no-tty "$PEAR_UPGRADE_LINK"
