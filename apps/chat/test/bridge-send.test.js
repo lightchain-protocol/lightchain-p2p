@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { BRIDGE } from '@lcai-p2p/chain'
-import { DISPATCH_ID_TOPIC, bridgeHandlers, dispatchIdFromLogs } from '../workers/handlers/bridge.mjs'
+import {
+  DISPATCH_ID_TOPIC,
+  bridgeHandlers,
+  dispatchIdFromLogs
+} from '../workers/handlers/bridge.mjs'
 
 /**
  * The bridge's send-time checks, driven without a chain.
@@ -71,9 +75,7 @@ describe('bridge.send re-reading the allowance', () => {
     const { ctx, guard } = ctxWith({ allowed: 0n })
     const handlers = bridgeHandlers(ctx)
 
-    await expect(
-      handlers['bridge.send']({ fromChainId: 9200, amount: AMOUNT })
-    ).rejects.toThrow()
+    await expect(handlers['bridge.send']({ fromChainId: 9200, amount: AMOUNT })).rejects.toThrow()
     expect(guard.allow).toHaveBeenCalledOnce()
   })
 })

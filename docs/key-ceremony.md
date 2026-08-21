@@ -23,17 +23,17 @@ team (it is the input to the remaining Sprint 4 release work) and store one with
 the key backups. **Nothing in this table is secret** — secrets never leave the
 signing machines.
 
-| # | Value | Produced by | Filled in |
-|---|-------|-------------|-----------|
-| 1 | Production **multisig link** (`pear://…`) | step 5, `pear multisig link` | `__________________` |
-| 2 | **Namespace** string chosen for the multisig config | step 4 | `__________________` |
-| 3 | **Quorum** (e.g. 2 of 3) | step 4 | `__________________` |
-| 4 | Signer 1 public key (z32) + key name + machine | step 2 | `__________________` |
-| 5 | Signer 2 public key (z32) + key name + machine | step 2 | `__________________` |
-| 6 | Signer 3 public key (z32) + key name + machine | step 2 | `__________________` |
-| 7 | **Provision link** (`pear://…`, target of the first provision) | step 6, `pear touch` | `__________________` |
-| 8 | First provision **versioned link** (`pear://0.0.<key>` bootstrap form) | step 6 | `__________________` |
-| 9 | Date, operator, CLI version (`pear versions`) | step 1 | `__________________` |
+| #   | Value                                                                  | Produced by                  | Filled in            |
+| --- | ---------------------------------------------------------------------- | ---------------------------- | -------------------- |
+| 1   | Production **multisig link** (`pear://…`)                              | step 5, `pear multisig link` | `__________________` |
+| 2   | **Namespace** string chosen for the multisig config                    | step 4                       | `__________________` |
+| 3   | **Quorum** (e.g. 2 of 3)                                               | step 4                       | `__________________` |
+| 4   | Signer 1 public key (z32) + key name + machine                         | step 2                       | `__________________` |
+| 5   | Signer 2 public key (z32) + key name + machine                         | step 2                       | `__________________` |
+| 6   | Signer 3 public key (z32) + key name + machine                         | step 2                       | `__________________` |
+| 7   | **Provision link** (`pear://…`, target of the first provision)         | step 6, `pear touch`         | `__________________` |
+| 8   | First provision **versioned link** (`pear://0.0.<key>` bootstrap form) | step 6                       | `__________________` |
+| 9   | Date, operator, CLI version (`pear versions`)                          | step 1                       | `__________________` |
 
 ---
 
@@ -82,7 +82,7 @@ pear multisig keys get
 - First run prompts for a password to **encrypt** the new private key (it errors
   if none is supplied), then prints the key name and public key. The keypair is
   stored under `~/.pear`. The command is idempotent — re-running reprints the
-  existing public key, so you can always recover the *public* half later.
+  existing public key, so you can always recover the _public_ half later.
 - `pear multisig keys paths` prints the exact on-disk locations of the public
   and private key files. Record them for step 8 (backup).
 - Each signer sends **only their public key** to the person assembling the
@@ -242,7 +242,7 @@ exact files.
 - Store the password in a password manager, separately from the key backups.
 - `pear multisig keys get --secret` prints the private key if a signer ever
   needs to re-import onto a replacement machine (`pear multisig keys add <name>
-  <public-key> [private-key]`).
+<public-key> [private-key]`).
 
 Failure tolerance, by key type (from the multisig troubleshooting guide):
 

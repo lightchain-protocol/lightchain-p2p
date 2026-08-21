@@ -499,8 +499,7 @@ export class Conversation {
     // indistinguishable from a short one.
     const frameJob =
       message.jobId === undefined || message.jobId === null ? null : String(message.jobId)
-    const stale =
-      this.#activeJob === null || (frameJob !== null && frameJob !== this.#activeJob)
+    const stale = this.#activeJob === null || (frameJob !== null && frameJob !== this.#activeJob)
 
     // Any frame may carry text, and which one does is a property of the
     // deployment rather than of the protocol: testnet streams `chunk` frames

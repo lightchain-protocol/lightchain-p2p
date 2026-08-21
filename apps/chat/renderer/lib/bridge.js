@@ -128,7 +128,11 @@ function watchBaseline(hash) {
 function restorePending(transfer) {
   if (!transfer) return
 
-  pending = { fromChainId: transfer.fromChainId, hash: transfer.hash, before: transfer.before ?? null }
+  pending = {
+    fromChainId: transfer.fromChainId,
+    hash: transfer.hash,
+    before: transfer.before ?? null
+  }
 
   statusNote.textContent =
     `Sent on ${transfer.fromName}. It arrives on ${transfer.toName} when the bridge's relayer delivers it. ` +

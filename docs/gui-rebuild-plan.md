@@ -35,16 +35,16 @@ what a chat looks like.
 
 From the 2026-08-19 live screenshots (`.cursor-watch/shots-now/`):
 
-| # | Defect | Where |
-|---|--------|-------|
-| D1 | Duplicate navigation, buttons stranded mid-column | `partials/sidebar.html` |
-| D2 | Nav icons black-on-black in dark theme (hardcoded fill, not `currentColor`) | sidebar nav icons |
-| D3 | "—" dashes for zero balances read as load failure | Account |
-| D4 | Peer actions styled inconsistently (button vs bare link: "Top up" / "Move back to wallet") | Account |
-| D5 | Empty surfaces are voids (Models two empty columns, chat area) | Models, Chat |
-| D6 | Backup banner steals vertical space on every surface, no dismiss/snooze | all panels |
-| D7 | Cross-surface CSS leaks: `wallet.css` styles `.settings-page .form`; `room.css` global `.messages/.message` hits Models transcript; `.nav-item` reused by Settings nav | three stylesheets |
-| D8 | Focus bug history: hidden onboarding password field stayed tabbable (fixed once — keep the review.mjs check green forever) | `scripts/review.mjs` |
+| #   | Defect                                                                                                                                                                 | Where                   |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| D1  | Duplicate navigation, buttons stranded mid-column                                                                                                                      | `partials/sidebar.html` |
+| D2  | Nav icons black-on-black in dark theme (hardcoded fill, not `currentColor`)                                                                                            | sidebar nav icons       |
+| D3  | "—" dashes for zero balances read as load failure                                                                                                                      | Account                 |
+| D4  | Peer actions styled inconsistently (button vs bare link: "Top up" / "Move back to wallet")                                                                             | Account                 |
+| D5  | Empty surfaces are voids (Models two empty columns, chat area)                                                                                                         | Models, Chat            |
+| D6  | Backup banner steals vertical space on every surface, no dismiss/snooze                                                                                                | all panels              |
+| D7  | Cross-surface CSS leaks: `wallet.css` styles `.settings-page .form`; `room.css` global `.messages/.message` hits Models transcript; `.nav-item` reused by Settings nav | three stylesheets       |
+| D8  | Focus bug history: hidden onboarding password field stayed tabbable (fixed once — keep the review.mjs check green forever)                                             | `scripts/review.mjs`    |
 
 ## 3. Hard constraints (every agent, every commit)
 
@@ -81,12 +81,12 @@ From the 2026-08-19 live screenshots (`.cursor-watch/shots-now/`):
 
 ## 5. The five agents
 
-| Agent | Specialization | Owns (exclusive write access) |
-|-------|----------------|-------------------------------|
-| **A1 — Design System Architect** | Color theory, type scales, elevation, motion, token architecture, WCAG | `packages/ui/**`, `renderer/tokens.css` (via build), `docs/design/CONTRACT.md` (initial draft) |
-| **A2 — Shell & Navigation** | App chrome, IA, sidebar, titlebar, responsive layout | `partials/sidebar.html`, `partials/titlebar.html`, `partials/shell-open.html`, `partials/content-*.html`, `styles/sidebar.css`, `styles/titlebar.css`, `renderer/app.css`, `lib/main.js`, `lib/dom.js` |
-| **A3 — Conversation Experience** | Chat UX: bubbles, composer, reactions, members drawer, attachments, search, empty states | `partials/panel-chat.html`, `styles/conversation.css`, `styles/room.css`, `styles/reactions.css`, `styles/members.css`, `styles/attachments.css`, `styles/search.css`, `lib/rooms.js`, `lib/reactions.js`, `lib/mentions.js`, `lib/attachments.js`, `lib/presence.js`, `lib/drafts.js` |
-| **A4 — Money & Models** | Account/wallet surfaces, assets, amounts, Models browser, Earn | `partials/panel-wallet.html`, `partials/panel-models.html`, `partials/panel-worker.html`, `styles/wallet.css`, `styles/models.css`, `styles/worker.css`, `lib/wallet.js`, `lib/assets.js`, `lib/amounts.js`, `lib/models.js`, `lib/worker.js`, `lib/asset-detail.js`, `lib/dashboard.js` (remnants) |
+| Agent                              | Specialization                                                                              | Owns (exclusive write access)                                                                                                                                                                                                                                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A1 — Design System Architect**   | Color theory, type scales, elevation, motion, token architecture, WCAG                      | `packages/ui/**`, `renderer/tokens.css` (via build), `docs/design/CONTRACT.md` (initial draft)                                                                                                                                                                                                                       |
+| **A2 — Shell & Navigation**        | App chrome, IA, sidebar, titlebar, responsive layout                                        | `partials/sidebar.html`, `partials/titlebar.html`, `partials/shell-open.html`, `partials/content-*.html`, `styles/sidebar.css`, `styles/titlebar.css`, `renderer/app.css`, `lib/main.js`, `lib/dom.js`                                                                                                               |
+| **A3 — Conversation Experience**   | Chat UX: bubbles, composer, reactions, members drawer, attachments, search, empty states    | `partials/panel-chat.html`, `styles/conversation.css`, `styles/room.css`, `styles/reactions.css`, `styles/members.css`, `styles/attachments.css`, `styles/search.css`, `lib/rooms.js`, `lib/reactions.js`, `lib/mentions.js`, `lib/attachments.js`, `lib/presence.js`, `lib/drafts.js`                               |
+| **A4 — Money & Models**            | Account/wallet surfaces, assets, amounts, Models browser, Earn                              | `partials/panel-wallet.html`, `partials/panel-models.html`, `partials/panel-worker.html`, `styles/wallet.css`, `styles/models.css`, `styles/worker.css`, `lib/wallet.js`, `lib/assets.js`, `lib/amounts.js`, `lib/models.js`, `lib/worker.js`, `lib/asset-detail.js`, `lib/dashboard.js` (remnants)                  |
 | **A5 — Onboarding, Settings & QA** | First-run flow, settings overlay, dialogs, toasts, motion, accessibility, visual regression | `partials/onboarding.html`, `partials/settings.html`, `partials/dialogs.html`, `partials/dialog-secure.html`, `styles/onboarding.css`, `styles/settings.css`, `styles/secure.css`, `lib/onboarding.js`, `lib/settings.js`, `scripts/review.mjs`, `scripts/shoot.mjs`, `scripts/surfaces-check.mjs`, `docs/design/**` |
 
 **Shared-file rule:** `lib/dom.js` and `lib/main.js` are A2's. Other agents

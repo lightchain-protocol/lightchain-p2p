@@ -281,11 +281,16 @@ report(
 
 await typeIn('unlock-password', 'not the password')
 await submit('unlock-form')
-await wait(900)
+// A wrong password pays the full scrypt before the error appears, and a
+// loaded CI runner can take seconds over it — poll rather than sleep.
+let errorShown = false
+for (let i = 0; i < 40 && !errorShown; i++) {
+  await wait(250)
+  errorShown = (await evaluate(`document.getElementById('unlock-error').hidden`)) === false
+}
 report(
   'a wrong password says so and stays put',
-  (await evaluate(`document.getElementById('unlock-error').hidden`)) === false &&
-    (await showing()) === 'step-unlock',
+  errorShown && (await showing()) === 'step-unlock',
   await evaluate(`document.getElementById('unlock-error').textContent`)
 )
 

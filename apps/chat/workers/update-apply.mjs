@@ -35,7 +35,9 @@ export const UPDATE_APPLIED_LINE = 'pear:updateApplied\n'
  * the main process splits on the same delimiter.
  */
 export function updateFailureLine(err) {
-  const message = String(err?.message ?? err).replace(/\r?\n/g, ' ').trim()
+  const message = String(err?.message ?? err)
+    .replace(/\r?\n/g, ' ')
+    .trim()
   return `pear:updateFailed ${message || 'unknown error'}\n`
 }
 

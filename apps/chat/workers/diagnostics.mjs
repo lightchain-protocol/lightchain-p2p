@@ -114,7 +114,10 @@ export function createLogWriter({
     }
     for (let i = backups - 1; i >= 1; i--) {
       try {
-        fs.renameSync(path.join(dir, `${baseName}.log.${i}`), path.join(dir, `${baseName}.log.${i + 1}`))
+        fs.renameSync(
+          path.join(dir, `${baseName}.log.${i}`),
+          path.join(dir, `${baseName}.log.${i + 1}`)
+        )
       } catch {
         // A gap in the sequence is not a reason to stop rotating.
       }
@@ -293,7 +296,9 @@ function logFiles(fs, path, logsDir) {
 
   return names
     .filter(ours)
-    .sort((a, b) => (a === `${LOG_BASE_NAME}.log` ? -1 : b === `${LOG_BASE_NAME}.log` ? 1 : a.localeCompare(b)))
+    .sort((a, b) =>
+      a === `${LOG_BASE_NAME}.log` ? -1 : b === `${LOG_BASE_NAME}.log` ? 1 : a.localeCompare(b)
+    )
     .map((name) => ({ name, file: path.join(logsDir, name) }))
 }
 
@@ -410,7 +415,11 @@ export async function exportDiagnostics(ctx, io = null) {
     entries.push({
       name: 'preflight.json',
       data: encoder.encode(
-        JSON.stringify(preflight, (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2)
+        JSON.stringify(
+          preflight,
+          (key, value) => (typeof value === 'bigint' ? value.toString() : value),
+          2
+        )
       )
     })
   }

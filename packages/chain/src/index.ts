@@ -14,7 +14,14 @@ export {
   type AbiValue
 } from './abi.js'
 
-export { CHAINS, LIGHTCHAIN_DEVNET, LIGHTCHAIN_TESTNET, MULTICALL3, chainById, type EvmChain } from './chains.js'
+export {
+  CHAINS,
+  LIGHTCHAIN_DEVNET,
+  LIGHTCHAIN_TESTNET,
+  MULTICALL3,
+  chainById,
+  type EvmChain
+} from './chains.js'
 
 export {
   TRANSFER_TOPIC,

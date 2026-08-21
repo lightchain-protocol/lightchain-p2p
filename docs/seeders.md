@@ -18,8 +18,8 @@ extra arguments.)
   (decision 0002). It must not ship.
 - The **production link** is derived from `apps/chat/pear.json#multisig` at the
   key ceremony. `pear.json` currently holds placeholder pubkeys and the
-  template namespace — and per `apps/chat/agent_docs/releases.md`, *any edit to
-  `pear.json` produces a new key*, so the link is final only once the multisig
+  template namespace — and per `apps/chat/agent_docs/releases.md`, _any edit to
+  `pear.json` produces a new key_, so the link is final only once the multisig
   config is.
 
 ## Where the two seeders live

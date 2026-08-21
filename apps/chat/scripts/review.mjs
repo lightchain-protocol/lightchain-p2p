@@ -312,8 +312,12 @@ const consent = await evaluate(`(async () => {
 })()`)
 
 note(
-  consent.missing !== true && consent.shown && consent.row && consent.boxWidth <= 32 &&
-    consent.sameRow && consent.beside,
+  consent.missing !== true &&
+    consent.shown &&
+    consent.row &&
+    consent.boxWidth <= 32 &&
+    consent.sameRow &&
+    consent.beside,
   'the bridge consent is a checkbox beside its label, on one row',
   consent.missing
     ? 'no bridge panel, checkbox or label found'

@@ -40,7 +40,14 @@ describe('local.write, the escape hatch', () => {
   it('refuses to overwrite the documents the local.* handlers maintain', () => {
     const { handlers } = handlersFor()
 
-    for (const name of ['unread', 'drafts', 'moderation', 'notifications', 'contacts', 'templates']) {
+    for (const name of [
+      'unread',
+      'drafts',
+      'moderation',
+      'notifications',
+      'contacts',
+      'templates'
+    ]) {
       expect(() => handlers['local.write']({ name, document: {} })).toThrow(
         `"${name}" is maintained by the local.* handlers`
       )
@@ -118,7 +125,11 @@ describe('local.markRead', () => {
   it('stores where somebody read up to and how much is waiting', () => {
     const { handlers } = handlersFor()
 
-    const reply = handlers['local.markRead']({ room: ROOM.toUpperCase(), messageId: 'm-7', count: 3 })
+    const reply = handlers['local.markRead']({
+      room: ROOM.toUpperCase(),
+      messageId: 'm-7',
+      count: 3
+    })
 
     expect(reply.written).toBe(true)
     expect(reply.unread[ROOM]).toEqual({ lastReadId: 'm-7', count: 3 })
@@ -305,7 +316,9 @@ describe('notification preferences', () => {
   it('sets, keeps, and clears a per-room override', () => {
     const { handlers } = handlersFor()
 
-    const set = handlers['local.notifications']({ preferences: { rooms: { [ROOM]: { sound: false } } } })
+    const set = handlers['local.notifications']({
+      preferences: { rooms: { [ROOM]: { sound: false } } }
+    })
     expect(set.preferences.rooms[ROOM]).toEqual({ sound: false })
 
     // A patch that says nothing changes nothing: the override merges into what
@@ -329,9 +342,9 @@ describe('notification preferences', () => {
 
   it('refuses a rooms patch that is not an object', () => {
     const { handlers } = handlersFor()
-    expect(() => handlers['local.notifications']({ preferences: { rooms: 'all of them' } })).toThrow(
-      /object keyed by room key/
-    )
+    expect(() =>
+      handlers['local.notifications']({ preferences: { rooms: 'all of them' } })
+    ).toThrow(/object keyed by room key/)
     expect(() =>
       handlers['local.notifications']({ preferences: { rooms: { [ROOM]: 'off' } } })
     ).toThrow(/\{ enabled, sound \} or null/)

@@ -18,12 +18,12 @@ memory-only today:
 2. **Session key** (`#sessionKey`) — a fresh symmetric key per session,
    generated locally (conversation.ts:191), sealed to the worker's and
    disputer's P-256 points, and never sent anywhere readable. The relay and the
-   dispatcher carry ciphertext they cannot read *because* this key is ephemeral.
+   dispatcher carry ciphertext they cannot read _because_ this key is ephemeral.
    Persisting it is the whole design problem — see below.
 3. **Relay socket** (`#socket`) — a WebSocket to
    `<relayUrl>?token=<token>`. The token comes from
    `GET /api/sessions/:id/token` (api.ts:348-354), which answers 202 until the
-   session is confirmed on chain — i.e. token issue is a *read* against an
+   session is confirmed on chain — i.e. token issue is a _read_ against an
    existing session id, not a new-session operation. Reconnecting a socket to
    a live session is protocol-supported.
 4. **Job index** — which jobs belong to this conversation. Already persists:
@@ -61,7 +61,7 @@ memory-only today:
 - **Expiry is already handled mid-session.** `ask()` catches
   `SessionNotActive`, calls `#reopen`, and resubmits the same ciphertext
   (conversation.ts:484-497). Resume-at-boot is the same shape of operation,
-  except the key must be *restored* rather than regenerated — `#reopen` is the
+  except the key must be _restored_ rather than regenerated — `#reopen` is the
   fallback when restore fails.
 - **No repay path exists anyway.** `createSession` is payable and rejects any
   value, and on sortition deployments the service sends the transaction

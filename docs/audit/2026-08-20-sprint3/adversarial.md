@@ -8,12 +8,12 @@ chain-dependent probes are live reads, not mocks.
 
 ## Verdicts
 
-| Harness | Result | Assertions |
-| --- | --- | --- |
-| `hostile-renderer` | **PASS** | 118 passed, 0 failed |
-| `wsl-adversarial` (Windows host ↔ WSL2 peer) | **PASS** | 19 passed, 0 failed |
-| `locking-check` | **2 FAIL** | 15 passed, 2 failed — both stale probes, see findings |
-| `clipboard-check` | **PASS** | 28 passed, 0 failed (after an environmental fix, see below) |
+| Harness                                      | Result     | Assertions                                                  |
+| -------------------------------------------- | ---------- | ----------------------------------------------------------- |
+| `hostile-renderer`                           | **PASS**   | 118 passed, 0 failed                                        |
+| `wsl-adversarial` (Windows host ↔ WSL2 peer) | **PASS**   | 19 passed, 0 failed                                         |
+| `locking-check`                              | **2 FAIL** | 15 passed, 2 failed — both stale probes, see findings       |
+| `clipboard-check`                            | **PASS**   | 28 passed, 0 failed (after an environmental fix, see below) |
 
 No exploitable product issue found. Two harnesses needed maintenance, not
 product fixes.
@@ -179,15 +179,15 @@ artifacts, root-caused and fixed in `hostile-renderer.mjs`:
 
 ## Findings register
 
-| # | Severity | Finding | Status |
-| --- | --- | --- | --- |
-| 1 | None (improvement) | `workerPassword` moved off the settings allowlist into the wallet-sealed store; a compromised window can no longer write the keystore password at all. Probe inverted to assert the refusal. | Verified live |
-| 2 | None | All four new transacting handlers (`ai.revokeDelegate`, `ai.claimTimeout`, `ai.claimRefund`, `ai.disputeJob`) refuse malformed input pre-chain and route real actions through the always-ask dialog; forged confirmation ids settle nothing. | Verified live |
-| 3 | None | `diagnostics.export` carries no seed phrase, wallet password, or message content. | Verified live |
-| 4 | Informational | `whole()` accepts hex-shaped job ids (`BigInt('0x10')` → 16), while `assets.send` refuses hex amounts. A job id is an opaque identifier, so this renames rather than steals — but the inconsistency is worth a line if job ids are ever shown back parsed. | Noted from source; not probed |
-| 5 | Test debt | `locking-check` password-tier block (2 probes) tests the removed re-entry tier and cannot pass under the dialog-guard design. | Reported; file not owned |
-| 6 | Test debt | `clipboard-check` preflight depends on `powershell.exe` being on PATH; skipped with exit 1 in a stock Git Bash. | Worked around; file not owned |
-| 7 | Informational | WSL `/tmp` does not survive a VM recycle; long harness runs inside WSL should log to `/mnt/c`. | Documented |
+| #   | Severity           | Finding                                                                                                                                                                                                                                                    | Status                        |
+| --- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| 1   | None (improvement) | `workerPassword` moved off the settings allowlist into the wallet-sealed store; a compromised window can no longer write the keystore password at all. Probe inverted to assert the refusal.                                                               | Verified live                 |
+| 2   | None               | All four new transacting handlers (`ai.revokeDelegate`, `ai.claimTimeout`, `ai.claimRefund`, `ai.disputeJob`) refuse malformed input pre-chain and route real actions through the always-ask dialog; forged confirmation ids settle nothing.               | Verified live                 |
+| 3   | None               | `diagnostics.export` carries no seed phrase, wallet password, or message content.                                                                                                                                                                          | Verified live                 |
+| 4   | Informational      | `whole()` accepts hex-shaped job ids (`BigInt('0x10')` → 16), while `assets.send` refuses hex amounts. A job id is an opaque identifier, so this renames rather than steals — but the inconsistency is worth a line if job ids are ever shown back parsed. | Noted from source; not probed |
+| 5   | Test debt          | `locking-check` password-tier block (2 probes) tests the removed re-entry tier and cannot pass under the dialog-guard design.                                                                                                                              | Reported; file not owned      |
+| 6   | Test debt          | `clipboard-check` preflight depends on `powershell.exe` being on PATH; skipped with exit 1 in a stock Git Bash.                                                                                                                                            | Worked around; file not owned |
+| 7   | Informational      | WSL `/tmp` does not survive a VM recycle; long harness runs inside WSL should log to `/mnt/c`.                                                                                                                                                             | Documented                    |
 
 **No high, medium, or low product findings. BETA-blocking: nothing in this
 group.**

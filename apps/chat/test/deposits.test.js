@@ -78,7 +78,11 @@ describe('deposit detection', () => {
     tracker.observe([held(LCAI(1)), token('1000000'), held(LCAI(2), { chainId: 1 })])
 
     // A rise in one says nothing about the others.
-    const deposits = tracker.observe([held(LCAI(1)), token('2000000'), held(LCAI(2), { chainId: 1 })])
+    const deposits = tracker.observe([
+      held(LCAI(1)),
+      token('2000000'),
+      held(LCAI(2), { chainId: 1 })
+    ])
     expect(deposits).toHaveLength(1)
     expect(deposits[0].symbol).toBe('USDC')
     expect(deposits[0].amountWei).toBe('1000000')

@@ -74,7 +74,7 @@ describe('the worker-side mapping', () => {
     expect(networkName(undefined)).toBe('mainnet')
   })
 
-  it('keeps the guard\'s chain literals in step with the profiles', () => {
+  it("keeps the guard's chain literals in step with the profiles", () => {
     // guard.mjs repeats the ids on purpose — it depends on nothing that parses
     // the outside world — so this is the check that the repetition is true.
     expect(LIGHTCHAIN_TESTNET_CHAIN_ID).toBe(NETWORKS.testnet.chainId)

@@ -140,7 +140,11 @@ for (const [what, request, expected] of [
     { token: '0x9cA8530CA349c966Fe9ef903Df17a75B8A778927', amount: CENT },
     /what the swap buys/
   ],
-  ['a token this wallet does not know', { token: '0x0000000000000000000000000000000000000001', amount: CENT }, /does not know/]
+  [
+    'a token this wallet does not know',
+    { token: '0x0000000000000000000000000000000000000001', amount: CENT },
+    /does not know/
+  ]
 ]) {
   const answer = await ask('swap.quote', request)
   report(`a quote refuses ${what}`, expected.test(answer?.error ?? ''), answer?.error)
@@ -214,7 +218,7 @@ report(
   button.exists && button.visible && button.label === 'Swap',
   JSON.stringify(button)
 )
-report('with its own icon, not the bridge\'s', button.icon === '#i-swap', button.icon)
+report("with its own icon, not the bridge's", button.icon === '#i-swap', button.icon)
 
 const opened = await evaluate(`(async () => {
   document.querySelectorAll('dialog[open]').forEach((d) => d.close())

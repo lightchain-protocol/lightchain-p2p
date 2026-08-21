@@ -72,9 +72,10 @@ if (process.env.MAC_CODESIGN_IDENTITY) {
  * still deterministic, and such a tag has bigger problems than this.
  */
 function toMsixVersion(version) {
-  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z.-]+)?$/.exec(
-    version
-  )
+  const match =
+    /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z.-]+)?$/.exec(
+      version
+    )
   if (!match) throw new Error(`Cannot map ${JSON.stringify(version)} to an MSIX version`)
 
   const parts = [match[1], match[2], match[3]].map(Number)
@@ -88,9 +89,10 @@ function toMsixVersion(version) {
   if (match[4] !== undefined) {
     const identifiers = match[4].split('.')
     const trailing = Number(identifiers[identifiers.length - 1])
-    revision = Number.isSafeInteger(trailing) && String(trailing) === identifiers[identifiers.length - 1]
-      ? Math.min(trailing, 65534)
-      : 0
+    revision =
+      Number.isSafeInteger(trailing) && String(trailing) === identifiers[identifiers.length - 1]
+        ? Math.min(trailing, 65534)
+        : 0
   }
 
   return [...parts, revision].join('.')

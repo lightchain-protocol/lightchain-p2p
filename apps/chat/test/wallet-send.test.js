@@ -91,9 +91,7 @@ describe('the balance pre-check', () => {
     const { ctx } = context({ balance: LCAI(1) + FEE_HEADROOM - 1n })
     const send = walletHandlers(ctx)['wallet.send']
 
-    await expect(send({ to: TO, amount: LCAI(1).toString() })).rejects.toThrow(
-      /cannot cover that/
-    )
+    await expect(send({ to: TO, amount: LCAI(1).toString() })).rejects.toThrow(/cannot cover that/)
 
     // Refused before a confirmation was asked for and before anything was
     // signed: both of those are for a transfer that can happen.

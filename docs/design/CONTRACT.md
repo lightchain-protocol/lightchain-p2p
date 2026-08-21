@@ -8,8 +8,8 @@ the same component classes, the same navigation order, and one rule for what an
 empty surface says. If something you need is not here, do not invent it — add it
 here first (or ask the coordinator to), then use it.
 
-Related reading: `docs/design/COMPONENTS.md` explains *when* to reach for each
-component. This document is the list of *what exists*.
+Related reading: `docs/design/COMPONENTS.md` explains _when_ to reach for each
+component. This document is the list of _what exists_.
 
 ---
 
@@ -28,41 +28,41 @@ Both themes define every token below; values shown as `dark / light`.
 Eleven steps, index 0 = page, index 10 = strongest text. Dark runs dark→light,
 light runs light→dark; the same index is the same role in both.
 
-| Token | Dark | Light |
-|---|---|---|
-| `--lc-neutral-0` | `#0e0e12` | `#ffffff` |
-| `--lc-neutral-1` | `#16161c` | `#f4f5f8` |
-| `--lc-neutral-2` | `#1e1e26` | `#e9ebf1` |
-| `--lc-neutral-3` | `#26262f` | `#dfe2ea` |
-| `--lc-neutral-4` | `#2f2f3a` | `#d2d6e0` |
-| `--lc-neutral-5` | `#3d3d4a` | `#b9bec9` |
-| `--lc-neutral-6` | `#555566` | `#9aa0ad` |
-| `--lc-neutral-7` | `#6f7182` | `#7b8190` |
-| `--lc-neutral-8` | `#9092a2` | `#5f6170` |
-| `--lc-neutral-9` | `#b6b8c6` | `#4d4f5c` |
+| Token             | Dark      | Light     |
+| ----------------- | --------- | --------- |
+| `--lc-neutral-0`  | `#0e0e12` | `#ffffff` |
+| `--lc-neutral-1`  | `#16161c` | `#f4f5f8` |
+| `--lc-neutral-2`  | `#1e1e26` | `#e9ebf1` |
+| `--lc-neutral-3`  | `#26262f` | `#dfe2ea` |
+| `--lc-neutral-4`  | `#2f2f3a` | `#d2d6e0` |
+| `--lc-neutral-5`  | `#3d3d4a` | `#b9bec9` |
+| `--lc-neutral-6`  | `#555566` | `#9aa0ad` |
+| `--lc-neutral-7`  | `#6f7182` | `#7b8190` |
+| `--lc-neutral-8`  | `#9092a2` | `#5f6170` |
+| `--lc-neutral-9`  | `#b6b8c6` | `#4d4f5c` |
 | `--lc-neutral-10` | `#f3f3f7` | `#101014` |
 
 ### 1.2 Semantic colour tokens (use these, not the ramp)
 
-| Token | Dark | Light | Job |
-|---|---|---|---|
-| `--lc-surface-1` | neutral-0 | neutral-0 | The page. |
-| `--lc-surface-2` | neutral-1 | neutral-1 | Raised: cards, sidebar, incoming bubbles. |
-| `--lc-surface-3` | neutral-2 | neutral-2 | Further raised: menus, popovers, dialogs. |
-| `--lc-surface-hover` | neutral-3 | neutral-3 | A row under the pointer. |
-| `--lc-text-primary` | neutral-10 | neutral-10 | Body text. |
-| `--lc-text-secondary` | neutral-9 | neutral-9 | Supporting text. |
-| `--lc-text-tertiary` | neutral-8 | neutral-8 | Timestamps, hints — still AA. |
-| `--lc-accent` | `#9581f8` | `#5b34c4` | **The only interactive colour. One per screen.** |
-| `--lc-accent-contrast` | `#0b0b10` | `#ffffff` | Text/icons drawn *on* the accent. |
-| `--lc-accent-soft` | accent @16% | accent @10% | Tinted background under the accent (selected rows). |
-| `--lc-rule` | white @8% | ink @10% | Hairline borders. **Neutral. Never the accent.** |
-| `--lc-rule-strong` | white @14% | ink @16% | A divider doing real work. |
-| `--lc-scrim` | black @62% | ink @45% | Behind a modal. |
-| `--lc-success` / `-soft` | `#35d68a` @14% | `#0f6b42` @10% | Status colour + its alert background. |
-| `--lc-warning` / `-soft` | `#f5a524` @14% | `#8a5300` @10% | … |
-| `--lc-danger` / `-soft` | `#ff6b78` @14% | `#b3212f` @10% | … |
-| `--lc-shadow-1/2/3` | 2 / 12 / 40px black | same, ink @6–16% | Three elevation steps; menu ≠ dialog. |
+| Token                    | Dark                | Light            | Job                                                 |
+| ------------------------ | ------------------- | ---------------- | --------------------------------------------------- |
+| `--lc-surface-1`         | neutral-0           | neutral-0        | The page.                                           |
+| `--lc-surface-2`         | neutral-1           | neutral-1        | Raised: cards, sidebar, incoming bubbles.           |
+| `--lc-surface-3`         | neutral-2           | neutral-2        | Further raised: menus, popovers, dialogs.           |
+| `--lc-surface-hover`     | neutral-3           | neutral-3        | A row under the pointer.                            |
+| `--lc-text-primary`      | neutral-10          | neutral-10       | Body text.                                          |
+| `--lc-text-secondary`    | neutral-9           | neutral-9        | Supporting text.                                    |
+| `--lc-text-tertiary`     | neutral-8           | neutral-8        | Timestamps, hints — still AA.                       |
+| `--lc-accent`            | `#9581f8`           | `#5b34c4`        | **The only interactive colour. One per screen.**    |
+| `--lc-accent-contrast`   | `#0b0b10`           | `#ffffff`        | Text/icons drawn _on_ the accent.                   |
+| `--lc-accent-soft`       | accent @16%         | accent @10%      | Tinted background under the accent (selected rows). |
+| `--lc-rule`              | white @8%           | ink @10%         | Hairline borders. **Neutral. Never the accent.**    |
+| `--lc-rule-strong`       | white @14%          | ink @16%         | A divider doing real work.                          |
+| `--lc-scrim`             | black @62%          | ink @45%         | Behind a modal.                                     |
+| `--lc-success` / `-soft` | `#35d68a` @14%      | `#0f6b42` @10%   | Status colour + its alert background.               |
+| `--lc-warning` / `-soft` | `#f5a524` @14%      | `#8a5300` @10%   | …                                                   |
+| `--lc-danger` / `-soft`  | `#ff6b78` @14%      | `#b3212f` @10%   | …                                                   |
+| `--lc-shadow-1/2/3`      | 2 / 12 / 40px black | same, ink @6–16% | Three elevation steps; menu ≠ dialog.               |
 
 ### 1.3 Alias map (legacy names that keep resolving)
 
@@ -70,20 +70,20 @@ All 93 pre-v2 token names still resolve. These are the aliases; migrate call
 sites to the new name per surface, one wave at a time — never in the same commit
 as a retune.
 
-| Legacy token | Now means | Migrate to |
-|---|---|---|
-| `--lc-bg` | `--lc-surface-1` | `--lc-surface-1` |
-| `--lc-bg-elevated` | `--lc-surface-2` | `--lc-surface-2` |
-| `--lc-bg-elevated-2` | `--lc-surface-3` | `--lc-surface-3` |
-| `--lc-bg-sidebar` | `--lc-surface-2` (neutral — violet tint removed) | `--lc-surface-2` |
-| `--lc-fg` | `--lc-text-primary` | `--lc-text-primary` |
-| `--lc-fg-muted` | `--lc-text-secondary` | `--lc-text-secondary` |
-| `--lc-fg-dim` | `--lc-text-tertiary` | `--lc-text-tertiary` |
-| `--lc-brand` | `--lc-accent` | `--lc-accent` |
-| `--lc-brand-ink` | accent-shifted ink for brand text | `--lc-accent` |
-| `--lc-rule` | **redefined: neutral hairline** (was violet @26%) | keep name, new value |
+| Legacy token         | Now means                                         | Migrate to            |
+| -------------------- | ------------------------------------------------- | --------------------- |
+| `--lc-bg`            | `--lc-surface-1`                                  | `--lc-surface-1`      |
+| `--lc-bg-elevated`   | `--lc-surface-2`                                  | `--lc-surface-2`      |
+| `--lc-bg-elevated-2` | `--lc-surface-3`                                  | `--lc-surface-3`      |
+| `--lc-bg-sidebar`    | `--lc-surface-2` (neutral — violet tint removed)  | `--lc-surface-2`      |
+| `--lc-fg`            | `--lc-text-primary`                               | `--lc-text-primary`   |
+| `--lc-fg-muted`      | `--lc-text-secondary`                             | `--lc-text-secondary` |
+| `--lc-fg-dim`        | `--lc-text-tertiary`                              | `--lc-text-tertiary`  |
+| `--lc-brand`         | `--lc-accent`                                     | `--lc-accent`         |
+| `--lc-brand-ink`     | accent-shifted ink for brand text                 | `--lc-accent`         |
+| `--lc-rule`          | **redefined: neutral hairline** (was violet @26%) | keep name, new value  |
 
-Brand constants that are *not* aliases and stay exactly as they are:
+Brand constants that are _not_ aliases and stay exactly as they are:
 `--lc-brand-violet`, `--lc-brand-magenta`, `--lc-logo-from`, `--lc-logo-to`
 (the logomark gradient). **The gradient is for the logo only.** Nothing else
 draws from it.
@@ -126,49 +126,60 @@ live in `app.css` (`.button`, `.button-primary`, `.button-block`, `.input`);
 they predate the kit and are equally shared.
 
 ### Page archetypes
+
 - `.page` — a reading page: prose, centred, 74ch measure.
 - `.console` / `.console-body` / `.console-body-split` — a console page: fills
   its width, its panes scroll (the page does not), optional two-column body that
   collapses below 1100px.
 
 ### Page head
+
 - `.page-head` > `.page-head-main` (`.page-title` + `.page-sub`) + `.page-actions`
   (right-aligned, never wrapped under the title).
 
 ### Cards
+
 - `.kit-card` — the only card treatment.
 - `.kit-card-flush` — a card holding a scrolling pane (padding moves inside).
 - `.kit-card-head` / `.kit-card-title` / `.kit-card-scroll` — its parts.
 
 ### Status rows
+
 - `.status-row` > `.status-state[data-state='ok|warn|fail']` + `.status-line`
   (+ optional `.status-remedy`, which says what to do next — the point of the
   component).
 
 ### Verdicts
+
 - `.verdict[data-state='ok|warn|fail']` > `.verdict-headline` + `.verdict-detail`.
   The answer above the evidence.
 
 ### Alerts
+
 - `.alert[data-tone='info|warn|error']` > `.icon` + `.alert-body` (with optional
   `.alert-title`). Every surface gets exactly one place to put an error; an
   alert is never a caption.
 
 ### Chips
+
 - `.chip[data-tone='ok|warn|danger']` — a fact about the thing on screen, **not
   a control**. No border heavy enough to be mistaken for a button.
 
 ### Facts
+
 - `.facts` (`<dl>` with `dt`/`dd`) — label/value pairs aligned down a column.
 
 ### Controls
+
 - `.icon-button` — a button that is only an icon (32px, from the control scale).
 
 ### Forms
+
 - `.form` > `.field` (`.field-label` + `.input`) — one stack of labelled fields,
   max 44ch; the submit button is `.button` and does not stretch.
 
 ### Focus
+
 - `[data-kit-focus]` — the attribute that opts any custom focusable element into
   the kit's `:focus-visible` ring. Links inside `.kit-card`, `.chip`,
   `.status-row` and `.alert` are already covered.
@@ -185,22 +196,23 @@ Navigation order is fixed (plan §1). The room list is the sidebar body;
    `Join with an invite` (`#join-btn`) pinned under the list header.
 3. **"Elsewhere" group, in this exact order:**
 
-   | Label | `data-section` | Icon id |
-   |---|---|---|
-   | Models | `models` | `#i-models` |
-   | Account | `wallet` | `#i-wallet` |
-   | Bridge | `bridge` | `#i-bridge` |
-   | Earn | `worker` | `#i-worker` |
+   | Label   | `data-section` | Icon id     |
+   | ------- | -------------- | ----------- |
+   | Models  | `models`       | `#i-models` |
+   | Account | `wallet`       | `#i-wallet` |
+   | Bridge  | `bridge`       | `#i-bridge` |
+   | Earn    | `worker`       | `#i-worker` |
 
    (A `chat` nav row exists in the current markup as a transition artefact; it
    is not part of the target IA — no destination appears twice.)
-   
+
    The Bridge row arrived with the bridge's promotion to a page (`0aacdf8`):
    moving LCAI between chains is an irreversible, externally-relayed transfer
    with a disclosure gate in front of it — too much weight for a modal buried
    in Account's Advanced disclosure, so it is a nav peer. The old
    `#bridge-dialog` is **deleted**; `dialogs.html` must never reintroduce a
    `bridge-` id, or the page and the ghost would answer to the same name.
+
 4. **Identity row** (avatar, truncated address, network) → opens Account.
 5. **Utility row:** version · theme (`#theme-btn`) · settings (`#settings-btn`).
 
@@ -215,58 +227,58 @@ Every new element id, its owner, its purpose. `lib/dom.js` resolves 64 ids at
 import; an unregistered id is a silent `null` and a use-time crash. Add the row
 here **before** the markup that uses it; A2 wires `dom.js`/`main.js`.
 
-| Id | Owner | Purpose | Added in |
-|---|---|---|---|
-| `backup-banner-dismiss` | A2 | Closes the backup banner without opening Settings. | `6494f7c` |
-| `worker-step-host-title` | W | Step 1 heading ("Host ready"); the card's `aria-labelledby`. | `fa009aa` |
-| `worker-host-state` | W | Step 1 chip: failures/warnings/Ready. | `fa009aa` |
-| `worker-host-alert` | W | Step 1's inline error slot. | `fa009aa` |
-| `worker-step-key-title` | W | Step 2 heading ("Worker key"). | `fa009aa` |
-| `worker-key-state` | W | Step 2 chip: No key / Key ready. | `fa009aa` |
-| `worker-key-present` | W | Step 2 body when a key exists (address + copy). | `fa009aa` |
-| `worker-key-absent` | W | Step 2 body when there is no key (both forms). | `fa009aa` |
-| `worker-key-address` | W | The worker key's address, truncated; full value on `dataset.full`. | `fa009aa` |
-| `worker-key-copy` | W | Copies the worker key's address. | `fa009aa` |
-| `worker-import-form` | W | Import-an-existing-key form (submits `worker.importKey`). | `fa009aa` |
-| `worker-import-key` | W | Private-key input, cleared the moment it is read. | `fa009aa` |
-| `worker-import-password` | W | Keystore password input for the import. | `fa009aa` |
-| `worker-import-submit` | W | Import form's submit. | `fa009aa` |
-| `worker-create-form` | W | Create-a-new-key form (submits `worker.createKey`). | `fa009aa` |
-| `worker-create-password` | W | Keystore password input for the creation. | `fa009aa` |
-| `worker-create-submit` | W | Create form's submit. | `fa009aa` |
-| `worker-created` | W | The once-only recovery-phrase backup block. | `fa009aa` |
-| `worker-created-phrase` | W | Where the phrase is shown. | `fa009aa` |
-| `worker-created-copy` | W | Copies the phrase. | `fa009aa` |
-| `worker-key-alert` | W | Step 2's inline error slot. | `fa009aa` |
-| `worker-step-stake-title` | W | Step 3 heading ("Stake"). | `fa009aa` |
-| `worker-stake-state` | W | Step 3 chip: Funded / Short N LCAI / Unknown. | `fa009aa` |
-| `worker-stake-body` | W | Step 3 body, rendered from the chain's figures. | `fa009aa` |
-| `worker-step-register-title` | W | Step 4 heading ("Register"). | `fa009aa` |
-| `worker-register-state` | W | Step 4 chip: Waiting / Registered. | `fa009aa` |
-| `worker-register-hint` | W | What registering does, or which step it waits on. | `fa009aa` |
-| `worker-register-alert` | W | Step 4's inline error slot. | `fa009aa` |
-| `worker-step-run-title` | W | Step 5 heading ("Run"). | `fa009aa` |
-| `worker-run-alert` | W | Step 5's inline error slot (pull/start/stop). | `fa009aa` |
-| `panel-bridge` | A4 | The bridge page: disclosure gate, transfer form, transfer status. | `0aacdf8` |
-| `bridge-terms` / `bridge-terms-title` | A4 | The "Read this first" card and its heading. | `0aacdf8` |
-| `bridge-disclosure` | A4 | The terms list; the worker writes the lines, the page renders them. | `0aacdf8` |
-| `bridge-accept` | A4 | The consent checkbox — a row beside its sentence, measured by `review.mjs`. | `0aacdf8` |
-| `bridge-form` / `bridge-form-title` | A4 | The transfer card; hidden until the terms are accepted. | `0aacdf8` |
-| `bridge-direction` | A4 | Route picker (Lightchain → Ethereum, Ethereum → Lightchain). | `0aacdf8` |
-| `bridge-amount` / `bridge-balance` | A4 | Amount field and its available-balance hint. | `0aacdf8` |
-| `bridge-error` | A4 | The form's inline error slot ("This cannot be bridged"). | `0aacdf8` |
-| `bridge-review` + `bridge-review-amount/-from/-to/-fee/-note` | A4 | What the worker quoted, shown before anything is signed. | `0aacdf8` |
-| `bridge-quote-btn` / `bridge-approve-btn` / `bridge-send-btn` | A4 | Review, then Approve (its own transaction), then Bridge it. | `0aacdf8` |
-| `bridge-status` / `bridge-status-title` / `bridge-status-note` | A4 | The post-send card: what was sent and where to watch it. | `0aacdf8` |
-| `bridge-status-check` / `bridge-status-explorer` | A4 | Check arrival by the destination balance; view the transaction. | `0aacdf8` |
-| `set-receipts` | A3 | Settings → General privacy toggle: publish read receipts or not. Off keeps every tick on your own messages single. | `865d8f6` |
+| Id                                                             | Owner | Purpose                                                                                                            | Added in  |
+| -------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------ | --------- |
+| `backup-banner-dismiss`                                        | A2    | Closes the backup banner without opening Settings.                                                                 | `6494f7c` |
+| `worker-step-host-title`                                       | W     | Step 1 heading ("Host ready"); the card's `aria-labelledby`.                                                       | `fa009aa` |
+| `worker-host-state`                                            | W     | Step 1 chip: failures/warnings/Ready.                                                                              | `fa009aa` |
+| `worker-host-alert`                                            | W     | Step 1's inline error slot.                                                                                        | `fa009aa` |
+| `worker-step-key-title`                                        | W     | Step 2 heading ("Worker key").                                                                                     | `fa009aa` |
+| `worker-key-state`                                             | W     | Step 2 chip: No key / Key ready.                                                                                   | `fa009aa` |
+| `worker-key-present`                                           | W     | Step 2 body when a key exists (address + copy).                                                                    | `fa009aa` |
+| `worker-key-absent`                                            | W     | Step 2 body when there is no key (both forms).                                                                     | `fa009aa` |
+| `worker-key-address`                                           | W     | The worker key's address, truncated; full value on `dataset.full`.                                                 | `fa009aa` |
+| `worker-key-copy`                                              | W     | Copies the worker key's address.                                                                                   | `fa009aa` |
+| `worker-import-form`                                           | W     | Import-an-existing-key form (submits `worker.importKey`).                                                          | `fa009aa` |
+| `worker-import-key`                                            | W     | Private-key input, cleared the moment it is read.                                                                  | `fa009aa` |
+| `worker-import-password`                                       | W     | Keystore password input for the import.                                                                            | `fa009aa` |
+| `worker-import-submit`                                         | W     | Import form's submit.                                                                                              | `fa009aa` |
+| `worker-create-form`                                           | W     | Create-a-new-key form (submits `worker.createKey`).                                                                | `fa009aa` |
+| `worker-create-password`                                       | W     | Keystore password input for the creation.                                                                          | `fa009aa` |
+| `worker-create-submit`                                         | W     | Create form's submit.                                                                                              | `fa009aa` |
+| `worker-created`                                               | W     | The once-only recovery-phrase backup block.                                                                        | `fa009aa` |
+| `worker-created-phrase`                                        | W     | Where the phrase is shown.                                                                                         | `fa009aa` |
+| `worker-created-copy`                                          | W     | Copies the phrase.                                                                                                 | `fa009aa` |
+| `worker-key-alert`                                             | W     | Step 2's inline error slot.                                                                                        | `fa009aa` |
+| `worker-step-stake-title`                                      | W     | Step 3 heading ("Stake").                                                                                          | `fa009aa` |
+| `worker-stake-state`                                           | W     | Step 3 chip: Funded / Short N LCAI / Unknown.                                                                      | `fa009aa` |
+| `worker-stake-body`                                            | W     | Step 3 body, rendered from the chain's figures.                                                                    | `fa009aa` |
+| `worker-step-register-title`                                   | W     | Step 4 heading ("Register").                                                                                       | `fa009aa` |
+| `worker-register-state`                                        | W     | Step 4 chip: Waiting / Registered.                                                                                 | `fa009aa` |
+| `worker-register-hint`                                         | W     | What registering does, or which step it waits on.                                                                  | `fa009aa` |
+| `worker-register-alert`                                        | W     | Step 4's inline error slot.                                                                                        | `fa009aa` |
+| `worker-step-run-title`                                        | W     | Step 5 heading ("Run").                                                                                            | `fa009aa` |
+| `worker-run-alert`                                             | W     | Step 5's inline error slot (pull/start/stop).                                                                      | `fa009aa` |
+| `panel-bridge`                                                 | A4    | The bridge page: disclosure gate, transfer form, transfer status.                                                  | `0aacdf8` |
+| `bridge-terms` / `bridge-terms-title`                          | A4    | The "Read this first" card and its heading.                                                                        | `0aacdf8` |
+| `bridge-disclosure`                                            | A4    | The terms list; the worker writes the lines, the page renders them.                                                | `0aacdf8` |
+| `bridge-accept`                                                | A4    | The consent checkbox — a row beside its sentence, measured by `review.mjs`.                                        | `0aacdf8` |
+| `bridge-form` / `bridge-form-title`                            | A4    | The transfer card; hidden until the terms are accepted.                                                            | `0aacdf8` |
+| `bridge-direction`                                             | A4    | Route picker (Lightchain → Ethereum, Ethereum → Lightchain).                                                       | `0aacdf8` |
+| `bridge-amount` / `bridge-balance`                             | A4    | Amount field and its available-balance hint.                                                                       | `0aacdf8` |
+| `bridge-error`                                                 | A4    | The form's inline error slot ("This cannot be bridged").                                                           | `0aacdf8` |
+| `bridge-review` + `bridge-review-amount/-from/-to/-fee/-note`  | A4    | What the worker quoted, shown before anything is signed.                                                           | `0aacdf8` |
+| `bridge-quote-btn` / `bridge-approve-btn` / `bridge-send-btn`  | A4    | Review, then Approve (its own transaction), then Bridge it.                                                        | `0aacdf8` |
+| `bridge-status` / `bridge-status-title` / `bridge-status-note` | A4    | The post-send card: what was sent and where to watch it.                                                           | `0aacdf8` |
+| `bridge-status-check` / `bridge-status-explorer`               | A4    | Check arrival by the destination balance; view the transaction.                                                    | `0aacdf8` |
+| `set-receipts`                                                 | A3    | Settings → General privacy toggle: publish read receipts or not. Off keeps every tick on your own messages single. | `865d8f6` |
 
 ### Removed ids
 
-| Id | Was | Removed in |
-|---|---|---|
-| `bridge-dialog` | The bridge as a modal in Account's Advanced disclosure. Replaced by `#panel-bridge`; nothing may reintroduce a `bridge-` id in `dialogs.html`. | `0aacdf8` |
-| `asset-buy` | The Buy button on Account. No order flow here; zero matches is asserted by `assets-check.mjs`. | `a6b207f` |
+| Id              | Was                                                                                                                                            | Removed in |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `bridge-dialog` | The bridge as a modal in Account's Advanced disclosure. Replaced by `#panel-bridge`; nothing may reintroduce a `bridge-` id in `dialogs.html`. | `0aacdf8`  |
+| `asset-buy`     | The Buy button on Account. No order flow here; zero matches is asserted by `assets-check.mjs`.                                                 | `a6b207f`  |
 
 ---
 
@@ -279,7 +291,7 @@ Three rules, no exceptions:
 2. **Loading is a word.** `Loading…` (or a shimmer), never a blank slot and
    never a dash.
 3. **Empty is one sentence plus one button.** The sentence says what will be
-   here and the button starts it: *"No conversations yet — start one."* +
+   here and the button starts it: _"No conversations yet — start one."_ +
    `New conversation`. An empty surface is never a void.
 
 ---

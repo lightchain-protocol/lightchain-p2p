@@ -347,10 +347,7 @@ function createLedger(ctx) {
     // The head is what "young" is measured against. Fetched only when there
     // is a settled entry to re-check, so the common path — everything either
     // pending or long settled — pays nothing for this.
-    const head =
-      mineYoung.length === 0
-        ? null
-        : await rpc.blockNumber().catch(() => null)
+    const head = mineYoung.length === 0 ? null : await rpc.blockNumber().catch(() => null)
 
     const recheck =
       head === null

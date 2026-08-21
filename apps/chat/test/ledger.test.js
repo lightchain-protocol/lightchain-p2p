@@ -309,9 +309,7 @@ describe('re-validating settled entries a reorg could still reach', () => {
     const { ctx, rpc } = context()
     await recordTransaction(ctx, rpc, { kind: 'send', ...sent() })
     await recordTransaction(ctx, rpc, { kind: 'send', ...sent({ hash: HASH_B, nonce: 4n }) })
-    await settleNow(ctx, rpc, (hash) =>
-      receipt({ blockNumber: hash === HASH_A ? 12n : 13n })
-    )
+    await settleNow(ctx, rpc, (hash) => receipt({ blockNumber: hash === HASH_A ? 12n : 13n }))
 
     // Head 76: A sits 64 deep, exactly at the window's edge and trusted; B
     // sits 63 deep and is asked again. B's receipt is gone — reorged out.

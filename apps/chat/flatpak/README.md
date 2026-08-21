@@ -41,8 +41,8 @@ Then point the manifest at the local tarball. In `ai.lightchain.Hub.yml`,
 replace the two `type: archive` sources with:
 
 ```yaml
-      - type: file
-        path: lightchain_0.1.0_x64_flatpak.tar.gz
+- type: file
+  path: lightchain_0.1.0_x64_flatpak.tar.gz
 ```
 
 and build and install from this directory:
@@ -64,7 +64,7 @@ above stops being necessary.
   `flatpak-builder`. The invocation is the standard one and the entrypoint
   follows the conventions of `pear-electron-forge-maker-flatpak`'s own README
   (zypak via `org.electronjs.Electron2.BaseApp`).
-- `forge.config.js` also carries a flatpak *maker*, which is a different
+- `forge.config.js` also carries a flatpak _maker_, which is a different
   mechanism (it builds a `.flatpak` from `pnpm make` directly). It stays
   configured but is not a release target; if it is ever used, it should consume
   this directory's `ai.lightchain.Hub.metainfo.xml` and `entrypoint.sh` through

@@ -340,8 +340,7 @@ async function refreshBalances() {
   if (prepaid) {
     try {
       const ai = await request('ai.status')
-      prepaid.textContent =
-        ai?.balance == null ? 'Not available' : `${formatLcai(ai.balance)} LCAI`
+      prepaid.textContent = ai?.balance == null ? 'Not available' : `${formatLcai(ai.balance)} LCAI`
     } catch {
       prepaid.textContent = 'Not available'
     }

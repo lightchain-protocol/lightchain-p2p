@@ -100,10 +100,7 @@ describe('applyStagedUpdate', () => {
     expect(await applyStagedUpdate(pear, write)).toBe(true)
 
     expect(attempts).toBe(2)
-    expect(lines).toEqual([
-      'pear:updateFailed first try fails\n',
-      UPDATE_APPLIED_LINE
-    ])
+    expect(lines).toEqual(['pear:updateFailed first try fails\n', UPDATE_APPLIED_LINE])
     expect(pear.updater.applied).toBe(true)
   })
 })
@@ -118,9 +115,7 @@ describe('updateFailureLine', () => {
   })
 
   it('stringifies non-Error throws', () => {
-    expect(updateFailureLine('permission denied')).toBe(
-      'pear:updateFailed permission denied\n'
-    )
+    expect(updateFailureLine('permission denied')).toBe('pear:updateFailed permission denied\n')
   })
 
   it('never sends an empty message', () => {

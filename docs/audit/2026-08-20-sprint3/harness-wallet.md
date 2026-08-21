@@ -9,12 +9,12 @@ applicable. No network anomalies observed this run; every chain answered.
 
 ## Verdicts
 
-| Harness | Result | Assertions |
-| --- | --- | --- |
+| Harness            | Result   | Assertions          |
+| ------------------ | -------- | ------------------- |
 | `onboarding-check` | **PASS** | 39 passed, 0 failed |
-| `assets-check` | **PASS** | 49 passed, 0 failed |
+| `assets-check`     | **PASS** | 49 passed, 0 failed |
 | `asset-page-check` | **PASS** | 20 passed, 0 failed |
-| `send-check` | **PASS** | 34 passed, 0 failed |
+| `send-check`       | **PASS** | 34 passed, 0 failed |
 
 No product issues found. No network hiccups to discount.
 

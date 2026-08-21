@@ -388,7 +388,8 @@ function renderRegister(stake) {
   if (stake?.configured && stake.registered) {
     setChip(registerState, 'ok', 'Registered')
     button.disabled = true
-    registerHint.textContent = 'This key is registered — the stake is posted. Step 5 runs the worker.'
+    registerHint.textContent =
+      'This key is registered — the stake is posted. Step 5 runs the worker.'
     return
   }
 
@@ -411,7 +412,8 @@ function renderRegister(stake) {
   if (!funded) {
     setChip(registerState, 'warn', 'Waiting')
     button.disabled = true
-    registerHint.textContent = 'Fund the worker key first — step 3 says exactly how much is missing.'
+    registerHint.textContent =
+      'Fund the worker key first — step 3 says exactly how much is missing.'
     return
   }
 
@@ -501,7 +503,11 @@ function renderVerdict(host, stake, status) {
 
   if (!host.ready) {
     const counts = `${host.failed} failed, ${plural(host.warned, 'warning')}, ${host.passed} passed.`
-    setVerdict('fail', 'This host cannot run a worker', `${counts} Each failure in step 1 says what to do.`)
+    setVerdict(
+      'fail',
+      'This host cannot run a worker',
+      `${counts} Each failure in step 1 says what to do.`
+    )
     return
   }
 
@@ -528,7 +534,11 @@ function renderVerdict(host, stake, status) {
     if (running) {
       setVerdict('ok', 'The worker is running', 'It answers jobs and earns to the key in step 2.')
     } else {
-      setVerdict('ok', 'Registered — start the worker', 'The stake is posted. Step 5 runs the container.')
+      setVerdict(
+        'ok',
+        'Registered — start the worker',
+        'The stake is posted. Step 5 runs the container.'
+      )
     }
     return
   }
@@ -654,21 +664,26 @@ function keyForm(formId, inputIds, action, build) {
 
     try {
       const result = await request(action, build(values))
-      if (action === 'worker.createKey') created = { address: result.address, phrase: result.phrase }
+      if (action === 'worker.createKey')
+        created = { address: result.address, phrase: result.phrase }
       await refreshWorker({ logs: false })
     } catch (err) {
-      stepAlert(
-        'worker-key-alert',
-        alertNode('error', 'The key was not saved', err.message)
-      )
+      stepAlert('worker-key-alert', alertNode('error', 'The key was not saved', err.message))
     } finally {
       for (const input of inputs) input.disabled = false
     }
   })
 }
 
-keyForm('worker-import-form', ['worker-import-key', 'worker-import-password'], 'worker.importKey', ([privateKey, password]) => ({ privateKey, password }))
-keyForm('worker-create-form', ['worker-create-password'], 'worker.createKey', ([password]) => ({ password }))
+keyForm(
+  'worker-import-form',
+  ['worker-import-key', 'worker-import-password'],
+  'worker.importKey',
+  ([privateKey, password]) => ({ privateKey, password })
+)
+keyForm('worker-create-form', ['worker-create-password'], 'worker.createKey', ([password]) => ({
+  password
+}))
 
 /**
  * Docker actions, with their output as it arrives.

@@ -44,7 +44,7 @@ release-visible state, not a skip.
 (`workers/update-apply.mjs`, the exact file the worker loads) driven against a
 simulated Pear runtime that reproduces the one quirk that matters from the
 installed `pear-runtime-updater@3.4.0` (source: `node_modules`, lines 94–96 —
-the `applied` latch goes on *before* the swap and is never cleared by the
+the `applied` latch goes on _before_ the swap and is never cleared by the
 updater itself):
 
 ```
@@ -60,7 +60,7 @@ reported as a success — the window restarting into the old version believing
 it had updated.
 
 **A broken stage is refused legibly, live.** The packaged build under
-`out/LightchainChat-win32-x64` *is* a bundled install, so it really checks the
+`out/LightchainChat-win32-x64` _is_ a bundled install, so it really checks the
 channel on boot. Run against throwaway storage (`T-packaged`, deleted after),
 it found the seeder, fetched the 0.1.1 manifest — and refused it:
 
@@ -86,10 +86,10 @@ clean in both sessions.
 
 ## What it skips, and what unblocks it
 
-| Skip | Reason | Unblocked by |
-| --- | --- | --- |
-| **update-ready signaling, live** | The staged 0.1.1 has no win32-x64 payload — the channel currently holds a stage of a different app (`hello-pear-worker` template) | The **key ceremony** staging a real chat build with the `by-arch/<platform>/app/<name>` layout `pear-runtime-updater` mirrors. Detection+signaling then runs live: this harness's packaged phase asserts the `updating`/`updated` pipe lines reaching the renderer. |
-| **apply-and-restart into a staged build, live** | Applying means installing the staged MSIX system-wide and letting the shell relaunch the app; the unpackaged dev instance cannot apply at all (`pear-runtime-updater`: `bundled` is false without an installed app path, so `applyUpdate` no-ops — driving it would manufacture a success nothing earned) | The **production link under the multisig policy** (decision 0002 follow-up 2), a signed MSIX stage, and a machine intended to receive it. Also depends on follow-up 3: **always-on seeding**, without which no install ever sees the stage. |
+| Skip                                            | Reason                                                                                                                                                                                                                                                                                                    | Unblocked by                                                                                                                                                                                                                                                        |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **update-ready signaling, live**                | The staged 0.1.1 has no win32-x64 payload — the channel currently holds a stage of a different app (`hello-pear-worker` template)                                                                                                                                                                         | The **key ceremony** staging a real chat build with the `by-arch/<platform>/app/<name>` layout `pear-runtime-updater` mirrors. Detection+signaling then runs live: this harness's packaged phase asserts the `updating`/`updated` pipe lines reaching the renderer. |
+| **apply-and-restart into a staged build, live** | Applying means installing the staged MSIX system-wide and letting the shell relaunch the app; the unpackaged dev instance cannot apply at all (`pear-runtime-updater`: `bundled` is false without an installed app path, so `applyUpdate` no-ops — driving it would manufacture a success nothing earned) | The **production link under the multisig policy** (decision 0002 follow-up 2), a signed MSIX stage, and a machine intended to receive it. Also depends on follow-up 3: **always-on seeding**, without which no install ever sees the stage.                         |
 
 ## Findings for the release
 
@@ -104,7 +104,7 @@ clean in both sessions.
    is one developer machine, not infrastructure. Follow-up 3 stands.
 3. **Minor, not blocking:** quitting the app can surface one unhandled
    rejection in the leaving renderer (`No handler registered for
-   'pear:worker:writeIPC:…'` — main removes the handler as the worker exits
+'pear:worker:writeIPC:…'` — main removes the handler as the worker exits
    while the window is mid-write). Shutdown noise about a window already
    leaving; the harness tags quit-time exceptions separately and asserts the
    steady state is clean, so a real regression here would still fail.

@@ -5,13 +5,8 @@ vi.mock('@lcai-p2p/chain', async (importOriginal) => {
   return { ...actual, sendTransaction: vi.fn() }
 })
 
-const {
-  keccak256,
-  sendTransaction,
-  toChecksumAddress,
-  transferCall,
-  upfrontCost
-} = await import('@lcai-p2p/chain')
+const { keccak256, sendTransaction, toChecksumAddress, transferCall, upfrontCost } =
+  await import('@lcai-p2p/chain')
 const { assetHandlers } = await import('../workers/handlers/assets.mjs')
 
 /**
@@ -123,16 +118,16 @@ describe('native planning', () => {
   it('passes when the balance covers amount plus fee to the wei, fails one wei under', async () => {
     // upfrontCost = gas × maxFeePerGas + amount = 25,000 × 5 + 1 LCAI.
     const exact = upfrontCost(25_000n, 5n, LCAI(1))
-    const quote = assetHandlers(
-      context({ balance: exact, estimate: 20_000n }).ctx
-    )['assets.quoteSend']
+    const quote = assetHandlers(context({ balance: exact, estimate: 20_000n }).ctx)[
+      'assets.quoteSend'
+    ]
 
     const covered = await quote({ chainId: LIGHTCHAIN, to: TO_RAW, amount: LCAI(1).toString() })
     expect(covered.enough).toBe(true)
 
-    const short = await assetHandlers(
-      context({ balance: exact - 1n, estimate: 20_000n }).ctx
-    )['assets.quoteSend']({ chainId: LIGHTCHAIN, to: TO_RAW, amount: LCAI(1).toString() })
+    const short = await assetHandlers(context({ balance: exact - 1n, estimate: 20_000n }).ctx)[
+      'assets.quoteSend'
+    ]({ chainId: LIGHTCHAIN, to: TO_RAW, amount: LCAI(1).toString() })
     expect(short.enough).toBe(false)
   })
 
@@ -361,9 +356,7 @@ describe('the confirmation the guard is asked for', () => {
     ctx.guard.allow.mockRejectedValue(new Error('refused by the operating system'))
     const send = assetHandlers(ctx)['assets.send']
 
-    await expect(send({ chainId: LIGHTCHAIN, to: TO_RAW, amount: '1' })).rejects.toThrow(
-      /refused/
-    )
+    await expect(send({ chainId: LIGHTCHAIN, to: TO_RAW, amount: '1' })).rejects.toThrow(/refused/)
     expect(sendTransaction).not.toHaveBeenCalled()
   })
 })

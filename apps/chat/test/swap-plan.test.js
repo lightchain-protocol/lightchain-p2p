@@ -77,15 +77,18 @@ function swapCtx({ nativeBalance = 10n ** 24n, estimateGas, fees } = {}) {
   const rpc = {
     fees: fees ?? vi.fn(async () => FEES),
     estimateGas:
-      estimateGas ??
-      vi.fn(async ({ to }) => (to === USDC.address ? APPROVE_GAS : SWAP_GAS)),
+      estimateGas ?? vi.fn(async ({ to }) => (to === USDC.address ? APPROVE_GAS : SWAP_GAS)),
     // The ether price is decoration and its feed is not mocked: a failed read
     // is null, which is the honest answer here.
     call: vi.fn(async () => {
       throw new Error('no feed')
     })
   }
-  const pool = { use: (work) => work(rpc), balanceOf: vi.fn(async () => nativeBalance), call: rpc.call }
+  const pool = {
+    use: (work) => work(rpc),
+    balanceOf: vi.fn(async () => nativeBalance),
+    call: rpc.call
+  }
   return { ctx: { ...base(), poolFor: () => pool }, rpc, pool }
 }
 
@@ -119,9 +122,7 @@ describe('the refusals that fire before any round trip', () => {
     const { ctx } = swapCtx()
     const quote = swapHandlers(ctx)['swap.quote']
 
-    await expect(quote({ amount: '1000', slippageBps: 25 })).rejects.toThrow(
-      /slippage is one of/
-    )
+    await expect(quote({ amount: '1000', slippageBps: 25 })).rejects.toThrow(/slippage is one of/)
     expect(findPool).not.toHaveBeenCalled()
   })
 
@@ -334,7 +335,9 @@ describe('pool and quoter failure', () => {
   })
 
   it('fails closed when the fee market cannot be read', async () => {
-    const { ctx } = swapCtx({ fees: vi.fn(async () => Promise.reject(new Error('fee oracle down'))) })
+    const { ctx } = swapCtx({
+      fees: vi.fn(async () => Promise.reject(new Error('fee oracle down')))
+    })
     const quote = swapHandlers(ctx)['swap.quote']
 
     await expect(quote({ amount: ETH(1).toString() })).rejects.toThrow('fee oracle down')
@@ -381,9 +384,7 @@ describe('gas and the approval step', () => {
     // The token moves through the allowance, so the swap simulation carries
     // no value, and the approval estimate aimed at the token contract ran.
     expect(routerEstimate(rpc).value).toBe(0n)
-    expect(rpc.estimateGas).toHaveBeenCalledWith(
-      expect.objectContaining({ to: USDC.address })
-    )
+    expect(rpc.estimateGas).toHaveBeenCalledWith(expect.objectContaining({ to: USDC.address }))
     // The plan's fee ceiling covers both transactions.
     expect(result.maxFee).toBe(((SWAP_GAS * 5n) / 4n + APPROVE_GAS) * FEES.maxFeePerGas + '')
     // Both estimates measured the real calls, so the plan is not degraded.
@@ -413,9 +414,7 @@ describe('gas and the approval step', () => {
 
     expect(result.needsApproval).toBe(false)
     expect(result.approveGas).toBe('0')
-    expect(
-      rpc.estimateGas.mock.calls.some(([arg]) => arg.to === USDC.address)
-    ).toBe(false)
+    expect(rpc.estimateGas.mock.calls.some(([arg]) => arg.to === USDC.address)).toBe(false)
   })
 
   it('stands the approval gas at a fixed figure when even its estimate reverts', async () => {
@@ -441,9 +440,9 @@ describe('the plan gating the send', () => {
     const { ctx } = swapCtx()
     const send = swapHandlers(ctx)['swap.send']
 
-    await expect(
-      send({ token: USDC.address, amount: USDC_AMOUNT.toString() })
-    ).rejects.toThrow('approve the router to spend USDC first')
+    await expect(send({ token: USDC.address, amount: USDC_AMOUNT.toString() })).rejects.toThrow(
+      'approve the router to spend USDC first'
+    )
 
     expect(ctx.guard.allow).not.toHaveBeenCalled()
     expect(sendTransaction).not.toHaveBeenCalled()

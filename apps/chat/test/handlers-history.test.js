@@ -52,7 +52,13 @@ function poolWith({ incoming = [], outgoing = [], latest = 1_000n, sendImpl = nu
   }
 }
 
-const transferLog = ({ from = OTHER, to = ADDRESS, value = 10n, block = 100n, logIndex = null } = {}) => ({
+const transferLog = ({
+  from = OTHER,
+  to = ADDRESS,
+  value = 10n,
+  block = 100n,
+  logIndex = null
+} = {}) => ({
   transactionHash: HASH,
   topics: [
     TRANSFER_TOPIC,
@@ -286,7 +292,9 @@ describe('the log-scan path', () => {
   })
 
   it('answers source:none with the chain named when the node cannot be asked', async () => {
-    const pool = { blockNumber: vi.fn(async () => Promise.reject(new Error('connect ECONNREFUSED'))) }
+    const pool = {
+      blockNumber: vi.fn(async () => Promise.reject(new Error('connect ECONNREFUSED')))
+    }
     const handlers = historyHandlers(ctxWith({ pool }))
 
     const history = await handlers['history.forAsset']({ chainId: 1 })

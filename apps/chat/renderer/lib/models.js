@@ -318,7 +318,8 @@ function offerReport(item) {
   link.className = 'button button-sm message-report-link'
   link.type = 'button'
   link.textContent = 'Report a wrong answer'
-  link.title = 'Ask a foundation reviewer to judge this answer. Posts a bond, returned if they agree with you.'
+  link.title =
+    'Ask a foundation reviewer to judge this answer. Posts a bond, returned if they agree with you.'
   meta.append(link)
 
   link.addEventListener('click', () => {
@@ -371,7 +372,11 @@ function reportBlock(item, link) {
     send.disabled = true
     leave.disabled = true
     try {
-      const result = await request('ai.disputeJob', { jobId: item.dataset.jobId }, { timeout: 5 * 60_000 })
+      const result = await request(
+        'ai.disputeJob',
+        { jobId: item.dataset.jobId },
+        { timeout: 5 * 60_000 }
+      )
       text.textContent =
         'Reported. The reviewer’s decision lands on chain — the bond, and the fee, come back if they agree with you.'
       status.remove()
@@ -411,7 +416,8 @@ function followUpOnJob(item, jobId) {
 
   const text = document.createElement('p')
   text.className = 'message-job-text'
-  text.textContent = 'The answer never arrived. The job was submitted and paid for, so the fee is held on chain.'
+  text.textContent =
+    'The answer never arrived. The job was submitted and paid for, so the fee is held on chain.'
 
   const actions = document.createElement('div')
   actions.className = 'message-job-actions'
@@ -446,14 +452,17 @@ function followUpOnJob(item, jobId) {
     actions.replaceChildren()
 
     const named =
-      typeof state?.state === 'string' ? state.state : typeof state?.status === 'string' ? state.status : ''
+      typeof state?.state === 'string'
+        ? state.state
+        : typeof state?.status === 'string'
+          ? state.status
+          : ''
     const deadlinePassed = state?.deadlinePassed === true
     const open = named === 'submitted' || named === 'acknowledged'
     // `claimable` is the handler's own word for "a timeout claim would be
     // accepted now"; the state-and-deadline combinations are the fallback for
     // a handler that does not say it yet.
-    const claimable =
-      state?.claimable === true || named === 'timedOut' || (open && deadlinePassed)
+    const claimable = state?.claimable === true || named === 'timedOut' || (open && deadlinePassed)
 
     if (claimable) {
       say(
@@ -479,7 +488,9 @@ function followUpOnJob(item, jobId) {
     }
 
     if (named === 'disputed') {
-      say('This job is in dispute. If the reviewer does not resolve it in time, the fee becomes claimable here.')
+      say(
+        'This job is in dispute. If the reviewer does not resolve it in time, the fee becomes claimable here.'
+      )
       actions.append(again)
       return
     }
@@ -489,7 +500,11 @@ function followUpOnJob(item, jobId) {
       return
     }
 
-    say(named === '' ? 'The chain did not recognise this job.' : `The chain reports this job as “${named}”.`)
+    say(
+      named === ''
+        ? 'The chain did not recognise this job.'
+        : `The chain reports this job as “${named}”.`
+    )
     actions.append(again)
   }
 
@@ -512,7 +527,11 @@ function followUpOnJob(item, jobId) {
 
       try {
         const claimed = await request('ai.claimTimeout', { jobId }, { timeout: 5 * 60_000 })
-        toast(claimed?.hash ? `Timeout claimed: ${String(claimed.hash).slice(0, 12)}…` : 'Timeout claimed')
+        toast(
+          claimed?.hash
+            ? `Timeout claimed: ${String(claimed.hash).slice(0, 12)}…`
+            : 'Timeout claimed'
+        )
       } catch (err) {
         say(`The refund was not claimed: ${err.message}`)
         claim.disabled = false
@@ -547,7 +566,9 @@ function followUpOnJob(item, jobId) {
       say('The fee is back in your prepaid balance.')
       actions.replaceChildren()
       toast(
-        collected?.hash ? `Refund collected: ${String(collected.hash).slice(0, 12)}…` : 'Refund collected'
+        collected?.hash
+          ? `Refund collected: ${String(collected.hash).slice(0, 12)}…`
+          : 'Refund collected'
       )
       // Money just moved.
       void refreshTitlebarBalance()
@@ -1239,9 +1260,7 @@ export function onCommitment(commitment) {
   // tagged with this job means that turn is no longer on screen, and the
   // badge belongs nowhere else.
   const target =
-    jobId === ''
-      ? null
-      : ai.messages.querySelector(`.message[data-job-id="${CSS.escape(jobId)}"]`)
+    jobId === '' ? null : ai.messages.querySelector(`.message[data-job-id="${CSS.escape(jobId)}"]`)
   if (!target || target.querySelector('.message-proof, .message-warning')) return
 
   if (commitment.status === 'matches') {

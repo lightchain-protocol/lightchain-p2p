@@ -1,4 +1,13 @@
-const { app, BrowserWindow, Notification, clipboard, crashReporter, dialog, ipcMain, shell } = require('electron')
+const {
+  app,
+  BrowserWindow,
+  Notification,
+  clipboard,
+  crashReporter,
+  dialog,
+  ipcMain,
+  shell
+} = require('electron')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
@@ -183,7 +192,9 @@ for (const method of ['warn', 'error']) {
   const original = console[method].bind(console)
   console[method] = (...args) => {
     teeLog(
-      args.map((arg) => (arg instanceof Error ? (arg.stack ?? arg.message) : String(arg))).join(' '),
+      args
+        .map((arg) => (arg instanceof Error ? (arg.stack ?? arg.message) : String(arg)))
+        .join(' '),
       `main:${method}`
     )
     original(...args)

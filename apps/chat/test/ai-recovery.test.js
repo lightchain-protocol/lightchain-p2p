@@ -14,7 +14,15 @@ import { recordTransaction } from '../workers/handlers/wallet.mjs'
  * handlers run for real between the fakes.
  */
 
-const STATES = ['submitted', 'acknowledged', 'completed', 'timedOut', 'disputed', 'resolved', 'released']
+const STATES = [
+  'submitted',
+  'acknowledged',
+  'completed',
+  'timedOut',
+  'disputed',
+  'resolved',
+  'released'
+]
 
 // Mutable, because the mocked chain module is hoisted and each test sets its
 // own chain.
@@ -38,7 +46,15 @@ const word = (value) => BigInt(value).toString(16).padStart(64, '0')
 vi.mock('@lcai-p2p/chain', () => ({
   // Duplicated rather than shared with STATES below: this factory is hoisted
   // above every top-level binding in the file.
-  JOB_STATE: ['submitted', 'acknowledged', 'completed', 'timedOut', 'disputed', 'resolved', 'released'],
+  JOB_STATE: [
+    'submitted',
+    'acknowledged',
+    'completed',
+    'timedOut',
+    'disputed',
+    'resolved',
+    'released'
+  ],
   WORKER_REGISTRY_ADDRESS: '0x0000000000000000000000000000000000000001',
   // Real little implementations rather than stubs, because the job decode is
   // part of what is under test.
@@ -127,7 +143,11 @@ function harness({ confirmed = true, held = {}, balance = 100n, delegateAuthoriz
     worker: '0x00000000000000000000000000000000000000ee',
     ask: vi.fn(async () => ({ text: 'the answer', jobId: '7' })),
     commitment: vi.fn(async () => ({})),
-    evidence: vi.fn(() => ({ ciphertext: 'ciphertext-1', sessionKey: '0xkey', signature: 'sig-1' })),
+    evidence: vi.fn(() => ({
+      ciphertext: 'ciphertext-1',
+      sessionKey: '0xkey',
+      signature: 'sig-1'
+    })),
     close: vi.fn()
   }
 

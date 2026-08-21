@@ -103,7 +103,8 @@ export function notifyDeposit(msg) {
     typeof msg?.amountText === 'string' && msg.amountText !== ''
       ? msg.amountText
       : `${msg?.symbol ?? 'funds'}`
-  const where = typeof msg?.chainName === 'string' && msg.chainName !== '' ? ` on ${msg.chainName}` : ''
+  const where =
+    typeof msg?.chainName === 'string' && msg.chainName !== '' ? ` on ${msg.chainName}` : ''
 
   toast(`Received ${amount}${where}`)
   if (soundOn) ting()

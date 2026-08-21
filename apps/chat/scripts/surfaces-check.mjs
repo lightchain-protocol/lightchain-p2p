@@ -680,7 +680,13 @@ const flow = JSON.parse(
   })()`)
 )
 
-const STEP_WORDS = { host: 'Host ready', key: 'Worker key', stake: 'Stake', register: 'Register', run: 'Run' }
+const STEP_WORDS = {
+  host: 'Host ready',
+  key: 'Worker key',
+  stake: 'Stake',
+  register: 'Register',
+  run: 'Run'
+}
 for (const step of flow.steps) {
   report(
     `the Earn flow has a step named "${STEP_WORDS[step.name]}"`,

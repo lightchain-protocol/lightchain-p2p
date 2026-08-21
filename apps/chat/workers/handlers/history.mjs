@@ -138,8 +138,7 @@ export function historyHandlers(ctx) {
     const seen = new Set()
     const unique = found.filter((log) => {
       const key = `${log.transactionHash}:${
-        log.logIndex ??
-        `${String(log.topics?.[1])}/${String(log.topics?.[2])}/${String(log.data)}`
+        log.logIndex ?? `${String(log.topics?.[1])}/${String(log.topics?.[2])}/${String(log.data)}`
       }`
       if (seen.has(key)) return false
       seen.add(key)

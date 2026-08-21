@@ -262,7 +262,9 @@ if (prepaid === null || delegate?.error) {
     skip('the prepaid deposit', 'this wallet has no LCAI at all — receive some first, then re-run')
   } else if (needsFund) {
     const mark = await evaluate('window.__fcPushes.length')
-    console.log(`       depositing ${lcai(FUND_WEI)}; approve the dialog in the window if one appears`)
+    console.log(
+      `       depositing ${lcai(FUND_WEI)}; approve the dialog in the window if one appears`
+    )
     const funded = await askPatient('ai.fund', { amount: FUND_WEI })
     await sayWhatWasConfirmed(mark)
 
@@ -304,11 +306,13 @@ if (prepaid === null || delegate?.error) {
     )
   } else {
     const listed = await ask('ai.models')
-    const model =
-      (listed?.models ?? []).find((m) => m.name === 'llama3-8b') ?? listed?.models?.[0]
+    const model = (listed?.models ?? []).find((m) => m.name === 'llama3-8b') ?? listed?.models?.[0]
 
     if (!model) {
-      skip('a funded question', `the service listed no models${listed?.error ? ` (${listed.error})` : ''}`)
+      skip(
+        'a funded question',
+        `the service listed no models${listed?.error ? ` (${listed.error})` : ''}`
+      )
     } else {
       const fee = model.fee === null ? null : BigInt(model.fee)
 
@@ -356,7 +360,9 @@ if (prepaid === null || delegate?.error) {
             report(
               'the job settled on chain',
               settled ? 'PASS' : 'FAIL',
-              settled ? `completed, fee ${settled.escrowedFee} wei` : 'still not completed after 90s'
+              settled
+                ? `completed, fee ${settled.escrowedFee} wei`
+                : 'still not completed after 90s'
             )
 
             const commitment = (await pushesSince(mark, 'ai.commitment')).find(
@@ -459,7 +465,11 @@ if (prepaid === null || delegate?.error) {
   const refund = await askPatient('ai.claimRefund', {})
   if (refund?.error && /no refund is waiting/.test(refund.error)) {
     if (claimed) fail('collecting the refund', 'the claim landed but no refund is waiting')
-    else skip('collecting a refund', 'no refund is waiting for this wallet — nothing has been claimed yet')
+    else
+      skip(
+        'collecting a refund',
+        'no refund is waiting for this wallet — nothing has been claimed yet'
+      )
   } else if (refund?.error) {
     fail('collecting the refund', refund.error)
   } else {

@@ -44,7 +44,10 @@ function unzipStored(bytes) {
     const nameLength = view.getUint16(off + 26, true)
     const extraLength = view.getUint16(off + 28, true)
     const name = decoder.decode(bytes.subarray(off + 30, off + 30 + nameLength))
-    const data = bytes.subarray(off + 30 + nameLength + extraLength, off + 30 + nameLength + extraLength + size)
+    const data = bytes.subarray(
+      off + 30 + nameLength + extraLength,
+      off + 30 + nameLength + extraLength + size
+    )
 
     expect(method).toBe(0)
     out.set(name, data)
@@ -69,7 +72,9 @@ describe('log writer', () => {
     const text = fs.readFileSync(path.join(dir, 'lightchain.log'), 'utf8')
     const lines = text.trimEnd().split('\n')
     expect(lines).toHaveLength(2)
-    expect(lines[0]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z \[worker:out\] worker said hello$/)
+    expect(lines[0]).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z \[worker:out\] worker said hello$/
+    )
     expect(lines[1]).toMatch(/\[worker:out\] second line$/)
   })
 
@@ -87,7 +92,9 @@ describe('log writer', () => {
     // And flush writes out whatever is still held, e.g. on the way down.
     writer.write('unfinished')
     writer.flush('main')
-    expect(fs.readFileSync(path.join(dir, 'lightchain.log'), 'utf8')).toMatch(/\[main\] unfinished\n$/)
+    expect(fs.readFileSync(path.join(dir, 'lightchain.log'), 'utf8')).toMatch(
+      /\[main\] unfinished\n$/
+    )
   })
 
   it('rotates at the size bound and never grows past current + backups', () => {
@@ -174,7 +181,10 @@ describe('diagnostics export', () => {
 
     const crashesDir = path.join(root, 'crashes')
     fs.mkdirSync(path.join(crashesDir), { recursive: true })
-    fs.writeFileSync(path.join(crashesDir, '01234567-89ab-cdef-0123-456789abcdef.dmp'), 'DUMP BYTES')
+    fs.writeFileSync(
+      path.join(crashesDir, '01234567-89ab-cdef-0123-456789abcdef.dmp'),
+      'DUMP BYTES'
+    )
 
     return { root, chatDir }
   }
@@ -266,6 +276,8 @@ describe('diagnostics export', () => {
     const entries = unzipStored(Uint8Array.from(res.bytes))
 
     expect(entries.has('preflight.json')).toBe(false)
-    expect(decoder.decode(entries.get('report.txt'))).toContain('skipped: the doctor check failed (docker exploded)')
+    expect(decoder.decode(entries.get('report.txt'))).toContain(
+      'skipped: the doctor check failed (docker exploded)'
+    )
   })
 })

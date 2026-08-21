@@ -272,10 +272,20 @@ function verifyMacImage(file) {
   // signed and notarized — that is what Gatekeeper evaluates on first launch.
   // Mount read-only and check the thing the user actually opens.
   const mountPoint = mkdtempSync(join(tmpdir(), 'check-signing-'))
-  const attach = run('hdiutil', ['attach', '-nobrowse', '-readonly', '-mountpoint', mountPoint, file])
+  const attach = run('hdiutil', [
+    'attach',
+    '-nobrowse',
+    '-readonly',
+    '-mountpoint',
+    mountPoint,
+    file
+  ])
   try {
     if (attach.status !== 0) {
-      return { ok: false, detail: `unsigned, and it does not even mount:\n${indent(attach.output)}` }
+      return {
+        ok: false,
+        detail: `unsigned, and it does not even mount:\n${indent(attach.output)}`
+      }
     }
     const apps = readdirSync(mountPoint).filter((name) => name.endsWith('.app'))
     if (apps.length === 0) {

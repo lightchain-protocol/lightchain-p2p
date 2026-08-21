@@ -95,7 +95,10 @@ function stateWith(overrides = {}) {
 }
 
 function rpcWith(state) {
-  const selRegistered = encodeCall('isWorkerRegistered(address)', ['address'], [ACCOUNT]).slice(0, 10)
+  const selRegistered = encodeCall('isWorkerRegistered(address)', ['address'], [ACCOUNT]).slice(
+    0,
+    10
+  )
   const selAiConfig = encodeCall('aiConfig()').slice(0, 10)
   const selJobRegistry = encodeCall('jobRegistry()').slice(0, 10)
   const selMinimum = encodeCall('getMinWorkerStake()').slice(0, 10)
@@ -163,7 +166,12 @@ function containerRegisters(state, stdout = 'worker registered on-chain') {
 beforeEach(() => {
   vi.clearAllMocks()
   mockLedger.recordTransaction.mockResolvedValue({})
-  mockHost.runAsync.mockResolvedValue({ ok: false, status: 1, stdout: '', stderr: 'docker: not found' })
+  mockHost.runAsync.mockResolvedValue({
+    ok: false,
+    status: 1,
+    stdout: '',
+    stderr: 'docker: not found'
+  })
   keystoreFs()
 })
 
@@ -177,7 +185,9 @@ describe('the stake confirmation', () => {
     const { ctx } = ctxWith({ guard })
     const handlers = workerHandlers(ctx)
 
-    await expect(handlers['worker.register']({ t: 'worker.register' })).rejects.toThrow(/not confirmed/)
+    await expect(handlers['worker.register']({ t: 'worker.register' })).rejects.toThrow(
+      /not confirmed/
+    )
 
     expect(mockHost.runAsync).not.toHaveBeenCalled()
     expect(recordTransaction).not.toHaveBeenCalled()
@@ -208,7 +218,9 @@ describe('the stake confirmation', () => {
 
   it('reads the stake live: a governance change to the minimum is what is asked about', async () => {
     const raised = 75_000n * 10n ** 18n
-    const { ctx, guard, state } = ctxWith({ state: stateWith({ minimum: raised, balance: 80_000n * 10n ** 18n }) })
+    const { ctx, guard, state } = ctxWith({
+      state: stateWith({ minimum: raised, balance: 80_000n * 10n ** 18n })
+    })
     containerRegisters(state)
     const handlers = workerHandlers(ctx)
 
@@ -233,17 +245,25 @@ describe('the stake confirmation', () => {
 
   it('asks nothing when the key is already registered — no stake moves', async () => {
     const { ctx, guard } = ctxWith({ state: stateWith({ registered: true }) })
-    mockHost.runAsync.mockResolvedValue({ ok: true, status: 0, stdout: 'worker already registered on-chain', stderr: '' })
+    mockHost.runAsync.mockResolvedValue({
+      ok: true,
+      status: 0,
+      stdout: 'worker already registered on-chain',
+      stderr: ''
+    })
     const handlers = workerHandlers(ctx)
 
-    await expect(handlers['worker.register']({ t: 'worker.register' })).resolves.toEqual({ ok: true })
+    await expect(handlers['worker.register']({ t: 'worker.register' })).resolves.toEqual({
+      ok: true
+    })
 
     expect(guard.allow).not.toHaveBeenCalled()
     expect(recordTransaction).not.toHaveBeenCalled()
   })
 })
 
-describe('recording the stake', () => {  it('writes the registration to the ledger after the container exits', async () => {
+describe('recording the stake', () => {
+  it('writes the registration to the ledger after the container exits', async () => {
     const { ctx, state } = ctxWith()
     containerRegisters(state)
     const handlers = workerHandlers(ctx)
@@ -302,7 +322,9 @@ describe('recording the stake', () => {  it('writes the registration to the ledg
 
     // No log and no hash in the output: there is nothing honest to key an
     // entry by, so none is written — and the registration still succeeds.
-    await expect(handlers['worker.register']({ t: 'worker.register' })).resolves.toEqual({ ok: true })
+    await expect(handlers['worker.register']({ t: 'worker.register' })).resolves.toEqual({
+      ok: true
+    })
     expect(recordTransaction).not.toHaveBeenCalled()
     expect(error).toHaveBeenCalledWith(expect.stringContaining('hash could not be found'))
     error.mockRestore()
@@ -311,11 +333,15 @@ describe('recording the stake', () => {  it('writes the registration to the ledg
   it('never lets a recording failure fail the registration', async () => {
     const { ctx, state } = ctxWith()
     containerRegisters(state)
-    mockLedger.recordTransaction.mockRejectedValue(new Error('the wallet locked before its transaction record could be written'))
+    mockLedger.recordTransaction.mockRejectedValue(
+      new Error('the wallet locked before its transaction record could be written')
+    )
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const handlers = workerHandlers(ctx)
 
-    await expect(handlers['worker.register']({ t: 'worker.register' })).resolves.toEqual({ ok: true })
+    await expect(handlers['worker.register']({ t: 'worker.register' })).resolves.toEqual({
+      ok: true
+    })
 
     expect(error).toHaveBeenCalledWith(expect.stringContaining('recording'))
     error.mockRestore()

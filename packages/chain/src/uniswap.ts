@@ -70,7 +70,8 @@ export const LCAI_MAINNET = '0x9cA8530CA349c966Fe9ef903Df17a75B8A778927'
 const isAddress = (value: string) => /^0x[0-9a-fA-F]{40}$/.test(value)
 
 function checkedAddress(value: string, what: string): string {
-  if (!isAddress(value)) throw new AbiError(`${what} must be a 20-byte address, got ${JSON.stringify(value)}`)
+  if (!isAddress(value))
+    throw new AbiError(`${what} must be a 20-byte address, got ${JSON.stringify(value)}`)
   return value
 }
 
@@ -121,10 +122,12 @@ export async function findPool(
   tokenOut: string
 ): Promise<{ fee: number; pool: string } | null> {
   for (const fee of POOL_FEES) {
-    const pool = decodePoolAddress(await rpc.call({
-      to: UNISWAP.factory,
-      data: getPoolCall(tokenIn, tokenOut, fee)
-    }))
+    const pool = decodePoolAddress(
+      await rpc.call({
+        to: UNISWAP.factory,
+        data: getPoolCall(tokenIn, tokenOut, fee)
+      })
+    )
     if (pool === null) continue
 
     const liquidity = BigInt(await rpc.call({ to: pool, data: liquidityCall() }))
@@ -197,7 +200,9 @@ export async function quoteExactInputSingle(rpc: Rpc, leg: SwapLeg): Promise<Quo
  */
 export function minimumReceived(quoted: bigint, slippageBps: number): bigint {
   if (!Number.isInteger(slippageBps) || slippageBps < 0 || slippageBps > 10_000) {
-    throw new AbiError(`slippage must be a whole number of basis points up to 10000, got ${slippageBps}`)
+    throw new AbiError(
+      `slippage must be a whole number of basis points up to 10000, got ${slippageBps}`
+    )
   }
   if (quoted < 0n) throw new AbiError(`a quote cannot be negative: ${quoted}`)
   return (quoted * (10_000n - BigInt(slippageBps))) / 10_000n

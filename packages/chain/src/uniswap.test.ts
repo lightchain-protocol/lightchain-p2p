@@ -168,7 +168,7 @@ describe('the slippage bound', () => {
     expect(minimumReceived(10_000n, 0)).toBe(10_000n)
   })
 
-  it('rounds down, never in the sender\'s favour', () => {
+  it("rounds down, never in the sender's favour", () => {
     // 333 * 0.995 = 331.335 — the receiver of the rounding error must be the
     // pool, not the person signing.
     expect(minimumReceived(333n, 50)).toBe(331n)

@@ -14,11 +14,7 @@ import {
 import { REPLACE_CONFIRMATION, derivePrivateKey } from '@lcai-p2p/wallet'
 import { NETWORKS } from '@lcai-p2p/worker'
 import { DEFAULT_CONFIRM_ABOVE, readableAmount } from '../guard.mjs'
-import {
-  isDecimal,
-  recordTransaction as recordOnChain,
-  transactionLedger
-} from '../ledger.mjs'
+import { isDecimal, recordTransaction as recordOnChain, transactionLedger } from '../ledger.mjs'
 
 /**
  * The wallet: an identity, a balance, and the ability to sign for both.

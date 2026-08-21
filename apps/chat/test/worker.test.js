@@ -78,8 +78,16 @@ const DEVNET_CONFIG = {
 }
 
 /** An RPC mock that answers by call signature, in real ABI words. */
-function rpcWith({ registered = false, minimum = 50_000n * 10n ** 18n, balance = 60_000n * 10n ** 18n } = {}) {
-  const selRegistered = encodeCall('isWorkerRegistered(address)', ['address'], [`0x${ADDRESS}`]).slice(0, 10)
+function rpcWith({
+  registered = false,
+  minimum = 50_000n * 10n ** 18n,
+  balance = 60_000n * 10n ** 18n
+} = {}) {
+  const selRegistered = encodeCall(
+    'isWorkerRegistered(address)',
+    ['address'],
+    [`0x${ADDRESS}`]
+  ).slice(0, 10)
   const selAiConfig = encodeCall('aiConfig()').slice(0, 10)
   const selJobRegistry = encodeCall('jobRegistry()').slice(0, 10)
   const selMinimum = encodeCall('getMinWorkerStake()').slice(0, 10)
@@ -139,7 +147,12 @@ function memFs(entries = {}) {
 beforeEach(() => {
   vi.clearAllMocks()
   mockHost.probeAll.mockResolvedValue({})
-  mockHost.runAsync.mockResolvedValue({ ok: false, status: 1, stdout: '', stderr: 'docker: not found' })
+  mockHost.runAsync.mockResolvedValue({
+    ok: false,
+    status: 1,
+    stdout: '',
+    stderr: 'docker: not found'
+  })
 })
 
 describe('worker.stake', () => {
@@ -191,7 +204,10 @@ describe('worker.stake', () => {
   it('reports an ambiguous keystore directory as a problem, not as "No key"', async () => {
     // The user report: a restored seed left two keystores, and the panel drew
     // a wiped install because the probe swallowed the error.
-    const other = keystoreFileName('0011223344556677889900aabbccddee00112233', new Date('2026-02-01T00:00:00Z'))
+    const other = keystoreFileName(
+      '0011223344556677889900aabbccddee00112233',
+      new Date('2026-02-01T00:00:00Z')
+    )
     memFs({
       [`/keys/${KEYSTORE_DIR}/${KEYSTORE_NAME}`]: '{}',
       [`/keys/${KEYSTORE_DIR}/${other}`]: '{}'
@@ -265,7 +281,10 @@ describe('worker.stake', () => {
 
 describe('worker.status', () => {
   it('carries the probe problem and address alongside the container state', async () => {
-    const other = keystoreFileName('0011223344556677889900aabbccddee00112233', new Date('2026-02-01T00:00:00Z'))
+    const other = keystoreFileName(
+      '0011223344556677889900aabbccddee00112233',
+      new Date('2026-02-01T00:00:00Z')
+    )
     memFs({
       [`/keys/${KEYSTORE_DIR}/${KEYSTORE_NAME}`]: '{}',
       [`/keys/${KEYSTORE_DIR}/${other}`]: '{}'
@@ -407,7 +426,9 @@ describe('worker.importKey', () => {
     expect(ctx.adoptWorkerPassword).toHaveBeenCalledWith('adopt-me-now')
 
     // The file on "disk" is a real keystore the adopted password opens.
-    const written = [...files.entries()].find(([name]) => name.startsWith('UTC--') || name.includes('UTC--'))
+    const written = [...files.entries()].find(
+      ([name]) => name.startsWith('UTC--') || name.includes('UTC--')
+    )
     expect(written).toBeTruthy()
     expect(checkKeystorePassword(CONFIG, 'adopt-me-now').ok).toBe(true)
   })
@@ -557,7 +578,12 @@ describe('a network with no worker image or gateway', () => {
   it('still lets worker.stop through: a running container must stay stoppable', async () => {
     // Stop needs only the container name, and a container started while
     // another network was selected has to remain stoppable after the switch.
-    mockHost.runAsync.mockResolvedValue({ ok: true, status: 0, stdout: 'lightchain-worker', stderr: '' })
+    mockHost.runAsync.mockResolvedValue({
+      ok: true,
+      status: 0,
+      stdout: 'lightchain-worker',
+      stderr: ''
+    })
     const handlers = workerHandlers(ctxWith({ config: DEVNET_CONFIG }))
 
     await expect(handlers['worker.stop']({ t: 'worker.stop' })).resolves.toEqual({ ok: true })

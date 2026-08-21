@@ -76,7 +76,11 @@ export function request(t, fields = {}, { timeout = VERB_TIMEOUTS[t] ?? DEFAULT_
     const timer = setTimeout(() => {
       if (!pending.delete(rid)) return
       const seconds = Math.round(timeout / 1000)
-      reject(new Error(`${t}: no reply from the worker within ${seconds}s — the request may have been lost`))
+      reject(
+        new Error(
+          `${t}: no reply from the worker within ${seconds}s — the request may have been lost`
+        )
+      )
     }, timeout)
 
     pending.set(rid, {
@@ -119,7 +123,8 @@ function onChatMessage(msg) {
     // A reply addressed to a request nothing waits on is one whose caller gave
     // up — timed out, or rejected when the worker stopped. Worth a line in the
     // console, because the work it reports did complete.
-    if (msg.rid) console.warn(`[worker] reply to ${msg.rid} arrived after its caller stopped waiting`)
+    if (msg.rid)
+      console.warn(`[worker] reply to ${msg.rid} arrived after its caller stopped waiting`)
     return
   }
   pending.delete(msg.rid)

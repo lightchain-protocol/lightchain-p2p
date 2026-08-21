@@ -913,9 +913,7 @@ export function aiHandlers(ctx) {
         // and nothing else.
         const resolutionTimeout = await configUint(rpc(), aiConfig, 'getResolutionTimeout()')
         deadlinePassed =
-          resolutionTimeout === null
-            ? null
-            : now >= record.disputeCreatedAt + resolutionTimeout
+          resolutionTimeout === null ? null : now >= record.disputeCreatedAt + resolutionTimeout
         claimable = deadlinePassed === true
       }
 
@@ -1058,7 +1056,11 @@ export function aiHandlers(ctx) {
         const receipt = await sent.wait({ confirmations: 3 })
         if (!receipt.status) throw new Error(`the refund claim reverted (${sent.hash})`)
 
-        return { hash: sent.hash, block: receipt.blockNumber.toString(), amount: pending.toString() }
+        return {
+          hash: sent.hash,
+          block: receipt.blockNumber.toString(),
+          amount: pending.toString()
+        }
       } catch (err) {
         if (/insufficient funds/.test(err?.message ?? '')) {
           throw new Error(

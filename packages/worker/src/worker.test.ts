@@ -83,7 +83,11 @@ describe('configuration', () => {
   it('lets an explicit address win over the profile default', () => {
     // The escape hatch for testing against a deployment the profile predates.
     const override = '0x0000000000000000000000000000000000000001'
-    const custom = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD, aiConfigAddress: override })
+    const custom = resolveConfig({
+      keysDir: '/k',
+      keystorePassword: PASSWORD,
+      aiConfigAddress: override
+    })
     expect(custom.aiConfigAddress).toBe(override)
     expect(custom.jobRegistryAddress).toBe(NETWORKS.mainnet.jobRegistryAddress)
   })
@@ -177,7 +181,9 @@ describe('the devnet profile', () => {
     }
     const resolved = await resolveContractAddresses(devnet, rpc)
     expect(isRunnable(resolved)).toBe(true)
-    expect(() => runWorker(resolved, '/data/ks')).toThrow(/worker hosting is not available on devnet yet/)
+    expect(() => runWorker(resolved, '/data/ks')).toThrow(
+      /worker hosting is not available on devnet yet/
+    )
   })
 })
 
@@ -246,8 +252,7 @@ describe('registry address resolution', () => {
       calls,
       async call(request: { to: string; data: string }) {
         calls.push(request)
-        const address =
-          request.data === encodeCall('aiConfig()') ? AI_CONFIG : JOB_REGISTRY
+        const address = request.data === encodeCall('aiConfig()') ? AI_CONFIG : JOB_REGISTRY
         return `0x${'0'.repeat(24)}${address.slice(2)}`
       }
     }

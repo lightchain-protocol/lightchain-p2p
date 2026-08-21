@@ -15,7 +15,13 @@ import {
   tokensOn,
   upfrontCost
 } from '@lcai-p2p/chain'
-import { FEEDS, decodeRoundData, decimalsCall, formatUsd, latestRoundDataCall } from '@lcai-p2p/prices'
+import {
+  FEEDS,
+  decodeRoundData,
+  decimalsCall,
+  formatUsd,
+  latestRoundDataCall
+} from '@lcai-p2p/prices'
 import { readableAmount } from '../guard.mjs'
 import { approvalSequence } from './bridge.mjs'
 
@@ -34,7 +40,10 @@ async function record(ctx, rpc, kind, sent, fallbackChainId) {
     const { recordTransaction } = await import('../ledger.mjs')
     await recordTransaction(ctx, rpc, { kind, ...sent, fallbackChainId })
   } catch (err) {
-    console.error('the transaction went through but the ledger did not record it:', err?.message ?? err)
+    console.error(
+      'the transaction went through but the ledger did not record it:',
+      err?.message ?? err
+    )
   }
 }
 
@@ -139,7 +148,9 @@ export function swapHandlers(ctx) {
           .filter((token) => token.address.toLowerCase() !== LCAI_MAINNET.toLowerCase())
           .map(async (token) => ({
             token,
-            balance: await pool.use((rpc) => balanceOf(rpc, token.address, address)).catch(() => null)
+            balance: await pool
+              .use((rpc) => balanceOf(rpc, token.address, address))
+              .catch(() => null)
           }))
       )
     ])
@@ -184,7 +195,8 @@ export function swapHandlers(ctx) {
     )
     if (amount <= 0n) throw new Error('swap an amount above zero')
 
-    const slippageBps = req?.slippageBps === undefined ? DEFAULT_SLIPPAGE_BPS : Number(req.slippageBps)
+    const slippageBps =
+      req?.slippageBps === undefined ? DEFAULT_SLIPPAGE_BPS : Number(req.slippageBps)
     if (!SLIPPAGE_BPS.includes(slippageBps)) {
       throw new Error(`slippage is one of ${SLIPPAGE_BPS.map((b) => b / 100).join(', ')} percent`)
     }
@@ -247,7 +259,12 @@ export function swapHandlers(ctx) {
       )
     }
 
-    const leg = { tokenIn: input.tokenIn, tokenOut: LCAI_MAINNET, fee: found.fee, amountIn: input.amount }
+    const leg = {
+      tokenIn: input.tokenIn,
+      tokenOut: LCAI_MAINNET,
+      fee: found.fee,
+      amountIn: input.amount
+    }
 
     const [quoted, fees, nativeBalance, tokenBalance, allowed, usd] = await Promise.all([
       pool.use((rpc) => quoteExactInputSingle(rpc, leg)),
@@ -258,7 +275,9 @@ export function swapHandlers(ctx) {
         : pool.use((rpc) => balanceOf(rpc, input.token.address, input.address)),
       input.isNative
         ? Promise.resolve(0n)
-        : pool.use((rpc) => allowance(rpc, input.token.address, input.address, UNISWAP.swapRouter02)),
+        : pool.use((rpc) =>
+            allowance(rpc, input.token.address, input.address, UNISWAP.swapRouter02)
+          ),
       etherUsd()
     ])
 
@@ -361,8 +380,7 @@ export function swapHandlers(ctx) {
       // plan is a guess with margin, and the flag lets a screen say so
       // instead of presenting it with the same confidence as a measured one.
       degraded,
-      feeUsdText:
-        usd === null ? null : formatUsd((maxFee * usd) / 10n ** 18n)
+      feeUsdText: usd === null ? null : formatUsd((maxFee * usd) / 10n ** 18n)
     }
   }
 

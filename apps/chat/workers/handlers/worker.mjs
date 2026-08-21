@@ -18,7 +18,12 @@ import {
   selectKeystore,
   stopWorker
 } from '@lcai-p2p/worker'
-import { decrypt as openKeystore, derivePrivateKey, encrypt, generatePhrase } from '@lcai-p2p/wallet'
+import {
+  decrypt as openKeystore,
+  derivePrivateKey,
+  encrypt,
+  generatePhrase
+} from '@lcai-p2p/wallet'
 import {
   WORKER_REGISTRY_ADDRESS,
   decodeBool,
@@ -40,7 +45,9 @@ import { recordTransaction } from '../ledger.mjs'
  * log query against the registry, filtered by the worker's address, names the
  * transaction the ledger entry is written for.
  */
-const WORKER_REGISTERED_TOPIC = toHex(keccak256(new TextEncoder().encode('WorkerRegistered(address,bytes)')))
+const WORKER_REGISTERED_TOPIC = toHex(
+  keccak256(new TextEncoder().encode('WorkerRegistered(address,bytes)'))
+)
 
 /**
  * The inference worker this machine can run, and whether it is running.
@@ -479,13 +486,17 @@ export function workerHandlers(ctx) {
         )
       }
       if (!confirmed) {
-        console.error('the worker does not read as registered after the container exited; no stake recorded')
+        console.error(
+          'the worker does not read as registered after the container exited; no stake recorded'
+        )
         return
       }
 
       const hash = await registrationHash(client, resolved, probe.address, output)
       if (hash === null) {
-        console.error(`registered ${probe.address}, but the transaction hash could not be found; the stake will not appear in the wallet history`)
+        console.error(
+          `registered ${probe.address}, but the transaction hash could not be found; the stake will not appear in the wallet history`
+        )
         return
       }
 
@@ -503,12 +514,16 @@ export function workerHandlers(ctx) {
         data: tx?.input ?? tx?.data ?? '0x',
         gas: tx?.gas ? fromQuantity(tx.gas) : 0n,
         maxFeePerGas: tx?.maxFeePerGas ? fromQuantity(tx.maxFeePerGas) : gasPrice,
-        maxPriorityFeePerGas: tx?.maxPriorityFeePerGas ? fromQuantity(tx.maxPriorityFeePerGas) : gasPrice,
+        maxPriorityFeePerGas: tx?.maxPriorityFeePerGas
+          ? fromQuantity(tx.maxPriorityFeePerGas)
+          : gasPrice,
         nonce: tx?.nonce ? fromQuantity(tx.nonce) : 0n,
         wait: (options) => registrationReceipt(client, hash, options)
       })
     } catch (err) {
-      console.error(`the registration succeeded but recording it in the wallet history failed: ${err.message}`)
+      console.error(
+        `the registration succeeded but recording it in the wallet history failed: ${err.message}`
+      )
     }
   }
 
@@ -629,7 +644,11 @@ export function workerHandlers(ctx) {
       const passwordCheck = !config
         ? { checked: false, ok: null, problem: null }
         : !password
-          ? { checked: false, ok: null, problem: 'no keystore password is available; unlock the wallet' }
+          ? {
+              checked: false,
+              ok: null,
+              problem: 'no keystore password is available; unlock the wallet'
+            }
           : { checked: true, ...checkKeystorePassword(config, password) }
 
       return {
@@ -734,7 +753,10 @@ export function workerHandlers(ctx) {
       const { config, problem } = workerConfig({ keystorePassword: password })
       if (!config) throw new Error(problem ?? 'the worker is not configured')
 
-      const address = writeKeystore(config, privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`)
+      const address = writeKeystore(
+        config,
+        privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`
+      )
       adoptPassword(config, password)
       return { address: `0x${address}` }
     },

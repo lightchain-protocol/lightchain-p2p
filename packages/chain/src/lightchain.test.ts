@@ -181,9 +181,7 @@ describe('reads for the recovery surface', () => {
       const { rpc, requests } = stubRpc(word(3600n))
       expect(await read(rpc, AI_CONFIG), name).toBe(3600n)
       expect(requests[0]!.to, name).toBe(AI_CONFIG)
-      expect(requests[0]!.data, name).toBe(
-        encodeFunctionData({ abi: ABI, functionName: name })
-      )
+      expect(requests[0]!.data, name).toBe(encodeFunctionData({ abi: ABI, functionName: name }))
     }
   })
 })

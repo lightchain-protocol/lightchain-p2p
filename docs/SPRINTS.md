@@ -8,20 +8,21 @@ the sprint section before launch.
 
 ## Sprint 1 — P0 money safety, core (the eight blockers, first half)
 
-| Agent | Owns | Work |
-|---|---|---|
-| A1 guard | `workers/guard.mjs`, `handlers/assets.mjs` (threshold call-site), new `apps/chat/test/*` | P0-1 chain-aware confirm threshold; regression tests |
-| A2 conversation | `packages/inference/src/conversation.ts`, `api.ts`, new conversation tests | P0-2 wedge fix, B3 start-in-flight guard, late-frame cleanup, I7 session-expiry reopen |
-| A3 ai-handler | `workers/handlers/ai.mjs`, new ai tests | P0-3 limits in ai.ask, B6 fee floor, L2 whole(), L1 error mapping, fund-time delegate disclosure text |
-| A4 worker-backend | `workers/handlers/worker.mjs`, `workers/main.mjs` (sealed-store integration) | P0-6 seal workerPassword, B4 decrypt-at-adopt validation, P0-7 probe `{problem}` surfacing (backend) |
-| A5 worker-frontend | `renderer/lib/worker.js`, `packages/worker/src/*` | P0-7 problem rendering + network label, B5 testnet address resolution or explicit unsupported, per-field tolerant config |
-| A6 wallet-ledger | `workers/handlers/wallet.mjs`, new `workers/ledger.mjs`, wallet tests | L1 send pre-check + mapping; chain-aware `recordTransaction` extracted to ledger.mjs |
-| A7 swap-bridge | `workers/handlers/swap.mjs`, `handlers/bridge.mjs`, `renderer/lib/bridge.js` | M1 USDT zero-reset, M2 bridge allowance re-check, M4 feed ledger via ledger.mjs + persist bridge pending state |
-| A8 renderer-core | `renderer/lib/ipc.js`, `renderer/lib/models.js` | IPC request timeout, commitment badge matched by jobId |
+| Agent                 | Owns                                                                                      | Work                                                                                                                                  |
+| --------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| A1 guard              | `workers/guard.mjs`, `handlers/assets.mjs` (threshold call-site), new `apps/chat/test/*`  | P0-1 chain-aware confirm threshold; regression tests                                                                                  |
+| A2 conversation       | `packages/inference/src/conversation.ts`, `api.ts`, new conversation tests                | P0-2 wedge fix, B3 start-in-flight guard, late-frame cleanup, I7 session-expiry reopen                                                |
+| A3 ai-handler         | `workers/handlers/ai.mjs`, new ai tests                                                   | P0-3 limits in ai.ask, B6 fee floor, L2 whole(), L1 error mapping, fund-time delegate disclosure text                                 |
+| A4 worker-backend     | `workers/handlers/worker.mjs`, `workers/main.mjs` (sealed-store integration)              | P0-6 seal workerPassword, B4 decrypt-at-adopt validation, P0-7 probe `{problem}` surfacing (backend)                                  |
+| A5 worker-frontend    | `renderer/lib/worker.js`, `packages/worker/src/*`                                         | P0-7 problem rendering + network label, B5 testnet address resolution or explicit unsupported, per-field tolerant config              |
+| A6 wallet-ledger      | `workers/handlers/wallet.mjs`, new `workers/ledger.mjs`, wallet tests                     | L1 send pre-check + mapping; chain-aware `recordTransaction` extracted to ledger.mjs                                                  |
+| A7 swap-bridge        | `workers/handlers/swap.mjs`, `handlers/bridge.mjs`, `renderer/lib/bridge.js`              | M1 USDT zero-reset, M2 bridge allowance re-check, M4 feed ledger via ledger.mjs + persist bridge pending state                        |
+| A8 renderer-core      | `renderer/lib/ipc.js`, `renderer/lib/models.js`                                           | IPC request timeout, commitment badge matched by jobId                                                                                |
 | A9 disclosure-version | `renderer/lib/settings.js`, `renderer/lib/main.js`, `forge.config.js`, new `CHANGELOG.md` | Trust disclosure section (foundation control plane + economic verification), version+BETA badge, MSIX prerelease fix, changelog start |
-| A10 diagnostics | `electron/main.js`, new `workers/diagnostics.mjs` (+ one-line catalog add in `main.mjs`) | R-5: crashReporter, ring-buffer log teeing worker stdout/stderr, export-diagnostics handler (never keys/transcripts) |
+| A10 diagnostics       | `electron/main.js`, new `workers/diagnostics.mjs` (+ one-line catalog add in `main.mjs`)  | R-5: crashReporter, ring-buffer log teeing worker stdout/stderr, export-diagnostics handler (never keys/transcripts)                  |
 
 Interfaces fixed at launch:
+
 - `workers/ledger.mjs` exports a chain-aware record function taking an explicit
   RPC client; A6 creates it, A7 consumes it.
 - `worker.stake`/`worker.status` gain `{ problem: string|null }`; A4 produces,

@@ -10,7 +10,10 @@ vi.mock('@lcai-p2p/chain', async (importOriginal) => {
     // is on trial here — the wait depth is — so the pool, the quote and the
     // call data are fixed, and everything else runs for real.
     findPool: vi.fn(async () => ({ pool: `0x${'33'.repeat(20)}`, fee: 3000 })),
-    quoteExactInputSingle: vi.fn(async () => ({ amountOut: 5n * 10n ** 18n, gasEstimate: 150_000n })),
+    quoteExactInputSingle: vi.fn(async () => ({
+      amountOut: 5n * 10n ** 18n,
+      gasEstimate: 150_000n
+    })),
     minimumReceived: vi.fn((amountOut) => amountOut),
     exactInputSingleCall: vi.fn(() => '0xsingle'),
     multicallWithDeadline: vi.fn(() => '0xdata')
@@ -132,7 +135,11 @@ function swapCtx() {
       throw new Error('no feed')
     })
   }
-  const pool = { use: (work) => work(rpc), balanceOf: vi.fn(async () => 10n ** 24n), call: rpc.call }
+  const pool = {
+    use: (work) => work(rpc),
+    balanceOf: vi.fn(async () => 10n ** 24n),
+    call: rpc.call
+  }
   const ctx = { ...base(), poolFor: () => pool }
   return { ctx, rpc }
 }

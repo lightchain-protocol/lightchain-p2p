@@ -534,7 +534,10 @@ async function inference() {
 
   if (api && apiFor === identity) return api
 
-  const next = new Api({ url: NETWORKS[network].consumerApiUrl, chainId: BigInt(NETWORKS[network].chainId) })
+  const next = new Api({
+    url: NETWORKS[network].consumerApiUrl,
+    chainId: BigInt(NETWORKS[network].chainId)
+  })
   await next.signIn(account.address, (message) => account.signMessage(message))
 
   api = next
@@ -624,7 +627,8 @@ function reconnectChain() {
     errors: lightchainErrors(),
     // A benched endpoint is a node that just failed somebody; silence here is
     // how an outage becomes a wrong number with no explanation.
-    onBench: (url, err) => console.error(`chain endpoint ${url} benched after failing:`, err.message)
+    onBench: (url, err) =>
+      console.error(`chain endpoint ${url} benched after failing:`, err.message)
   })
   answerChecks = null
   void resolveAnswerChecks()

@@ -46,11 +46,11 @@ holders, not from splitting links between them.
 
 Flags:
 
-| Flag | Default | Notes |
-| --- | --- | --- |
-| `--storage <dir>` | `$XDG_DATA_HOME/lcai-seeder` (Linux), `%APPDATA%\lcai-seeder` (Windows) | Set it explicitly under a service manager; the default follows the service account's home. |
-| `--interval <seconds>` | `30` | Status line cadence. |
-| `--blind-peer <key>` | — | Repeatable. Also registers both cores (metadata **and** blobs) with each blind peer, covering the both-seeders-down case. |
+| Flag                   | Default                                                                 | Notes                                                                                                                     |
+| ---------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `--storage <dir>`      | `$XDG_DATA_HOME/lcai-seeder` (Linux), `%APPDATA%\lcai-seeder` (Windows) | Set it explicitly under a service manager; the default follows the service account's home.                                |
+| `--interval <seconds>` | `30`                                                                    | Status line cadence.                                                                                                      |
+| `--blind-peer <key>`   | —                                                                       | Repeatable. Also registers both cores (metadata **and** blobs) with each blind peer, covering the both-seeders-down case. |
 
 Keepalive is the service manager's job — the process handles `SIGINT`/`SIGTERM`
 with a clean close, so `Restart=always` is safe:

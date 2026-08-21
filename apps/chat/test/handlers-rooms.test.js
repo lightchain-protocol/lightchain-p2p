@@ -177,7 +177,9 @@ describe('message targets', () => {
 })
 
 describe('room.attach', () => {
-  const storeWith = () => ({ put: vi.fn(async (bytes, meta) => ({ ref: 'blob', bytes: bytes.length, meta })) })
+  const storeWith = () => ({
+    put: vi.fn(async (bytes, meta) => ({ ref: 'blob', bytes: bytes.length, meta }))
+  })
 
   it('refuses a request with no files', async () => {
     const { ctx } = ctxWith({ store: storeWith() })
@@ -266,9 +268,7 @@ describe('room.search', () => {
   })
 
   const stateWith = (key, conversation) =>
-    vi.fn(async () => [
-      { key, name: `room ${key.slice(0, 2)}`, conversation }
-    ])
+    vi.fn(async () => [{ key, name: `room ${key.slice(0, 2)}`, conversation }])
 
   it('refuses an empty query', async () => {
     const { ctx } = ctxWith()

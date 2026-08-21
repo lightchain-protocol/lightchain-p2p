@@ -45,7 +45,12 @@ function guardWith() {
   return { guard, pushed, answer }
 }
 
-const details = { amount: '50 LCAI', to: '0xabc', from: '0xdef', network: 'Lightchain (chain 9200)' }
+const details = {
+  amount: '50 LCAI',
+  to: '0xabc',
+  from: '0xdef',
+  network: 'Lightchain (chain 9200)'
+}
 
 describe('a threshold that knows which chain it is on', () => {
   it('lets a modest Lightchain send go without asking', async () => {

@@ -196,27 +196,27 @@ describe('settings.write, the closed list', () => {
     const { ctx, calls } = ctxWith()
     const handlers = settingsHandlers(ctx)
 
-    expect(() =>
-      handlers['settings.write']({ values: { workerPassword: 'hunter2' } })
-    ).toThrow('workerPassword is not a setting this app writes')
+    expect(() => handlers['settings.write']({ values: { workerPassword: 'hunter2' } })).toThrow(
+      'workerPassword is not a setting this app writes'
+    )
     expect(calls.saved).toEqual([])
   })
 
   it('refuses a key it has never heard of, which is a typo or worse', () => {
     const { ctx, calls } = ctxWith()
 
-    expect(() => settingsHandlers(ctx)['settings.write']({ values: { rpcUrl: 'http://evil' } })).toThrow(
-      'rpcUrl is not a setting this app writes'
-    )
+    expect(() =>
+      settingsHandlers(ctx)['settings.write']({ values: { rpcUrl: 'http://evil' } })
+    ).toThrow('rpcUrl is not a setting this app writes')
     expect(calls.saved).toEqual([])
   })
 
   it('refuses a value that is not text, rather than crashing the next boot', () => {
     const { ctx, calls } = ctxWith()
 
-    expect(() => settingsHandlers(ctx)['settings.write']({ values: { theme: { dark: true } } })).toThrow(
-      'theme has to be text'
-    )
+    expect(() =>
+      settingsHandlers(ctx)['settings.write']({ values: { theme: { dark: true } } })
+    ).toThrow('theme has to be text')
     expect(calls.saved).toEqual([])
   })
 

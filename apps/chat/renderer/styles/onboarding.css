@@ -285,11 +285,7 @@
    and a stronger border, so it is findable without shouting over the words. */
 .choice-primary {
   border-color: color-mix(in srgb, var(--lc-accent) 45%, transparent);
-  background: linear-gradient(
-    135deg,
-    var(--lc-accent-soft),
-    var(--lc-surface-2)
-  );
+  background: linear-gradient(135deg, var(--lc-accent-soft), var(--lc-surface-2));
 }
 
 /* Reserved for the routes that destroy something. Danger is carried by the

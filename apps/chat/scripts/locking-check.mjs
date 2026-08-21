@@ -182,10 +182,7 @@ report(
   /cannot cover/.test(bigSend?.error ?? ''),
   bigSend?.error
 )
-report(
-  'and no confirmation dialog was raised for it',
-  (await pushesSoFar()) === beforeBig
-)
+report('and no confirmation dialog was raised for it', (await pushesSoFar()) === beforeBig)
 
 // An answer to a question nobody asked settles nothing — whether the id is
 // invented, stale, or simply late.

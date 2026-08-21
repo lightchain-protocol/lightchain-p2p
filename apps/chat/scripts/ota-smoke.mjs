@@ -277,7 +277,10 @@ let probe = ''
           return drive.get('/package.json')
         })(),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('peers connected but no manifest arrived')), FETCH_BUDGET_MS)
+          setTimeout(
+            () => reject(new Error('peers connected but no manifest arrived')),
+            FETCH_BUDGET_MS
+          )
         )
       ])
       manifest = buf ? JSON.parse(buf.toString()) : null
@@ -387,13 +390,14 @@ report(
 // still arrive as one line.
 report(
   'the failure line survives the line-delimited pipe intact',
-  updateFailureLine(new Error('denied\nread-only mount')) === 'pear:updateFailed denied read-only mount\n',
+  updateFailureLine(new Error('denied\nread-only mount')) ===
+    'pear:updateFailed denied read-only mount\n',
   'multi-line errors collapse to one reply line'
 )
 
 skip(
   'apply-and-restart into a staged build, live',
-  'applying means installing the staged MSIX system-wide and letting the shell relaunch the app — that is the key ceremony\'s production link and a machine meant to receive it, not a smoke test\'s machine; the unpackaged instance cannot apply at all (pear-runtime-updater: bundled is false without an installed app path)'
+  "applying means installing the staged MSIX system-wide and letting the shell relaunch the app — that is the key ceremony's production link and a machine meant to receive it, not a smoke test's machine; the unpackaged instance cannot apply at all (pear-runtime-updater: bundled is false without an installed app path)"
 )
 
 // --- Phase 5: the failure cost the running app nothing --------------------------
@@ -420,7 +424,11 @@ for (let i = 0; i < 60 && !gone; i++) {
   await wait(500)
   gone = !(await alive())
 }
-report("the update flow's restart hook quits the app", gone, gone ? 'process exited' : 'still alive after 30s')
+report(
+  "the update flow's restart hook quits the app",
+  gone,
+  gone ? 'process exited' : 'still alive after 30s'
+)
 if (!gone) throw new Error('the app did not quit; cannot test the restart')
 
 // --- Phase 7: a staged update is detected and signalled, live --------------------
@@ -479,7 +487,10 @@ if (newerStaged && fs.existsSync(packagedExe)) {
     if (seen.offered) signal = 'update ready (button offered)'
     else if (/downloading update|update ready/.test(seen.status)) signal = seen.status
     if (fs.existsSync(packagedLog)) {
-      updaterError = fs.readFileSync(packagedLog, 'utf8').match(/\[worker:err\] Error: (update not found.*)/)?.[1] ?? ''
+      updaterError =
+        fs
+          .readFileSync(packagedLog, 'utf8')
+          .match(/\[worker:err\] Error: (update not found.*)/)?.[1] ?? ''
     }
   }
 

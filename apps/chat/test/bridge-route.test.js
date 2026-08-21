@@ -112,7 +112,10 @@ describe('the route a source chain resolves to', () => {
     // router the documentation pins on Ethereum.
     expect(pooled).toEqual([ETHEREUM_DOMAIN])
     expect(callsTo(calls, BRIDGE.ethereumRouter)).toEqual([
-      { to: BRIDGE.ethereumRouter, data: quoteTransferRemoteCall(LIGHTCHAIN_DOMAIN, ADDRESS, 1000n) }
+      {
+        to: BRIDGE.ethereumRouter,
+        data: quoteTransferRemoteCall(LIGHTCHAIN_DOMAIN, ADDRESS, 1000n)
+      }
     ])
 
     // The token that locks is asked for the balance and for the allowance the
@@ -149,7 +152,10 @@ describe('the route a source chain resolves to', () => {
 
     expect(pooled).toEqual([LIGHTCHAIN_DOMAIN])
     expect(callsTo(calls, BRIDGE.lightchainRouter)).toEqual([
-      { to: BRIDGE.lightchainRouter, data: quoteTransferRemoteCall(ETHEREUM_DOMAIN, ADDRESS, 1000n) }
+      {
+        to: BRIDGE.lightchainRouter,
+        data: quoteTransferRemoteCall(ETHEREUM_DOMAIN, ADDRESS, 1000n)
+      }
     ])
 
     // Nothing to pull, so nothing to approve: the token contract is never

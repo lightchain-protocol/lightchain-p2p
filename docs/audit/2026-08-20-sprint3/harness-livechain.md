@@ -13,11 +13,11 @@ state; this run is the local substitute.
 The Sprint 2 requote throttling on the swap path shows no stale-quote behavior
 in this run (see the caveat under `swap-check`).
 
-| Harness | Result | Assertions |
-| --- | --- | --- |
-| `swap-check` | **PASS** | 25 passed, 0 failed |
-| `bridge-check` | **PASS** | 32 passed, 0 failed |
-| `surfaces-check` | **PASS** | 43 passed, 0 failed |
+| Harness           | Result   | Assertions          |
+| ----------------- | -------- | ------------------- |
+| `swap-check`      | **PASS** | 25 passed, 0 failed |
+| `bridge-check`    | **PASS** | 32 passed, 0 failed |
+| `surfaces-check`  | **PASS** | 43 passed, 0 failed |
 | `inference-check` | **PASS** | 17 passed, 0 failed |
 
 ## swap-check — PASS (25/25)

@@ -96,7 +96,10 @@ export function inspectConfig(input: WorkerConfigInput): ConfigInspection {
       network: null,
       config: null,
       problems: [
-        { field: 'network', message: `unknown network "${network}". Use "mainnet", "testnet" or "devnet".` }
+        {
+          field: 'network',
+          message: `unknown network "${network}". Use "mainnet", "testnet" or "devnet".`
+        }
       ]
     }
   }

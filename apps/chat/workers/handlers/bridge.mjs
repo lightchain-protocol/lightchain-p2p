@@ -153,7 +153,10 @@ async function record(ctx, rpc, kind, sent, fallbackChainId) {
     const { recordTransaction } = await import('../ledger.mjs')
     await recordTransaction(ctx, rpc, { kind, ...sent, fallbackChainId })
   } catch (err) {
-    console.error('the transaction went through but the ledger did not record it:', err?.message ?? err)
+    console.error(
+      'the transaction went through but the ledger did not record it:',
+      err?.message ?? err
+    )
   }
 }
 
@@ -183,7 +186,9 @@ export const DISCLOSURE = [
  */
 function knownRoute(route) {
   if (!route.from || !route.to) {
-    throw new Error('this bridge cannot route: a chain it runs on is missing from the chain registry')
+    throw new Error(
+      'this bridge cannot route: a chain it runs on is missing from the chain registry'
+    )
   }
   return route
 }

@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { secp256k1 } from '@noble/curves/secp256k1.js'
-import { fromPrivateKey, hashDigestForSigning, toBytes, toHex, type Account, type Rpc } from '@lcai-p2p/chain'
+import {
+  fromPrivateKey,
+  hashDigestForSigning,
+  toBytes,
+  toHex,
+  type Account,
+  type Rpc
+} from '@lcai-p2p/chain'
 import { decryptSessionKey, encrypt, generateKeyPair } from '@lcai-p2p/inference-crypto'
 import {
   Api,
@@ -112,11 +119,7 @@ function sessionKeyFrom(
 }
 
 /** A relay frame carrying `text`, encrypted under the session key. */
-function frame(
-  sessionKey: Uint8Array,
-  text: string,
-  over: Record<string, unknown> = {}
-): string {
+function frame(sessionKey: Uint8Array, text: string, over: Record<string, unknown> = {}): string {
   const ciphertext = encrypt(sessionKey, new TextEncoder().encode(text))
   return JSON.stringify({
     type: 'chunk',
@@ -342,7 +345,9 @@ describe('a session the chain expired', () => {
 
   it('does not reopen for an ordinary failure', async () => {
     const { api, mocks } = makeApi()
-    mocks.submit.mockRejectedValue(new ApiError('Deposit LCAI into JobRegistry first', 402, 'insufficient_balance'))
+    mocks.submit.mockRejectedValue(
+      new ApiError('Deposit LCAI into JobRegistry first', 402, 'insufficient_balance')
+    )
     const conversation = makeConversation(api)
     await conversation.start()
 
