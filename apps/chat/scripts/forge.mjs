@@ -28,7 +28,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -84,17 +84,34 @@ run(
   rootDir
 )
 
-// pnpm deploy copies packages without running their install scripts, and
-// macos-alias — the alias writer inside the DMG maker's chain — compiles
-// volume.node at install time. The staging copy therefore lacks the binary
-// and maker-dmg dies demanding it. Rebuild just that package, in the staging
-// tree, and only where the DMG maker runs.
+// pnpm deploy copies packages without running their install scripts, and the
+// DMG maker's chain (appdmg → macos-alias, fs-xattr, …) compiles a native
+// addon at install time. The staging copy therefore lacks those binaries and
+// maker-dmg dies demanding them, one module per attempt. Rebuild every addon
+// in the staging tree — anything with a binding.gyp — where the DMG maker
+// runs.
 //
 // Not `npm rebuild`: the node-gyp npm bundles with Node 20 still imports
 // distutils, which the runner's Python 3.14 removed. node-gyp 10+ dropped it,
 // so the rebuild runs through a current node-gyp fetched by npx.
 if (step === 'make' && process.platform === 'darwin') {
-  run('npx', ['--yes', 'node-gyp@11', 'rebuild'], join(stagingDir, 'node_modules', 'macos-alias'))
+  const modulesDir = join(stagingDir, 'node_modules')
+  const withBindingGyp = []
+  for (const entry of readdirSync(modulesDir)) {
+    if (entry.startsWith('.')) continue
+    if (entry.startsWith('@')) {
+      for (const scoped of readdirSync(join(modulesDir, entry))) {
+        if (existsSync(join(modulesDir, entry, scoped, 'binding.gyp'))) {
+          withBindingGyp.push(join(modulesDir, entry, scoped))
+        }
+      }
+    } else if (existsSync(join(modulesDir, entry, 'binding.gyp'))) {
+      withBindingGyp.push(join(modulesDir, entry))
+    }
+  }
+  for (const pkgDir of withBindingGyp) {
+    run('npx', ['--yes', 'node-gyp@11', 'rebuild'], pkgDir)
+  }
 }
 
 const forgeArgs = ['electron-forge', step]
