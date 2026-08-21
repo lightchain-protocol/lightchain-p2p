@@ -12,9 +12,13 @@ import { refreshAssets } from './assets.js'
  * set of inputs is the failure the Send dialog's two-step flow exists to
  * prevent, and a live quote has the same rule with the steps merged.
  *
- * A standing quote also re-reads itself every five seconds, because the pool's
- * price moves whether anybody is typing or not. The figure on screen is never
- * older than one breath, and completion and closing both stop the clock.
+ * A standing quote also re-reads itself every ten seconds, because the pool's
+ * price moves whether anybody is typing or not. The clock pauses outright
+ * while the window cannot be seen — every tick is eight to ten calls against
+ * public RPC endpoints, and a hidden screen reads none of the answers — and
+ * the quote is refreshed the moment the window is back, because a figure held
+ * across the pause would otherwise be shown as live when it is not.
+ * Completion and closing both stop the clock.
  *
  * The worker re-derives everything at send time from the same inputs rather
  * than redeeming this quote, so what is signed cannot drift from what was
@@ -80,22 +84,39 @@ function requoteSoon() {
 }
 
 /**
- * The five-second clock. Re-quotes only a standing quote: nothing typed means
- * nothing to refresh, and an answered dialog or a shown receipt stops it.
+ * The ten-second clock. Re-quotes only a standing quote: nothing typed means
+ * nothing to refresh, an answered dialog or a shown receipt stops it, and a
+ * hidden window is skipped entirely — the pause costs the screen nothing it
+ * can see, and `visibilitychange` below repairs the staleness on return.
  */
+const REQUOTE_MS = 10_000
+
 let tick = null
 function startRequote() {
   stopRequote()
   tick = setInterval(() => {
-    if (!dialog.open || !result.hidden || busy || quoted === null) return
+    if (!dialog.open || document.hidden || !result.hidden || busy || quoted === null) return
     void quote()
-  }, 5000)
+  }, REQUOTE_MS)
 }
 function stopRequote() {
   if (tick) clearInterval(tick)
   tick = null
 }
 dialog?.addEventListener('close', stopRequote)
+
+/**
+ * Back in view, the standing quote is refreshed immediately rather than left
+ * on screen until the next tick: it may be far older than the interval by
+ * then, and showing it as-is would pass a paused figure off as a live one.
+ * The receive line says so for the moment the refresh takes, so the figure on
+ * screen is never silently stale — `quote` repaints both halves when it lands.
+ */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || !dialog.open || !result.hidden || busy || quoted === null) return
+  receiveLine.textContent = 'Refreshing the quote…'
+  void quote()
+})
 
 function showBalance() {
   const asset = chosenAsset()

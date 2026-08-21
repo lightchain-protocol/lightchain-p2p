@@ -139,6 +139,34 @@ document.getElementById('dht-copy').addEventListener('click', () => {
   void copy(document.getElementById('dht-key').textContent, 'Key')
 })
 
+/**
+ * The diagnostics export.
+ *
+ * The worker packs the archive and answers `{ name, bytes }`; from there it is
+ * exactly the attachment save flow — plain-array bytes through `app:saveFile`,
+ * the person choosing where it lands — so the worker never learns a path. A
+ * cancelled dialog answers false and is said nothing about, matching what
+ * saving an attachment does.
+ */
+document.getElementById('export-diagnostics').addEventListener('click', async (evt) => {
+  const button = evt.currentTarget
+  button.disabled = true
+  // Packing reads two log files and runs the host probe, so this is not
+  // instant and should not look like nothing happened.
+  button.textContent = 'Collecting…'
+
+  try {
+    const report = await request('diagnostics.export')
+    const saved = await bridge.saveFile({ name: report.name, bytes: report.bytes })
+    if (saved) toast('Saved')
+  } catch (err) {
+    toast(err.message, 'error')
+  } finally {
+    button.disabled = false
+    button.textContent = 'Export diagnostics'
+  }
+})
+
 document.getElementById('blind-form').addEventListener('submit', async (evt) => {
   evt.preventDefault()
   const error = document.getElementById('blind-error')

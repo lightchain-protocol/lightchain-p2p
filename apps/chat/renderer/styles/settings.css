@@ -211,6 +211,13 @@
   align-items: center;
 }
 
+/* A page-level action outside any form, held to its own width for the same
+   reason `.form` holds its submit: a stretched secondary button reads as the
+   primary one. */
+.settings-page > .button {
+  align-self: flex-start;
+}
+
 /* Two fields that are one decision asked twice, so they are read across rather
    than down. */
 .settings-pair {
