@@ -130,8 +130,10 @@
    the words that say what the limit is. */
 .secure-caveat {
   margin: 0;
-  padding-left: var(--lc-space-md);
-  border-left: 2px solid var(--lc-warning);
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  border: 1px solid color-mix(in srgb, var(--lc-warning) 30%, var(--lc-rule));
+  border-radius: var(--lc-radius-md);
+  background: color-mix(in srgb, var(--lc-warning) 8%, transparent);
   color: var(--lc-text-secondary);
   font-size: var(--lc-type-caption);
   line-height: var(--lc-leading-normal);
@@ -185,7 +187,8 @@
   display: inline-flex;
   align-items: center;
   gap: var(--lc-space-xs);
-  padding: var(--lc-space-xs) var(--lc-space-sm);
+  height: var(--lc-control-xs);
+  padding: 0 var(--lc-space-sm);
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-pill);
   background: none;
@@ -353,50 +356,20 @@
   border-color: color-mix(in srgb, var(--lc-accent) 55%, var(--lc-rule-strong));
 }
 
-/* Drawn rather than native, so it takes the theme: a control-icon-sized box
-   that fills with the accent when it is ticked, the tick itself a turned
-   corner of two borders. No image, so nothing for the content policy to
-   refuse. */
+/*
+ * The consent box is the application's checkbox, not a second one.
+ *
+ * This surface used to draw its own: eighteen pixels rather than twenty, a
+ * one-pixel border rather than two, a flat accent fill rather than the brand
+ * gradient, and a tick made from two rotated borders on `::before`. The shared
+ * control draws its tick on `::after`, so both rendered — two ticks of
+ * different shapes overlapping inside a box too small for either.
+ *
+ * What is left here is the only thing that was ever this surface's business:
+ * where the box sits on the line beside its sentence.
+ */
 .bridge-accept input[type='checkbox'] {
-  appearance: none;
-  display: grid;
-  place-content: center;
-  width: var(--lc-control-icon);
-  height: var(--lc-control-icon);
-  flex: none;
-  margin: 1px 0 0;
-  padding: 0;
-  border: 1px solid var(--lc-rule-strong);
-  border-radius: var(--lc-radius-sm);
-  background: var(--lc-surface-1);
-  cursor: pointer;
-  transition:
-    background var(--lc-motion-fast) var(--lc-easing),
-    border-color var(--lc-motion-fast) var(--lc-easing);
-}
-
-.bridge-accept input[type='checkbox']::before {
-  content: '';
-  width: 9px;
-  height: 5px;
-  border-left: 2px solid var(--lc-accent-contrast);
-  border-bottom: 2px solid var(--lc-accent-contrast);
-  transform: rotate(-45deg) translate(1px, -1px) scale(0);
-  transition: transform var(--lc-motion-fast) var(--lc-easing);
-}
-
-.bridge-accept input[type='checkbox']:checked {
-  border-color: var(--lc-accent);
-  background: var(--lc-accent);
-}
-
-.bridge-accept input[type='checkbox']:checked::before {
-  transform: rotate(-45deg) translate(1px, -1px) scale(1);
-}
-
-.bridge-accept input[type='checkbox']:focus-visible {
-  outline: var(--lc-focus-ring);
-  outline-offset: var(--lc-focus-offset);
+  margin-top: 1px;
 }
 
 /* What the worker actually built, quoted back before anything is signed. A

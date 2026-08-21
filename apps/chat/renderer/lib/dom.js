@@ -55,7 +55,6 @@ export const el = {
   sendBtn: document.getElementById('send-btn'),
   workerRefresh: document.getElementById('worker-refresh'),
   workerChecks: document.getElementById('worker-checks'),
-  workerSummary: document.getElementById('worker-summary'),
   workerContainer: document.getElementById('worker-container'),
   workerLogs: document.getElementById('worker-logs'),
   walletNone: document.getElementById('wallet-none'),
@@ -135,6 +134,22 @@ export function el2(tag, className, text) {
   const node = document.createElement(tag)
   if (className) node.className = className
   if (text !== undefined) node.textContent = text
+  return node
+}
+
+/**
+ * A placeholder the size of the thing that is coming.
+ *
+ * Sized in `ch` and `em` at the call site rather than in pixels, so it takes
+ * its measurements from the type it is standing in for and stays right when
+ * that type changes. Given a width close to the figure it precedes, the number
+ * lands without moving the line it lands on — which is the whole point, and the
+ * reason a word like "Loading…" cannot do this job.
+ */
+export function skeleton(width, height = '1em') {
+  const node = el2('span', 'skeleton')
+  node.style.width = width
+  node.style.height = height
   return node
 }
 

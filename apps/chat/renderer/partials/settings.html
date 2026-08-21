@@ -9,10 +9,6 @@
             General
           </button>
           <button class="settings-nav-item" type="button" data-settings="wallet">Wallet</button>
-          <button class="settings-nav-item" type="button" data-settings="inference">
-            Inference
-          </button>
-          <button class="settings-nav-item" type="button" data-settings="worker">Worker</button>
           <button class="settings-nav-item" type="button" data-settings="advanced">
             Advanced
           </button>
@@ -30,11 +26,14 @@
             </p>
             <label class="field">
               <span class="field-label">Network</span>
-              <select class="input" id="set-network">
+              <span class="select">
+                <select class="input" id="set-network">
                 <option value="mainnet">Mainnet</option>
                 <option value="testnet">Testnet</option>
                 <option value="devnet">Devnet</option>
               </select>
+                <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+              </span>
             </label>
             <dl class="facts" id="network-facts"></dl>
 
@@ -45,7 +44,8 @@
             </p>
             <label class="field">
               <span class="field-label">Lock after</span>
-              <select class="input" id="set-auto-lock">
+              <span class="select">
+                <select class="input" id="set-auto-lock">
                 <option value="1">1 minute</option>
                 <option value="5">5 minutes</option>
                 <option value="15">15 minutes</option>
@@ -53,6 +53,8 @@
                 <option value="480">8 hours</option>
                 <option value="0">Never — only on a machine nobody else uses</option>
               </select>
+                <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+              </span>
             </label>
 
             <h3 class="settings-heading">Privacy</h3>
@@ -80,38 +82,6 @@
               <input type="checkbox" id="set-deposit-sound" />
               <span>Play a sound when a deposit lands</span>
             </label>
-
-            <h3 class="settings-heading">Network trust</h3>
-            <p class="settings-note">
-              Who runs what. The workers that answer questions are run by anyone, and this
-              app does not choose them. The parts in between — the dispatcher that routes a
-              question to a worker, the relay that carries the answer back, the disputer that
-              settles challenges, and the service that puts the question's data on chain —
-              are all run by the Lightchain foundation, one operator.
-            </p>
-            <p class="settings-note">
-              What is checked. Every answer carries the worker's signature, and this app
-              verifies it before showing anything, so an answer cannot be swapped for another
-              on the way. A worker that tells you one thing while recording something else on
-              chain has equivocated, and that can be disputed — it costs the worker its stake.
-              What no check can catch is an answer that is wrong but reads as right: a model
-              that is simply mistaken looks exactly like one that is not, so judge answers
-              accordingly.
-            </p>
-            <p class="settings-note">
-              What the prepaid balance means. Funding it also authorises the delegate — the
-              service that submits jobs for you — to spend it, and that authorisation stands
-              until you revoke it on chain. Withdrawing what is left does not revoke it, so a
-              later deposit is spendable again without asking. The delegate can reach the
-              prepaid balance and nothing else; the rest of the wallet is never part of the
-              arrangement.
-            </p>
-            <p class="settings-note">
-              And one thing about this window. The dialog that asks you to confirm a transfer
-              is drawn by this application, not by the operating system. It vouches for what
-              this app is about to sign and nothing wider — it cannot see, and says nothing
-              about, anything else running on this machine.
-            </p>
           </section>
 
           <section class="settings-page" id="settings-wallet" hidden>
@@ -192,44 +162,6 @@
               <p class="dialog-error" id="remove-error" hidden></p>
               <button class="button" type="submit" id="remove-btn">Remove wallet</button>
             </form>
-          </section>
-
-          <section class="settings-page" id="settings-inference" hidden>
-            <h3 class="settings-heading">Prompt templates</h3>
-            <p class="settings-note">
-              A template is a block of text put in front of a prompt — the standing instructions you
-              would otherwise retype every time. Templates are sealed under your wallet and kept on
-              this machine only: no peer, no worker and no contract is ever told that this list
-              exists.
-            </p>
-            <p class="settings-note" id="template-status" hidden></p>
-            <ul class="template-list" id="template-list"></ul>
-            <p class="settings-note" id="template-empty" hidden></p>
-
-            <form class="form" id="template-form">
-              <label class="field">
-                <span class="field-label">Name</span>
-                <input
-                  class="input"
-                  id="template-name"
-                  type="text"
-                  autocomplete="off"
-                  placeholder="Reviewer"
-                />
-              </label>
-              <label class="field">
-                <span class="field-label">Text put in front of the prompt</span>
-                <textarea class="input" id="template-body" rows="4" spellcheck="false"></textarea>
-              </label>
-              <p class="settings-hint" id="template-caps"></p>
-              <p class="dialog-error" id="template-error" hidden></p>
-              <div class="settings-actions">
-                <button class="button button-primary" type="submit" id="template-save">
-                  Add template
-                </button>
-                <button class="button" type="button" id="template-cancel" hidden>Cancel</button>
-              </div>
-            </form>
 
             <h3 class="settings-heading">Spending limits</h3>
             <p class="settings-note">
@@ -280,7 +212,9 @@
             <dl class="facts" id="limits-facts"></dl>
           </section>
 
-          <section class="settings-page" id="settings-worker" hidden>
+
+
+          <section class="settings-page" id="settings-advanced" hidden>
             <h3 class="settings-heading">Worker</h3>
             <p class="settings-note">
               Used by the Worker section to talk to a running worker. Anything left blank falls back
@@ -320,9 +254,75 @@
               <p class="dialog-error" id="worker-settings-error" hidden></p>
               <button class="button button-primary" type="submit">Save</button>
             </form>
-          </section>
 
-          <section class="settings-page" id="settings-advanced" hidden>
+            <h3 class="settings-heading">Prompt templates</h3>
+            <p class="settings-note">
+              A template is a block of text put in front of a prompt — the standing instructions you
+              would otherwise retype every time. Templates are sealed under your wallet and kept on
+              this machine only: no peer, no worker and no contract is ever told that this list
+              exists.
+            </p>
+            <p class="settings-note" id="template-status" hidden></p>
+            <ul class="template-list" id="template-list"></ul>
+            <p class="settings-note" id="template-empty" hidden></p>
+
+            <form class="form" id="template-form">
+              <label class="field">
+                <span class="field-label">Name</span>
+                <input
+                  class="input"
+                  id="template-name"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="Reviewer"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">Text put in front of the prompt</span>
+                <textarea class="input" id="template-body" rows="4" spellcheck="false"></textarea>
+              </label>
+              <p class="settings-hint" id="template-caps"></p>
+              <p class="dialog-error" id="template-error" hidden></p>
+              <div class="settings-actions">
+                <button class="button button-primary" type="submit" id="template-save">
+                  Add template
+                </button>
+                <button class="button" type="button" id="template-cancel" hidden>Cancel</button>
+              </div>
+            </form>
+
+            <h3 class="settings-heading">Network trust</h3>
+            <p class="settings-note">
+              Who runs what. The workers that answer questions are run by anyone, and this
+              app does not choose them. The parts in between — the dispatcher that routes a
+              question to a worker, the relay that carries the answer back, the disputer that
+              settles challenges, and the service that puts the question's data on chain —
+              are all run by the Lightchain foundation, one operator.
+            </p>
+            <p class="settings-note">
+              What is checked. Every answer carries the worker's signature, and this app
+              verifies it before showing anything, so an answer cannot be swapped for another
+              on the way. A worker that tells you one thing while recording something else on
+              chain has equivocated, and that can be disputed — it costs the worker its stake.
+              What no check can catch is an answer that is wrong but reads as right: a model
+              that is simply mistaken looks exactly like one that is not, so judge answers
+              accordingly.
+            </p>
+            <p class="settings-note">
+              What the prepaid balance means. Funding it also authorises the delegate — the
+              service that submits jobs for you — to spend it, and that authorisation stands
+              until you revoke it on chain. Withdrawing what is left does not revoke it, so a
+              later deposit is spendable again without asking. The delegate can reach the
+              prepaid balance and nothing else; the rest of the wallet is never part of the
+              arrangement.
+            </p>
+            <p class="settings-note">
+              And one thing about this window. The dialog that asks you to confirm a transfer
+              is drawn by this application, not by the operating system. It vouches for what
+              this app is about to sign and nothing wider — it cannot see, and says nothing
+              about, anything else running on this machine.
+            </p>
+
             <h3 class="settings-heading">Availability</h3>
             <p class="settings-note">
               Blind peers are always-on machines that hold your rooms without being able to read
@@ -364,6 +364,7 @@
               which are left out by never being read at all.
             </p>
             <button class="button" type="button" id="export-diagnostics">Export diagnostics</button>
+
           </section>
         </div>
       </div>

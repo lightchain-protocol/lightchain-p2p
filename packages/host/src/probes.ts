@@ -8,9 +8,10 @@ import {
   parseDocker,
   parseNvidiaSmi,
   parseOllamaTags,
+  parseOllamaVersion,
   parseWindowsFree
 } from './parse.js'
-import { outputAsync } from './run.js'
+import { outputAsync, runAsync } from './run.js'
 
 /**
  * Observing the host.
@@ -60,6 +61,19 @@ export async function probeGpu() {
   }
 }
 
+/**
+ * Which platform this is.
+ *
+ * Lives here rather than in the application because `os` is the one builtin
+ * that differs between the runtimes: under Bare it is a native addon, and an
+ * application that imports `bare-os` directly cannot be loaded by a test
+ * runner at all. This package's `imports` map already resolves it for both, so
+ * asking through the package is the only way to ask once.
+ */
+export function hostPlatform(): string {
+  return os.platform()
+}
+
 export function probeMemory() {
   try {
     return { totalBytes: os.totalmem() }
@@ -95,6 +109,27 @@ export async function probeCast() {
   }
 }
 
+/**
+ * Whether the `ollama` command exists, asked separately from whether it is
+ * serving — the same split `probeDocker` makes between the CLI and the daemon,
+ * and for the same reason: one of those is fixed by installing something and
+ * the other by starting it.
+ */
+export async function probeOllamaCli() {
+  try {
+    const res = await runAsync('ollama', ['--version'])
+    // A missing binary arrives as an ENOENT in stderr with no status, which
+    // parses to no version and did not succeed — the one branch that is a
+    // confident "absent". Anything that ran and said nothing we recognise is
+    // reported as present, since it did run.
+    const version = parseOllamaVersion(`${res.stdout}\n${res.stderr}`)
+    if (version !== undefined) return { present: true, version }
+    return { present: res.ok }
+  } catch {
+    return undefined
+  }
+}
+
 export async function probeOllama(port = 11434) {
   try {
     // Raced rather than aborted: Bare has no AbortController either, and a
@@ -122,13 +157,23 @@ export async function probeAll({
 }: ProbeOptions = {}): Promise<Probes> {
   // In parallel: they are independent, and run one after another the slowest
   // sets the wait for all of them.
-  const [docker, ollama, gpu, disk, cast] = await Promise.all([
+  const [docker, ollama, ollamaCli, gpu, disk, cast] = await Promise.all([
     probeDocker(),
     probeOllama(ollamaPort),
+    probeOllamaCli(),
     probeGpu(),
     probeDisk(diskPath),
     probeCast()
   ])
 
-  return { docker, ollama, gpu, memory: probeMemory(), disk, cast }
+  return {
+    docker,
+    // The two Ollama questions arrive as one probe, because one check answers
+    // for both and it needs to know the difference to say the right thing.
+    ollama: { ...ollama, cliPresent: ollamaCli?.present, cliVersion: ollamaCli?.version },
+    gpu,
+    memory: probeMemory(),
+    disk,
+    cast
+  }
 }

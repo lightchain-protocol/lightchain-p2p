@@ -5,7 +5,7 @@
               ways to start one pinned under the list header, so they are
               always in the same place and never scroll away or sit stranded
               mid-column
-           3. elsewhere: Models, Account, Bridge, Earn — visible, named, one
+           3. elsewhere: Models, Account, Bridge, and the two ways to earn — visible, named, one
               press away
            4. who you are signed in as, which is also the way to Account
            5. version, theme, settings
@@ -15,11 +15,10 @@
            on screen twice and read as two navigation systems stapled together.
            No destination appears twice. -->
       <nav class="sidebar" id="sidebar" aria-label="Conversations">
+        <!-- The brand lives in the top bar now, which spans the window rather
+             than heading one column of it. What is left here is the fold-away
+             control, kept where the hand already looks for it. -->
         <div class="sidebar-head">
-          <span class="sidebar-brand">
-            <svg class="logo" aria-hidden="true"><use href="#i-logo" /></svg>
-            <span class="sidebar-wordmark">Lightchain</span>
-          </span>
           <button
             class="icon-button sidebar-collapse"
             type="button"
@@ -96,10 +95,21 @@
                 <span class="nav-label">Bridge</span>
               </button>
             </li>
+            <!-- Two ways to be paid by this network, and they are not
+                 variations of one thing: a worker stakes 50,000 LCAI and
+                 answers inference on a GPU, a validator stakes 500,000 and
+                 attests blocks on the beacon chain. One page for both taught
+                 people that the second was a mode of the first. -->
             <li>
               <button class="nav-item" type="button" data-section="worker">
                 <svg class="nav-icon" aria-hidden="true"><use href="#i-worker" /></svg>
-                <span class="nav-label">Earn</span>
+                <span class="nav-label">For Workers</span>
+              </button>
+            </li>
+            <li>
+              <button class="nav-item" type="button" data-section="validator">
+                <svg class="nav-icon" aria-hidden="true"><use href="#i-shield" /></svg>
+                <span class="nav-label">For Validators</span>
               </button>
             </li>
           </ul>

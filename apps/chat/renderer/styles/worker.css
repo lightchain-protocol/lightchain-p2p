@@ -32,11 +32,11 @@
 }
 
 /**
- * The steps column is a checklist: four cards that hug their content and scroll
- * as one when they outgrow the pane. A growing card must not push its siblings
- * out of view — the whole column scrolls instead.
+ * The flow column is the route: six steps that hug their content and scroll as
+ * one when they outgrow the pane. A growing step must not push its siblings out
+ * of view — the whole column scrolls instead.
  */
-.worker-steps {
+.worker-flow {
   overflow-y: auto;
 }
 
@@ -86,6 +86,307 @@
   white-space: nowrap;
 }
 
+/* --- The wizard ----------------------------------------------------------- */
+
+/**
+ * One question at a time, in the middle of the window.
+ *
+ * The measure is the point. Setup text is read, and a line of it running the
+ * full width of a maximised window is read badly; every onboarding flow worth
+ * copying holds itself to something near a book's column and lets the rest of
+ * the screen be empty. Empty is not wasted here — it is what makes the one
+ * thing on screen obviously the one thing on screen.
+ */
+.wizard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xl);
+  width: min(46rem, 100%);
+  margin: 0 auto;
+  padding-bottom: var(--lc-space-xl);
+  overflow-y: auto;
+}
+
+/**
+ * The three numbers that decide whether the rest of the page is worth reading.
+ *
+ * Put before the route rather than in a panel beside it: what a validator costs
+ * to start and what it costs to be thrown out are the whole of the decision,
+ * and somebody who is not going to do it should find that out in the first
+ * second rather than at step 2.
+ */
+.wizard-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--lc-space-md) var(--lc-space-lg);
+  margin: 0;
+  padding: var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-lg);
+  background: var(--lc-bg-elevated);
+}
+
+.wizard-stats dt {
+  font-size: var(--lc-text-xs);
+  font-weight: var(--lc-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lc-text-tertiary);
+}
+
+/* The figure itself, in the size a figure this consequential deserves. */
+.wizard-stats dd {
+  margin: var(--lc-space-xs) 0 0;
+  font-size: var(--lc-text-lg);
+  font-weight: var(--lc-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--lc-text-primary);
+}
+
+/* Each label sits above its own value rather than beside it, which a two-column
+   grid of pairs would not do. */
+.wizard-stats dt {
+  grid-row: 1;
+}
+
+.wizard-stats dd {
+  grid-row: 2;
+}
+
+/* --- The route ------------------------------------------------------------ */
+
+/**
+ * Named, not numbered.
+ *
+ * Six numbered pips told somebody they were on step 2 of 6 and never what step
+ * 2 was, which is the half that lets a person decide whether to keep going. At
+ * a narrow width the names drop and the dots stay, because a route you cannot
+ * read is still a route you can count.
+ */
+.wizard-rail {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lc-space-xs);
+}
+
+.wizard-pip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lc-space-xs);
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--lc-text-tertiary);
+  font-size: var(--lc-text-xs);
+  cursor: pointer;
+}
+
+.wizard-pip-mark {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 2px solid var(--lc-rule);
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-bg-elevated);
+  font-weight: var(--lc-weight-bold);
+  font-variant-numeric: tabular-nums;
+  transition: all var(--lc-motion-fast) var(--lc-easing);
+}
+
+.wizard-pip-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wizard-pip[data-state='done'] .wizard-pip-mark {
+  border-color: var(--lc-success);
+  background: var(--lc-success);
+  color: var(--lc-accent-contrast);
+}
+
+/* The tick is the sprite's, sized against the circle it sits in rather than
+   against the digit it replaced. */
+.wizard-pip[data-state='done'] .wizard-pip-mark .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.wizard-pip[data-state='current'] {
+  color: var(--lc-text-primary);
+}
+
+.wizard-pip[data-state='current'] .wizard-pip-mark {
+  border-color: var(--lc-accent);
+  color: var(--lc-accent);
+  box-shadow: 0 0 0 4px var(--lc-accent-soft);
+}
+
+.wizard-pip[data-state='blocked'] {
+  color: var(--lc-danger);
+}
+
+.wizard-pip[data-state='blocked'] .wizard-pip-mark {
+  border-color: var(--lc-danger);
+  color: var(--lc-danger);
+}
+
+.wizard-pip:hover .wizard-pip-mark {
+  border-color: var(--lc-rule-strong);
+}
+
+/* --- One step ------------------------------------------------------------- */
+
+.wizard-stage {
+  display: flex;
+  flex-direction: column;
+}
+
+.wizard-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+}
+
+.wizard-step[hidden] {
+  display: none;
+}
+
+/* Where you are, small and quiet, above the thing you are being asked. */
+.wizard-kicker {
+  margin: 0;
+  font-size: var(--lc-text-xs);
+  font-weight: var(--lc-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lc-text-tertiary);
+}
+
+/* The question, in the largest type on the page. A step whose heading is the
+   same size as its body reads as a paragraph, and gets skimmed like one. */
+.wizard-title {
+  margin: 0;
+  font-size: var(--lc-text-xxl);
+  font-weight: var(--lc-weight-semibold);
+  line-height: var(--lc-leading-tight);
+  color: var(--lc-text-primary);
+  text-wrap: balance;
+}
+
+/* One sentence. If it needs two, the step is doing two things. */
+.wizard-lede {
+  margin: 0;
+  font-size: var(--lc-text-md);
+  line-height: var(--lc-leading-relaxed);
+  color: var(--lc-text-secondary);
+  text-wrap: pretty;
+}
+
+.wizard-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  margin-top: var(--lc-space-sm);
+}
+
+.wizard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lc-space-sm);
+}
+
+.wizard-stamp {
+  margin: 0;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-text-tertiary);
+}
+
+/* The rarer of two ways to do something, folded until wanted. */
+.wizard-aside {
+  margin-top: var(--lc-space-md);
+  padding-top: var(--lc-space-md);
+  border-top: 1px solid var(--lc-rule);
+}
+
+.wizard-aside summary,
+.wizard-details summary {
+  cursor: pointer;
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-text-sm);
+}
+
+.wizard-aside summary:hover,
+.wizard-details summary:hover {
+  color: var(--lc-text-primary);
+}
+
+.wizard-aside[open] summary {
+  margin-bottom: var(--lc-space-md);
+}
+
+/* --- The one control ------------------------------------------------------ */
+
+/**
+ * Back on the left, the primary on the right, and nothing else.
+ *
+ * The action used to sit in a banner at the top, which put it above the thing
+ * it acted on — read the step, look up, press. Underneath is where a person
+ * arrives having finished reading.
+ */
+.wizard-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-md);
+  padding-top: var(--lc-space-lg);
+  border-top: 1px solid var(--lc-rule);
+}
+
+.wizard-foot-note {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-text-tertiary);
+  text-wrap: pretty;
+}
+
+/* --- Details -------------------------------------------------------------- */
+
+/**
+ * The console, folded away.
+ *
+ * A container name, an Ollama URL and a log tail are worth having on the day
+ * something is wrong and are worth none of the window on every other day. They
+ * were half the page.
+ */
+.wizard-details {
+  padding-top: var(--lc-space-lg);
+  border-top: 1px solid var(--lc-rule);
+}
+
+.wizard-details summary {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+}
+
+.wizard-details-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+  margin-top: var(--lc-space-md);
+}
+
+.wizard-details .worker-log {
+  max-height: 18rem;
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-sm);
+}
+
 /* --- Checks and facts ----------------------------------------------------- */
 
 /* What a probe observed and what a container is called both get copied into a
@@ -130,6 +431,79 @@
   margin-top: var(--lc-space-md);
 }
 
+/* A check that can be fixed from here carries the fix under its remedy, in the
+   column the remedy already occupies — the status word keeps its own. Left
+   aligned rather than stretched: it is one short action, not a form control. */
+.worker .status-action {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: var(--lc-space-sm);
+}
+
+/* --- Models ------------------------------------------------------------------ */
+
+/* The list is a column of cards rather than rows divided by hairlines. What is
+   being chosen here is which models this machine will be paid to answer for,
+   and a row that only changes a 20px box gives that decision no weight —
+   the whole card carries the choice, and the tick reads as its confirmation. */
+#worker-models-list {
+  display: grid;
+  gap: var(--lc-space-sm);
+}
+
+/* One card per model the network whitelists: the tickbox that chooses it, its
+   name, what a job pays, and whether it is on this machine yet. The name takes
+   the slack so the fee and the state stay together on the right. */
+.worker-model {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--lc-space-md);
+  padding: var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-surface-2);
+  cursor: pointer;
+  transition:
+    border-color var(--lc-motion-fast) var(--lc-easing),
+    background var(--lc-motion-fast) var(--lc-easing);
+}
+
+.worker-model:hover {
+  border-color: var(--lc-rule-strong);
+  background: var(--lc-surface-3);
+}
+
+/* Chosen reads off the card, not off the tick alone. */
+.worker-model:has(.worker-model-box:checked) {
+  border-color: color-mix(in srgb, var(--lc-brand) 55%, transparent);
+  background: color-mix(in srgb, var(--lc-brand) 10%, var(--lc-surface-2));
+}
+
+.worker-model:focus-within {
+  border-color: var(--lc-brand);
+}
+
+.worker-model-box {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* A model name is a thing to be typed elsewhere — into Ollama, into an issue —
+   so it is set in mono and stays selectable. */
+.worker-model-name {
+  font-family: var(--lc-mono);
+  color: var(--lc-text-primary);
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+
+.worker-model-facts {
+  font-size: var(--lc-text-sm);
+  color: var(--lc-text-secondary);
+  white-space: nowrap;
+}
+
 /* --- Step heads and bodies --------------------------------------------------- */
 
 /* Chip, timestamp and action buttons share the head with the title. */
@@ -172,6 +546,97 @@
   line-height: var(--lc-leading-normal);
   color: var(--lc-text-secondary);
   text-wrap: pretty;
+}
+
+/**
+ * Facts in a side column, where 12ch of label is most of the width.
+ *
+ * The shared list is sized for a full-width card. In a 450px aside it left the
+ * value about 200px, which is narrower than an address — so every address broke
+ * across two lines in the middle of itself, and a page of that reads as a
+ * layout that has come apart rather than as text that is merely tight.
+ */
+.worker-aside .facts {
+  grid-template-columns: minmax(0, 9ch) minmax(0, 1fr);
+  gap: var(--lc-space-sm) var(--lc-space-md);
+}
+
+.worker-aside .facts dd {
+  /* Values here are addresses, URLs and short states: broken between words
+     where there are any, and never through the middle of a token. */
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+/* The stake, as two plain sentences. A figure somebody has to act on should be
+   read, not looked up in a table. */
+.worker-stake-line {
+  margin: 0;
+  color: var(--lc-text-primary);
+  text-wrap: pretty;
+}
+
+/* --- Validators ----------------------------------------------------------- */
+
+/**
+ * A command to run somewhere else.
+ *
+ * Monospaced and selectable, because it is going to be pasted into a terminal:
+ * a command set in the body face, with quotes prettified, is a command that
+ * fails on arrival. The copy button sits with it rather than under it, so the
+ * pair reads as one control.
+ */
+.validator-command {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-sm);
+  background: var(--lc-surface-3);
+}
+
+.validator-command-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: pre;
+  font-family: var(--lc-mono);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-text-primary);
+  user-select: text;
+}
+
+/* One validator: which key, how much, and the one button that commits it. The
+   key takes the slack; the amount and the action stay together on the right. */
+.validator-deposit,
+.validator-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--lc-space-md);
+  padding: var(--lc-space-sm) 0;
+}
+
+.validator-deposit + .validator-deposit,
+.validator-row + .validator-row {
+  border-top: 1px solid color-mix(in srgb, var(--lc-rule) 55%, transparent);
+}
+
+/* A public key is compared character by character or not at all. */
+.validator-deposit-key {
+  font-family: var(--lc-mono);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-text-primary);
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+
+.validator-deposit-amount {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-text-secondary);
+  white-space: nowrap;
 }
 
 /* --- Keys and addresses ------------------------------------------------------ */
@@ -286,4 +751,62 @@
   .worker .worker-log {
     max-height: 24em;
   }
+}
+
+/**
+ * The step that stands in for the step being fetched.
+ *
+ * Laid out like a real one — kicker, title, lede, then rows — so the stage
+ * keeps its height and the answers land in place rather than pushing the page
+ * around as each probe returns.
+ */
+.wizard-waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--lc-space-md);
+}
+
+.wizard-waiting-rows {
+  display: grid;
+  gap: var(--lc-space-sm);
+  width: 100%;
+  margin-top: var(--lc-space-sm);
+}
+
+/* A step nothing has reached yet: still legible, plainly not a destination. */
+.wizard-pip:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.wizard-pip:disabled .wizard-pip-mark {
+  border-style: dashed;
+}
+
+/* --- What registering costs --------------------------------------------------- */
+
+/* The subtraction this step exists to show, with the numbers under each other
+   so the difference can be read rather than taken on trust. */
+.worker-stake-facts {
+  margin: 0;
+}
+
+.worker-stake-facts dd {
+  font-variant-numeric: tabular-nums;
+}
+
+.worker-stake-facts dd[data-tone='danger'] {
+  color: var(--lc-danger);
+  font-weight: var(--lc-weight-bold);
+}
+
+/* The other way to fund it: an address and the two things you do to one. */
+.worker-fund-elsewhere {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-sm);
+  margin-top: var(--lc-space-lg);
+  padding-top: var(--lc-space-lg);
+  border-top: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
 }

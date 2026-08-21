@@ -31,7 +31,7 @@ import { recordTransaction } from './wallet.mjs'
  */
 
 /** A model's fee, from the chain, by id rather than by name. */
-async function modelFee(rpc, aiConfig, id) {
+export async function modelFee(rpc, aiConfig, id) {
   return decodeUint256(
     await rpc.call({
       to: aiConfig,

@@ -1,11 +1,13 @@
 import { el, setStatus, showSection, toast } from './dom.js'
+import { openAccounts } from './accounts.js'
 import { bridge, onPush, request, startWorker } from './ipc.js'
 import { adopt, openInvite, openMessage, receivePresence, receiveRoom } from './rooms.js'
 import { receiveAiProgress } from './answering.js'
 import { bindSearchShortcut } from './search.js'
 import { onAiProgress, onCommitment, openTranscript, refreshModels } from './models.js'
 import { appendWorkerOutput, refreshWorker, setWorkerBusy } from './worker.js'
-import { refreshWallet, showWallet } from './wallet.js'
+import { refreshValidator } from './validator.js'
+import { lastWalletStatus, refreshWallet, showWallet } from './wallet.js'
 import { refreshAssets } from './assets.js'
 import { refreshActivity } from './activity.js'
 import { startOnboarding } from './onboarding.js'
@@ -13,6 +15,7 @@ import { openSettings } from './settings.js'
 import { notifyDeposit, setDepositSound } from './sound.js'
 // Nothing out here calls into the settings panel, but importing a panel is what
 // attaches its controls, and the button that opens it is one of them.
+import './select.js'
 import './settings.js'
 import { showBridge } from './bridge.js'
 // Imported for its controls, as settings is: the Swap button on the wallet is
@@ -234,10 +237,26 @@ el.backupBannerDismiss?.addEventListener('click', () => {
  */
 const KNOWN_NETWORKS = new Set(['mainnet', 'testnet', 'devnet'])
 
+const networkPill = document.getElementById('network-pill')
+const networkPillName = document.getElementById('network-pill-name')
+
+/**
+ * Which chain everything on screen belongs to, in the two places that say so.
+ *
+ * The account row has always carried it; the top bar's pill mirrors that same
+ * text rather than reading the setting itself. One source, so the pill cannot
+ * disagree with the row beneath it — and the observer below already fires on
+ * every change to it, whatever caused the change.
+ */
 function badgeNetwork() {
   const name = el.accountRole.textContent.trim().toLowerCase()
   if (KNOWN_NETWORKS.has(name)) el.accountRole.dataset.network = name
   else delete el.accountRole.dataset.network
+
+  if (!networkPill) return
+  networkPillName.textContent = el.accountRole.textContent.trim() || '—'
+  if (KNOWN_NETWORKS.has(name)) networkPill.dataset.network = name
+  else delete networkPill.dataset.network
 }
 
 new MutationObserver(badgeNetwork).observe(el.accountRole, {
@@ -247,6 +266,30 @@ new MutationObserver(badgeNetwork).observe(el.accountRole, {
 })
 badgeNetwork()
 
+/*
+ * The bar's two controls do what the page already does, rather than knowing
+ * anything themselves: the network is changed in Settings, and locking is the
+ * Account page's own button. A second implementation of either is a second
+ * thing to keep correct.
+ */
+// 'general', because that is the page the network selector is on. A name with
+// no page behind it opens the overlay onto nothing at all.
+networkPill?.addEventListener('click', () => void openSettings('general'))
+/*
+ * The account row opens the accounts, not the settings.
+ *
+ * One recovery phrase holds an endless run of them and the worker has been able
+ * to list and switch between them all along; this row was the obvious way in
+ * and it went to a settings page instead, which is why every installation had
+ * exactly one account.
+ */
+document
+  .getElementById('wallet-account-pill')
+  ?.addEventListener('click', () => openAccounts(lastWalletStatus()))
+document.getElementById('titlebar-lock')?.addEventListener('click', () => {
+  el.walletLockBtn?.click()
+})
+
 // --- Sections --------------------------------------------------------------
 
 for (const button of el.sections) {
@@ -255,7 +298,14 @@ for (const button of el.sections) {
 
     // Probing the host costs a few subprocesses and reading balances costs a
     // round trip, so both happen when the panel is opened rather than at launch.
+    // The flow column scrolls, and an element that scrolls keeps where it was.
+    // Coming back to a setup page half way down it — mid-sentence, with the
+    // step you are on cut off at the top — reads as a broken layout, because
+    // from the outside that is exactly what it looks like.
+    for (const column of document.querySelectorAll('.worker-flow')) column.scrollTop = 0
+
     if (button.dataset.section === 'worker') void refreshWorker()
+    if (button.dataset.section === 'validator') void refreshValidator()
     if (button.dataset.section === 'wallet') {
       void refreshWallet()
       // Started alongside rather than after. Reading six chains takes longer

@@ -350,6 +350,27 @@ describe('more than one account', () => {
     expect(wallet.status().address).toBe(mnemonicToAccount(created.phrase).address)
   })
 
+  it('lists its accounts without a password, and gets the same addresses', () => {
+    // The whole point of holding the account-level public key: an open wallet
+    // can name every account it has without reopening the vault. If these ever
+    // disagreed with the private derivation, the switcher would offer addresses
+    // that belong to nobody and switching to one would land somewhere else.
+    const listed = wallet.addresses(5)
+
+    expect(listed).toHaveLength(5)
+    for (const { index, address } of listed) {
+      expect(address).toBe(mnemonicToAccount(created.phrase, { addressIndex: index }).address)
+    }
+  })
+
+  it('refuses to list them once locked', () => {
+    // The addresses are not a secret the way the phrase is, but they are a
+    // record of what this person holds, and a locked wallet answers nothing.
+    wallet.lock()
+    expect(() => wallet.addresses(5)).toThrow(/locked/)
+    wallet.unlock(PASSWORD)
+  })
+
   it('switches to another account, and says which one it is on', () => {
     const status = wallet.switchAccount(PASSWORD, 3)
 

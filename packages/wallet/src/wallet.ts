@@ -10,6 +10,8 @@ import {
   ACCOUNT_PATH,
   MAX_ACCOUNT_INDEX,
   VaultError,
+  accountsPublicKey,
+  addressFromAccountsKey,
   derivePrivateKey,
   generatePhrase,
   isAccountIndex,
@@ -213,6 +215,21 @@ export class Wallet {
   readonly #store: VaultStore
   #account: Account | null = null
   #index = 0
+
+  /**
+   * The account-level public key of the open wallet, and only while it is open.
+   *
+   * This names every address the phrase will ever have and can spend from none
+   * of them, which is exactly the difference between listing accounts and using
+   * one. Before this, an interface that wanted to show somebody their accounts
+   * had to ask for the password purely to read public information — on a screen
+   * they had already unlocked.
+   *
+   * Dropped by `lock()` with everything else. It is not a secret in the sense
+   * the phrase is, but it is a record of what this person holds, and a locked
+   * wallet should not answer questions about that.
+   */
+  #accountsKey: string | null = null
   #hasPassphrase = false
   #autoLockMs: number
   /** When the account was last derived or used, by the clock the caller passes in. */
@@ -284,9 +301,27 @@ export class Wallet {
   /** Derivation and the record of what was derived, kept together. */
   #use(secret: Secret, index: number, now = Date.now()): void {
     this.#account = fromPrivateKey(derivePrivateKey(secret.phrase, index, secret.passphrase))
+    this.#accountsKey = accountsPublicKey(secret.phrase, secret.passphrase)
     this.#index = index
     this.#hasPassphrase = secret.passphrase !== ''
     this.#lastUsed = now
+  }
+
+  /**
+   * The first `count` addresses of this phrase, while the wallet is open.
+   *
+   * No password, because none is needed: these come from the account-level
+   * public key and are public information about a wallet whose owner is
+   * already here. Switching to one still costs the password — that needs a
+   * private key, and an unlocked wallet holds only the active account's.
+   */
+  addresses(count: number): { index: number; address: string }[] {
+    if (!this.#accountsKey) throw new WalletError('the wallet is locked')
+
+    return Array.from({ length: count }, (unused, index) => ({
+      index,
+      address: addressFromAccountsKey(this.#accountsKey as string, index)
+    }))
   }
 
   /**
@@ -440,6 +475,7 @@ export class Wallet {
    */
   lock(): WalletStatus {
     this.#account = null
+    this.#accountsKey = null
     this.#index = 0
     this.#hasPassphrase = false
     return this.status()

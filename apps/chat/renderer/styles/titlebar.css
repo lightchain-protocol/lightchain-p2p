@@ -23,20 +23,143 @@
  * and Linux caption buttons to match it, so any other colour here leaves the OS
  * controls sitting on a strip of their own.
  */
+/**
+ * How tall the bar is, in the one place that decides it.
+ *
+ * Locked to `TITLEBAR_HEIGHT` in electron/main.js: a shorter bar leaves a band
+ * of the page showing behind the caption buttons, a taller one puts the buttons
+ * above its own bottom edge.
+ *
+ * It is a variable because the number was written out four times — here, and in
+ * the top inset of each full-window overlay. Raising the bar from 38px to 56px
+ * moved one of the four, so Settings and onboarding went on insetting
+ * themselves 38px from the top and slid their first eighteen pixels under the
+ * bar, leaving the network pill and the lock floating over a settings page.
+ */
+:root {
+  --lc-titlebar-height: 56px;
+}
+
 .titlebar {
   display: flex;
   align-items: center;
   gap: var(--lc-space-md);
-  /* Locked to titleBarOverlay.height in electron/main.js. A shorter bar leaves
-     a band of the page showing behind the caption buttons; a taller one puts
-     the buttons above its own bottom edge. */
-  height: 38px;
-  padding: 0 var(--lc-space-lg);
-  border-bottom: 1px solid var(--lc-rule);
+  height: var(--lc-titlebar-height);
+  padding: 0 var(--lc-space-xl);
+  border-bottom: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
   background: var(--lc-bg-elevated);
   /* Lets the window be dragged by its titlebar, which users expect. */
   -webkit-app-region: drag;
   flex: 0 0 auto;
+}
+
+/* --- What the bar carries ------------------------------------------------- */
+
+/* Everything interactive opts out of the drag region. A bar you cannot grab
+   between its controls is worse than a bar with none. */
+.titlebar .button,
+.titlebar .icon-button,
+.titlebar .network-pill {
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--lc-space-md);
+  min-width: 0;
+  /* Clear of the platform's own window controls on macOS. */
+  padding-left: 72px;
+}
+
+.titlebar-wordmark {
+  height: 15px;
+  width: calc(15px * (1200 / 251));
+  flex: 0 0 auto;
+  stroke: none;
+  color: var(--lc-text-primary);
+  align-self: center;
+}
+
+/* What this application is, beside whose it is. Quiet: the lockup is the
+   name, and this is the room it is in. */
+.titlebar-suffix {
+  font-size: var(--lc-text-md);
+  color: var(--lc-text-tertiary);
+  letter-spacing: 0.01em;
+}
+
+.titlebar-spacer {
+  flex: 1 1 auto;
+}
+
+/**
+ * The network, as a pill with a live dot.
+ *
+ * Which chain the numbers on screen belong to is the one piece of context that
+ * changes what every other figure means, and it was a small word in the corner
+ * of the sidebar. The dot pulses because a network is a thing that is either
+ * reachable or not.
+ */
+.network-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  height: var(--lc-control-sm);
+  padding: 0 var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-pill);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--lc-fg) 5%, transparent),
+    color-mix(in srgb, var(--lc-fg) 2%, transparent)
+  );
+  color: var(--lc-text-primary);
+  font: inherit;
+  font-size: var(--lc-text-xs);
+  font-weight: var(--lc-weight-semibold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color var(--lc-motion-fast) var(--lc-easing),
+    background var(--lc-motion-fast) var(--lc-easing);
+}
+
+.network-pill:hover {
+  border-color: color-mix(in srgb, var(--lc-brand) 60%, var(--lc-rule));
+}
+
+.network-pill .icon {
+  width: 12px;
+  height: 12px;
+  color: var(--lc-text-tertiary);
+}
+
+.network-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-success);
+}
+
+/* Anything that is not the live chain is not green. A testnet balance read as
+   real money is the one mistake this pill exists to prevent. */
+.network-pill[data-network='testnet'] .network-dot,
+.network-pill[data-network='devnet'] .network-dot {
+  background: var(--lc-warning);
+}
+
+.network-pill-name {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The lock sits beside the network pill, and warns on hover: it ends the
+   session, which is not something to discover by pressing. */
+.titlebar-lock:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--lc-danger) 50%, transparent);
+  background: color-mix(in srgb, var(--lc-danger) 12%, transparent);
+  color: var(--lc-danger);
 }
 
 /* macOS puts the traffic lights at the left, so our content starts clear of

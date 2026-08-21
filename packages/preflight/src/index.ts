@@ -2,6 +2,7 @@ export {
   isReady,
   runChecks,
   summarize,
+  type CheckAction,
   type CheckResult,
   type CheckStatus,
   type DockerProbe,

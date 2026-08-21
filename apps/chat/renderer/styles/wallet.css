@@ -12,6 +12,96 @@
  * Settings and onboarding.
  */
 
+/* --- The account bar ------------------------------------------------------ */
+
+/**
+ * Whose money this is, over a rule, with what acts on the page beside it.
+ *
+ * The wallet heads its portfolio this way and it is better than a page title:
+ * "Account" restated the nav row that got you here, while the address is the
+ * one thing worth knowing before reading a balance.
+ */
+.account-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-md);
+  padding-bottom: var(--lc-space-lg);
+  border-bottom: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
+  flex: 0 0 auto;
+}
+
+.account-bar-spacer {
+  flex: 1 1 auto;
+}
+
+.account-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lc-space-md);
+  min-width: 0;
+  max-width: 22rem;
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: color-mix(in srgb, var(--lc-fg) 3%, transparent);
+  color: var(--lc-text-primary);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--lc-motion-fast) var(--lc-easing),
+    background var(--lc-motion-fast) var(--lc-easing);
+}
+
+.account-pill:hover {
+  border-color: var(--lc-rule-strong);
+  background: color-mix(in srgb, var(--lc-fg) 6%, transparent);
+}
+
+/* The identicon, at the size the wallet draws an avatar in a row like this. */
+.account-pill-mark {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: var(--lc-radius-md);
+  overflow: hidden;
+  background: var(--lc-surface-3);
+}
+
+.account-pill-mark .identicon {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+
+.account-pill-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.account-pill-name {
+  font-size: var(--lc-text-sm);
+  font-weight: var(--lc-weight-semibold);
+}
+
+/* The address is read character by character, so it is set in the mono face
+   and never wraps — a truncated address on two lines is unreadable. */
+.account-pill-address {
+  font-family: var(--lc-mono);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-pill-chevron {
+  flex: 0 0 auto;
+  color: var(--lc-text-tertiary);
+}
+
 /* --- Stages --------------------------------------------------------------- */
 
 /* Three stages behind one panel, one of them visible at a time. */
@@ -46,7 +136,8 @@
   gap: var(--lc-space-lg);
   margin: auto;
   width: min(56ch, 100%);
-  padding: var(--lc-space-xl);
+  /* The card inset, not a wider one of its own. This was the last card in the
+     application still choosing its own padding. */
 }
 
 .wallet-gate-fact {
@@ -220,11 +311,22 @@
   gap: var(--lc-space-sm);
 }
 
+/**
+ * The table head, in the brand's micro-caps.
+ *
+ * Their asset table sets ASSET / PRICE / 24H / BALANCE / VALUE small, tracked
+ * wide and quiet, over a hairline. At body size and sentence case a heading row
+ * reads as another row of data, which is exactly what a column heading must not
+ * do.
+ */
 .holdings-head {
-  padding: 0 var(--lc-space-xs) var(--lc-space-xs);
-  border-bottom: 1px solid var(--lc-rule);
+  padding: 0 var(--lc-space-md) var(--lc-space-md);
+  border-bottom: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-muted);
+  font-weight: var(--lc-weight-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lc-text-tertiary);
 }
 
 /* The first two columns are the asset, so the headings start at the third. */
@@ -261,9 +363,27 @@
   padding: 0;
 }
 
+/**
+ * A row, with the breathing room theirs has and a hover.
+ *
+ * Eight pixels of vertical padding put a 32-pixel token mark hard against the
+ * hairlines above and below it; theirs is fourteen. The hover is what makes a
+ * table feel like something you can point at rather than a printout.
+ */
 .holding {
-  padding: var(--lc-space-sm) var(--lc-space-xs);
-  border-bottom: 1px solid var(--lc-rule);
+  padding: var(--lc-space-md);
+  border-bottom: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
+  transition: background var(--lc-motion-fast) var(--lc-easing);
+}
+
+.holding:hover {
+  background: color-mix(in srgb, var(--lc-fg) 3%, transparent);
+}
+
+/* The last row sits on the card's own edge; a second line there reads as a
+   table that has been cut off rather than one that has ended. */
+.holding:last-child {
+  border-bottom: none;
 }
 
 /* Full colour, unlike every other icon here. These are brand marks and a
@@ -511,22 +631,41 @@
   gap: var(--lc-space-md);
 }
 
+/*
+ * A segmented control, not five loose buttons.
+ *
+ * These pick between views of one thing, so they are drawn as one thing: a
+ * tray with a raised tile inside it. Loose buttons with a tinted background on
+ * the chosen one say "five actions, one of which happened", which is a
+ * different sentence.
+ */
 .asset-ranges {
-  display: flex;
-  gap: var(--lc-space-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--lc-space-xs);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: color-mix(in srgb, var(--lc-fg) 3%, transparent);
 }
 
 .asset-range {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  height: var(--lc-control-xs);
   padding: 0 var(--lc-space-md);
-  height: var(--lc-control-sm);
   border: 0;
   border-radius: var(--lc-radius-sm);
   background: transparent;
   color: var(--lc-fg-muted);
   font: inherit;
   font-size: var(--lc-text-xs);
+  font-weight: 600;
   cursor: pointer;
+  transition:
+    color var(--lc-motion-fast) var(--lc-easing),
+    background var(--lc-motion-fast) var(--lc-easing);
 }
 
 .asset-range:hover {
@@ -534,8 +673,9 @@
 }
 
 .asset-range.is-active {
-  background: var(--lc-bg-elevated-2);
+  background: color-mix(in srgb, var(--lc-fg) 8%, transparent);
   color: var(--lc-fg);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 30%);
 }
 
 .asset-chart {
@@ -597,8 +737,37 @@
    holdings table has seven columns compared down the page and needs all of it.
    Two equal columns served none of the three. */
 
+/**
+ * A composed page, not a column of slabs.
+ *
+ * Everything on the Account page was full width and the same width as
+ * everything else, so four cards of very different importance — a balance, a
+ * warning, a ledger and an address — read as one undifferentiated stack, and
+ * the eye had nowhere to land. The wallet's portfolio leads with one hero and
+ * puts the rest underneath it in a row.
+ *
+ * The balance and the backup warning span; the two reference cards pair. At the
+ * width a window gets dragged down to, the pair unpairs rather than becoming
+ * two columns too narrow for an address.
+ */
 .wallet-body {
   overflow-y: auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+}
+
+.wallet-body > .pv-card,
+.wallet-body > .account-credit,
+.wallet-body > .wallet-holdings,
+.wallet-body > .account-backup,
+.wallet-body > .account-advanced {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 68rem) {
+  .wallet-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .wallet-grid {
@@ -619,9 +788,7 @@
 /* The address card is out of the disclosure and on the page itself, so it takes
    a full row like the balance and activity cards above it rather than a grid
    column. */
-.wallet-account {
-  align-self: start;
-}
+
 
 /* One column below the width where three cards stop being readable. Every card
    spans everything rather than half-collapsing into an awkward two. */
@@ -715,8 +882,24 @@
    the account did is part of the account. The list scrolls within the card so
    a long history does not bury the disclosure under it. */
 
-.wallet-activity {
-  flex: 0 0 auto;
+/**
+ * The activity card, given a floor.
+ *
+ * Its scrolling pane takes a zero flex basis so a long ledger cannot bid for
+ * the page's height, and a zero basis contributes nothing to the card's own
+ * intrinsic height either. With entries that is invisible; with the empty state
+ * the card computed to 112 pixels, the pane overflowed it, and the button
+ * inviting somebody to fund the wallet was clipped in half.
+ *
+ * Floored on the card rather than on the pane: flooring the pane made the pane
+ * tall and left the card exactly as short, which is the same bug with more CSS.
+ */
+.wallet-activity,
+.wallet-account {
+  /* Paired in a row now, so they stretch together rather than each hugging its
+     own content and leaving a step between them. */
+  align-self: stretch;
+  min-height: 14rem;
 }
 
 .wallet-activity .kit-card-scroll {
@@ -746,11 +929,45 @@
 /* Sized by what is in it. The page is a flex column, so without this the card
    stretched to fill and two lines of text sat in a box four times their
    height. */
-.account-balances {
+/**
+ * The balance card, washed with the brand.
+ *
+ * The wallet lays a very faint magenta-to-violet over its hero so the one card
+ * that matters is not the same object as the four beneath it. At a tenth it is
+ * not a colour anybody names — it is the reason the eye lands there first.
+ */
+.account-credit {
   display: flex;
   flex-direction: column;
   gap: var(--lc-space-lg);
   flex: 0 0 auto;
+}
+
+.account-credit .account-balance-row {
+  align-items: start;
+}
+
+.account-credit .account-balance-value {
+  font-size: var(--lc-text-xl);
+}
+
+/*
+ * The delegate's state, as a notice rather than as loose orange prose.
+ *
+ * It was a bare sentence in the warning colour sitting between a balance and a
+ * row of buttons, which is the one place on the card where a reader is counting
+ * money. Given a ground and an edge it becomes a thing to read and then move
+ * past.
+ */
+#panel-wallet .account-balance-note#delegate-status:not(:empty) {
+  display: block;
+  margin-top: var(--lc-space-sm);
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  border: 1px solid color-mix(in srgb, var(--lc-warning) 30%, transparent);
+  border-radius: var(--lc-radius-md);
+  background: color-mix(in srgb, var(--lc-warning) 10%, transparent);
+  color: var(--lc-warning);
+  text-wrap: pretty;
 }
 
 .account-balance-row {
@@ -768,15 +985,33 @@
   min-width: 0;
 }
 
+/**
+ * The wallet's balance block: a micro-caps label over a figure set large.
+ *
+ * A caption and a title-2 one above the other were two pieces of text at
+ * similar weight, and the balance — the one thing anybody opens this page for —
+ * did not look like the answer to anything. Caps and tracking push the label
+ * out of the way; the size and the negative tracking below are what make the
+ * number read as a headline.
+ */
 .account-balance-label {
-  font-size: var(--lc-type-caption);
+  font-size: var(--lc-text-xs);
+  font-weight: var(--lc-weight-semibold);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
   color: var(--lc-text-tertiary);
 }
 
 .account-balance-value {
-  font-size: var(--lc-type-title-2);
-  font-weight: var(--lc-weight-semibold);
-  font-family: var(--lc-mono);
+  font-size: 34px;
+  font-weight: var(--lc-weight-bold);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  /* Tabular rather than monospace: the figures line up either way, and the
+     wallet sets its balances in the interface face, which is what stops a
+     number looking like a hash. */
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   color: var(--lc-text-primary);
 }
 
@@ -907,4 +1142,328 @@
 .swap-provider-mark {
   width: 16px;
   height: 16px;
+}
+
+/**
+ * One warning at a time.
+ *
+ * The standing banner already says this sentence on every surface, and the
+ * Account page is the one place where it lands directly above a card saying it
+ * again — the same words, the same button, twice in one view. So the card
+ * stands down while the banner is up, and comes back the moment the banner is
+ * put down for the session, which is exactly when this page becomes the only
+ * thing still asking.
+ */
+#backup-banner:not([hidden]) ~ * #account-backup {
+  display: none;
+}
+
+/* --- The portfolio card ------------------------------------------------------ */
+
+/**
+ * The wallet's home screen, as the wallet composes one.
+ *
+ * One card carrying the four things somebody opens a wallet for: what it is all
+ * worth, what that did, what acts on it, and the line it did it along. Before
+ * this, the figure on the page was a single chain's balance and the total, the
+ * chart and the holdings were folded into a `details` at the foot of the page
+ * labelled "Networks and holdings" — so the whole of what a wallet is for was
+ * one press and a scroll away, and the page read as a settings screen.
+ *
+ * The wash is a tenth of the brand over the card ground, which is decoration on
+ * top of the hierarchy rather than the hierarchy itself: forty pixels of total,
+ * everything else underneath it and smaller.
+ */
+.pv-card {
+  padding: var(--lc-space-xl) var(--lc-space-xl) var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-lg);
+  background:
+    linear-gradient(
+      120deg,
+      color-mix(in srgb, var(--lc-brand-magenta) 10%, transparent),
+      color-mix(in srgb, var(--lc-brand-violet) 10%, transparent)
+    ),
+    var(--lc-bg-elevated);
+  box-shadow: var(--lc-shadow-2);
+}
+
+.pv-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--lc-space-lg);
+  flex-wrap: wrap;
+}
+
+.pv-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-xs);
+  min-width: 0;
+}
+
+.pv-label {
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+/* The one figure the card exists to show. `line-height: 1` because at this size
+   the leading is what decides where the number sits, not the box around it. */
+.pv-value {
+  font-size: var(--lc-text-display);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  color: var(--lc-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The holding and the change on one line: a total in dollars without the
+   balance it came from is a figure nobody can check. */
+.pv-sub {
+  display: flex;
+  align-items: baseline;
+  gap: var(--lc-space-sm);
+  flex-wrap: wrap;
+  font-size: var(--lc-text-sm);
+}
+
+.pv-native {
+  color: var(--lc-fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.pv-change {
+  font-weight: 500;
+  color: var(--lc-fg-muted);
+}
+
+.pv-change[data-way='up'] {
+  color: var(--lc-success);
+}
+
+.pv-change[data-way='down'] {
+  color: var(--lc-danger);
+}
+
+.pv-actions {
+  display: flex;
+  gap: var(--lc-space-sm);
+  flex-wrap: wrap;
+}
+
+.pv-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-sm);
+  margin-top: var(--lc-space-xl);
+}
+
+.pv-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lc-space-md);
+  flex-wrap: wrap;
+}
+
+/* The asset the line is about, named beside it. A chart with no ticker on it
+   is a shape. */
+.pv-mini {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+}
+
+.pv-mini-mark {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  color: var(--lc-brand);
+}
+
+.pv-mini-name {
+  font-size: var(--lc-text-sm);
+  font-weight: 600;
+  color: var(--lc-fg);
+}
+
+.pv-mini-price {
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A fixed height, so the card does not resize under the reader every time a
+   range is pressed or a series arrives. */
+.pv-card .pv-chart-body {
+  min-height: 0;
+  height: 220px;
+}
+
+.pv-card .chart {
+  height: 220px;
+}
+
+/**
+ * The holdings table grows; it does not scroll inside itself.
+ *
+ * `.kit-card-scroll` is built for a card with a height — a pane in a grid whose
+ * row is the thing that decides how tall it is. On this page the card is a
+ * block in a scrolling column with no height at all, so `min-height: 0` and
+ * `overflow-y: auto` collapsed it to two pixels and the whole table vanished
+ * between the backup warning and Recent activity.
+ *
+ * A table of holdings is also the wrong thing to put behind a second scrollbar:
+ * the page already scrolls, and nesting one inside the other means finding a
+ * row depends on which of the two the pointer happens to be over.
+ */
+.wallet-body > .wallet-holdings {
+  overflow: visible;
+  min-height: auto;
+}
+
+.wallet-body > .wallet-holdings > .kit-card-scroll {
+  overflow: visible;
+  min-height: auto;
+}
+
+/* --- The accounts one phrase holds ------------------------------------------- */
+
+.accounts-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+}
+
+.accounts {
+  display: grid;
+  gap: var(--lc-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/**
+ * One account, as a row you press.
+ *
+ * The whole row is the control rather than a button at the end of it: what is
+ * being chosen is the identity, and a row that carries a face, a name and an
+ * address should not need a separate word to press. The one already in use is
+ * disabled and says so, because a row that looks pressable and does nothing is
+ * worse than a row that does not look pressable.
+ */
+.account-option-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-md);
+  width: 100%;
+  padding: var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--lc-motion-fast) var(--lc-easing),
+    background var(--lc-motion-fast) var(--lc-easing);
+}
+
+.account-option-btn:hover:not(:disabled) {
+  border-color: var(--lc-rule-strong);
+  background: var(--lc-bg-elevated-2);
+}
+
+.account-option-btn:disabled {
+  cursor: default;
+  border-color: color-mix(in srgb, var(--lc-brand) 45%, transparent);
+  background: color-mix(in srgb, var(--lc-brand) 10%, var(--lc-bg-elevated));
+}
+
+.account-option-mark {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.account-option-named {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.account-option-name {
+  font-weight: 600;
+  color: var(--lc-fg);
+}
+
+.account-option-address {
+  font-family: var(--lc-mono);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-fg-muted);
+}
+
+/**
+ * The drawer holds one card now, so it takes the whole width.
+ *
+ * `.wallet-grid` is three columns because it used to carry three things: the
+ * portfolio, the networks and the holdings. Those are on the page now, and the
+ * per-network breakdown was left sitting in the first column of three — a tall
+ * narrow strip of near-identical tiles with two thirds of the row empty beside
+ * it. One column, and the tiles inside spread across it as they were built to.
+ */
+.account-advanced .wallet-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.account-advanced > .wallet-grid > .wallet-networks {
+  overflow: visible;
+  min-height: auto;
+}
+
+.account-advanced > .wallet-grid > .wallet-networks > .kit-card-scroll {
+  overflow: visible;
+  min-height: auto;
+}
+
+/* A row that opens something, rather than a sentence with a chevron loose at
+   the foot of the page. It sits on the page's ground, so it reads as the end of
+   the page rather than as a card that failed to draw. */
+.account-advanced-summary {
+  border: 1px solid var(--lc-rule);
+  padding: 0 var(--lc-space-md);
+  min-height: var(--lc-control-md);
+}
+
+/* The chevron turns rather than swapping for a different glyph. */
+.account-advanced-summary .icon {
+  transition: transform var(--lc-motion-fast) var(--lc-easing);
+}
+
+.account-advanced[open] > .account-advanced-summary .icon {
+  transform: rotate(90deg);
+}
+
+.account-advanced[open] > .account-advanced-summary {
+  margin-bottom: var(--lc-space-md);
+}
+
+/* The switch, which appears under the account it is about. */
+.accounts-switch {
+  gap: var(--lc-space-md);
+  padding: var(--lc-space-md);
+  border: 1px solid color-mix(in srgb, var(--lc-brand) 45%, transparent);
+  border-radius: var(--lc-radius-md);
+  background: color-mix(in srgb, var(--lc-brand) 8%, transparent);
+}
+
+.accounts-switch .dialog-note {
+  margin: 0;
 }

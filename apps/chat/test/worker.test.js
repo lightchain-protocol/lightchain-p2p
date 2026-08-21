@@ -24,12 +24,21 @@ const mockFs = vi.hoisted(() => ({
 
 const mockHost = vi.hoisted(() => ({
   probeAll: vi.fn(async () => ({})),
-  runAsync: vi.fn(async () => ({ ok: false, status: 1, stdout: '', stderr: 'docker: not found' }))
+  runAsync: vi.fn(async () => ({ ok: false, status: 1, stdout: '', stderr: 'docker: not found' })),
+  probeOllama: vi.fn(async () => ({ reachable: true }))
 }))
 
 vi.mock('bare-path', async () => ({ default: (await import('node:path')).posix }))
 vi.mock('bare-fs', () => ({ default: mockFs }))
-vi.mock('@lcai-p2p/host', () => ({ probeAll: mockHost.probeAll, runAsync: mockHost.runAsync }))
+// Only the three that touch the host are replaced. The rest of the package is
+// pure — which argv fetches a model, which launcher starts the runtime — and
+// stubbing that would test the stub.
+vi.mock('@lcai-p2p/host', async () => ({
+  ...(await vi.importActual('@lcai-p2p/host')),
+  probeAll: mockHost.probeAll,
+  runAsync: mockHost.runAsync,
+  probeOllama: mockHost.probeOllama
+}))
 
 import { encodeCall } from '@lcai-p2p/chain'
 import { SealedStore, encrypt, memoryByteStore } from '@lcai-p2p/wallet'

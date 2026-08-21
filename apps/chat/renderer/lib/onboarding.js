@@ -64,8 +64,26 @@ function showStep(id) {
 
   for (const error of step?.querySelectorAll('.dialog-error') ?? []) error.hidden = true
 
-  const focusable = step?.querySelector('input, textarea, .choice, .button-primary')
-  focusable?.focus()
+  /*
+   * A field, or the step itself — never a button.
+   *
+   * This used to reach for `.choice` and `.button-primary` as well, and
+   * focusing a button in code is focus Chromium renders as `:focus-visible`.
+   * So every step arrived with a lavender ring drawn tight around its first
+   * control, which reads as a white border somebody left on rather than as the
+   * keyboard's position. Landing on the step keeps the announcement for a
+   * screen reader without putting a ring on anything.
+   */
+  const field = step?.querySelector('input, textarea')
+  if (field) {
+    field.focus()
+    return
+  }
+
+  if (step) {
+    step.tabIndex = -1
+    step.focus({ preventScroll: true })
+  }
 }
 
 /**

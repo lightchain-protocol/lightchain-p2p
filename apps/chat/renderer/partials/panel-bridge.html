@@ -76,25 +76,49 @@
                   </h2>
                 </header>
                 <div class="bridge-form-body">
-                  <div class="form">
+                  <!-- A transfer, not a form. The route is one control and the
+                       amount is the thing being decided, so the amount is the
+                       largest thing on the card and carries its unit inside the
+                       field rather than in a label above it. -->
+                  <div class="form bridge-transfer">
                     <label class="field">
-                      <span class="field-label">Direction</span>
-                      <select class="input" id="bridge-direction"></select>
+                      <span class="field-label">Route</span>
+                      <!-- The two chains, with their own marks. `#c-eth` comes
+                           from the same public icon set the holdings table
+                           draws from and `#i-logo` is Lightchain's own
+                           logomark — the marks people already recognise, not
+                           two shapes invented for this row. bridge.js swaps
+                           them when the direction does. -->
+                      <span class="bridge-route">
+                        <span class="bridge-route-marks" aria-hidden="true">
+                          <svg class="bridge-route-mark"><use id="bridge-from-mark" href="#c-eth" /></svg>
+                          <svg class="bridge-route-mark bridge-route-mark-to">
+                            <use id="bridge-to-mark" href="#i-logo" />
+                          </svg>
+                        </span>
+                        <span class="select">
+                          <select class="input" id="bridge-direction"></select>
+                          <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+                        </span>
+                      </span>
                     </label>
 
-                    <label class="field">
-                      <span class="field-label">Amount in LCAI</span>
-                      <input
-                        class="input"
-                        id="bridge-amount"
-                        type="text"
-                        inputmode="decimal"
-                        spellcheck="false"
-                        autocomplete="off"
-                        placeholder="0.0"
-                      />
+                    <label class="field bridge-amount-field">
+                      <span class="field-label">Amount</span>
+                      <span class="bridge-amount-well">
+                        <input
+                          class="bridge-amount"
+                          id="bridge-amount"
+                          type="text"
+                          inputmode="decimal"
+                          spellcheck="false"
+                          autocomplete="off"
+                          placeholder="0.0"
+                        />
+                        <span class="bridge-amount-unit" aria-hidden="true">LCAI</span>
+                      </span>
                     </label>
-                    <p class="field-hint" id="bridge-balance"></p>
+                    <p class="field-hint bridge-balance" id="bridge-balance"></p>
                   </div>
 
                   <div class="alert" data-tone="error" role="alert" id="bridge-error" hidden>
@@ -127,8 +151,10 @@
                        the allowance being granted is visible rather than folded
                        into the send. -->
                   <div class="bridge-actions">
-                    <button class="button" type="button" id="bridge-quote-btn" hidden>Review</button>
-                    <button class="button" type="button" id="bridge-approve-btn" hidden>
+                    <button class="button button-primary" type="button" id="bridge-quote-btn" hidden>
+                      Review transfer
+                    </button>
+                    <button class="button button-primary" type="button" id="bridge-approve-btn" hidden>
                       Approve first
                     </button>
                     <button class="button button-primary" type="button" id="bridge-send-btn" hidden>

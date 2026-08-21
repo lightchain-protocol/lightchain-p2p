@@ -43,7 +43,8 @@ const DOCUMENT = [
   ['content-open.html', 'shared — opens section.content'],
   ['panel-chat.html', 'chat, the room and its header'],
   ['panel-models.html', 'models and inference'],
-  ['panel-worker.html', 'worker'],
+  ['panel-worker.html', 'workers — stake, a GPU, and inference jobs'],
+  ['panel-validator.html', 'validators — the beacon chain'],
   ['panel-wallet.html', 'wallet'],
   ['panel-bridge.html', 'bridge — a page, not a dialog'],
   ['content-close.html', 'shared — closes content and shell'],
@@ -51,6 +52,7 @@ const DOCUMENT = [
   ['dialog-swap.html', 'swap — Ethereum assets into LCAI over Uniswap'],
   ['dialog-confirm.html', "the guard's transfer confirmation"],
   ['dialog-secure.html', 'how this room is protected'],
+  ['dialog-accounts.html', 'the accounts one recovery phrase holds'],
   ['foot.html', 'shared — toast, module script, closing tags']
 ]
 

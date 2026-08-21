@@ -94,6 +94,46 @@ function showTerms(state) {
       return node
     })
   )
+
+  routes = state.routes
+  showRouteMarks()
+}
+
+/**
+ * The two chains' marks, matched to the route that is selected.
+ *
+ * Read from the route the select is on rather than from its label, so a
+ * renamed chain cannot leave the wrong logo beside it. Lightchain wears the
+ * application's own logomark — it has no entry in any public icon set, and
+ * that mark is the right one for it anyway — and everything else is looked up
+ * by chain name in the set the holdings table already uses.
+ */
+const CHAIN_MARKS = { ethereum: '#c-eth', lightchain: '#i-logo' }
+
+/* The routes the select is currently offering. `showTerms` owns the state and
+   takes it as an argument, so the change handler needs its own way back to it. */
+let routes = []
+
+function markForChain(name) {
+  return (
+    CHAIN_MARKS[
+      String(name ?? '')
+        .trim()
+        .toLowerCase()
+    ] ?? '#c-generic'
+  )
+}
+
+function showRouteMarks() {
+  const from = document.getElementById('bridge-from-mark')
+  const to = document.getElementById('bridge-to-mark')
+  if (!from || !to) return
+
+  const route = routes.find((r) => String(r.fromChainId) === direction.value) ?? routes[0]
+  if (!route) return
+
+  from.setAttribute('href', markForChain(route.fromName))
+  to.setAttribute('href', markForChain(route.toName))
 }
 
 /**
@@ -201,6 +241,8 @@ accept?.addEventListener('change', async () => {
     toast(err.message, 'error')
   }
 })
+
+direction.addEventListener('change', showRouteMarks)
 
 for (const field of [direction, amountField]) {
   field?.addEventListener('input', unquote)

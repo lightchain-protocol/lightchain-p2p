@@ -31,14 +31,22 @@ describe('the devnet profile', () => {
     })
   })
 
-  it('publishes no explorer, gateway, image or relay', () => {
-    // These absences are what the worker's devnet behaviour keys on: no
-    // explorer link may be built, no container command may be attempted, and
-    // no conversation may be started.
+  it('publishes no explorer and no relay', () => {
+    // The absences that remain are what devnet's behaviour keys on: no
+    // explorer link may be built, and no conversation may be started.
     expect(NETWORKS.devnet.explorerUrl).toBeNull()
-    expect(NETWORKS.devnet.workerGatewayUrl).toBeUndefined()
-    expect(NETWORKS.devnet.image).toBeUndefined()
     expect(NETWORKS.devnet.relayUrl).toBeUndefined()
+  })
+
+  it('can host a worker: the testnet image, and the consumer API as its gateway', () => {
+    // Hosting is decided from the profile — an image and a gateway — not from
+    // the network's name, so this pair is what makes the Earn page work on
+    // devnet at all. The image is the testnet build deliberately: the worker
+    // binary takes its whole configuration from the environment, so one
+    // publication serves both. The gateway is devnet's consumer API, which
+    // there fills both roles; `worker-gateway.devnet-v2` is NXDOMAIN.
+    expect(NETWORKS.devnet.image).toBe(NETWORKS.testnet.image)
+    expect(NETWORKS.devnet.workerGatewayUrl).toBe(NETWORKS.devnet.consumerApiUrl)
   })
 
   it('pins no contract addresses, like testnet — they resolve from the predeploy', () => {

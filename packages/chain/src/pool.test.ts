@@ -288,6 +288,58 @@ describe('a client that fails over on reads and never on broadcast', () => {
     expect(onBench.mock.calls[0]?.[1]).toBeInstanceOf(Error)
   })
 
+  it('probes one endpoint, not all of them, once every one is benched', async () => {
+    // What an outage costs. With both endpoints down, the first call tries each
+    // and benches both; the second must not walk the whole list again, because
+    // every entry on it is a connection already known to be refusing. Six
+    // networks doing that on every read is what an unusable application is made
+    // of.
+    const { fetcher, seen } = watchingFetch({ [PRIMARY]: 'down', [ARCHIVE]: 'down' })
+    globalThis.fetch = fetcher as never
+
+    const rpc = new FailoverRpc({ urls: [PRIMARY, ARCHIVE] })
+    await expect(rpc.chainId()).rejects.toThrow(/no endpoint answered/)
+    expect(seen).toHaveLength(2)
+
+    seen.length = 0
+    await expect(rpc.chainId()).rejects.toThrow(/no endpoint answered/)
+    expect(seen).toHaveLength(1)
+  })
+
+  it('still finds the network again once it comes back', async () => {
+    // The reason a benched endpoint is probed at all rather than written off:
+    // the probe is what notices recovery. `watchingFetch` closes over the
+    // answers object, so flipping it here is the network coming back.
+    const answers: Record<string, 'ok' | 'down'> = { [PRIMARY]: 'down', [ARCHIVE]: 'down' }
+    const { fetcher } = watchingFetch(answers)
+    globalThis.fetch = fetcher as never
+
+    const rpc = new FailoverRpc({ urls: [PRIMARY, ARCHIVE] })
+    await expect(rpc.chainId()).rejects.toThrow(/no endpoint answered/)
+
+    answers[PRIMARY] = 'ok'
+    answers[ARCHIVE] = 'ok'
+    expect(await rpc.chainId()).toBe(1)
+  })
+
+  it('reports a bench once, not once per failed call', async () => {
+    // An endpoint already benched and failing again is the same outage being
+    // rediscovered. Logged every time, it fills the diagnostics file with one
+    // repeated line and buries whatever was worth finding in it.
+    const { fetcher } = watchingFetch({ [PRIMARY]: 'down', [ARCHIVE]: 'down' })
+    globalThis.fetch = fetcher as never
+
+    const onBench = vi.fn()
+    const rpc = new FailoverRpc({ urls: [PRIMARY, ARCHIVE], onBench })
+
+    await expect(rpc.chainId()).rejects.toThrow()
+    expect(onBench).toHaveBeenCalledTimes(2)
+
+    onBench.mockClear()
+    await expect(rpc.chainId()).rejects.toThrow()
+    expect(onBench).not.toHaveBeenCalled()
+  })
+
   it('sends a signed transaction to the primary alone, exactly once', async () => {
     const { fetcher, seen } = watchingFetch({ [PRIMARY]: 'ok', [ARCHIVE]: 'ok' }, '0xhash')
     globalThis.fetch = fetcher as never

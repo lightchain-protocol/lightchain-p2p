@@ -15,7 +15,7 @@
 .onboarding {
   position: fixed;
   /* Clear of the custom titlebar, which stays draggable behind everything. */
-  inset: 38px 0 0;
+  inset: var(--lc-titlebar-height) 0 0;
   z-index: 10;
   display: grid;
   place-items: center;
@@ -67,10 +67,37 @@
     );
 }
 
+/**
+ * A card, which this was not.
+ *
+ * It was a `max-width` and nothing else, so the first screen of the
+ * application was a heading, a field and a button floating on the bare page
+ * with no object holding them. Everything in it was the right colour and the
+ * arrangement still read as unfinished, because there was no arrangement — the
+ * pieces were simply the width of a measure and left where they fell.
+ *
+ * The wallet centres a contained card and puts forty pixels around it.
+ */
 .onboarding-card {
   position: relative;
   width: 100%;
-  max-width: 52ch;
+  max-width: 30rem;
+  padding: 40px;
+  border: 1px solid color-mix(in srgb, var(--lc-rule) 70%, transparent);
+  border-radius: var(--lc-radius-lg);
+  background: var(--lc-bg-elevated);
+  box-shadow: var(--lc-shadow-3);
+}
+
+/* At the size a window gets dragged down to, the frame costs more than it
+   gives: the card becomes the page again rather than a card with no room. */
+@media (max-width: 32rem) {
+  .onboarding-card {
+    padding: var(--lc-space-xl) var(--lc-space-lg);
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
 }
 
 /* --- The mark ------------------------------------------------------------- */
@@ -82,22 +109,20 @@
   margin-bottom: var(--lc-space-xxl);
 }
 
-.onboarding-logo {
-  width: 34px;
-  height: 34px;
-  flex: none;
-  border-radius: var(--lc-radius-pill);
-  background: linear-gradient(135deg, var(--lc-accent), var(--lc-accent));
-  /* The glow is what stops a flat circle reading as a placeholder. */
-  box-shadow:
-    0 0 0 1px var(--lc-rule),
-    0 6px 22px -6px var(--lc-accent);
-}
-
+/**
+ * The brand's lockup, and the first thing the application shows anybody.
+ *
+ * What was here was a circle filled with the accent twice over, beside the word
+ * "Lightchain" set in the interface face — with a comment claiming the glow
+ * under it was what stopped it reading as a placeholder. It did not. This is
+ * the mark the website and the wallet use, drawn from the same file.
+ */
 .onboarding-wordmark {
-  font-size: var(--lc-type-title-3);
-  font-weight: var(--lc-weight-semibold);
-  letter-spacing: 0.01em;
+  height: 26px;
+  width: calc(26px * (1200 / 251));
+  stroke: none;
+  color: var(--lc-text-primary);
+  filter: drop-shadow(0 8px 24px color-mix(in srgb, var(--lc-brand-magenta) 35%, transparent));
 }
 
 /* --- Steps ---------------------------------------------------------------- */
@@ -210,9 +235,48 @@
 
 /* --- Choices -------------------------------------------------------------- */
 
+/* The step is focused on arrival so a screen reader announces it. It is a
+   region rather than a control, so it takes no ring — the ring belongs to
+   whatever the keyboard moves to next. */
+.step:focus {
+  outline: none;
+}
+
 .choice-list {
   display: grid;
   gap: var(--lc-space-md);
+}
+
+/**
+ * The tile a choice carries its icon in.
+ *
+ * The wallet puts a 46-pixel rounded square, washed with the brand and holding
+ * a brand-coloured glyph, at the head of every one of these rows. Without it a
+ * choice is a paragraph with a border round it, and a column of them is a wall
+ * of text somebody has to read before they can tell the two options apart.
+ */
+.choice-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  /* Centred on the title's line rather than on its cap height. */
+  margin-top: -2px;
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-accent-soft);
+  color: var(--lc-brand);
+}
+
+.choice-icon .icon {
+  width: 22px;
+  height: 22px;
+}
+
+/* The destructive option does not get the brand's colour on its badge. */
+.choice-danger .choice-icon {
+  background: var(--lc-danger-soft);
+  color: var(--lc-danger);
 }
 
 /* A choice is a whole card and not a button in a row, because each one needs a
@@ -220,9 +284,17 @@
    destructive option believing it was the safe one. */
 .choice {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: var(--lc-space-md);
-  align-items: center;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--lc-space-lg);
+  /*
+   * Aligned to the top, not the middle.
+   *
+   * Their choices carry one line of description and centring is right for
+   * that. Ours run to four or five, and centring floated the badge and the
+   * chevron halfway down a paragraph — beside a title they were supposed to
+   * belong to. They sit on the title's line now.
+   */
+  align-items: start;
   width: 100%;
   padding: var(--lc-space-lg);
   border: 1px solid var(--lc-rule);
@@ -271,10 +343,21 @@
   line-height: var(--lc-leading-normal);
 }
 
+/* A drawn chevron rather than the "→" character, which took whatever the
+   interface face happened to give it and sat a little off the centre line. */
 .choice-mark {
+  width: var(--lc-control-icon);
+  height: var(--lc-control-icon);
+  margin-top: 12px;
   color: var(--lc-text-tertiary);
-  font-size: var(--lc-type-title-3);
-  transition: color var(--lc-motion-fast) var(--lc-easing);
+  transition:
+    color var(--lc-motion-fast) var(--lc-easing),
+    transform var(--lc-motion-fast) var(--lc-easing);
+}
+
+/* It leans towards where it is about to take you. */
+.choice:hover:not(:disabled) .choice-mark {
+  transform: translateX(2px);
 }
 
 .choice:hover:not(:disabled) .choice-mark {
@@ -394,19 +477,28 @@
 }
 
 .field-with-button .input {
-  padding-right: 4.5rem;
+  /* Clear of the button riding inside the field: three steps of the scale
+     rather than `4.5rem`, which was a number chosen to look right once and
+     which stops looking right the moment the button's own padding moves. */
+  padding-right: calc(var(--lc-space-xl) * 3);
 }
 
+/* A word floating inside a field is not a control. This one is pressed as
+   often as the field is filled, so it gets a shape to press. */
 .field-reveal {
   position: absolute;
-  right: var(--lc-space-xs);
-  padding: var(--lc-space-xs) var(--lc-space-sm);
+  right: var(--lc-space-sm);
+  display: inline-flex;
+  align-items: center;
+  height: var(--lc-control-xs);
+  padding: 0 var(--lc-space-md);
   border: 0;
   border-radius: var(--lc-radius-sm);
-  background: none;
-  color: var(--lc-text-tertiary);
+  background: color-mix(in srgb, var(--lc-fg) 7%, transparent);
+  color: var(--lc-text-secondary);
   font: inherit;
-  font-size: var(--lc-type-caption);
+  font-size: var(--lc-text-xs);
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -435,13 +527,20 @@
    status tones take the soft backgrounds the alert tokens exist for, with the
    colour repeated in the border's leading edge because a tint alone is not a
    signal. */
+/**
+ * A notice, drawn the way every other notice in this application is drawn.
+ *
+ * It carried a three-pixel bar down its left edge on an untinted ground — a
+ * shape nothing else here uses, so on a screen beside `.alert` and the standing
+ * banner it read as a component borrowed from somewhere else. Tone comes from
+ * the ground and the edge together, as it does everywhere else.
+ */
 .step-note {
   display: grid;
   gap: var(--lc-space-xs);
   margin: 0 0 var(--lc-space-lg);
-  padding: var(--lc-space-md) var(--lc-space-lg);
+  padding: var(--lc-space-lg) 20px;
   border: 1px solid var(--lc-rule);
-  border-left-width: 3px;
   border-radius: var(--lc-radius-md);
   background: var(--lc-surface-2);
   color: var(--lc-text-secondary);
@@ -454,14 +553,16 @@
   font-weight: var(--lc-weight-semibold);
 }
 
+/* Tone from the ground and the edge together — the same pairing `.alert` uses,
+   so a warning looks like a warning wherever it appears. */
 .step-note-warn {
-  border-left-color: var(--lc-warning);
-  background: var(--lc-warning-soft);
+  border-color: color-mix(in srgb, var(--lc-warning) 35%, var(--lc-rule));
+  background: color-mix(in srgb, var(--lc-warning) 10%, var(--lc-bg-elevated));
 }
 
 .step-note-danger {
-  border-left-color: var(--lc-danger);
-  background: var(--lc-danger-soft);
+  border-color: color-mix(in srgb, var(--lc-danger) 40%, var(--lc-rule));
+  background: color-mix(in srgb, var(--lc-danger) 12%, var(--lc-bg-elevated));
 }
 
 /* --- The quiet way out ---------------------------------------------------- */
@@ -469,9 +570,11 @@
 /* Small, and deliberately not a button: on the unlock screen the thing to do
    is type a password. But it has to be here, because without it somebody who
    has forgotten theirs has no next step anywhere in the application. */
+/* Left, with the heading, the field and the button. It was centred while every
+   other thing on the card started at the same left edge, which is the kind of
+   detail that reads as carelessness rather than as a choice. */
 .step-escape {
   margin: var(--lc-space-lg) 0 0;
-  text-align: center;
 }
 
 .link-button {
@@ -515,12 +618,9 @@
 
 /* One primary button, large, and the escape hatch under it as a link rather
    than a second button of equal weight. A first screen offering two equally
-   styled choices makes somebody read both before they can start. */
-.button-lg {
-  min-height: var(--lc-control-lg);
-  padding-inline: var(--lc-space-xl);
-  font-size: var(--lc-type-body-strong);
-}
+   styled choices makes somebody read both before they can start. `.button-lg`
+   itself lives with the buttons now — this surface used to keep its own copy,
+   which is how the two drifted. */
 
 /* Left, under the button, rather than centred in the card. The two controls are
    one decision and a link that drifts to the middle reads as belonging to the

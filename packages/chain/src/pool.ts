@@ -79,18 +79,34 @@ export class RpcPool {
   }
 
   /**
-   * Healthy endpoints first, then benched ones in their original order.
+   * Who to ask, and how many of them.
    *
-   * Benched endpoints are kept rather than skipped. When every endpoint has
-   * failed recently the right move is still to try one — a wallet that refuses
-   * to ask because everything failed a minute ago is a wallet that stays broken
-   * after the network comes back.
+   * While any endpoint is healthy, only healthy ones are tried. When every one
+   * of them is benched, exactly one is tried — the one benched longest ago —
+   * rather than all of them.
+   *
+   * That last part is the difference between an outage being slow and an outage
+   * being unusable. Previously a benched endpoint was reordered but never
+   * skipped, so with the chain down every call walked the whole list and waited
+   * for each to time out in turn. Six networks, several reads apiece, and the
+   * application spent its time queueing behind connections it already knew were
+   * refusing — which is what "laggy" was.
+   *
+   * Trying one keeps the recovery the old comment was right to insist on: a
+   * wallet that refuses to ask because everything failed a minute ago is a
+   * wallet that stays broken after the network comes back. One probe finds that
+   * out at one timeout instead of five.
    */
   #preferred(): Endpoint[] {
     const now = this.#now()
     const ready = this.#endpoints.filter((e) => e.benchedUntil <= now)
-    const benched = this.#endpoints.filter((e) => e.benchedUntil > now)
-    return [...ready, ...benched]
+    if (ready.length > 0) return ready
+
+    let oldest: Endpoint | null = null
+    for (const endpoint of this.#endpoints) {
+      if (oldest === null || endpoint.benchedUntil < oldest.benchedUntil) oldest = endpoint
+    }
+    return oldest === null ? [] : [oldest]
   }
 
   /**
@@ -114,10 +130,20 @@ export class RpcPool {
         // same question and get the same reply, slower.
         if (err instanceof RpcError && err.code !== null) throw err
 
-        endpoint.benchedUntil = this.#now() + BENCH_MS
+        /*
+         * Said once per bench, not once per failure.
+         *
+         * An endpoint that is already benched and fails again is not news —
+         * it is the same outage being rediscovered. Logging every one filled
+         * the diagnostics file with one repeated line and drowned the events
+         * worth finding in it.
+         */
+        const now = this.#now()
+        const already = endpoint.benchedUntil > now
+        endpoint.benchedUntil = now + BENCH_MS
         tried.push(endpoint.url)
         last = err
-        this.#onBench?.(endpoint.url, err)
+        if (!already) this.#onBench?.(endpoint.url, err)
       }
     }
 

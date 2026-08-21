@@ -83,6 +83,17 @@ export interface Palette {
   readonly accentContrast: string
   /** The accent at a low alpha, for a tinted background under it. */
   readonly accentSoft: string
+  /**
+   * A label sitting on the brand gradient, which is not the same job as a label
+   * sitting on the flat accent.
+   *
+   * `accentContrast` is a near-black chosen against `accent`, which is light.
+   * The gradient is not light: against its three stops that near-black makes
+   * 4.40, 2.95 and 2.82, so a primary button's label was failing contrast
+   * everywhere except the very end of it. White makes 4.41, 6.57 and 6.89 — and
+   * is what the brand's own button uses.
+   */
+  readonly onBrand: string
 
   // --- Lines and overlays ----------------------------------------------------
 
@@ -151,6 +162,16 @@ export const BRAND = {
   logoFrom: '#3005fa',
   logoTo: '#ff12fb',
   /**
+   * The gradient the brand actually signs things with.
+   *
+   * Lifted from the website's `.btn-default` and the wallet that ports it, so
+   * a primary control here is the same object people press on the site. It is
+   * a fill and never a text colour: every one of its stops fails contrast
+   * against this page, which is exactly why the label on top of it comes from
+   * `accentContrast` and not from the gradient.
+   */
+  gradient: 'linear-gradient(135deg, #df04ae 0%, #8a1cd4 50%, #412ffd 100%)',
+  /**
    * The third identicon ink, and the reason it is here rather than borrowed.
    *
    * An avatar needs a non-violet mid-tone that stays visible on all six
@@ -164,18 +185,33 @@ export const BRAND = {
   avatar: '#1c8f5a'
 } as const
 
+/**
+ * The dark ramp, taken from the Lightchain wallet's theme.
+ *
+ * These are the product's own colours rather than a generic neutral scale: the
+ * ground, card and raised surfaces are `#0e0c15`, `#0f1021` and `#14152c`
+ * exactly as the wallet and the website use them, and the top of the ramp is
+ * their `#ccceef` heading and `#b1b3d0` body. Two applications from one company
+ * that are near-black in different directions look like two companies.
+ *
+ * One value is not theirs. The wallet's body colour, `#7376aa`, makes 4.53 on
+ * the page and 3.86 on a hovered row, and the tertiary role here has to be
+ * readable on all four surfaces — so it is lightened to `#8286ba`, the nearest
+ * value that holds AA everywhere. Timestamps and captions are text, and text
+ * that is only legible when nothing is under the pointer is not legible.
+ */
 const DARK_NEUTRALS: Neutrals = [
-  '#0e0e12',
-  '#16161c',
-  '#1e1e26',
-  '#26262f',
-  '#2f2f3a',
-  '#3d3d4a',
-  '#555566',
-  '#6f7182',
-  '#9092a2',
-  '#b6b8c6',
-  '#f3f3f7'
+  '#0e0c15',
+  '#0f1021',
+  '#14152c',
+  '#1b1c38',
+  '#232445',
+  '#2e2f56',
+  '#3d3f6b',
+  '#565e78',
+  '#8286ba',
+  '#b1b3d0',
+  '#ccceef'
 ]
 
 const LIGHT_NEUTRALS: Neutrals = [
@@ -204,23 +240,27 @@ export const DARK: Palette = {
   textSecondary: DARK_NEUTRALS[9],
   textTertiary: DARK_NEUTRALS[8],
 
-  // Brightened a step from the violet this replaced, which met AA on the page
-  // and not on a row under the pointer. An accent that stops being readable
-  // exactly when somebody is about to click it is the wrong way round.
-  accent: '#9581f8',
-  accentContrast: '#0b0b10',
-  accentSoft: 'rgba(149, 129, 248, 0.16)',
+  // The wallet's `--brand-300`, not its `--primary`. `#5b4bff` is the brand
+  // violet and it makes 3.1 against this page — fine behind a gradient, not
+  // fine as the colour of a link. The lighter step is what that theme itself
+  // uses wherever the brand has to be read rather than looked at.
+  accent: '#a897ff',
+  accentContrast: '#0e0c15',
+  accentSoft: 'rgba(91, 75, 255, 0.18)',
+  onBrand: '#ffffff',
 
-  rule: 'rgba(255, 255, 255, 0.08)',
-  ruleStrong: 'rgba(255, 255, 255, 0.14)',
+  // The wallet's `--border` and `--border-strong`, to the hundredth.
+  rule: 'rgba(255, 255, 255, 0.10)',
+  ruleStrong: 'rgba(255, 255, 255, 0.18)',
   scrim: 'rgba(0, 0, 0, 0.62)',
 
-  success: '#35d68a',
-  warning: '#f5a524',
-  danger: '#ff6b78',
-  successSoft: 'rgba(53, 214, 138, 0.14)',
-  warningSoft: 'rgba(245, 165, 36, 0.14)',
-  dangerSoft: 'rgba(255, 107, 120, 0.14)',
+  // The wallet's status trio.
+  success: '#3eb75e',
+  warning: '#ff8f3c',
+  danger: '#ff5468',
+  successSoft: 'rgba(62, 183, 94, 0.14)',
+  warningSoft: 'rgba(255, 143, 60, 0.14)',
+  dangerSoft: 'rgba(255, 84, 104, 0.14)',
 
   // Larger and softer than a light theme's, because there is no overhead light
   // here: against a near-black page a tight shadow reads as a smudge, and what
@@ -236,8 +276,8 @@ export const DARK: Palette = {
   fg: DARK_NEUTRALS[10],
   fgMuted: DARK_NEUTRALS[9],
   fgDim: DARK_NEUTRALS[8],
-  brand: '#9581f8',
-  brandInk: '#cac0ff'
+  brand: '#a897ff',
+  brandInk: '#ccceef'
 }
 
 export const LIGHT: Palette = {
@@ -255,6 +295,7 @@ export const LIGHT: Palette = {
   accent: '#5b34c4',
   accentContrast: '#ffffff',
   accentSoft: 'rgba(91, 52, 196, 0.10)',
+  onBrand: '#ffffff',
 
   rule: 'rgba(16, 16, 20, 0.10)',
   ruleStrong: 'rgba(16, 16, 20, 0.16)',
@@ -297,7 +338,7 @@ export const SPACE = {
 export const RADIUS = {
   sm: 6,
   md: 10,
-  lg: 14,
+  lg: 16,
   pill: 999,
   /**
    * Message bubbles, which are the one shape in the application people read as
@@ -323,7 +364,16 @@ export const TYPE = {
     md: 16,
     lg: 19,
     xl: 23,
-    xxl: 30
+    xxl: 30,
+    /**
+     * One number, once per screen.
+     *
+     * A portfolio total is not a heading with a heading's job — it is the thing
+     * the screen exists to show, and at 30 it argued with the titles around it
+     * instead of settling the question. Reserved for that: if a surface needs
+     * two of these, one of them is not what the surface is about.
+     */
+    display: 40
   },
   /** The same sizes by the job they do, which is how a stylesheet should ask. */
   role: {
@@ -332,7 +382,8 @@ export const TYPE = {
     bodyStrong: 16,
     title3: 19,
     title2: 23,
-    title1: 30
+    title1: 30,
+    display: 40
   },
   weight: {
     regular: 400,
@@ -370,13 +421,35 @@ export const MONO =
  * obvious why. A fixed height with the label centred inside is the same
  * everywhere.
  */
+/**
+ * Control heights, taken from the wallet's.
+ *
+ * These were 32/40/44 — a scale that is fine on its own and visibly tighter
+ * than the rest of this brand. The wallet draws its small control at 38 and its
+ * ordinary one at 50, and two applications whose buttons differ by a quarter of
+ * their height do not look like one product no matter what colour they are.
+ *
+ * Everything with a height follows: fields take the same scale as the buttons
+ * that sit beside them, which is the reason to keep this in one place.
+ */
 export const CONTROL = {
+  /**
+   * Controls that ride inside another control or a card's head.
+   *
+   * A range tab in a chart header, a Max button inside the field it fills, a
+   * reference chip in a sentence. These were 29, 29 and 31 — three different
+   * answers to one question, each arrived at by adding padding to a font size
+   * and accepting whatever came out. Nothing in the scale fitted, because the
+   * scale had no rung for a control that must not out-weigh the thing
+   * containing it, so every author invented one.
+   */
+  xs: 32,
   /** Toolbar and inline actions. */
-  sm: 32,
+  sm: 38,
   /** The default: form fields and their buttons. */
-  md: 40,
-  /** Where there is room for it. Below this a control is a poor pointer target. */
-  lg: 44,
+  md: 44,
+  /** The one thing a screen is asking for. */
+  lg: 50,
   /** Icons, sized with the text rather than independently of it. */
   icon: 18
 } as const
@@ -490,6 +563,8 @@ export function cssVariables(theme: Theme): string {
     `--lc-brand-magenta: ${BRAND.magenta};`,
     `--lc-logo-from: ${BRAND.logoFrom};`,
     `--lc-logo-to: ${BRAND.logoTo};`,
+    `--lc-grad-brand: ${BRAND.gradient};`,
+    `--lc-on-brand: ${p.onBrand};`,
 
     `--lc-mono: ${MONO};`,
     `--lc-focus-width: ${FOCUS.width}px;`,

@@ -39,9 +39,9 @@ export interface WorkerConfig {
   readonly rpcUrl: string
   readonly chainId: number
   readonly beaconApiUrl: string
-  /** Absent on devnet, which has no worker gateway — hosting there is refused. */
+  /** Absent where a network publishes no gateway; hosting there is refused. */
   readonly workerGatewayUrl?: string
-  /** Absent on devnet for the same reason. */
+  /** Absent for the same reason. Every profile carries one today. */
   readonly image?: string
   readonly workerRegistryAddress: string
   readonly aiConfigAddress?: string
@@ -130,7 +130,19 @@ export function inspectConfig(input: WorkerConfigInput): ConfigInspection {
     }
   }
 
-  const supportedModels = input.supportedModels ?? ['llama3-8b']
+  // Empty by default, and deliberately.
+  //
+  // A worker serves the models its operator chose from what the network
+  // whitelists, and that list is the network's answer: mainnet publishes one
+  // model, devnet ten, and governance changes both without telling this build.
+  // Defaulting to a name compiled in here was a guess that happened to be right
+  // on one network — it declared a model the operator had never chosen, and on
+  // any other network it declared one that may not be whitelisted at all.
+  //
+  // Nothing is broken by the empty case: `SUPPORTED_MODELS` goes out empty, the
+  // preflight check says which models the network offers and that none are
+  // chosen, and the panel asks before there is anything to run.
+  const supportedModels = input.supportedModels ?? []
   for (const model of supportedModels) {
     if (model.includes(':')) {
       // The worker hashes this string and matches jobs on the hash, so a tag

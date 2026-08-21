@@ -1,246 +1,269 @@
-        <!-- Earn ------------------------------------------------------------->
-        <!-- A stepped checklist rather than a console of loose controls. Each
-             step says where you are and what one press does next: host, key,
-             stake, register, run. Running a worker needs Docker, a GPU, a model
-             runtime and a real stake — this page guides those requirements, it
-             does not replace them. -->
-        <div class="panel" id="panel-worker" hidden>
-          <div class="console worker">
-            <header class="page-head">
-              <div class="page-head-main">
-                <h1 class="page-title">Earn</h1>
-                <p class="page-sub">
-                  Answer other people's questions with this machine, and be paid for it.
-                </p>
-              </div>
-              <div class="page-actions">
-                <button class="button button-sm" type="button" id="worker-refresh">
-                  <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
-                  Refresh
+<!-- For Workers ------------------------------------------------------->
+<!--
+  A wizard, not a console.
+
+  This page was six cards stacked in a scrolling column beside a second column
+  of container internals, and it read as a diagnostic report somebody had been
+  handed rather than a thing to do. The shape here is the one onboarding flows
+  converge on for good reasons — a named route across the top, exactly one step
+  in front of you, one primary control, and every diagnostic behind a disclosure
+  for the day something is wrong.
+
+  What is on screen at any moment is one question. That is the whole design.
+-->
+<div class="panel" id="panel-worker" hidden>
+  <div class="console worker">
+    <header class="page-head">
+      <div class="page-head-main">
+        <h1 class="page-title">For Workers</h1>
+        <p class="page-sub">Answer questions on this machine's GPU, and get paid per answer.</p>
+      </div>
+      <div class="page-actions">
+        <button class="button button-sm" type="button" id="worker-refresh">
+          <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+          Refresh
+        </button>
+      </div>
+    </header>
+
+    <!-- Said once, up front: a network with no worker image or gateway has
+         nothing to set up. worker.js replaces the sentence with whichever one
+         the worker gives for the network in question. -->
+    <div class="alert" data-tone="info" id="worker-devnet" hidden>
+      <svg class="icon" aria-hidden="true"><use href="#i-info" /></svg>
+      <div class="alert-body">
+        <strong class="alert-title">No worker hosting on this network</strong>
+        <p>
+          Worker hosting isn't available here. Asking models, the wallet and conversations all work
+          &mdash; switch the network in Settings to run a worker.
+        </p>
+      </div>
+    </div>
+
+    <div class="wizard" id="worker-body">
+      <!-- The route, named. Six numbered pips said how far along you were and
+           never what any of them was, and a person cannot plan against numbers. -->
+      <nav class="wizard-rail" id="worker-rail" aria-label="Setup progress"></nav>
+
+      <div class="wizard-stage">
+        <!-- What the stage holds while the host is being probed.
+
+             Docker, Ollama, a GPU, a disk and a whitelist read off the chain
+             take a few seconds between them, and for those seconds the stage
+             held nothing at all: a route across the top, one line saying
+             "Checking the host…", and two hairlines with a page of empty
+             underneath. An empty step reads as a step with nothing in it. This
+             is the shape of the step that is coming, so the page has a size
+             before it has an answer. -->
+        <section class="wizard-step wizard-waiting" id="worker-waiting" hidden aria-hidden="true">
+          <span class="skeleton" data-skeleton="kicker"></span>
+          <span class="skeleton" data-skeleton="title"></span>
+          <span class="skeleton" data-skeleton="lede"></span>
+          <div class="wizard-waiting-rows">
+            <span class="skeleton skeleton-text"></span>
+            <span class="skeleton skeleton-text"></span>
+            <span class="skeleton skeleton-text"></span>
+          </div>
+        </section>
+        <!-- 1 &middot; Host -->
+        <section class="wizard-step" data-step="1" id="worker-step-host" hidden>
+          <p class="wizard-kicker">Step 1 of 6</p>
+          <h2 class="wizard-title" id="worker-step-host-title">Check this machine</h2>
+          <p class="wizard-lede" id="worker-host-lede">
+            Answering questions needs Docker, a model runtime and a GPU.
+          </p>
+          <div class="wizard-body">
+            <div id="worker-checks"></div>
+            <div class="worker-step-alert" id="worker-host-alert" hidden></div>
+          </div>
+          <p class="wizard-stamp" id="worker-checked"></p>
+        </section>
+
+        <!-- 2 &middot; Models -->
+        <section class="wizard-step" data-step="2" id="worker-step-models" hidden>
+          <p class="wizard-kicker">Step 2 of 6</p>
+          <h2 class="wizard-title" id="worker-step-models-title">Choose what to answer</h2>
+          <p class="wizard-lede">Bigger models pay more per job and need more memory.</p>
+          <div class="wizard-body">
+            <div id="worker-models-list"></div>
+            <button class="button button-lg" type="button" id="worker-models-fetch" hidden>
+              <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
+              Download what is missing
+            </button>
+            <div class="worker-step-alert" id="worker-models-alert" hidden></div>
+          </div>
+        </section>
+
+        <!-- 3 &middot; Key -->
+        <section class="wizard-step" data-step="3" id="worker-step-key" hidden>
+          <p class="wizard-kicker">Step 3 of 6</p>
+          <h2 class="wizard-title" id="worker-step-key-title">Make a key to be paid to</h2>
+          <p class="wizard-lede">The worker earns to its own key, separate from your wallet.</p>
+          <div class="wizard-body">
+            <!-- A key exists: which one, and nothing else to do. -->
+            <div id="worker-key-present" hidden>
+              <p class="worker-address">
+                <span class="worker-address-text" id="worker-key-address"></span>
+                <button class="button button-sm" type="button" id="worker-key-copy">
+                  <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
+                  Copy
                 </button>
-              </div>
-            </header>
-
-            <!-- The answer, above the evidence: which step you are on and what
-                 one press does next. -->
-            <div class="verdict" id="worker-verdict" role="status">
-              <span class="verdict-headline" id="worker-summary">Checking the host</span>
-              <span class="verdict-detail" id="worker-verdict-detail"></span>
+              </p>
             </div>
 
-            <!-- Said once, up front, rather than as five steps that each fail
-                 in their own way: devnet has no worker gateway yet, so there
-                 is nothing to set up. The worker refuses the actions too; this
-                 is the page not asking. worker.js swaps this in for the
-                 verdict and the steps. -->
-            <div class="alert" data-tone="info" id="worker-devnet" hidden>
-              <svg class="icon" aria-hidden="true"><use href="#i-info" /></svg>
-              <div class="alert-body">
-                <strong class="alert-title">No worker hosting on devnet</strong>
-                <p>
-                  Worker hosting isn't available on devnet yet. Asking models, the wallet and
-                  conversations all work here — switch the network in Settings to run a worker.
-                </p>
-              </div>
+            <!-- No key yet. The key and password travel in the IPC body to the
+                 worker process, which writes the keystore file itself: nothing
+                 reaches a command line, an environment variable or a log. -->
+            <div id="worker-key-absent" hidden>
+              <form class="form worker-key-form" id="worker-create-form">
+                <div class="field">
+                  <label class="field-label" for="worker-create-password">
+                    Choose a password for the key
+                  </label>
+                  <input
+                    class="input"
+                    id="worker-create-password"
+                    type="password"
+                    autocomplete="new-password"
+                    placeholder="At least 8 characters"
+                  />
+                </div>
+                <button class="button button-primary button-lg" type="submit" id="worker-create-submit">
+                  Create the key
+                </button>
+              </form>
+
+              <!-- The other way in, for somebody who already has a key. Folded
+                   away because it is much the rarer of the two, and a
+                   private-key field is an alarming thing to meet first. -->
+              <details class="wizard-aside">
+                <summary>I already have a key</summary>
+                <form class="form worker-key-form" id="worker-import-form">
+                  <div class="field">
+                    <label class="field-label" for="worker-import-key">Private key</label>
+                    <input
+                      class="input"
+                      id="worker-import-key"
+                      type="password"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="64 hex characters"
+                    />
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="worker-import-password">
+                      Password to seal it
+                    </label>
+                    <input
+                      class="input"
+                      id="worker-import-password"
+                      type="password"
+                      autocomplete="new-password"
+                      placeholder="At least 8 characters"
+                    />
+                  </div>
+                  <button class="button" type="submit" id="worker-import-submit">Import it</button>
+                </form>
+              </details>
             </div>
 
-            <div class="console-body console-body-split" id="worker-body">
-              <div class="worker-column worker-steps">
-                <section class="kit-card" aria-labelledby="worker-step-host-title">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title" id="worker-step-host-title">
-                      <svg class="icon" aria-hidden="true"><use href="#i-cpu" /></svg>
-                      1 · Host ready
-                    </h2>
-                    <span class="worker-head-side">
-                      <span class="chip" id="worker-host-state" hidden></span>
-                      <span class="worker-stamp" id="worker-checked"></span>
-                    </span>
-                  </header>
-                  <div class="worker-step-body">
-                    <div id="worker-checks"></div>
-                    <div class="worker-step-alert" id="worker-host-alert" hidden></div>
-                  </div>
-                </section>
-
-                <section class="kit-card" aria-labelledby="worker-step-key-title">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title" id="worker-step-key-title">
-                      <svg class="icon" aria-hidden="true"><use href="#i-key" /></svg>
-                      2 · Worker key
-                    </h2>
-                    <span class="chip" id="worker-key-state" hidden></span>
-                  </header>
-                  <div class="worker-step-body">
-                    <!-- A key exists: which one, and nothing else to do. -->
-                    <div id="worker-key-present" hidden>
-                      <dl class="facts">
-                        <dt>Address</dt>
-                        <dd class="worker-address">
-                          <span class="worker-address-text" id="worker-key-address"></span>
-                          <button class="button button-sm" type="button" id="worker-key-copy">
-                            <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
-                            Copy
-                          </button>
-                        </dd>
-                      </dl>
-                      <p class="worker-hint">
-                        This is the key the worker registers and earns with — separate from this
-                        app's wallet. Its keystore file lives in the worker's data directory,
-                        sealed with the password saved in the worker settings.
-                      </p>
-                    </div>
-
-                    <!-- No key yet: both ways to get one. The key and password
-                         travel in the IPC body to the worker process, which
-                         writes the keystore file itself — nothing reaches a
-                         command line, an environment variable or a log. -->
-                    <div id="worker-key-absent" hidden>
-                      <p class="worker-hint">
-                        The worker registers and gets paid with its own key, separate from this
-                        app's wallet. Import one you already have, or create a new one here.
-                      </p>
-                      <form class="form worker-key-form" id="worker-import-form">
-                        <div class="field">
-                          <label class="field-label" for="worker-import-key">Private key to import</label>
-                          <input
-                            class="input"
-                            id="worker-import-key"
-                            type="password"
-                            autocomplete="off"
-                            spellcheck="false"
-                            placeholder="64 hex characters"
-                          />
-                        </div>
-                        <div class="field">
-                          <label class="field-label" for="worker-import-password">Keystore password</label>
-                          <input
-                            class="input"
-                            id="worker-import-password"
-                            type="password"
-                            autocomplete="new-password"
-                            placeholder="At least 8 characters"
-                          />
-                        </div>
-                        <button class="button" type="submit" id="worker-import-submit">
-                          Import key
-                        </button>
-                      </form>
-                      <form class="form worker-key-form" id="worker-create-form">
-                        <div class="field">
-                          <label class="field-label" for="worker-create-password">
-                            Or create a new key — keystore password
-                          </label>
-                          <input
-                            class="input"
-                            id="worker-create-password"
-                            type="password"
-                            autocomplete="new-password"
-                            placeholder="At least 8 characters"
-                          />
-                        </div>
-                        <button class="button" type="submit" id="worker-create-submit">
-                          Create key
-                        </button>
-                      </form>
-                    </div>
-
-                    <!-- Shown once, right after creating a key: the only backup
-                         there is. -->
-                    <div class="worker-created" id="worker-created" hidden>
-                      <p>
-                        <strong>Write this recovery phrase down and keep it somewhere safe.</strong>
-                        It is shown once and never stored outside the sealed keystore — without it
-                        and the password, the key and anything it earns are gone.
-                      </p>
-                      <p class="worker-phrase" id="worker-created-phrase"></p>
-                      <button class="button button-sm" type="button" id="worker-created-copy">
-                        <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
-                        Copy phrase
-                      </button>
-                    </div>
-
-                    <div class="worker-step-alert" id="worker-key-alert" hidden></div>
-                  </div>
-                </section>
-
-                <section class="kit-card" aria-labelledby="worker-step-stake-title">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title" id="worker-step-stake-title">
-                      <svg class="icon" aria-hidden="true"><use href="#i-wallet" /></svg>
-                      3 · Stake
-                    </h2>
-                    <span class="chip" id="worker-stake-state" hidden></span>
-                  </header>
-                  <div class="worker-step-body" id="worker-stake-body"></div>
-                </section>
-
-                <section class="kit-card" aria-labelledby="worker-step-register-title">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title" id="worker-step-register-title">
-                      <svg class="icon" aria-hidden="true"><use href="#i-shield" /></svg>
-                      4 · Register
-                    </h2>
-                    <span class="chip" id="worker-register-state" hidden></span>
-                  </header>
-                  <div class="worker-step-body">
-                    <p class="worker-hint" id="worker-register-hint">
-                      Registering is one on-chain transaction that posts the stake from the worker
-                      key.
-                    </p>
-                    <button class="button button-primary" type="button" id="worker-register">
-                      <svg class="icon" aria-hidden="true"><use href="#i-shield" /></svg>
-                      Register
-                    </button>
-                    <div class="worker-step-alert" id="worker-register-alert" hidden></div>
-                  </div>
-                </section>
-              </div>
-
-              <div class="worker-column">
-                <section class="kit-card" aria-labelledby="worker-step-run-title">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title" id="worker-step-run-title">
-                      <svg class="icon" aria-hidden="true"><use href="#i-container" /></svg>
-                      5 · Run
-                    </h2>
-                    <span class="worker-head-side">
-                      <span class="chip" id="worker-state" hidden></span>
-                      <span class="worker-step-actions">
-                        <button class="button button-sm" type="button" id="worker-pull">
-                          <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
-                          Pull image
-                        </button>
-                        <button class="button button-sm" type="button" id="worker-start">
-                          <svg class="icon" aria-hidden="true"><use href="#i-play" /></svg>
-                          Start
-                        </button>
-                        <button class="button button-sm" type="button" id="worker-stop">
-                          <svg class="icon" aria-hidden="true"><use href="#i-stop" /></svg>
-                          Stop
-                        </button>
-                      </span>
-                    </span>
-                  </header>
-                  <div class="worker-card-body" id="worker-container"></div>
-                  <div class="worker-step-alert worker-step-alert-flush" id="worker-run-alert" hidden></div>
-                </section>
-
-                <!-- Where the scrolling belongs. A log that grows by a line must not move
-                     the heading that says what you are looking at. -->
-                <section class="kit-card kit-card-flush worker-fill">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title">
-                      <svg class="icon" aria-hidden="true"><use href="#i-terminal" /></svg>
-                      Recent output
-                    </h2>
-                    <span class="chip" id="worker-busy" hidden></span>
-                  </header>
-                  <div class="kit-card-scroll worker-log" id="worker-log">
-                    <pre class="worker-log-text" id="worker-logs"></pre>
-                  </div>
-                </section>
-              </div>
+            <!-- Shown once, right after creating a key: the only backup there is. -->
+            <div class="worker-created" id="worker-created" hidden>
+              <p>
+                <strong>Write this down.</strong> Shown once. Without it, the key and everything it
+                earns are gone.
+              </p>
+              <p class="worker-phrase" id="worker-created-phrase"></p>
+              <button class="button button-sm" type="button" id="worker-created-copy">
+                <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
+                Copy phrase
+              </button>
             </div>
+
+            <div class="worker-step-alert" id="worker-key-alert" hidden></div>
+          </div>
+        </section>
+
+        <!-- 4 &middot; Stake -->
+        <section class="wizard-step" data-step="4" id="worker-step-stake" hidden>
+          <p class="wizard-kicker">Step 4 of 6</p>
+          <h2 class="wizard-title" id="worker-step-stake-title">Fund the key</h2>
+          <p class="wizard-lede" id="worker-stake-lede">
+            Registering locks a stake, and the key pays its own gas.
+          </p>
+          <div class="wizard-body" id="worker-stake-body"></div>
+        </section>
+
+        <!-- 5 &middot; Register -->
+        <section class="wizard-step" data-step="5" id="worker-step-register" hidden>
+          <p class="wizard-kicker">Step 5 of 6</p>
+          <h2 class="wizard-title" id="worker-step-register-title">Register the worker</h2>
+          <p class="wizard-lede" id="worker-register-hint">One transaction posts the stake.</p>
+          <div class="wizard-body">
+            <button class="button button-primary button-lg" type="button" id="worker-register">
+              Register
+            </button>
+            <div class="worker-step-alert" id="worker-register-alert" hidden></div>
+          </div>
+        </section>
+
+        <!-- 6 &middot; Run -->
+        <section class="wizard-step" data-step="6" id="worker-step-run" hidden>
+          <p class="wizard-kicker">Step 6 of 6</p>
+          <h2 class="wizard-title" id="worker-step-run-title">Start earning</h2>
+          <p class="wizard-lede" id="worker-run-hint">
+            It runs in the background and restarts with this machine.
+          </p>
+          <div class="wizard-body">
+            <div class="wizard-actions">
+              <button class="button button-lg" type="button" id="worker-pull">
+                <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
+                Get the image
+              </button>
+              <button class="button button-primary button-lg" type="button" id="worker-start">
+                <svg class="icon" aria-hidden="true"><use href="#i-play" /></svg>
+                Start
+              </button>
+              <button class="button button-lg" type="button" id="worker-stop">
+                <svg class="icon" aria-hidden="true"><use href="#i-stop" /></svg>
+                Stop
+              </button>
+            </div>
+            <span class="chip" id="worker-state" hidden></span>
+            <div class="worker-step-alert" id="worker-run-alert" hidden></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- The one control, under the step it belongs to. -->
+      <div class="wizard-foot">
+        <button class="button" type="button" id="worker-back" hidden>Back</button>
+        <span class="wizard-foot-note" id="worker-verdict-detail"></span>
+        <button
+          class="button button-primary button-lg"
+          type="button"
+          id="worker-action"
+          hidden
+        ></button>
+      </div>
+
+      <!-- Everything the console used to keep on screen permanently. It is
+           worth having and it is not worth half the window: somebody whose
+           machine is working never needs to see a container name or a log. -->
+      <details class="wizard-details">
+        <summary>
+          <svg class="icon" aria-hidden="true"><use href="#i-terminal" /></svg>
+          Details
+          <span class="chip" id="worker-busy" hidden></span>
+        </summary>
+        <div class="wizard-details-body">
+          <div id="worker-container"></div>
+          <div class="kit-card-scroll worker-log" id="worker-log">
+            <pre class="worker-log-text" id="worker-logs"></pre>
           </div>
         </div>
+      </details>
+
+    </div>
+  </div>
+</div>

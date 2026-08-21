@@ -180,7 +180,8 @@ export async function recordTransaction(ctx, kind, sent) {
 }
 
 export function walletHandlers(ctx) {
-  const { wallet, rpc, network, useWalletInRooms, forgetInference, guard, saveSettings } = ctx
+  const { wallet, rpc, network, useWalletInRooms, forgetInference, guard, saveSettings, vaultWrittenAt } =
+    ctx
   const ledger = transactionLedger(ctx)
 
   /**
@@ -306,7 +307,13 @@ export function walletHandlers(ctx) {
   }
 
   return {
-    'wallet.status': () => ({ ...wallet.status(), network: network() }),
+    'wallet.status': () => ({
+      ...wallet.status(),
+      network: network(),
+      // For the unlock screen, which otherwise cannot say which wallet it is
+      // asking about: the address lives inside the ciphertext.
+      vaultWrittenAt: vaultWrittenAt()
+    }),
 
     /**
      * The one reply that carries a secret. The phrase has to reach a screen so
@@ -488,14 +495,43 @@ export function walletHandlers(ctx) {
      * a local variable here for the length of a loop, which is a real exposure
      * and a small one next to `wallet.reveal`, which hands the same phrase all
      * the way to a window.
+     *
+     * `revealSecret` rather than `revealPhrase`, and the passphrase passed on.
+     * A phrase with a passphrase derives an entirely different tree, so
+     * deriving from the words alone listed addresses that belong to no wallet
+     * anybody has — every one of them wrong, none of them obviously so, and
+     * switching to one would have moved the user to an account they could not
+     * have funded. `addressAt` gets this right two functions above, which is
+     * exactly how the copy came to be missing it.
      */
     'wallet.accounts': (req) => {
       const count = Math.min(MAX_ACCOUNTS, Math.max(1, Number(req.count) || DEFAULT_ACCOUNTS))
-      const phrase = wallet.revealPhrase(String(req.password ?? ''))
+
+      /*
+       * No password while the wallet is open, because none is needed.
+       *
+       * These addresses come from the account-level public key, which the
+       * wallet keeps for as long as it is unlocked. Asking for a password to
+       * read them meant asking somebody to prove again, on a screen they had
+       * already unlocked, that they were allowed to see public information
+       * about their own wallet — and the refusal when they mistyped read as the
+       * application having lost track of the password they had just used.
+       *
+       * Switching to one of these still costs the password. That needs a
+       * private key, and an unlocked wallet holds only the active account's.
+       */
+      if (wallet.status().unlocked) return { accounts: wallet.addresses(count) }
+
+      // Locked, and something asked anyway: the vault is the only way, and it
+      // wants a password.
+      const secret = wallet.revealSecret(String(req.password ?? ''))
 
       const accounts = []
       for (let index = 0; index < count; index++) {
-        accounts.push({ index, address: fromPrivateKey(derivePrivateKey(phrase, index)).address })
+        accounts.push({
+          index,
+          address: fromPrivateKey(derivePrivateKey(secret.phrase, index, secret.passphrase)).address
+        })
       }
 
       return { accounts }

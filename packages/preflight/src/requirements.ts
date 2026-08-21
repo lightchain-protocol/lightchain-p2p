@@ -14,7 +14,14 @@ export interface Requirements {
   readonly minVramBytes: number
   readonly minFreeDiskBytes: number
   readonly minRamBytes: number
-  /** Model names as they appear in SUPPORTED_MODELS. */
+  /**
+   * Model names as they appear in SUPPORTED_MODELS.
+   *
+   * Supplied by the caller from the worker's own configuration, which in turn
+   * comes from what the network whitelists. Empty is a meaningful value — a
+   * worker that has chosen no models — and is reported as such rather than
+   * passing quietly.
+   */
   readonly requiredModels: readonly string[]
   /** Host port Ollama listens on. */
   readonly ollamaPort: number
@@ -24,7 +31,10 @@ export const DEFAULT_REQUIREMENTS: Requirements = {
   minVramBytes: 8 * GIB,
   minFreeDiskBytes: 50 * GIB,
   minRamBytes: 16 * GIB,
-  requiredModels: ['llama3-8b'],
+  // No model is named here. Which models exist is the network's answer, and a
+  // name compiled into a default is one that goes stale the first time
+  // governance changes the whitelist.
+  requiredModels: [],
   ollamaPort: 11434
 }
 

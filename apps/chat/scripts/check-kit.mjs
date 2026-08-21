@@ -73,4 +73,48 @@ if (clashes.length > 0) {
   process.exit(1)
 }
 
+/**
+ * Controls that are drawn once for the whole application.
+ *
+ * `classesIn` only sees class selectors, so a component addressed by element
+ * and attribute is invisible to it. The checkbox was drawn three times before
+ * anybody noticed — once shared, once by the bridge and once by settings — and
+ * two of those set `appearance: none` and drew a tick, so a single box rendered
+ * two ticks of different shapes inside a border of a third size.
+ *
+ * A surface may position one of these. It may not restyle one: that is how a
+ * second implementation starts.
+ */
+const SOLE = ["input[type='checkbox']"]
+const restyled = []
+
+for (const entry of fs.readdirSync(styles)) {
+  if (!entry.endsWith('.css') || entry === 'kit.css') continue
+  const source = fs.readFileSync(path.join(styles, entry), 'utf8')
+
+  // Every `selector { declarations }` pair. Nested at-rules still yield their
+  // inner rules, which is what matters here.
+  for (const [, selector, body] of source.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const head = selector.trim()
+    if (head.startsWith('@')) continue
+
+    for (const control of SOLE) {
+      if (!head.includes(control)) continue
+
+      // Placing one is fine. Redrawing one is not.
+      const draws = /(^|[\s;])(appearance|width|height|border|background|border-radius)\s*:/.test(
+        body
+      )
+      if (draws) restyled.push(`${entry}: ${head} redraws ${control}`)
+    }
+  }
+}
+
+if (restyled.length > 0) {
+  console.error('\nA surface redraws a control the kit already draws:\n')
+  for (const line of restyled) console.error(`  ${line}`)
+  console.error('\nPosition it if you must; draw it once, in app.css.')
+  process.exitCode = 1
+}
+
 console.log(`no surface redeclares a kit component (${kit.size} shared classes)`)

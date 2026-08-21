@@ -15,6 +15,25 @@ import { DEFAULT_REQUIREMENTS, formatBytes, type Requirements } from './requirem
 
 export type CheckStatus = 'pass' | 'warn' | 'fail'
 
+/**
+ * What would fix a check, where fixing it is something an application can
+ * offer to do rather than describe.
+ *
+ * Named here rather than inferred by a caller reading `remedy`, because the
+ * distinction that matters most — Docker absent against Docker not running,
+ * Ollama absent against Ollama not running — is invisible in a sentence and
+ * costly to get wrong: an interface that offers "Start Docker" to somebody who
+ * has never installed it sends them to press a button that cannot work. The
+ * judgement is made once, here, where it is tested.
+ */
+export type CheckAction =
+  | 'install-docker'
+  | 'start-docker'
+  | 'install-ollama'
+  | 'start-ollama'
+  | 'fetch-model'
+  | 'choose-models'
+
 export interface CheckResult {
   readonly id: string
   readonly title: string
@@ -23,6 +42,12 @@ export interface CheckResult {
   readonly detail: string
   /** What to do about it. Present whenever the status is not a pass. */
   readonly remedy?: string
+  /**
+   * The offer that goes with the remedy, where there is one. Absent means the
+   * remedy is the whole of what we can say — a GPU cannot be installed by
+   * pressing a button.
+   */
+  readonly action?: CheckAction
 }
 
 /** Raw observations of the host. Every field is optional: a probe may not have run. */
@@ -67,6 +92,15 @@ export interface OllamaProbe {
   readonly reachable: boolean
   /** Names exactly as `/api/tags` reports them, e.g. `llama3-8b:latest`. */
   readonly models?: readonly string[]
+  /**
+   * Whether the `ollama` command exists, which is not the same question.
+   *
+   * An unreachable port means one of two very different things — nothing is
+   * installed, or it is installed and not running — and they have different
+   * remedies. Undefined where the CLI was not probed.
+   */
+  readonly cliPresent?: boolean
+  readonly cliVersion?: string
 }
 
 export interface GpuProbe {
@@ -85,8 +119,16 @@ function warn(id: string, title: string, detail: string, remedy: string): CheckR
   return { id, title, status: 'warn', detail, remedy }
 }
 
-function fail(id: string, title: string, detail: string, remedy: string): CheckResult {
-  return { id, title, status: 'fail', detail, remedy }
+function fail(
+  id: string,
+  title: string,
+  detail: string,
+  remedy: string,
+  action?: CheckAction
+): CheckResult {
+  return action === undefined
+    ? { id, title, status: 'fail', detail, remedy }
+    : { id, title, status: 'fail', detail, remedy, action }
 }
 
 function checkDocker(probe: DockerProbe | undefined): CheckResult {
@@ -100,7 +142,8 @@ function checkDocker(probe: DockerProbe | undefined): CheckResult {
       id,
       title,
       'the docker command was not found',
-      'Install Docker Desktop 4.30 or newer, or Docker Engine 26 or newer on Linux, then reopen your terminal.'
+      'Install Docker Desktop 4.30 or newer, or Docker Engine 26 or newer on Linux, then reopen your terminal.',
+      'install-docker'
     )
   }
 
@@ -111,7 +154,8 @@ function checkDocker(probe: DockerProbe | undefined): CheckResult {
       id,
       title,
       'the docker command exists but the daemon did not respond',
-      'Start Docker Desktop, or run `sudo systemctl start docker` on Linux, and wait for it to report running.'
+      'Start Docker Desktop, or run `sudo systemctl start docker` on Linux, and wait for it to report running.',
+      'start-docker'
     )
   }
 
@@ -129,18 +173,50 @@ function checkOllama(probe: OllamaProbe | undefined, req: Requirements): CheckRe
   if (!probe.reachable) {
     // Toolkit failure mode 14: surfaces much later as "connection refused" at
     // inference, by which point a job has already been accepted and lost.
+    //
+    // Split by whether the command exists, because "install it" and "start it"
+    // are different jobs and one remedy covering both sends half its readers
+    // to the wrong place.
     return [
-      fail(
-        id,
-        title,
-        `nothing answered on port ${req.ollamaPort}`,
-        'Start Ollama and confirm `curl http://127.0.0.1:11434/api/tags` returns JSON.'
-      )
+      probe.cliPresent === false
+        ? fail(
+            id,
+            title,
+            'Ollama is not installed',
+            'Install Ollama, the runtime that answers the inference jobs this worker is paid for. The Earn page can open the download for you.',
+            'install-ollama'
+          )
+        : fail(
+            id,
+            title,
+            probe.cliPresent === true
+              ? `Ollama is installed but nothing answered on port ${req.ollamaPort}`
+              : `nothing answered on port ${req.ollamaPort}`,
+            'Start Ollama — the Earn page has a button for it — and it will answer on port 11434.',
+            'start-ollama'
+          )
     ]
   }
 
   const results: CheckResult[] = [pass(id, title, `reachable on port ${req.ollamaPort}`)]
   const tags = probe.models ?? []
+
+  // A worker that has chosen no models is not a misconfigured worker so much as
+  // an unfinished one: it would start, connect, and be offered nothing, which
+  // looks exactly like a network with no demand. Which models it could choose
+  // from is the network's list, not ours, so this asks rather than assumes.
+  if (req.requiredModels.length === 0) {
+    results.push(
+      fail(
+        'models',
+        'Models',
+        'none chosen',
+        'Choose which of the models this network whitelists this machine will answer for. Bigger models pay more per job and need more VRAM.',
+        'choose-models'
+      )
+    )
+    return results
+  }
 
   for (const model of req.requiredModels) {
     const exact = tags.includes(model)
@@ -170,7 +246,8 @@ function checkOllama(probe: OllamaProbe | undefined, req: Requirements): CheckRe
         `model:${model}`,
         `Model ${model}`,
         `not present. Ollama reports: ${tags.length ? tags.join(', ') : 'no models at all'}`,
-        `Run \`ollama pull llama3:8b\` then \`ollama cp llama3:8b ${model}\`. The alias matters: the name must match SUPPORTED_MODELS or the worker cannot resolve queued jobs.`
+        `The Earn page can fetch it — several gigabytes, once. It pulls the upstream tag and then names a copy ${model}, and that second half is what matters: the name has to match SUPPORTED_MODELS or the worker cannot resolve queued jobs.`,
+        'fetch-model'
       )
     )
   }

@@ -26,6 +26,7 @@
     "@lcai-p2p/prices": "workspace:*",
     "@lcai-p2p/room": "workspace:*",
     "@lcai-p2p/ui": "workspace:*",
+    "@lcai-p2p/validator": "workspace:*",
     "@lcai-p2p/wallet": "workspace:*",
     "@lcai-p2p/worker": "workspace:*",
     "b4a": "^1.8.1",

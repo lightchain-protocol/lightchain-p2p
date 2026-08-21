@@ -1,11 +1,27 @@
 import path from 'bare-path'
 import fs from 'bare-fs'
-import { probeAll, runAsync } from '@lcai-p2p/host'
-import { runChecks, summarize } from '@lcai-p2p/preflight'
+import {
+  DOCKER_DOWNLOAD_URL,
+  OLLAMA_DOWNLOAD_URL,
+  aliasModel,
+  hasModel,
+  hostPlatform,
+  modelCandidates,
+  plainText,
+  probeAll,
+  probeDocker,
+  probeOllama,
+  pullModel,
+  runAsync,
+  startDocker,
+  startOllama
+} from '@lcai-p2p/host'
+import { DEFAULT_REQUIREMENTS, runChecks, summarize } from '@lcai-p2p/preflight'
 import {
   KEYSTORE_DIR,
   NETWORKS,
   containerKeystorePath,
+  generateEncryptionKey,
   inspectWorker,
   isHealthy,
   keystoreFileName,
@@ -34,8 +50,10 @@ import {
   resolveAddresses,
   toHex
 } from '@lcai-p2p/chain'
+import { Api } from '@lcai-p2p/inference'
 import { readableAmount } from '../guard.mjs'
 import { recordTransaction } from '../ledger.mjs'
+import { modelFee } from './ai.mjs'
 
 /**
  * Topic of the registry's `WorkerRegistered(address,bytes)` event.
@@ -60,11 +78,11 @@ const WORKER_REGISTERED_TOPIC = toHex(
 /**
  * Whether this network can host a worker at all.
  *
- * Devnet publishes no worker image and no gateway — those hostnames do not
- * resolve — so hosting there is a state of the network, not a configuration
- * problem the operator can fix. Checked on the resolved config rather than on
- * the network's name, so a profile that gains an image starts working here
- * without a code change, and one that loses it refuses.
+ * Hosting is a state of the network, not a configuration problem the operator
+ * can fix, so it is read off the resolved config — an image and a gateway —
+ * rather than off the network's name. That is what let devnet start hosting
+ * the moment its profile gained both, with no change on this side, and it is
+ * what makes a network that loses either refuse without one.
  */
 export function hostingAvailable(config) {
   return Boolean(config?.image && config?.workerGatewayUrl)
@@ -365,7 +383,7 @@ export function workerHandlers(ctx) {
     // amount is unknowable, and an unknown amount cannot be confirmed:
     // registering is refused rather than launched blind.
     if (probe.address === null) {
-      throw new Error(probe.problem ?? 'registering needs a worker key — step 2 of the panel')
+      throw new Error(probe.problem ?? 'registering needs a worker key — step 3 of the panel')
     }
     if (probe.registered) return null
     if (probe.problem !== null || probe.minimum === undefined) {
@@ -535,6 +553,147 @@ export function workerHandlers(ctx) {
    * they are file writes, handled below by `worker.importKey` and
    * `worker.createKey`.
    */
+  /**
+   * One host action at a time, whichever it is.
+   *
+   * A model pull and a `docker pull` are both minutes long and both write to
+   * the same log pane, so the guard that kept two Docker verbs apart has to
+   * cover the Ollama ones too — otherwise the pane interleaves two commands
+   * and the panel disables buttons for one of them.
+   */
+  async function withBusy(doing, fn) {
+    if (busyWith) throw new Error(`already ${busyWith}`)
+    busyWith = doing
+    send({ t: 'worker.busy', doing })
+
+    try {
+      return await fn()
+    } finally {
+      busyWith = null
+      send({ t: 'worker.busy', doing: null })
+    }
+  }
+
+  /**
+   * Runs a docker command, streaming its output as it arrives.
+   *
+   * No timeout: a pull is minutes on a cold host, and killing it halfway
+   * leaves a partial image that fails in a less obvious way.
+   */
+  async function dockerRun(command) {
+    let streamed = false
+    const res = await runAsync('docker', command.argv, {
+      timeout: 0,
+      onOutput: (chunk) => {
+        streamed = true
+        send({ t: 'worker.output', text: chunk })
+      }
+    })
+
+    if (!res.ok) {
+      // Docker's own words already reached the log as they were written, so
+      // repeating them here prints the same failure twice. When nothing was
+      // streamed they are all there is.
+      throw new Error(
+        streamed
+          ? `docker exited ${res.status}`
+          : res.stderr.trim() || res.stdout.trim() || `docker exited ${res.status}`
+      )
+    }
+
+    return res
+  }
+
+  /**
+   * The same for a plain host command, and the command is echoed first.
+   *
+   * Somebody watching a four-gigabyte model download deserves to know which of
+   * the two commands they are watching. The output is put through `plainText`
+   * because Ollama draws its progress with carriage returns and ANSI escapes,
+   * and the pane is an element's textContent rather than a terminal.
+   */
+  async function hostRun(command) {
+    send({ t: 'worker.output', text: `\n$ ${command.display}\n` })
+
+    let streamed = false
+    const res = await runAsync(command.file, [...command.args], {
+      timeout: 0,
+      onOutput: (chunk) => {
+        streamed = true
+        send({ t: 'worker.output', text: plainText(chunk) })
+      }
+    })
+
+    if (!res.ok) {
+      throw new Error(
+        streamed
+          ? `${command.file} exited ${res.status}`
+          : plainText(res.stderr.trim() || res.stdout.trim()) ||
+              `${command.file} exited ${res.status}`
+      )
+    }
+
+    return res
+  }
+
+  /**
+   * The models this network whitelists, asked of the network.
+   *
+   * Unauthenticated on purpose: `/api/models` needs no token, and the Earn page
+   * has to be able to show what a machine could serve before there is a wallet
+   * unlocked or a key imported. Signing in to read a public list would put a
+   * password prompt in front of the first question anybody asks.
+   */
+  async function offeredModels(config) {
+    const api = new Api({
+      url: NETWORKS[config.network].consumerApiUrl,
+      chainId: BigInt(config.chainId)
+    })
+    return api.models()
+  }
+
+  /**
+   * Fetches one model under whichever name the registry actually publishes it.
+   *
+   * The network's name and the registry's reference are the same thing spelled
+   * two ways, and which way is a convention rather than a rule — so the
+   * candidates are tried in order and the first that pulls wins. A failure is
+   * only a failure once every candidate has been tried, and it says which were.
+   *
+   * The copy afterwards is the half that matters. The worker resolves jobs by
+   * `keccak256` of the network's exact name, so a model left under its registry
+   * reference is one the worker cannot find: it starts, takes work, and
+   * resolves none of it, with nothing in any log that says why.
+   */
+  async function fetchOne(name) {
+    const candidates = modelCandidates(name)
+    let last = null
+
+    for (const [index, reference] of candidates.entries()) {
+      try {
+        await hostRun(pullModel(reference))
+      } catch (err) {
+        last = err
+        const more = index < candidates.length - 1
+        send({
+          t: 'worker.output',
+          text: `\nNothing is published as ${reference}${more ? ' — trying the next name' : ''}.\n`
+        })
+        continue
+      }
+
+      const alias = aliasModel(reference, name)
+      if (alias !== null) await hostRun(alias)
+      return reference
+    }
+
+    throw new Error(
+      `${name} could not be fetched: nothing is published under ${candidates.join(' or ')}. ${
+        last?.message ?? ''
+      }`.trim()
+    )
+  }
+
   async function docker(req) {
     const { config, problem } = workerConfig()
     if (!config) throw new Error(problem ?? 'the worker is not configured')
@@ -548,16 +707,14 @@ export function workerHandlers(ctx) {
       throw new Error(hostingUnavailable(config.network))
     }
 
-    if (busyWith) throw new Error(`already ${busyWith}`)
-    busyWith = {
+    const doing = {
       'worker.pull': 'pulling',
       'worker.register': 'registering',
       'worker.start': 'starting',
       'worker.stop': 'stopping'
     }[req.t]
-    send({ t: 'worker.busy', doing: busyWith })
 
-    try {
+    return withBusy(doing, async () => {
       // Registering is not a key ceremony. It opens a keystore already
       // on disk and sends a transaction, which is the same shape as
       // starting — unlike import-key, which reads a private key from
@@ -577,6 +734,24 @@ export function workerHandlers(ctx) {
       // reach it. Null when the key is already registered and nothing stakes.
       const stake = req.t === 'worker.register' ? await confirmStake(resolved) : null
 
+      // Step 4 of the published guide, folded into this one rather than left
+      // standing as a phase of its own. Registering advertises an ECDH public
+      // key on chain, the container generates that key pair, and the guide has
+      // an operator run `keygen` by hand between importing the key and
+      // registering. Nothing in this application ever did — only the terminal
+      // supervisor exposed it — so a worker set up entirely through the panel
+      // registered without one.
+      //
+      // Gated on `stake`, which is null exactly when the key is already
+      // registered. That is not a nicety: the advertised public key is what
+      // consumers encrypt to, and generating a fresh pair under a live
+      // registration would leave the worker unable to read its own jobs. The
+      // one moment this is safe is the one moment it is needed.
+      if (stake !== null) {
+        send({ t: 'worker.output', text: '\nGenerating the encryption key…\n' })
+        await dockerRun(generateEncryptionKey(resolved))
+      }
+
       const command =
         req.t === 'worker.pull'
           ? pullImage(resolved)
@@ -586,27 +761,7 @@ export function workerHandlers(ctx) {
               ? registerWorker(resolved, keystoreFor(resolved))
               : runWorker(resolved, keystoreFor(resolved))
 
-      let streamed = false
-      const res = await runAsync('docker', command.argv, {
-        // No limit. A pull is minutes on a cold host, and killing it halfway
-        // leaves a partial image that fails in a less obvious way.
-        timeout: 0,
-        onOutput: (chunk) => {
-          streamed = true
-          send({ t: 'worker.output', text: chunk })
-        }
-      })
-
-      if (!res.ok) {
-        // Docker's own words already reached the log as they were written, so
-        // repeating them here prints the same failure twice. When nothing was
-        // streamed they are all there is.
-        throw new Error(
-          streamed
-            ? `docker exited ${res.status}`
-            : res.stderr.trim() || res.stdout.trim() || `docker exited ${res.status}`
-        )
-      }
+      const res = await dockerRun(command)
 
       // The stake left the worker key inside the container, outside every path
       // that would normally write it down. Record it now that the transaction
@@ -616,10 +771,7 @@ export function workerHandlers(ctx) {
       }
 
       return { ok: true }
-    } finally {
-      busyWith = null
-      send({ t: 'worker.busy', doing: null })
-    }
+    })
   }
 
   return {
@@ -634,7 +786,17 @@ export function workerHandlers(ctx) {
         config ? stakeProbe(rpc(), config) : Promise.resolve(undefined)
       ])
 
-      const results = runChecks({ ...probes, stake })
+      // Against the models this worker is configured to serve, rather than
+      // against the package default. The two are the same out of the box; they
+      // stop being the same the moment somebody adds llama3-70b, and a
+      // checklist that passes while the configured model is absent is worse
+      // than no checklist.
+      const results = runChecks(
+        { ...probes, stake },
+        config
+          ? { ...DEFAULT_REQUIREMENTS, requiredModels: config.supportedModels }
+          : DEFAULT_REQUIREMENTS
+      )
 
       // Prove the configured password actually opens the keystore, so a wrong
       // one is reported here rather than by a container exiting at start.
@@ -655,7 +817,20 @@ export function workerHandlers(ctx) {
         results,
         totals: summarize(results),
         network: config?.network ?? null,
-        password: passwordCheck
+        password: passwordCheck,
+        // What the panel needs in order to offer an action rather than an
+        // instruction: where each runtime is downloaded, and whether this
+        // platform gives us a way to start one that is already installed.
+        // Which models exist is not here — that is `worker.models`, and asking
+        // the network once is better than answering it in two places.
+        ollama: {
+          downloadUrl: OLLAMA_DOWNLOAD_URL,
+          canStart: startOllama(hostPlatform()) !== null
+        },
+        docker: {
+          downloadUrl: DOCKER_DOWNLOAD_URL,
+          canStart: startDocker(hostPlatform()) !== null
+        }
       }
     },
 
@@ -706,6 +881,162 @@ export function workerHandlers(ctx) {
     'worker.register': docker,
     'worker.start': docker,
     'worker.stop': docker,
+
+    /**
+     * Which models this network whitelists, which of them this machine already
+     * holds, and which this worker has chosen to serve.
+     *
+     * The list is the network's and is read live. Mainnet whitelists one model
+     * and devnet ten, governance changes both, and a list compiled into this
+     * application would be wrong the first time it did — so nothing here names
+     * a model, and the panel renders whatever comes back.
+     *
+     * `models` is null rather than empty when the network could not be asked.
+     * An empty whitelist and an unreachable service are very different facts
+     * and must not render the same way: one is "there is nothing to run here",
+     * the other is "we do not know yet".
+     */
+    'worker.models': async () => {
+      const { config, problem } = workerConfig({ keystorePassword: 'unset' })
+      if (!config) return { configured: false, problem, network: null, models: null, chosen: [] }
+
+      const [offered, ollama, addresses] = await Promise.all([
+        offeredModels(config).catch(() => null),
+        probeOllama(),
+        // Fees are priced from the chain rather than from the service, so what
+        // is shown is what the contract will pay. A node that will not answer
+        // costs the prices, not the list.
+        resolveAddresses(rpc()).catch(() => null)
+      ])
+
+      const tags = ollama.models ?? []
+      const chosen = new Set(config.supportedModels)
+
+      const models =
+        offered === null
+          ? null
+          : await Promise.all(
+              offered.map(async (model) => ({
+                name: model.name,
+                id: model.id,
+                chosen: chosen.has(model.name),
+                // Against the network's name, never the reference it was pulled
+                // under — that difference is the whole failure this guards.
+                installed: hasModel(tags, model.name),
+                fee: addresses
+                  ? await modelFee(rpc(), addresses.aiConfig, model.id)
+                      .then((wei) => wei.toString())
+                      .catch(() => null)
+                  : null
+              }))
+            )
+
+      return {
+        configured: true,
+        network: config.network,
+        models,
+        // What the worker declares today, which can include a name the network
+        // has since dropped — worth showing rather than silently omitting.
+        chosen: [...config.supportedModels]
+      }
+    },
+
+    /**
+     * The models, fetched — the phase of the published guide that is pure
+     * terminal and has no business being.
+     *
+     * Takes the names to fetch, falling back to whatever the worker declares.
+     * Needs no key, no stake and no gateway: what models a machine holds is a
+     * fact about the machine, so this is not gated on hosting being available.
+     */
+    'worker.fetchModel': async (req) => {
+      const { config } = workerConfig({ keystorePassword: 'unset' })
+
+      const asked = Array.isArray(req.models)
+        ? req.models.filter((name) => typeof name === 'string' && name !== '')
+        : []
+      const models = asked.length > 0 ? asked : [...(config?.supportedModels ?? [])]
+
+      if (models.length === 0) {
+        throw new Error(
+          'no models to fetch — choose which of the ones this network whitelists this machine should answer for'
+        )
+      }
+
+      return withBusy('fetching models', async () => {
+        const fetched = []
+        for (const name of models) fetched.push({ name, reference: await fetchOne(name) })
+        return { ok: true, models: fetched }
+      })
+    },
+
+    /**
+     * Starting Docker, on the one platform where that is a thing we can do.
+     *
+     * Waits for the daemon rather than for the application, which is the whole
+     * difference the check draws: `open` returns as soon as Docker Desktop is
+     * launching, and its daemon takes a good deal longer to accept a
+     * connection. Answering earlier would report a host as ready that would
+     * refuse the very next command.
+     */
+    'worker.startDocker': async () => {
+      const command = startDocker(hostPlatform())
+      if (command === null) {
+        throw new Error(
+          'there is no start command we can run on this platform — start Docker the way you normally would, and this check will pass once its daemon answers'
+        )
+      }
+
+      return withBusy('starting Docker', async () => {
+        await hostRun(command)
+
+        for (let attempt = 0; attempt < 45; attempt++) {
+          const probe = await probeDocker()
+          if (probe?.daemonRunning) return { ok: true, running: true }
+          await new Promise((resolve) => setTimeout(resolve, 1_000))
+        }
+
+        // Not an error. Docker Desktop is slow to start on a cold machine, and
+        // a daemon still coming up is not a daemon that failed.
+        return { ok: true, running: false }
+      })
+    },
+
+    /**
+     * Starting the model runtime, where the platform gives us a handle on it.
+     *
+     * Deliberately not `ollama serve`: that command never exits, and a server
+     * owned by this process would die with the window — a worker that stops
+     * answering when somebody closes the app looks like a worker that is
+     * broken. Each platform's own launcher is used instead.
+     *
+     * Waits for the port before answering. `open` returns when the app has
+     * been launched, not when it is listening, and a panel that refreshed in
+     * between reported the runtime as still down — which reads as the button
+     * having done nothing.
+     */
+    'worker.startOllama': async () => {
+      const command = startOllama(hostPlatform())
+      if (command === null) {
+        throw new Error(
+          'there is no start command we can run on this platform — open Ollama the way you normally would and it will answer on port 11434'
+        )
+      }
+
+      return withBusy('starting Ollama', async () => {
+        await hostRun(command)
+
+        for (let attempt = 0; attempt < 20; attempt++) {
+          const probe = await probeOllama()
+          if (probe.reachable) return { ok: true, reachable: true }
+          await new Promise((resolve) => setTimeout(resolve, 1_000))
+        }
+
+        // Not an error: the launcher succeeded, and a runtime still starting
+        // twenty seconds later is a slow machine rather than a failure.
+        return { ok: true, reachable: false }
+      })
+    },
 
     /**
      * The stake requirement, as numbers rather than as a prose check.

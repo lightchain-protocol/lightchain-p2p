@@ -39,6 +39,16 @@ export function renderAccount(status) {
   // were signed in as.
   el.accountMark.replaceChildren(address ? avatar(address, 28) : '')
   el.accountName.textContent = address ? shortAddress(address) : 'No wallet'
+
+  /*
+   * The Account page's own header carries the same identity, from the same
+   * place. Two rows showing who you are signed in as have to be filled by one
+   * piece of code, or they will disagree the first time one of them is missed.
+   */
+  const pillMark = document.getElementById('wallet-account-mark')
+  const pillAddress = document.getElementById('wallet-account-address')
+  if (pillMark) pillMark.replaceChildren(address ? avatar(address, 32) : '')
+  if (pillAddress) pillAddress.textContent = address ? shortAddress(address) : 'No wallet'
   el.accountRole.textContent = address
     ? status.unlocked
       ? (status.network ?? 'locked')
@@ -51,7 +61,22 @@ export function renderAccount(status) {
  * on it hangs off here: creating, unlocking, locking and removing all arrive
  * through this function, and none of them has to remember what else to update.
  */
+/**
+ * The last status this module was given.
+ *
+ * Anything that needs to know which account is active — the switcher, for one —
+ * reads it here rather than asking the worker again, so the window cannot show
+ * one account in the row and mark a different one as in use.
+ */
+let latest = null
+
+export function lastWalletStatus() {
+  return latest
+}
+
 export function showWallet(status) {
+  latest = status
+
   el.walletNone.hidden = status.exists
   el.walletLocked.hidden = !status.exists || status.unlocked
   el.walletOpen.hidden = !status.unlocked
@@ -80,6 +105,44 @@ export function showWallet(status) {
   // decision rather than a fix.
   const known = typeof status.address === 'string' && status.address !== ''
   el.walletLockedAddress.closest('.wallet-gate-fact')?.toggleAttribute('hidden', !known)
+
+  /*
+   * Which wallet the unlock screen is asking about, as far as it can say.
+   *
+   * The address is inside the ciphertext, so a locked screen cannot name the
+   * wallet — but it can say when the file was last written, and that is the
+   * fact that settles the confusion this screen actually causes. A vault the
+   * operating system deleted and an onboarding flow replaced is
+   * indistinguishable from the original until the password fails, and then the
+   * application looks like it is refusing a password that is plainly correct.
+   * A date makes the substitution visible.
+   */
+  const age = document.getElementById('unlock-vault-age')
+  if (age) {
+    const written = status.vaultWrittenAt
+    age.hidden = !written
+    if (written) {
+      age.textContent = `This wallet's file was last written ${new Intl.DateTimeFormat(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      }).format(new Date(written))}.`
+    }
+  }
+
+  /*
+   * The top bar's two controls, only while there is something for them to do.
+   *
+   * Both are about a wallet that is open: the pill names the network everything
+   * on screen belongs to, and the lock closes it. On the unlock gate there is no
+   * network to name and nothing to lock — so the bar was drawing a padlock over
+   * an already-locked wallet, beside a pill reading "Set one up" as though that
+   * were a chain. Driven off the status rather than off the pill's own text,
+   * because "which words are not a network" is not a question with a stable
+   * answer: this application speaks to six of them.
+   */
+  for (const id of ['network-pill', 'titlebar-lock']) {
+    document.getElementById(id)?.toggleAttribute('hidden', !status.unlocked)
+  }
 
   // The sidebar says so too, because a locked wallet is a fact about the whole
   // application rather than about one panel. It used to be a notice on a page

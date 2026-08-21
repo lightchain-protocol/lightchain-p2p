@@ -17,13 +17,13 @@
               <svg class="asset-hero-mark" aria-hidden="true">
                 <use href="#c-generic" id="asset-mark" />
               </svg>
-              <h1 class="asset-hero-name" id="asset-title">Loading…</h1>
+              <h1 class="asset-hero-name" id="asset-title"><span class="skeleton" data-skeleton="title"></span></h1>
               <!-- The chain, under the name. Three of these pages are called
                    "Ether" and only this line tells them apart, which is the
                    same ambiguity the holdings rows carry a chain to avoid. -->
               <p class="asset-hero-chain" id="asset-chain"></p>
-              <p class="asset-hero-balance" id="asset-balance">Loading…</p>
-              <p class="asset-hero-worth" id="asset-worth">Loading…</p>
+              <p class="asset-hero-balance" id="asset-balance"><span class="skeleton" data-skeleton="figure"></span></p>
+              <p class="asset-hero-worth" id="asset-worth"><span class="skeleton" data-skeleton="word"></span></p>
 
               <div class="asset-actions">
                 <button class="asset-action" type="button" id="asset-receive">
@@ -203,17 +203,45 @@
 
             <!-- Unlocked -->
             <section class="console wallet" id="wallet-open" hidden>
-              <header class="page-head">
-                <div class="page-head-main">
-                  <h1 class="page-title">Account</h1>
-                  <p class="page-sub">What you hold, and what pays for answers.</p>
-                </div>
-                <div class="page-actions">
-                  <button class="button button-sm" type="button" id="wallet-lock">
-                    <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
-                    Lock
-                  </button>
-                </div>
+              <!-- The account, as the wallet heads its own portfolio: whose
+                   money this is on the left, and what acts on the page on the
+                   right, over a rule. A page called "Account" with a sentence
+                   under it spent the top of the screen restating the nav row
+                   that got you here; the address is the thing that is actually
+                   worth knowing before you read a balance. -->
+              <header class="account-bar">
+                <button class="account-pill" type="button" id="wallet-account-pill">
+                  <span class="account-pill-mark" id="wallet-account-mark" aria-hidden="true"></span>
+                  <span class="account-pill-text">
+                    <span class="account-pill-name">Account</span>
+                    <span class="account-pill-address" id="wallet-account-address">—</span>
+                  </span>
+                  <svg class="icon account-pill-chevron" aria-hidden="true">
+                    <use href="#i-chevron" />
+                  </svg>
+                </button>
+
+                <span class="account-bar-spacer"></span>
+
+                <!-- Still `wallet-lock`: `dom.js` resolves it by that id and
+                     `wallet.js` hangs the only lock handler there is on it. The
+                     title bar's lock presses this one rather than repeating
+                     what it does — which is exactly why this one is `hidden`.
+                     Drawn, it put a second identical padlock on screen a couple
+                     of hundred pixels directly below the first, on a row that
+                     was otherwise empty all the way across. A hidden button
+                     still answers `.click()`, so the title bar keeps working
+                     and there is one padlock in the window again. -->
+                <button
+                  class="icon-button"
+                  type="button"
+                  id="wallet-lock"
+                  title="Lock the wallet"
+                  aria-label="Lock the wallet"
+                  hidden
+                >
+                  <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+                </button>
               </header>
 
               <div class="console-body wallet-body">
@@ -226,38 +254,109 @@
                      accounting rather than about what somebody has. Two lines
                      on one card, because they are two pockets of the same
                      money and a person moves between them. -->
-                <section class="kit-card account-balances">
-                  <div class="account-balance-row">
-                    <div class="account-balance-named">
-                      <span class="account-balance-label">Wallet</span>
+                <!-- The account, as the wallet draws its home screen: what
+                     it is all worth, what that did today, what acts on it, and
+                     the price line underneath.
+
+                     The figure is the portfolio total across all six networks —
+                     `assets-total`, the same element that used to sit inside the
+                     disclosure at the foot of this page. That is the number
+                     somebody opens a wallet to see, and it was two clicks and a
+                     scroll away while a per-chain balance stood in for it. The
+                     LCAI balance keeps its place directly under the total,
+                     because a total in dollars without the holding it came from
+                     is a figure you cannot check. -->
+                <section class="pv-card">
+                  <div class="pv-top-row">
+                    <div class="pv-info">
+                      <span class="pv-label">Portfolio value</span>
                       <!-- Loading is a word, zero is a number. A dash reads as a
-                           load failure, and a balance of nothing is an answer. -->
-                      <span class="account-balance-value" id="account-native">Loading…</span>
+                           load failure, and a balance of nothing is an answer —
+                           so neither is used: a block the width of the figure
+                           holds the line until the figure arrives. -->
+                      <span class="pv-value" id="assets-total">
+                        <span class="skeleton" data-skeleton="figure"></span>
+                      </span>
+                      <span class="pv-sub">
+                        <span class="pv-native" id="account-native">
+                          <span class="skeleton" data-skeleton="amount"></span>
+                        </span>
+                        <span class="pv-change" id="portfolio-change"></span>
+                      </span>
                     </div>
-                    <div class="account-balance-actions">
-                      <button class="button button-sm" type="button" id="assets-receive-btn">
-                        <svg class="icon" aria-hidden="true"><use href="#i-receive" /></svg>
+                    <div class="pv-actions">
+                      <button class="button" type="button" id="assets-receive-btn">
+                        <span class="button-chip" aria-hidden="true">
+                          <svg class="icon"><use href="#i-receive" /></svg>
+                        </span>
                         Receive
                       </button>
-                      <button class="button button-sm" type="button" id="assets-swap-btn">
-                        <svg class="icon" aria-hidden="true"><use href="#i-swap" /></svg>
+                      <button class="button" type="button" id="assets-swap-btn">
+                        <span class="button-chip" aria-hidden="true">
+                          <svg class="icon"><use href="#i-swap" /></svg>
+                        </span>
                         Swap
                       </button>
-                      <button
-                        class="button button-sm button-primary"
-                        type="button"
-                        id="assets-send-btn"
-                      >
-                        <svg class="icon" aria-hidden="true"><use href="#i-send" /></svg>
+                      <button class="button button-primary" type="button" id="assets-send-btn">
+                        <span class="button-chip" aria-hidden="true">
+                          <svg class="icon"><use href="#i-send" /></svg>
+                        </span>
                         Send
                       </button>
                     </div>
                   </div>
 
+                  <!-- The chart, on the page rather than behind a disclosure.
+                       It is drawn from Chainlink's own round history, so the
+                       ranges below are real reads rather than a provider's
+                       series — which is why they are worth putting in front of
+                       somebody instead of one press away. -->
+                  <div class="pv-chart">
+                    <div class="pv-chart-head">
+                      <div class="pv-mini">
+                        <svg class="pv-mini-mark" aria-hidden="true"><use href="#i-logo" /></svg>
+                        <span class="pv-mini-name">LCAI</span>
+                        <span class="pv-mini-price" id="portfolio-price"></span>
+                      </div>
+                      <div class="asset-ranges" id="portfolio-ranges">
+                        <button class="asset-range" type="button" data-range="24h">1D</button>
+                        <button class="asset-range is-active" type="button" data-range="1w">
+                          1W
+                        </button>
+                        <button class="asset-range" type="button" data-range="1m">1M</button>
+                        <button class="asset-range" type="button" data-range="1y">1Y</button>
+                        <button class="asset-range" type="button" data-range="all">All</button>
+                      </div>
+                    </div>
+                    <div class="pv-chart-body asset-chart" id="portfolio-chart"></div>
+
+                    <!-- What the line is, and what it is not. It prices what is
+                         held now backwards; nothing here has ever recorded what
+                         was held last week, and implying otherwise would be
+                         inventing a history. -->
+                    <p class="wallet-note" id="portfolio-note"></p>
+
+                    <div class="alert" data-tone="warn" role="status" id="assets-partial" hidden>
+                      <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                      <div class="alert-body">
+                        <strong class="alert-title">This total is incomplete</strong>
+                        <span id="assets-partial-note"></span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- "AI credit" is what pays for answers. It was the second row
+                     of the balance card above, which made it read as half of
+                     the wallet's money; it is a separate pocket with its own
+                     two actions, so it is its own card. -->
+                <section class="kit-card account-credit">
                   <div class="account-balance-row">
                     <div class="account-balance-named">
                       <span class="account-balance-label">AI credit</span>
-                      <span class="account-balance-value" id="wallet-prepaid">Loading…</span>
+                      <span class="account-balance-value" id="wallet-prepaid">
+                        <span class="skeleton" data-skeleton="word"></span>
+                      </span>
                       <span class="account-balance-note" id="account-spent"></span>
                       <!-- What the delegate can currently reach, said beside the
                            balance it is authorised against rather than in
@@ -307,6 +406,36 @@
                   <button class="button button-sm button-primary" type="button" id="account-backup-btn">
                     Back it up
                   </button>
+                </section>
+
+                <!-- What is actually held, on the page rather than inside
+                     the disclosure at the foot of it. A table, because these
+                     are columns being compared down rather than rows read
+                     across: which of these is worth most, which moved today. A
+                     list of cards makes that comparison impossible. -->
+                <section class="kit-card kit-card-flush wallet-holdings">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">Holdings</h2>
+                    <button class="button button-sm" type="button" id="assets-refresh">
+                      <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                      Refresh
+                    </button>
+                  </header>
+                  <div class="kit-card-scroll">
+                    <div class="holdings-head" aria-hidden="true" hidden>
+                      <span>Asset</span>
+                      <span class="holdings-col-num">Balance</span>
+                      <span class="holdings-col-num">Price</span>
+                      <span class="holdings-col-num">24h</span>
+                      <span class="holdings-col-chart">7 days</span>
+                      <span class="holdings-col-num">Value</span>
+                    </div>
+                    <ul class="holdings" id="assets-list"></ul>
+
+                    <p class="wallet-note" id="assets-empty" hidden>
+                      Nothing held yet on any of the six networks. Use Receive to get an address.
+                    </p>
+                  </div>
                 </section>
 
                 <!-- Every deposit, withdrawal and payment was already being
@@ -388,10 +517,14 @@
                   </div>
                 </section>
 
-                <!-- Everything below is the chain showing through: six
-                     networks, a portfolio line and a holdings table. All of it
-                     real and none of it what somebody came to this page for, so
-                     it is one press away rather than the first thing in view.
+                <!-- What is left down here is the chain showing through: the
+                     same balance split six ways. The portfolio line and the
+                     holdings table used to be in this drawer too, which is why
+                     this page looked nothing like a wallet's home screen — the
+                     whole of what a wallet is for was one press away. They are
+                     above now. A per-network breakdown genuinely is secondary,
+                     so it stays.
+
                      `details` rather than a script: it is keyboard-operable, it
                      announces its own state, and it remembers nothing, which is
                      right for a section whose closed state is the
@@ -399,82 +532,16 @@
                 <details class="account-advanced" id="account-advanced" data-advanced>
                   <summary class="account-advanced-summary">
                     <svg class="icon" aria-hidden="true"><use href="#i-chevron" /></svg>
-                    Networks and holdings
+                    Balances by network
                   </summary>
 
                 <div class="wallet-grid">
-                  <section class="kit-card kit-card-flush wallet-portfolio">
-                    <header class="kit-card-head">
-                      <h2 class="kit-card-title">Portfolio</h2>
-                      <div class="asset-ranges" id="portfolio-ranges">
-                        <button class="asset-range" type="button" data-range="24h">24H</button>
-                        <button class="asset-range is-active" type="button" data-range="1w">
-                          1W
-                        </button>
-                        <button class="asset-range" type="button" data-range="1m">1M</button>
-                        <button class="asset-range" type="button" data-range="1y">1Y</button>
-                        <button class="asset-range" type="button" data-range="all">All</button>
-                      </div>
-                    </header>
-                    <div class="kit-card-scroll">
-                      <div class="holdings-total">
-                        <span class="holdings-total-value" id="assets-total">Loading…</span>
-                        <span class="holdings-total-label" id="portfolio-change"></span>
-                      </div>
-
-                      <div class="asset-chart" id="portfolio-chart"></div>
-
-                      <!-- What the line is, and what it is not. It prices what
-                           is held now backwards; nothing here has ever recorded
-                           what was held last week, and implying otherwise would
-                           be inventing a history. -->
-                      <p class="wallet-note" id="portfolio-note"></p>
-
-                      <div class="alert" data-tone="warn" role="status" id="assets-partial" hidden>
-                        <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
-                        <div class="alert-body">
-                          <strong class="alert-title">This total is incomplete</strong>
-                          <span id="assets-partial-note"></span>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-
                   <section class="kit-card kit-card-flush wallet-networks">
                     <header class="kit-card-head">
                       <h2 class="kit-card-title">Networks</h2>
                     </header>
                     <div class="kit-card-scroll">
                       <ul class="networks" id="assets-networks"></ul>
-                    </div>
-                  </section>
-
-                  <section class="kit-card kit-card-flush wallet-holdings">
-                    <header class="kit-card-head">
-                      <h2 class="kit-card-title">Holdings</h2>
-                      <button class="button button-sm" type="button" id="assets-refresh">
-                        <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
-                        Refresh
-                      </button>
-                    </header>
-                    <div class="kit-card-scroll">
-                      <!-- A table, because these are columns being compared
-                           down rather than rows read across: which of these is
-                           worth most, which moved today. A list of cards makes
-                           that comparison impossible. -->
-                      <div class="holdings-head" aria-hidden="true" hidden>
-                        <span>Asset</span>
-                        <span class="holdings-col-num">Balance</span>
-                        <span class="holdings-col-num">Price</span>
-                        <span class="holdings-col-num">24h</span>
-                        <span class="holdings-col-chart">7 days</span>
-                        <span class="holdings-col-num">Value</span>
-                      </div>
-                      <ul class="holdings" id="assets-list"></ul>
-
-                      <p class="wallet-note" id="assets-empty" hidden>
-                        Nothing held yet on any of the six networks. Use Receive to get an address.
-                      </p>
                     </div>
                   </section>
 

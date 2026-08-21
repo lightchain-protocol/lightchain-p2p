@@ -14,7 +14,8 @@
     partials/content-open.html      shared — opens section.content
     partials/panel-chat.html        chat, the room and its header
     partials/panel-models.html      models and inference
-    partials/panel-worker.html      worker
+    partials/panel-worker.html      workers — stake, a GPU, and inference jobs
+    partials/panel-validator.html   validators — the beacon chain
     partials/panel-wallet.html      wallet
     partials/panel-bridge.html      bridge — a page, not a dialog
     partials/content-close.html     shared — closes content and shell
@@ -22,6 +23,7 @@
     partials/dialog-swap.html       swap — Ethereum assets into LCAI over Uniswap
     partials/dialog-confirm.html    the guard's transfer confirmation
     partials/dialog-secure.html     how this room is protected
+    partials/dialog-accounts.html   the accounts one recovery phrase holds
     partials/foot.html              shared — toast, module script, closing tags
 -->
 <!doctype html>
@@ -100,6 +102,17 @@
             stroke="none"
             d="M929.437 533.9C929.497 533.783 929.559 533.67 929.618 533.554C981.975 430.679 985.185 330.511 938.659 251.499C897.213 181.11 821.175 135.872 722.323 121.898C660.552 44.947 582.578 3 499.681 3C427.832 3 359.681 34.514 302.57 93.0076C220.24 99.4384 152.272 131.3 106.859 185.89C48.0531 256.593 34.8916 355.976 69.8024 465.733C69.8408 465.857 69.8846 465.979 69.9249 466.102C69.8664 466.217 69.8024 466.332 69.7439 466.446C17.3869 569.321 14.177 669.489 60.7027 748.501C102.148 818.892 178.187 864.128 277.039 878.104C338.81 955.053 416.784 997 499.681 997C571.546 997 639.713 965.472 696.832 906.951C779.128 900.513 847.103 868.687 892.503 814.11C951.309 743.407 964.47 644.024 929.559 534.267C929.521 534.145 929.477 534.021 929.437 533.9ZM902.999 271.688C937.211 329.796 938.946 402.773 908.675 480.161C896.696 453.723 882.238 427.638 865.516 402.201L850.505 455.981C864.496 480.634 876.027 505.47 884.98 530.091C870.878 555.396 853.921 580.046 834.439 603.722C839.323 569.98 841.908 535.283 841.908 500.002C841.908 406.384 824.211 310.374 784.866 224.398C776.263 205.598 766.591 187.261 755.777 169.589C822.526 186.716 873.603 221.77 902.999 271.688ZM198.635 500.002C198.635 443.838 205.371 390.023 217.655 340.283C255.931 304.521 300.23 272.071 349.158 244.373C406.73 211.783 466.903 187.958 526.477 173.597C581.995 196.771 637.638 229.429 689.948 271.257C726.787 300.714 759.418 332.676 787.491 365.999C796.088 408.392 800.727 453.389 800.727 500.002C800.727 556.164 793.991 609.979 781.709 659.717C743.433 695.479 699.133 727.929 650.204 755.627C592.654 788.204 532.5 812.083 472.947 826.446C417.411 803.272 361.745 770.587 309.417 728.743H309.414C272.575 699.286 239.943 667.324 211.871 634.001C203.274 591.61 198.635 546.614 198.635 500.002ZM663.758 117.347C636.657 116.888 608.932 118.593 580.894 122.337L615.039 159.278C628.424 158.215 641.698 157.64 654.81 157.64C664.126 157.64 673.368 157.909 682.512 158.454C688.537 158.814 694.468 159.301 700.322 159.893C725.886 194.624 747.533 235.858 764.102 281.882C748.825 267.402 732.772 253.397 715.975 239.964C696.795 224.627 676.863 210.191 656.248 196.761C635.804 183.443 614.6 171.523 593.162 159.832C577.671 151.384 561.291 144.046 544.921 137.396C539.083 135.023 534.18 133.014 529.943 131.309C479.686 111.601 428.75 98.9007 378.99 94.0131C373.808 93.5059 368.679 93.1152 363.577 92.78C404.474 61.2032 450.729 43.377 499.681 43.377C560.165 43.377 616.527 70.5949 663.758 117.347ZM138.772 211.409C169.707 174.22 213.028 150.363 263.822 139.242C260.868 143.323 257.943 147.458 255.075 151.707C230.741 187.785 210.687 228.434 195.174 272.27L246.007 254.358C266.036 206.937 291.693 165.494 321.522 132.166C325.891 132.01 330.28 131.899 334.717 131.899C374.563 131.899 417.078 138.181 460.531 150.492C415.875 165.379 371.494 185.109 328.567 209.409C299.544 225.837 271.914 244.279 245.158 264.043C225.802 278.34 206.416 293.327 189.433 310.333C186.279 313.378 183.42 316.137 180.828 318.635C180.773 318.841 180.722 319.049 180.666 319.255C149.175 349.755 121.702 382.454 98.9806 416.611C82.3259 338.198 94.0505 265.176 138.772 211.409ZM96.3629 728.312C62.1505 670.206 60.4157 597.229 90.687 519.839C104.128 549.505 120.691 578.727 140.072 607.085L153.178 551.484C137.231 524.386 124.241 497.019 114.383 469.909C128.484 444.604 145.44 419.954 164.923 396.278C160.039 430.021 157.454 464.72 157.454 500.002C157.454 524.435 158.615 549.118 160.922 573.446C169.363 662.446 196.339 753.21 243.585 830.411C176.838 813.284 125.759 778.232 96.3629 728.312ZM335.552 882.605C338.51 882.655 341.456 882.734 344.427 882.734C370.088 882.734 396.276 880.8 422.727 877.075L388.021 840.46C363.853 842.55 340.053 842.934 316.85 841.546C310.825 841.188 304.893 840.701 299.04 840.109C273.474 805.376 251.827 764.142 235.258 718.114C250.536 732.596 266.592 746.603 283.391 760.036H283.387C321.764 790.722 362.319 817.134 403.935 838.819C403.867 838.828 403.8 838.835 403.732 838.842C420.862 847.606 442.109 857.812 462.516 865.811C469.675 868.617 475.413 870.892 480.114 872.776C526.89 890.159 574.138 901.447 620.371 905.987C625.555 906.496 630.683 906.885 635.787 907.22C594.887 938.797 548.632 956.623 499.681 956.623C439.177 956.623 382.794 929.385 335.552 882.605ZM860.59 788.591C829.651 825.783 786.328 849.662 735.523 860.783C738.483 856.695 741.415 852.551 744.286 848.293C767.82 813.406 787.396 774.271 802.69 732.085L751.829 749.173C732.026 795.122 706.919 835.349 677.832 867.845C634.196 869.395 587.036 863.185 538.705 849.479C583.402 834.587 627.831 814.915 670.794 790.591C701.949 772.957 731.348 753.457 758.704 732.444C758.663 732.542 758.627 732.643 758.587 732.741C773.21 721.274 790.287 707.161 805.213 692.92C817.429 681.263 824.63 674.552 828.836 670.704C856.111 643.105 880.134 613.829 900.381 583.39C917.036 661.802 905.311 734.826 860.59 788.591ZM516.742 317.63L523.292 453.786C523.678 461.797 530.359 468.129 538.538 468.235L637.302 469.509C649.494 469.666 656.714 482.95 650.049 492.961L518.896 689.956C510.489 702.583 490.478 696.746 490.478 681.667V547.078C490.478 538.703 483.554 531.914 475.012 531.914H369.763C357.553 531.914 350.145 518.712 356.708 508.618C386.107 463.397 451.349 363.467 488.505 309.813C496.855 297.755 516.041 303.072 516.742 317.63Z"
           />
+        </symbol>
+        <symbol id="i-wordmark" viewBox="0 0 1200 251">
+<g clip-path="url(#lc-wm-clip0_734_15)">
+<path d="M1179.85 133.328C1179.87 133.301 1179.88 133.275 1179.89 133.248C1192.01 109.435 1192.76 86.2493 1181.99 67.9602C1172.39 51.6671 1154.79 41.1958 1131.91 37.9611C1117.61 20.1491 1099.56 10.4395 1080.38 10.4395C1063.74 10.4395 1047.97 17.7341 1034.75 31.2738C1015.69 32.7623 999.96 40.1375 989.448 52.7735C975.836 69.1393 972.79 92.1437 980.871 117.549C980.88 117.578 980.89 117.606 980.899 117.635C980.885 117.661 980.871 117.688 980.857 117.715C968.738 141.527 967.995 164.713 978.764 183.002C988.358 199.296 1005.96 209.767 1028.84 213.002C1043.14 230.813 1061.19 240.523 1080.38 240.523C1097.01 240.523 1112.79 233.225 1126.01 219.679C1145.06 218.189 1160.79 210.822 1171.3 198.189C1184.92 181.823 1187.96 158.819 1179.88 133.413C1179.87 133.385 1179.86 133.356 1179.85 133.328ZM1173.73 72.6333C1181.65 86.0837 1182.05 102.976 1175.05 120.889C1172.27 114.769 1168.93 108.731 1165.06 102.844L1161.58 115.292C1164.82 120.999 1167.49 126.747 1169.56 132.447C1166.3 138.304 1162.37 144.01 1157.86 149.49C1158.99 141.68 1159.59 133.648 1159.59 125.482C1159.59 103.812 1155.5 81.5881 1146.39 61.6871C1144.4 57.3353 1142.16 53.0908 1139.65 49.0003C1155.11 52.9648 1166.93 61.0788 1173.73 72.6333ZM1010.69 125.482C1010.69 112.481 1012.25 100.025 1015.09 88.5111C1023.95 80.2333 1034.21 72.7221 1045.53 66.3107C1058.86 58.7671 1072.79 53.2523 1086.58 49.9279C1099.43 55.2922 1112.31 62.8515 1124.42 72.5337C1132.94 79.3521 1140.5 86.7504 1147 94.4637C1148.99 104.277 1150.06 114.692 1150.06 125.482C1150.06 138.482 1148.5 150.938 1145.66 162.451C1136.8 170.729 1126.54 178.241 1115.22 184.652C1101.9 192.193 1087.97 197.72 1074.19 201.045C1061.33 195.68 1048.45 188.115 1036.33 178.429H1036.33C1027.81 171.611 1020.25 164.212 1013.76 156.499C1011.77 146.686 1010.69 136.271 1010.69 125.482ZM1118.36 36.9077C1112.08 36.8015 1105.66 37.196 1099.17 38.0627L1107.08 46.6136C1110.18 46.3675 1113.25 46.2344 1116.28 46.2344C1118.44 46.2344 1120.58 46.2966 1122.7 46.4227C1124.09 46.5061 1125.46 46.619 1126.82 46.7559C1132.74 54.7952 1137.75 64.3396 1141.58 74.9931C1138.05 71.6413 1134.33 68.3995 1130.44 65.2901C1126 61.74 1121.39 58.3985 1116.62 55.2899C1111.88 52.2072 1106.98 49.448 1102.01 46.7418C1098.43 44.7863 1094.64 43.0878 1090.85 41.5484C1089.5 40.9991 1088.36 40.5341 1087.38 40.1395C1075.75 35.5776 1063.96 32.6379 1052.44 31.5065C1051.24 31.3891 1050.05 31.2987 1048.87 31.2211C1058.34 23.912 1069.04 19.7857 1080.38 19.7857C1094.38 19.7857 1107.42 26.0859 1118.36 36.9077ZM996.835 58.6804C1004 50.0723 1014.02 44.55 1025.78 41.9757C1025.1 42.9204 1024.42 43.8775 1023.76 44.8612C1018.12 53.212 1013.48 62.6213 1009.89 72.7681L1021.66 68.6219C1026.29 57.6453 1032.23 48.0523 1039.14 40.3378C1040.15 40.3017 1041.16 40.276 1042.19 40.276C1051.41 40.276 1061.26 41.7301 1071.31 44.5799C1060.98 48.0258 1050.7 52.5926 1040.77 58.2174C1034.05 62.0201 1027.65 66.289 1021.46 70.8637C1016.98 74.1731 1012.49 77.6421 1008.56 81.5787C1007.83 82.2835 1007.17 82.922 1006.57 83.5003C1006.56 83.5481 1006.55 83.5962 1006.53 83.6439C999.243 90.7037 992.884 98.2726 987.625 106.179C983.77 88.0286 986.483 71.1261 996.835 58.6804ZM987.019 178.329C979.099 164.879 978.698 147.987 985.705 130.073C988.816 136.94 992.65 143.704 997.136 150.268L1000.17 137.398C996.479 131.126 993.472 124.791 991.19 118.516C994.454 112.659 998.379 106.953 1002.89 101.472C1001.76 109.283 1001.16 117.315 1001.16 125.482C1001.16 131.137 1001.43 136.851 1001.96 142.482C1003.92 163.083 1010.16 184.093 1021.1 201.962C1005.65 197.998 993.823 189.884 987.019 178.329ZM1042.38 214.044C1043.07 214.055 1043.75 214.074 1044.44 214.074C1050.38 214.074 1056.44 213.626 1062.56 212.764L1054.53 204.288C1048.94 204.772 1043.43 204.861 1038.06 204.54C1036.66 204.457 1035.29 204.344 1033.93 204.207C1028.02 196.167 1023 186.623 1019.17 175.969C1022.71 179.321 1026.42 182.563 1030.31 185.672H1030.31C1039.19 192.775 1048.58 198.889 1058.21 203.908C1058.2 203.911 1058.18 203.912 1058.17 203.914C1062.13 205.943 1067.05 208.305 1071.77 210.156C1073.43 210.806 1074.76 211.333 1075.85 211.769C1086.67 215.792 1097.61 218.405 1108.31 219.456C1109.51 219.574 1110.7 219.664 1111.88 219.741C1102.41 227.051 1091.71 231.177 1080.38 231.177C1066.37 231.177 1053.32 224.872 1042.38 214.044ZM1163.92 192.282C1156.75 200.891 1146.73 206.418 1134.97 208.993C1135.65 208.046 1136.33 207.087 1137 206.101C1142.44 198.026 1146.97 188.967 1150.51 179.203L1138.74 183.158C1134.16 193.794 1128.35 203.105 1121.61 210.627C1111.51 210.986 1100.6 209.549 1089.41 206.376C1099.75 202.929 1110.04 198.375 1119.98 192.745C1127.2 188.663 1134 184.15 1140.33 179.286C1140.32 179.308 1140.31 179.332 1140.31 179.354C1143.69 176.7 1147.64 173.433 1151.1 170.137C1153.93 167.439 1155.59 165.885 1156.57 164.995C1162.88 158.606 1168.44 151.83 1173.13 144.784C1176.98 162.934 1174.27 179.837 1163.92 192.282ZM1084.32 83.2678L1085.84 114.784C1085.93 116.638 1087.48 118.104 1089.37 118.129L1112.23 118.423C1115.05 118.46 1116.72 121.535 1115.18 123.852L1084.82 169.451C1082.88 172.374 1078.25 171.023 1078.25 167.532V136.379C1078.25 134.44 1076.64 132.868 1074.67 132.868H1050.3C1047.48 132.868 1045.76 129.813 1047.28 127.476C1054.09 117.009 1069.19 93.8776 1077.79 81.4583C1079.72 78.6672 1084.16 79.8979 1084.32 83.2678Z" fill="currentColor"/>
+<path d="M36.2043 156.966V76.3593H9.64844V178.761H80.5196V156.966H36.2043ZM119.759 178.761V76.3593H93.2032V178.761H119.759ZM210.03 126.686V153.167C203.766 156.232 196.895 158.132 191.522 158.132C174.214 158.132 160.936 144.973 160.936 127.56C160.936 110.451 174.071 97.2803 191.225 97.2803C200.925 97.2803 211.516 101.523 219.136 108.399L234.054 90.6951C223.308 81.336 206.892 75.4851 191.379 75.4851C158.404 75.4851 133.786 97.863 133.786 127.56C133.786 157.409 157.81 179.939 189.584 179.939C204.205 179.939 221.81 174.379 233.008 166.617V126.686H210.03ZM347.897 178.761V76.3593H321.341V118.493H278.072V76.3593H251.504V178.761H278.072V138.971H321.341V178.761H347.897ZM448.605 97.2803V76.2078H359.38V97.2803H390.572V178.761H417.128V97.2803H448.605ZM503.512 75.4851C471.738 75.4851 447.714 97.7115 447.714 127.269C447.714 157.258 471.143 179.939 502.62 179.939C517.991 179.939 534.549 172.479 545.747 161.209L530.222 145.113C522.912 152.432 512.772 157.118 503.964 157.118C487.405 157.118 474.864 144.087 474.864 126.978C474.864 110.148 487.405 97.2803 503.964 97.2803C513.212 97.2803 523.363 102.397 530.222 110.59L545.592 92.7464C535.144 82.2102 519.037 75.4851 503.512 75.4851ZM654.217 178.761V76.3593H627.661V118.493H584.392V76.3593H557.824V178.761H584.392V138.971H627.661V178.761H654.217ZM744.488 159.892L751.942 178.761H780.292L736.274 76.3593H708.97L663.917 178.761H691.222L698.83 159.892H744.488ZM736.726 140.148H706.592L721.808 102.257L736.726 140.148ZM816.548 178.761V76.3593H789.992V178.761H816.548ZM933.827 178.761V76.3593H909.054V139.553L860.863 76.3593H837.446V178.761H862.361V115.707L910.397 178.761H933.827Z" fill="currentColor"/>
+</g>
+<defs>
+<clipPath id="lc-wm-clip0_734_15">
+<rect width="1179.92" height="230.084" fill="currentColor" transform="translate(9.64062 10.4398)"/>
+</clipPath>
+</defs>
         </symbol>
         <!-- icons:start -->
         <symbol id="i-chat" viewBox="0 0 24 24">
@@ -384,8 +397,25 @@
          belongs to the window itself. The brand moved to the top of the
          sidebar — the app title was in two places, and a strip whose whole
          job is to be draggable earns the simplicity. -->
+    <!-- The top bar, as the wallet draws one: the lockup on the left, and on
+         the right the network you are on and the lock. It spans the window
+         above both columns, which is what makes the two applications read as
+         one product — the brand sat at the top of the sidebar here, so it was
+         inside the navigation rather than over the whole window.
+
+         Everything in it opts out of the drag region; a strip you cannot grab
+         between the controls would be worse than no controls. -->
     <header class="titlebar" id="titlebar">
-      <!-- The only control the bar ever carries, and it is hidden until there
+      <span class="titlebar-brand">
+        <svg class="titlebar-wordmark" role="img" aria-label="Lightchain">
+          <use href="#i-wordmark" />
+        </svg>
+        <span class="titlebar-suffix">Chat</span>
+      </span>
+
+      <span class="titlebar-spacer"></span>
+
+      <!-- The only control the bar ever carries by itself, hidden until there
            is something to apply. renderer/lib/ipc.js resolves it by id. -->
       <button
         class="button button-primary button-sm titlebar-update"
@@ -394,6 +424,30 @@
         hidden
       >
         Apply update
+      </button>
+
+      <!-- Which chain everything on screen is about. It mirrors the account
+           row's network rather than reading the setting itself, so there is one
+           source for it and no second thing to keep in step. -->
+      <button
+        class="network-pill"
+        type="button"
+        id="network-pill"
+        title="Change the network in Settings"
+      >
+        <span class="network-dot" aria-hidden="true"></span>
+        <span class="network-pill-name" id="network-pill-name">—</span>
+        <svg class="icon" aria-hidden="true"><use href="#i-chevron" /></svg>
+      </button>
+
+      <button
+        class="icon-button titlebar-lock"
+        type="button"
+        id="titlebar-lock"
+        title="Lock the wallet"
+        aria-label="Lock the wallet"
+      >
+        <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
       </button>
     </header>
 
@@ -413,9 +467,14 @@
       hidden
     >
       <div class="onboarding-card">
+        <!-- The brand's own mark and its own wordmark, not a tinted circle
+             beside the word set in the interface face. This is the first thing
+             anybody sees of this application, and a placeholder here is the
+             one that gets read as "is this the thing I was told to install". -->
         <div class="onboarding-brand">
-          <div class="onboarding-logo" aria-hidden="true"></div>
-          <div class="onboarding-wordmark">Lightchain</div>
+          <svg class="onboarding-wordmark" role="img" aria-label="Lightchain">
+            <use href="#i-wordmark" />
+          </svg>
         </div>
 
         <!-- Welcome.
@@ -463,20 +522,26 @@
           </p>
           <div class="choice-list">
             <button class="choice choice-primary" type="button" id="secure-now">
+              <span class="choice-icon" aria-hidden="true">
+                <svg class="icon"><use href="#i-shield" /></svg>
+              </span>
               <span>
                 <span class="choice-title">Back up now</span>
                 <span class="choice-note">Takes a minute. You will need somewhere to write.</span>
               </span>
-              <span class="choice-mark" aria-hidden="true">→</span>
+              <svg class="choice-mark icon" aria-hidden="true"><use href="#i-chevron" /></svg>
             </button>
             <button class="choice" type="button" id="secure-later">
+              <span class="choice-icon" aria-hidden="true">
+                <svg class="icon"><use href="#i-clock" /></svg>
+              </span>
               <span>
                 <span class="choice-title">Later</span>
                 <span class="choice-note">
                   You can message straight away. Receiving funds waits until this is done.
                 </span>
               </span>
-              <span class="choice-mark" aria-hidden="true">→</span>
+              <svg class="choice-mark icon" aria-hidden="true"><use href="#i-chevron" /></svg>
             </button>
           </div>
         </section>
@@ -657,6 +722,16 @@
         <section class="step" id="step-unlock" hidden>
           <h1 class="step-title" id="title-unlock">Welcome back</h1>
           <p class="step-body">Unlock the wallet on this machine to continue.</p>
+          <!-- Which wallet this is, as far as a locked screen can say.
+               The address is inside the ciphertext and recording it outside
+               would be a privacy decision rather than a fix, so the file's own
+               timestamp stands in. It answers the question that actually traps
+               people: a vault the operating system deleted and an onboarding
+               flow silently replaced looks exactly like the original until the
+               password fails — and then the application reads as refusing a
+               password that is plainly correct, because for the wallet somebody
+               remembers, it is. -->
+          <p class="step-note" id="unlock-vault-age" hidden></p>
           <form class="form" id="unlock-form">
             <label class="field">
               <span class="field-label">Password</span>
@@ -666,7 +741,6 @@
                   id="unlock-password"
                   type="password"
                   autocomplete="current-password"
-                  placeholder="Password"
                 />
                 <button class="field-reveal" type="button" data-reveal="unlock-password">
                   Show
@@ -694,6 +768,9 @@
           </p>
           <div class="choice-list">
             <button class="choice choice-primary" type="button" id="recover-phrase">
+              <span class="choice-icon" aria-hidden="true">
+                <svg class="icon"><use href="#i-key" /></svg>
+              </span>
               <span>
                 <span class="choice-title">I have my recovery phrase</span>
                 <span class="choice-note">
@@ -701,18 +778,24 @@
                   wallet, your rooms and messages come back.
                 </span>
               </span>
-              <span class="choice-mark" aria-hidden="true">→</span>
+              <svg class="choice-mark icon" aria-hidden="true"><use href="#i-chevron" /></svg>
             </button>
             <button class="choice" type="button" id="recover-password">
+              <span class="choice-icon" aria-hidden="true">
+                <svg class="icon"><use href="#i-again" /></svg>
+              </span>
               <span>
                 <span class="choice-title">I know the password — I want a different wallet</span>
                 <span class="choice-note">
                   Remove this wallet with its password, then create or restore another.
                 </span>
               </span>
-              <span class="choice-mark" aria-hidden="true">→</span>
+              <svg class="choice-mark icon" aria-hidden="true"><use href="#i-chevron" /></svg>
             </button>
             <button class="choice choice-danger" type="button" id="recover-neither">
+              <span class="choice-icon" aria-hidden="true">
+                <svg class="icon"><use href="#i-alert" /></svg>
+              </span>
               <span>
                 <span class="choice-title">I have neither</span>
                 <span class="choice-note">
@@ -720,7 +803,7 @@
                   becomes permanently unreachable.
                 </span>
               </span>
-              <span class="choice-mark" aria-hidden="true">→</span>
+              <svg class="choice-mark icon" aria-hidden="true"><use href="#i-chevron" /></svg>
             </button>
           </div>
           <p class="step-escape">
@@ -824,10 +907,6 @@
             General
           </button>
           <button class="settings-nav-item" type="button" data-settings="wallet">Wallet</button>
-          <button class="settings-nav-item" type="button" data-settings="inference">
-            Inference
-          </button>
-          <button class="settings-nav-item" type="button" data-settings="worker">Worker</button>
           <button class="settings-nav-item" type="button" data-settings="advanced">
             Advanced
           </button>
@@ -845,11 +924,14 @@
             </p>
             <label class="field">
               <span class="field-label">Network</span>
-              <select class="input" id="set-network">
+              <span class="select">
+                <select class="input" id="set-network">
                 <option value="mainnet">Mainnet</option>
                 <option value="testnet">Testnet</option>
                 <option value="devnet">Devnet</option>
               </select>
+                <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+              </span>
             </label>
             <dl class="facts" id="network-facts"></dl>
 
@@ -860,7 +942,8 @@
             </p>
             <label class="field">
               <span class="field-label">Lock after</span>
-              <select class="input" id="set-auto-lock">
+              <span class="select">
+                <select class="input" id="set-auto-lock">
                 <option value="1">1 minute</option>
                 <option value="5">5 minutes</option>
                 <option value="15">15 minutes</option>
@@ -868,6 +951,8 @@
                 <option value="480">8 hours</option>
                 <option value="0">Never — only on a machine nobody else uses</option>
               </select>
+                <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+              </span>
             </label>
 
             <h3 class="settings-heading">Privacy</h3>
@@ -895,38 +980,6 @@
               <input type="checkbox" id="set-deposit-sound" />
               <span>Play a sound when a deposit lands</span>
             </label>
-
-            <h3 class="settings-heading">Network trust</h3>
-            <p class="settings-note">
-              Who runs what. The workers that answer questions are run by anyone, and this
-              app does not choose them. The parts in between — the dispatcher that routes a
-              question to a worker, the relay that carries the answer back, the disputer that
-              settles challenges, and the service that puts the question's data on chain —
-              are all run by the Lightchain foundation, one operator.
-            </p>
-            <p class="settings-note">
-              What is checked. Every answer carries the worker's signature, and this app
-              verifies it before showing anything, so an answer cannot be swapped for another
-              on the way. A worker that tells you one thing while recording something else on
-              chain has equivocated, and that can be disputed — it costs the worker its stake.
-              What no check can catch is an answer that is wrong but reads as right: a model
-              that is simply mistaken looks exactly like one that is not, so judge answers
-              accordingly.
-            </p>
-            <p class="settings-note">
-              What the prepaid balance means. Funding it also authorises the delegate — the
-              service that submits jobs for you — to spend it, and that authorisation stands
-              until you revoke it on chain. Withdrawing what is left does not revoke it, so a
-              later deposit is spendable again without asking. The delegate can reach the
-              prepaid balance and nothing else; the rest of the wallet is never part of the
-              arrangement.
-            </p>
-            <p class="settings-note">
-              And one thing about this window. The dialog that asks you to confirm a transfer
-              is drawn by this application, not by the operating system. It vouches for what
-              this app is about to sign and nothing wider — it cannot see, and says nothing
-              about, anything else running on this machine.
-            </p>
           </section>
 
           <section class="settings-page" id="settings-wallet" hidden>
@@ -1007,44 +1060,6 @@
               <p class="dialog-error" id="remove-error" hidden></p>
               <button class="button" type="submit" id="remove-btn">Remove wallet</button>
             </form>
-          </section>
-
-          <section class="settings-page" id="settings-inference" hidden>
-            <h3 class="settings-heading">Prompt templates</h3>
-            <p class="settings-note">
-              A template is a block of text put in front of a prompt — the standing instructions you
-              would otherwise retype every time. Templates are sealed under your wallet and kept on
-              this machine only: no peer, no worker and no contract is ever told that this list
-              exists.
-            </p>
-            <p class="settings-note" id="template-status" hidden></p>
-            <ul class="template-list" id="template-list"></ul>
-            <p class="settings-note" id="template-empty" hidden></p>
-
-            <form class="form" id="template-form">
-              <label class="field">
-                <span class="field-label">Name</span>
-                <input
-                  class="input"
-                  id="template-name"
-                  type="text"
-                  autocomplete="off"
-                  placeholder="Reviewer"
-                />
-              </label>
-              <label class="field">
-                <span class="field-label">Text put in front of the prompt</span>
-                <textarea class="input" id="template-body" rows="4" spellcheck="false"></textarea>
-              </label>
-              <p class="settings-hint" id="template-caps"></p>
-              <p class="dialog-error" id="template-error" hidden></p>
-              <div class="settings-actions">
-                <button class="button button-primary" type="submit" id="template-save">
-                  Add template
-                </button>
-                <button class="button" type="button" id="template-cancel" hidden>Cancel</button>
-              </div>
-            </form>
 
             <h3 class="settings-heading">Spending limits</h3>
             <p class="settings-note">
@@ -1095,7 +1110,9 @@
             <dl class="facts" id="limits-facts"></dl>
           </section>
 
-          <section class="settings-page" id="settings-worker" hidden>
+
+
+          <section class="settings-page" id="settings-advanced" hidden>
             <h3 class="settings-heading">Worker</h3>
             <p class="settings-note">
               Used by the Worker section to talk to a running worker. Anything left blank falls back
@@ -1135,9 +1152,75 @@
               <p class="dialog-error" id="worker-settings-error" hidden></p>
               <button class="button button-primary" type="submit">Save</button>
             </form>
-          </section>
 
-          <section class="settings-page" id="settings-advanced" hidden>
+            <h3 class="settings-heading">Prompt templates</h3>
+            <p class="settings-note">
+              A template is a block of text put in front of a prompt — the standing instructions you
+              would otherwise retype every time. Templates are sealed under your wallet and kept on
+              this machine only: no peer, no worker and no contract is ever told that this list
+              exists.
+            </p>
+            <p class="settings-note" id="template-status" hidden></p>
+            <ul class="template-list" id="template-list"></ul>
+            <p class="settings-note" id="template-empty" hidden></p>
+
+            <form class="form" id="template-form">
+              <label class="field">
+                <span class="field-label">Name</span>
+                <input
+                  class="input"
+                  id="template-name"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="Reviewer"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">Text put in front of the prompt</span>
+                <textarea class="input" id="template-body" rows="4" spellcheck="false"></textarea>
+              </label>
+              <p class="settings-hint" id="template-caps"></p>
+              <p class="dialog-error" id="template-error" hidden></p>
+              <div class="settings-actions">
+                <button class="button button-primary" type="submit" id="template-save">
+                  Add template
+                </button>
+                <button class="button" type="button" id="template-cancel" hidden>Cancel</button>
+              </div>
+            </form>
+
+            <h3 class="settings-heading">Network trust</h3>
+            <p class="settings-note">
+              Who runs what. The workers that answer questions are run by anyone, and this
+              app does not choose them. The parts in between — the dispatcher that routes a
+              question to a worker, the relay that carries the answer back, the disputer that
+              settles challenges, and the service that puts the question's data on chain —
+              are all run by the Lightchain foundation, one operator.
+            </p>
+            <p class="settings-note">
+              What is checked. Every answer carries the worker's signature, and this app
+              verifies it before showing anything, so an answer cannot be swapped for another
+              on the way. A worker that tells you one thing while recording something else on
+              chain has equivocated, and that can be disputed — it costs the worker its stake.
+              What no check can catch is an answer that is wrong but reads as right: a model
+              that is simply mistaken looks exactly like one that is not, so judge answers
+              accordingly.
+            </p>
+            <p class="settings-note">
+              What the prepaid balance means. Funding it also authorises the delegate — the
+              service that submits jobs for you — to spend it, and that authorisation stands
+              until you revoke it on chain. Withdrawing what is left does not revoke it, so a
+              later deposit is spendable again without asking. The delegate can reach the
+              prepaid balance and nothing else; the rest of the wallet is never part of the
+              arrangement.
+            </p>
+            <p class="settings-note">
+              And one thing about this window. The dialog that asks you to confirm a transfer
+              is drawn by this application, not by the operating system. It vouches for what
+              this app is about to sign and nothing wider — it cannot see, and says nothing
+              about, anything else running on this machine.
+            </p>
+
             <h3 class="settings-heading">Availability</h3>
             <p class="settings-note">
               Blind peers are always-on machines that hold your rooms without being able to read
@@ -1179,6 +1262,7 @@
               which are left out by never being read at all.
             </p>
             <button class="button" type="button" id="export-diagnostics">Export diagnostics</button>
+
           </section>
         </div>
       </div>
@@ -1192,7 +1276,7 @@
               ways to start one pinned under the list header, so they are
               always in the same place and never scroll away or sit stranded
               mid-column
-           3. elsewhere: Models, Account, Bridge, Earn — visible, named, one
+           3. elsewhere: Models, Account, Bridge, and the two ways to earn — visible, named, one
               press away
            4. who you are signed in as, which is also the way to Account
            5. version, theme, settings
@@ -1202,11 +1286,10 @@
            on screen twice and read as two navigation systems stapled together.
            No destination appears twice. -->
       <nav class="sidebar" id="sidebar" aria-label="Conversations">
+        <!-- The brand lives in the top bar now, which spans the window rather
+             than heading one column of it. What is left here is the fold-away
+             control, kept where the hand already looks for it. -->
         <div class="sidebar-head">
-          <span class="sidebar-brand">
-            <svg class="logo" aria-hidden="true"><use href="#i-logo" /></svg>
-            <span class="sidebar-wordmark">Lightchain</span>
-          </span>
           <button
             class="icon-button sidebar-collapse"
             type="button"
@@ -1283,10 +1366,21 @@
                 <span class="nav-label">Bridge</span>
               </button>
             </li>
+            <!-- Two ways to be paid by this network, and they are not
+                 variations of one thing: a worker stakes 50,000 LCAI and
+                 answers inference on a GPU, a validator stakes 500,000 and
+                 attests blocks on the beacon chain. One page for both taught
+                 people that the second was a mode of the first. -->
             <li>
               <button class="nav-item" type="button" data-section="worker">
                 <svg class="nav-icon" aria-hidden="true"><use href="#i-worker" /></svg>
-                <span class="nav-label">Earn</span>
+                <span class="nav-label">For Workers</span>
+              </button>
+            </li>
+            <li>
+              <button class="nav-item" type="button" data-section="validator">
+                <svg class="nav-icon" aria-hidden="true"><use href="#i-shield" /></svg>
+                <span class="nav-label">For Validators</span>
               </button>
             </li>
           </ul>
@@ -1633,7 +1727,7 @@
             <section class="ai-thread">
               <header class="page-head ai-head" id="ai-head" hidden>
                 <div class="page-head-main">
-                  <h1 class="page-title ai-title" id="ai-model">Loading…</h1>
+                  <h1 class="page-title ai-title" id="ai-model"><span class="skeleton" data-skeleton="title"></span></h1>
                   <!-- Session facts only: the phase in flight, the worker, the
                        session id, the number of turns. Never a failure. -->
                   <p class="page-sub ai-session" id="ai-session">no session</p>
@@ -1742,252 +1836,394 @@
             </section>
           </div>
         </div>
-        <!-- Earn ------------------------------------------------------------->
-        <!-- A stepped checklist rather than a console of loose controls. Each
-             step says where you are and what one press does next: host, key,
-             stake, register, run. Running a worker needs Docker, a GPU, a model
-             runtime and a real stake — this page guides those requirements, it
-             does not replace them. -->
-        <div class="panel" id="panel-worker" hidden>
-          <div class="console worker">
-            <header class="page-head">
-              <div class="page-head-main">
-                <h1 class="page-title">Earn</h1>
-                <p class="page-sub">
-                  Answer other people's questions with this machine, and be paid for it.
-                </p>
-              </div>
-              <div class="page-actions">
-                <button class="button button-sm" type="button" id="worker-refresh">
-                  <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
-                  Refresh
+<!-- For Workers ------------------------------------------------------->
+<!--
+  A wizard, not a console.
+
+  This page was six cards stacked in a scrolling column beside a second column
+  of container internals, and it read as a diagnostic report somebody had been
+  handed rather than a thing to do. The shape here is the one onboarding flows
+  converge on for good reasons — a named route across the top, exactly one step
+  in front of you, one primary control, and every diagnostic behind a disclosure
+  for the day something is wrong.
+
+  What is on screen at any moment is one question. That is the whole design.
+-->
+<div class="panel" id="panel-worker" hidden>
+  <div class="console worker">
+    <header class="page-head">
+      <div class="page-head-main">
+        <h1 class="page-title">For Workers</h1>
+        <p class="page-sub">Answer questions on this machine's GPU, and get paid per answer.</p>
+      </div>
+      <div class="page-actions">
+        <button class="button button-sm" type="button" id="worker-refresh">
+          <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+          Refresh
+        </button>
+      </div>
+    </header>
+
+    <!-- Said once, up front: a network with no worker image or gateway has
+         nothing to set up. worker.js replaces the sentence with whichever one
+         the worker gives for the network in question. -->
+    <div class="alert" data-tone="info" id="worker-devnet" hidden>
+      <svg class="icon" aria-hidden="true"><use href="#i-info" /></svg>
+      <div class="alert-body">
+        <strong class="alert-title">No worker hosting on this network</strong>
+        <p>
+          Worker hosting isn't available here. Asking models, the wallet and conversations all work
+          &mdash; switch the network in Settings to run a worker.
+        </p>
+      </div>
+    </div>
+
+    <div class="wizard" id="worker-body">
+      <!-- The route, named. Six numbered pips said how far along you were and
+           never what any of them was, and a person cannot plan against numbers. -->
+      <nav class="wizard-rail" id="worker-rail" aria-label="Setup progress"></nav>
+
+      <div class="wizard-stage">
+        <!-- What the stage holds while the host is being probed.
+
+             Docker, Ollama, a GPU, a disk and a whitelist read off the chain
+             take a few seconds between them, and for those seconds the stage
+             held nothing at all: a route across the top, one line saying
+             "Checking the host…", and two hairlines with a page of empty
+             underneath. An empty step reads as a step with nothing in it. This
+             is the shape of the step that is coming, so the page has a size
+             before it has an answer. -->
+        <section class="wizard-step wizard-waiting" id="worker-waiting" hidden aria-hidden="true">
+          <span class="skeleton" data-skeleton="kicker"></span>
+          <span class="skeleton" data-skeleton="title"></span>
+          <span class="skeleton" data-skeleton="lede"></span>
+          <div class="wizard-waiting-rows">
+            <span class="skeleton skeleton-text"></span>
+            <span class="skeleton skeleton-text"></span>
+            <span class="skeleton skeleton-text"></span>
+          </div>
+        </section>
+        <!-- 1 &middot; Host -->
+        <section class="wizard-step" data-step="1" id="worker-step-host" hidden>
+          <p class="wizard-kicker">Step 1 of 6</p>
+          <h2 class="wizard-title" id="worker-step-host-title">Check this machine</h2>
+          <p class="wizard-lede" id="worker-host-lede">
+            Answering questions needs Docker, a model runtime and a GPU.
+          </p>
+          <div class="wizard-body">
+            <div id="worker-checks"></div>
+            <div class="worker-step-alert" id="worker-host-alert" hidden></div>
+          </div>
+          <p class="wizard-stamp" id="worker-checked"></p>
+        </section>
+
+        <!-- 2 &middot; Models -->
+        <section class="wizard-step" data-step="2" id="worker-step-models" hidden>
+          <p class="wizard-kicker">Step 2 of 6</p>
+          <h2 class="wizard-title" id="worker-step-models-title">Choose what to answer</h2>
+          <p class="wizard-lede">Bigger models pay more per job and need more memory.</p>
+          <div class="wizard-body">
+            <div id="worker-models-list"></div>
+            <button class="button button-lg" type="button" id="worker-models-fetch" hidden>
+              <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
+              Download what is missing
+            </button>
+            <div class="worker-step-alert" id="worker-models-alert" hidden></div>
+          </div>
+        </section>
+
+        <!-- 3 &middot; Key -->
+        <section class="wizard-step" data-step="3" id="worker-step-key" hidden>
+          <p class="wizard-kicker">Step 3 of 6</p>
+          <h2 class="wizard-title" id="worker-step-key-title">Make a key to be paid to</h2>
+          <p class="wizard-lede">The worker earns to its own key, separate from your wallet.</p>
+          <div class="wizard-body">
+            <!-- A key exists: which one, and nothing else to do. -->
+            <div id="worker-key-present" hidden>
+              <p class="worker-address">
+                <span class="worker-address-text" id="worker-key-address"></span>
+                <button class="button button-sm" type="button" id="worker-key-copy">
+                  <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
+                  Copy
                 </button>
-              </div>
-            </header>
-
-            <!-- The answer, above the evidence: which step you are on and what
-                 one press does next. -->
-            <div class="verdict" id="worker-verdict" role="status">
-              <span class="verdict-headline" id="worker-summary">Checking the host</span>
-              <span class="verdict-detail" id="worker-verdict-detail"></span>
+              </p>
             </div>
 
-            <!-- Said once, up front, rather than as five steps that each fail
-                 in their own way: devnet has no worker gateway yet, so there
-                 is nothing to set up. The worker refuses the actions too; this
-                 is the page not asking. worker.js swaps this in for the
-                 verdict and the steps. -->
-            <div class="alert" data-tone="info" id="worker-devnet" hidden>
-              <svg class="icon" aria-hidden="true"><use href="#i-info" /></svg>
-              <div class="alert-body">
-                <strong class="alert-title">No worker hosting on devnet</strong>
-                <p>
-                  Worker hosting isn't available on devnet yet. Asking models, the wallet and
-                  conversations all work here — switch the network in Settings to run a worker.
-                </p>
-              </div>
+            <!-- No key yet. The key and password travel in the IPC body to the
+                 worker process, which writes the keystore file itself: nothing
+                 reaches a command line, an environment variable or a log. -->
+            <div id="worker-key-absent" hidden>
+              <form class="form worker-key-form" id="worker-create-form">
+                <div class="field">
+                  <label class="field-label" for="worker-create-password">
+                    Choose a password for the key
+                  </label>
+                  <input
+                    class="input"
+                    id="worker-create-password"
+                    type="password"
+                    autocomplete="new-password"
+                    placeholder="At least 8 characters"
+                  />
+                </div>
+                <button class="button button-primary button-lg" type="submit" id="worker-create-submit">
+                  Create the key
+                </button>
+              </form>
+
+              <!-- The other way in, for somebody who already has a key. Folded
+                   away because it is much the rarer of the two, and a
+                   private-key field is an alarming thing to meet first. -->
+              <details class="wizard-aside">
+                <summary>I already have a key</summary>
+                <form class="form worker-key-form" id="worker-import-form">
+                  <div class="field">
+                    <label class="field-label" for="worker-import-key">Private key</label>
+                    <input
+                      class="input"
+                      id="worker-import-key"
+                      type="password"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="64 hex characters"
+                    />
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="worker-import-password">
+                      Password to seal it
+                    </label>
+                    <input
+                      class="input"
+                      id="worker-import-password"
+                      type="password"
+                      autocomplete="new-password"
+                      placeholder="At least 8 characters"
+                    />
+                  </div>
+                  <button class="button" type="submit" id="worker-import-submit">Import it</button>
+                </form>
+              </details>
             </div>
 
-            <div class="console-body console-body-split" id="worker-body">
-              <div class="worker-column worker-steps">
-                <section class="kit-card" aria-labelledby="worker-step-host-title">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title" id="worker-step-host-title">
-                      <svg class="icon" aria-hidden="true"><use href="#i-cpu" /></svg>
-                      1 · Host ready
-                    </h2>
-                    <span class="worker-head-side">
-                      <span class="chip" id="worker-host-state" hidden></span>
-                      <span class="worker-stamp" id="worker-checked"></span>
-                    </span>
-                  </header>
-                  <div class="worker-step-body">
-                    <div id="worker-checks"></div>
-                    <div class="worker-step-alert" id="worker-host-alert" hidden></div>
-                  </div>
-                </section>
-
-                <section class="kit-card" aria-labelledby="worker-step-key-title">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title" id="worker-step-key-title">
-                      <svg class="icon" aria-hidden="true"><use href="#i-key" /></svg>
-                      2 · Worker key
-                    </h2>
-                    <span class="chip" id="worker-key-state" hidden></span>
-                  </header>
-                  <div class="worker-step-body">
-                    <!-- A key exists: which one, and nothing else to do. -->
-                    <div id="worker-key-present" hidden>
-                      <dl class="facts">
-                        <dt>Address</dt>
-                        <dd class="worker-address">
-                          <span class="worker-address-text" id="worker-key-address"></span>
-                          <button class="button button-sm" type="button" id="worker-key-copy">
-                            <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
-                            Copy
-                          </button>
-                        </dd>
-                      </dl>
-                      <p class="worker-hint">
-                        This is the key the worker registers and earns with — separate from this
-                        app's wallet. Its keystore file lives in the worker's data directory,
-                        sealed with the password saved in the worker settings.
-                      </p>
-                    </div>
-
-                    <!-- No key yet: both ways to get one. The key and password
-                         travel in the IPC body to the worker process, which
-                         writes the keystore file itself — nothing reaches a
-                         command line, an environment variable or a log. -->
-                    <div id="worker-key-absent" hidden>
-                      <p class="worker-hint">
-                        The worker registers and gets paid with its own key, separate from this
-                        app's wallet. Import one you already have, or create a new one here.
-                      </p>
-                      <form class="form worker-key-form" id="worker-import-form">
-                        <div class="field">
-                          <label class="field-label" for="worker-import-key">Private key to import</label>
-                          <input
-                            class="input"
-                            id="worker-import-key"
-                            type="password"
-                            autocomplete="off"
-                            spellcheck="false"
-                            placeholder="64 hex characters"
-                          />
-                        </div>
-                        <div class="field">
-                          <label class="field-label" for="worker-import-password">Keystore password</label>
-                          <input
-                            class="input"
-                            id="worker-import-password"
-                            type="password"
-                            autocomplete="new-password"
-                            placeholder="At least 8 characters"
-                          />
-                        </div>
-                        <button class="button" type="submit" id="worker-import-submit">
-                          Import key
-                        </button>
-                      </form>
-                      <form class="form worker-key-form" id="worker-create-form">
-                        <div class="field">
-                          <label class="field-label" for="worker-create-password">
-                            Or create a new key — keystore password
-                          </label>
-                          <input
-                            class="input"
-                            id="worker-create-password"
-                            type="password"
-                            autocomplete="new-password"
-                            placeholder="At least 8 characters"
-                          />
-                        </div>
-                        <button class="button" type="submit" id="worker-create-submit">
-                          Create key
-                        </button>
-                      </form>
-                    </div>
-
-                    <!-- Shown once, right after creating a key: the only backup
-                         there is. -->
-                    <div class="worker-created" id="worker-created" hidden>
-                      <p>
-                        <strong>Write this recovery phrase down and keep it somewhere safe.</strong>
-                        It is shown once and never stored outside the sealed keystore — without it
-                        and the password, the key and anything it earns are gone.
-                      </p>
-                      <p class="worker-phrase" id="worker-created-phrase"></p>
-                      <button class="button button-sm" type="button" id="worker-created-copy">
-                        <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
-                        Copy phrase
-                      </button>
-                    </div>
-
-                    <div class="worker-step-alert" id="worker-key-alert" hidden></div>
-                  </div>
-                </section>
-
-                <section class="kit-card" aria-labelledby="worker-step-stake-title">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title" id="worker-step-stake-title">
-                      <svg class="icon" aria-hidden="true"><use href="#i-wallet" /></svg>
-                      3 · Stake
-                    </h2>
-                    <span class="chip" id="worker-stake-state" hidden></span>
-                  </header>
-                  <div class="worker-step-body" id="worker-stake-body"></div>
-                </section>
-
-                <section class="kit-card" aria-labelledby="worker-step-register-title">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title" id="worker-step-register-title">
-                      <svg class="icon" aria-hidden="true"><use href="#i-shield" /></svg>
-                      4 · Register
-                    </h2>
-                    <span class="chip" id="worker-register-state" hidden></span>
-                  </header>
-                  <div class="worker-step-body">
-                    <p class="worker-hint" id="worker-register-hint">
-                      Registering is one on-chain transaction that posts the stake from the worker
-                      key.
-                    </p>
-                    <button class="button button-primary" type="button" id="worker-register">
-                      <svg class="icon" aria-hidden="true"><use href="#i-shield" /></svg>
-                      Register
-                    </button>
-                    <div class="worker-step-alert" id="worker-register-alert" hidden></div>
-                  </div>
-                </section>
-              </div>
-
-              <div class="worker-column">
-                <section class="kit-card" aria-labelledby="worker-step-run-title">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title" id="worker-step-run-title">
-                      <svg class="icon" aria-hidden="true"><use href="#i-container" /></svg>
-                      5 · Run
-                    </h2>
-                    <span class="worker-head-side">
-                      <span class="chip" id="worker-state" hidden></span>
-                      <span class="worker-step-actions">
-                        <button class="button button-sm" type="button" id="worker-pull">
-                          <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
-                          Pull image
-                        </button>
-                        <button class="button button-sm" type="button" id="worker-start">
-                          <svg class="icon" aria-hidden="true"><use href="#i-play" /></svg>
-                          Start
-                        </button>
-                        <button class="button button-sm" type="button" id="worker-stop">
-                          <svg class="icon" aria-hidden="true"><use href="#i-stop" /></svg>
-                          Stop
-                        </button>
-                      </span>
-                    </span>
-                  </header>
-                  <div class="worker-card-body" id="worker-container"></div>
-                  <div class="worker-step-alert worker-step-alert-flush" id="worker-run-alert" hidden></div>
-                </section>
-
-                <!-- Where the scrolling belongs. A log that grows by a line must not move
-                     the heading that says what you are looking at. -->
-                <section class="kit-card kit-card-flush worker-fill">
-                  <header class="kit-card-head">
-                    <h2 class="kit-card-title">
-                      <svg class="icon" aria-hidden="true"><use href="#i-terminal" /></svg>
-                      Recent output
-                    </h2>
-                    <span class="chip" id="worker-busy" hidden></span>
-                  </header>
-                  <div class="kit-card-scroll worker-log" id="worker-log">
-                    <pre class="worker-log-text" id="worker-logs"></pre>
-                  </div>
-                </section>
-              </div>
+            <!-- Shown once, right after creating a key: the only backup there is. -->
+            <div class="worker-created" id="worker-created" hidden>
+              <p>
+                <strong>Write this down.</strong> Shown once. Without it, the key and everything it
+                earns are gone.
+              </p>
+              <p class="worker-phrase" id="worker-created-phrase"></p>
+              <button class="button button-sm" type="button" id="worker-created-copy">
+                <svg class="icon" aria-hidden="true"><use href="#i-copy" /></svg>
+                Copy phrase
+              </button>
             </div>
+
+            <div class="worker-step-alert" id="worker-key-alert" hidden></div>
+          </div>
+        </section>
+
+        <!-- 4 &middot; Stake -->
+        <section class="wizard-step" data-step="4" id="worker-step-stake" hidden>
+          <p class="wizard-kicker">Step 4 of 6</p>
+          <h2 class="wizard-title" id="worker-step-stake-title">Fund the key</h2>
+          <p class="wizard-lede" id="worker-stake-lede">
+            Registering locks a stake, and the key pays its own gas.
+          </p>
+          <div class="wizard-body" id="worker-stake-body"></div>
+        </section>
+
+        <!-- 5 &middot; Register -->
+        <section class="wizard-step" data-step="5" id="worker-step-register" hidden>
+          <p class="wizard-kicker">Step 5 of 6</p>
+          <h2 class="wizard-title" id="worker-step-register-title">Register the worker</h2>
+          <p class="wizard-lede" id="worker-register-hint">One transaction posts the stake.</p>
+          <div class="wizard-body">
+            <button class="button button-primary button-lg" type="button" id="worker-register">
+              Register
+            </button>
+            <div class="worker-step-alert" id="worker-register-alert" hidden></div>
+          </div>
+        </section>
+
+        <!-- 6 &middot; Run -->
+        <section class="wizard-step" data-step="6" id="worker-step-run" hidden>
+          <p class="wizard-kicker">Step 6 of 6</p>
+          <h2 class="wizard-title" id="worker-step-run-title">Start earning</h2>
+          <p class="wizard-lede" id="worker-run-hint">
+            It runs in the background and restarts with this machine.
+          </p>
+          <div class="wizard-body">
+            <div class="wizard-actions">
+              <button class="button button-lg" type="button" id="worker-pull">
+                <svg class="icon" aria-hidden="true"><use href="#i-download" /></svg>
+                Get the image
+              </button>
+              <button class="button button-primary button-lg" type="button" id="worker-start">
+                <svg class="icon" aria-hidden="true"><use href="#i-play" /></svg>
+                Start
+              </button>
+              <button class="button button-lg" type="button" id="worker-stop">
+                <svg class="icon" aria-hidden="true"><use href="#i-stop" /></svg>
+                Stop
+              </button>
+            </div>
+            <span class="chip" id="worker-state" hidden></span>
+            <div class="worker-step-alert" id="worker-run-alert" hidden></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- The one control, under the step it belongs to. -->
+      <div class="wizard-foot">
+        <button class="button" type="button" id="worker-back" hidden>Back</button>
+        <span class="wizard-foot-note" id="worker-verdict-detail"></span>
+        <button
+          class="button button-primary button-lg"
+          type="button"
+          id="worker-action"
+          hidden
+        ></button>
+      </div>
+
+      <!-- Everything the console used to keep on screen permanently. It is
+           worth having and it is not worth half the window: somebody whose
+           machine is working never needs to see a container name or a log. -->
+      <details class="wizard-details">
+        <summary>
+          <svg class="icon" aria-hidden="true"><use href="#i-terminal" /></svg>
+          Details
+          <span class="chip" id="worker-busy" hidden></span>
+        </summary>
+        <div class="wizard-details-body">
+          <div id="worker-container"></div>
+          <div class="kit-card-scroll worker-log" id="worker-log">
+            <pre class="worker-log-text" id="worker-logs"></pre>
           </div>
         </div>
+      </details>
+
+    </div>
+  </div>
+</div>
+<!-- For Validators ---------------------------------------------------->
+<!--
+  The same wizard as the worker page, because it is the same job seen once:
+  a route across the top, one step in front of you, one control underneath.
+
+  What differs is the honesty at step 3. A validator needs two chain clients
+  running around the clock, and this application will not pretend to supervise
+  them — so that step hands them over with the exact commands rather than
+  offering a Start button it would drop the moment somebody quit the window.
+-->
+<div class="panel" id="panel-validator" hidden>
+  <div class="console worker">
+    <header class="page-head">
+      <div class="page-head-main">
+        <h1 class="page-title">For Validators</h1>
+        <p class="page-sub">Stake to help produce this chain's blocks, and be paid for it.</p>
+      </div>
+      <div class="page-actions">
+        <button class="button button-sm" type="button" id="validator-refresh">
+          <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+          Refresh
+        </button>
+      </div>
+    </header>
+
+    <div class="wizard" id="validator-body">
+      <!-- What the network asks, before anything asks anything of you. Three
+           numbers decide whether the rest of this page is worth reading, and
+           all three come from the chain at refresh time. -->
+      <dl class="wizard-stats" id="validator-network-body"></dl>
+
+      <nav class="wizard-rail" id="validator-rail" aria-label="Setup progress"></nav>
+
+      <div class="wizard-stage">
+        <!-- What the stage holds while the host is being probed.
+
+             Docker, Ollama, a GPU, a disk and a whitelist read off the chain
+             take a few seconds between them, and for those seconds the stage
+             held nothing at all: a route across the top, one line saying
+             "Checking the host…", and two hairlines with a page of empty
+             underneath. An empty step reads as a step with nothing in it. This
+             is the shape of the step that is coming, so the page has a size
+             before it has an answer. -->
+        <section class="wizard-step wizard-waiting" id="validator-waiting" hidden aria-hidden="true">
+          <span class="skeleton" data-skeleton="kicker"></span>
+          <span class="skeleton" data-skeleton="title"></span>
+          <span class="skeleton" data-skeleton="lede"></span>
+          <div class="wizard-waiting-rows">
+            <span class="skeleton skeleton-text"></span>
+            <span class="skeleton skeleton-text"></span>
+            <span class="skeleton skeleton-text"></span>
+          </div>
+        </section>
+        <section class="wizard-step" data-step="1" id="validator-step-keys" hidden>
+          <p class="wizard-kicker">Step 1 of 4</p>
+          <h2 class="wizard-title" id="validator-step-keys-title">Create validator keys</h2>
+          <p class="wizard-lede">
+            One recovery phrase makes as many as you like. Shown once, stored nowhere.
+          </p>
+          <div class="wizard-body">
+            <div id="validator-keys-body"></div>
+            <div class="worker-step-alert" id="validator-keys-alert" hidden></div>
+          </div>
+        </section>
+
+        <section class="wizard-step" data-step="2" id="validator-step-deposit" hidden>
+          <p class="wizard-kicker">Step 2 of 4</p>
+          <h2 class="wizard-title" id="validator-step-deposit-title">Send the deposit</h2>
+          <p class="wizard-lede">
+            This is the irreversible part. You will be asked to confirm the exact amount.
+          </p>
+          <div class="wizard-body" id="validator-deposit-body"></div>
+        </section>
+
+        <section class="wizard-step" data-step="3" id="validator-step-clients" hidden>
+          <p class="wizard-kicker">Step 3 of 4</p>
+          <h2 class="wizard-title" id="validator-step-clients-title">Run the two clients</h2>
+          <p class="wizard-lede">
+            This part runs outside this app, around the clock, and is yours to keep running.
+          </p>
+          <div class="wizard-body" id="validator-clients-body"></div>
+        </section>
+
+        <section class="wizard-step" data-step="4" id="validator-step-watch" hidden>
+          <p class="wizard-kicker">Step 4 of 4</p>
+          <h2 class="wizard-title" id="validator-step-watch-title">Watch them earn</h2>
+          <p class="wizard-lede">What the chain says about your validators, read live.</p>
+          <div class="wizard-body" id="validator-watch-body"></div>
+        </section>
+      </div>
+
+      <div class="wizard-foot">
+        <button class="button" type="button" id="validator-back" hidden>Back</button>
+        <span class="wizard-foot-note" id="validator-verdict-detail"></span>
+        <button
+          class="button button-primary button-lg"
+          type="button"
+          id="validator-action"
+          hidden
+        ></button>
+      </div>
+
+      <details class="wizard-details">
+        <summary>
+          <svg class="icon" aria-hidden="true"><use href="#i-worker" /></svg>
+          Or run a worker instead
+        </summary>
+        <div class="wizard-details-body">
+          <p class="worker-hint">
+            A worker answers questions on a GPU and is paid per job. Far less stake, no chain
+            client, and this app sets one up end to end.
+          </p>
+          <button class="button" type="button" id="validator-to-worker">Open For Workers</button>
+        </div>
+      </details>
+
+    </div>
+  </div>
+</div>
         <!-- Wallet ---------------------------------------------------------->
         <!-- Three stages behind one panel. The two before the wallet is open
              are gates holding a single form each, so they are one centred card;
@@ -2007,13 +2243,13 @@
               <svg class="asset-hero-mark" aria-hidden="true">
                 <use href="#c-generic" id="asset-mark" />
               </svg>
-              <h1 class="asset-hero-name" id="asset-title">Loading…</h1>
+              <h1 class="asset-hero-name" id="asset-title"><span class="skeleton" data-skeleton="title"></span></h1>
               <!-- The chain, under the name. Three of these pages are called
                    "Ether" and only this line tells them apart, which is the
                    same ambiguity the holdings rows carry a chain to avoid. -->
               <p class="asset-hero-chain" id="asset-chain"></p>
-              <p class="asset-hero-balance" id="asset-balance">Loading…</p>
-              <p class="asset-hero-worth" id="asset-worth">Loading…</p>
+              <p class="asset-hero-balance" id="asset-balance"><span class="skeleton" data-skeleton="figure"></span></p>
+              <p class="asset-hero-worth" id="asset-worth"><span class="skeleton" data-skeleton="word"></span></p>
 
               <div class="asset-actions">
                 <button class="asset-action" type="button" id="asset-receive">
@@ -2193,17 +2429,45 @@
 
             <!-- Unlocked -->
             <section class="console wallet" id="wallet-open" hidden>
-              <header class="page-head">
-                <div class="page-head-main">
-                  <h1 class="page-title">Account</h1>
-                  <p class="page-sub">What you hold, and what pays for answers.</p>
-                </div>
-                <div class="page-actions">
-                  <button class="button button-sm" type="button" id="wallet-lock">
-                    <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
-                    Lock
-                  </button>
-                </div>
+              <!-- The account, as the wallet heads its own portfolio: whose
+                   money this is on the left, and what acts on the page on the
+                   right, over a rule. A page called "Account" with a sentence
+                   under it spent the top of the screen restating the nav row
+                   that got you here; the address is the thing that is actually
+                   worth knowing before you read a balance. -->
+              <header class="account-bar">
+                <button class="account-pill" type="button" id="wallet-account-pill">
+                  <span class="account-pill-mark" id="wallet-account-mark" aria-hidden="true"></span>
+                  <span class="account-pill-text">
+                    <span class="account-pill-name">Account</span>
+                    <span class="account-pill-address" id="wallet-account-address">—</span>
+                  </span>
+                  <svg class="icon account-pill-chevron" aria-hidden="true">
+                    <use href="#i-chevron" />
+                  </svg>
+                </button>
+
+                <span class="account-bar-spacer"></span>
+
+                <!-- Still `wallet-lock`: `dom.js` resolves it by that id and
+                     `wallet.js` hangs the only lock handler there is on it. The
+                     title bar's lock presses this one rather than repeating
+                     what it does — which is exactly why this one is `hidden`.
+                     Drawn, it put a second identical padlock on screen a couple
+                     of hundred pixels directly below the first, on a row that
+                     was otherwise empty all the way across. A hidden button
+                     still answers `.click()`, so the title bar keeps working
+                     and there is one padlock in the window again. -->
+                <button
+                  class="icon-button"
+                  type="button"
+                  id="wallet-lock"
+                  title="Lock the wallet"
+                  aria-label="Lock the wallet"
+                  hidden
+                >
+                  <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+                </button>
               </header>
 
               <div class="console-body wallet-body">
@@ -2216,38 +2480,109 @@
                      accounting rather than about what somebody has. Two lines
                      on one card, because they are two pockets of the same
                      money and a person moves between them. -->
-                <section class="kit-card account-balances">
-                  <div class="account-balance-row">
-                    <div class="account-balance-named">
-                      <span class="account-balance-label">Wallet</span>
+                <!-- The account, as the wallet draws its home screen: what
+                     it is all worth, what that did today, what acts on it, and
+                     the price line underneath.
+
+                     The figure is the portfolio total across all six networks —
+                     `assets-total`, the same element that used to sit inside the
+                     disclosure at the foot of this page. That is the number
+                     somebody opens a wallet to see, and it was two clicks and a
+                     scroll away while a per-chain balance stood in for it. The
+                     LCAI balance keeps its place directly under the total,
+                     because a total in dollars without the holding it came from
+                     is a figure you cannot check. -->
+                <section class="pv-card">
+                  <div class="pv-top-row">
+                    <div class="pv-info">
+                      <span class="pv-label">Portfolio value</span>
                       <!-- Loading is a word, zero is a number. A dash reads as a
-                           load failure, and a balance of nothing is an answer. -->
-                      <span class="account-balance-value" id="account-native">Loading…</span>
+                           load failure, and a balance of nothing is an answer —
+                           so neither is used: a block the width of the figure
+                           holds the line until the figure arrives. -->
+                      <span class="pv-value" id="assets-total">
+                        <span class="skeleton" data-skeleton="figure"></span>
+                      </span>
+                      <span class="pv-sub">
+                        <span class="pv-native" id="account-native">
+                          <span class="skeleton" data-skeleton="amount"></span>
+                        </span>
+                        <span class="pv-change" id="portfolio-change"></span>
+                      </span>
                     </div>
-                    <div class="account-balance-actions">
-                      <button class="button button-sm" type="button" id="assets-receive-btn">
-                        <svg class="icon" aria-hidden="true"><use href="#i-receive" /></svg>
+                    <div class="pv-actions">
+                      <button class="button" type="button" id="assets-receive-btn">
+                        <span class="button-chip" aria-hidden="true">
+                          <svg class="icon"><use href="#i-receive" /></svg>
+                        </span>
                         Receive
                       </button>
-                      <button class="button button-sm" type="button" id="assets-swap-btn">
-                        <svg class="icon" aria-hidden="true"><use href="#i-swap" /></svg>
+                      <button class="button" type="button" id="assets-swap-btn">
+                        <span class="button-chip" aria-hidden="true">
+                          <svg class="icon"><use href="#i-swap" /></svg>
+                        </span>
                         Swap
                       </button>
-                      <button
-                        class="button button-sm button-primary"
-                        type="button"
-                        id="assets-send-btn"
-                      >
-                        <svg class="icon" aria-hidden="true"><use href="#i-send" /></svg>
+                      <button class="button button-primary" type="button" id="assets-send-btn">
+                        <span class="button-chip" aria-hidden="true">
+                          <svg class="icon"><use href="#i-send" /></svg>
+                        </span>
                         Send
                       </button>
                     </div>
                   </div>
 
+                  <!-- The chart, on the page rather than behind a disclosure.
+                       It is drawn from Chainlink's own round history, so the
+                       ranges below are real reads rather than a provider's
+                       series — which is why they are worth putting in front of
+                       somebody instead of one press away. -->
+                  <div class="pv-chart">
+                    <div class="pv-chart-head">
+                      <div class="pv-mini">
+                        <svg class="pv-mini-mark" aria-hidden="true"><use href="#i-logo" /></svg>
+                        <span class="pv-mini-name">LCAI</span>
+                        <span class="pv-mini-price" id="portfolio-price"></span>
+                      </div>
+                      <div class="asset-ranges" id="portfolio-ranges">
+                        <button class="asset-range" type="button" data-range="24h">1D</button>
+                        <button class="asset-range is-active" type="button" data-range="1w">
+                          1W
+                        </button>
+                        <button class="asset-range" type="button" data-range="1m">1M</button>
+                        <button class="asset-range" type="button" data-range="1y">1Y</button>
+                        <button class="asset-range" type="button" data-range="all">All</button>
+                      </div>
+                    </div>
+                    <div class="pv-chart-body asset-chart" id="portfolio-chart"></div>
+
+                    <!-- What the line is, and what it is not. It prices what is
+                         held now backwards; nothing here has ever recorded what
+                         was held last week, and implying otherwise would be
+                         inventing a history. -->
+                    <p class="wallet-note" id="portfolio-note"></p>
+
+                    <div class="alert" data-tone="warn" role="status" id="assets-partial" hidden>
+                      <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+                      <div class="alert-body">
+                        <strong class="alert-title">This total is incomplete</strong>
+                        <span id="assets-partial-note"></span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- "AI credit" is what pays for answers. It was the second row
+                     of the balance card above, which made it read as half of
+                     the wallet's money; it is a separate pocket with its own
+                     two actions, so it is its own card. -->
+                <section class="kit-card account-credit">
                   <div class="account-balance-row">
                     <div class="account-balance-named">
                       <span class="account-balance-label">AI credit</span>
-                      <span class="account-balance-value" id="wallet-prepaid">Loading…</span>
+                      <span class="account-balance-value" id="wallet-prepaid">
+                        <span class="skeleton" data-skeleton="word"></span>
+                      </span>
                       <span class="account-balance-note" id="account-spent"></span>
                       <!-- What the delegate can currently reach, said beside the
                            balance it is authorised against rather than in
@@ -2297,6 +2632,36 @@
                   <button class="button button-sm button-primary" type="button" id="account-backup-btn">
                     Back it up
                   </button>
+                </section>
+
+                <!-- What is actually held, on the page rather than inside
+                     the disclosure at the foot of it. A table, because these
+                     are columns being compared down rather than rows read
+                     across: which of these is worth most, which moved today. A
+                     list of cards makes that comparison impossible. -->
+                <section class="kit-card kit-card-flush wallet-holdings">
+                  <header class="kit-card-head">
+                    <h2 class="kit-card-title">Holdings</h2>
+                    <button class="button button-sm" type="button" id="assets-refresh">
+                      <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+                      Refresh
+                    </button>
+                  </header>
+                  <div class="kit-card-scroll">
+                    <div class="holdings-head" aria-hidden="true" hidden>
+                      <span>Asset</span>
+                      <span class="holdings-col-num">Balance</span>
+                      <span class="holdings-col-num">Price</span>
+                      <span class="holdings-col-num">24h</span>
+                      <span class="holdings-col-chart">7 days</span>
+                      <span class="holdings-col-num">Value</span>
+                    </div>
+                    <ul class="holdings" id="assets-list"></ul>
+
+                    <p class="wallet-note" id="assets-empty" hidden>
+                      Nothing held yet on any of the six networks. Use Receive to get an address.
+                    </p>
+                  </div>
                 </section>
 
                 <!-- Every deposit, withdrawal and payment was already being
@@ -2378,10 +2743,14 @@
                   </div>
                 </section>
 
-                <!-- Everything below is the chain showing through: six
-                     networks, a portfolio line and a holdings table. All of it
-                     real and none of it what somebody came to this page for, so
-                     it is one press away rather than the first thing in view.
+                <!-- What is left down here is the chain showing through: the
+                     same balance split six ways. The portfolio line and the
+                     holdings table used to be in this drawer too, which is why
+                     this page looked nothing like a wallet's home screen — the
+                     whole of what a wallet is for was one press away. They are
+                     above now. A per-network breakdown genuinely is secondary,
+                     so it stays.
+
                      `details` rather than a script: it is keyboard-operable, it
                      announces its own state, and it remembers nothing, which is
                      right for a section whose closed state is the
@@ -2389,82 +2758,16 @@
                 <details class="account-advanced" id="account-advanced" data-advanced>
                   <summary class="account-advanced-summary">
                     <svg class="icon" aria-hidden="true"><use href="#i-chevron" /></svg>
-                    Networks and holdings
+                    Balances by network
                   </summary>
 
                 <div class="wallet-grid">
-                  <section class="kit-card kit-card-flush wallet-portfolio">
-                    <header class="kit-card-head">
-                      <h2 class="kit-card-title">Portfolio</h2>
-                      <div class="asset-ranges" id="portfolio-ranges">
-                        <button class="asset-range" type="button" data-range="24h">24H</button>
-                        <button class="asset-range is-active" type="button" data-range="1w">
-                          1W
-                        </button>
-                        <button class="asset-range" type="button" data-range="1m">1M</button>
-                        <button class="asset-range" type="button" data-range="1y">1Y</button>
-                        <button class="asset-range" type="button" data-range="all">All</button>
-                      </div>
-                    </header>
-                    <div class="kit-card-scroll">
-                      <div class="holdings-total">
-                        <span class="holdings-total-value" id="assets-total">Loading…</span>
-                        <span class="holdings-total-label" id="portfolio-change"></span>
-                      </div>
-
-                      <div class="asset-chart" id="portfolio-chart"></div>
-
-                      <!-- What the line is, and what it is not. It prices what
-                           is held now backwards; nothing here has ever recorded
-                           what was held last week, and implying otherwise would
-                           be inventing a history. -->
-                      <p class="wallet-note" id="portfolio-note"></p>
-
-                      <div class="alert" data-tone="warn" role="status" id="assets-partial" hidden>
-                        <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
-                        <div class="alert-body">
-                          <strong class="alert-title">This total is incomplete</strong>
-                          <span id="assets-partial-note"></span>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-
                   <section class="kit-card kit-card-flush wallet-networks">
                     <header class="kit-card-head">
                       <h2 class="kit-card-title">Networks</h2>
                     </header>
                     <div class="kit-card-scroll">
                       <ul class="networks" id="assets-networks"></ul>
-                    </div>
-                  </section>
-
-                  <section class="kit-card kit-card-flush wallet-holdings">
-                    <header class="kit-card-head">
-                      <h2 class="kit-card-title">Holdings</h2>
-                      <button class="button button-sm" type="button" id="assets-refresh">
-                        <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
-                        Refresh
-                      </button>
-                    </header>
-                    <div class="kit-card-scroll">
-                      <!-- A table, because these are columns being compared
-                           down rather than rows read across: which of these is
-                           worth most, which moved today. A list of cards makes
-                           that comparison impossible. -->
-                      <div class="holdings-head" aria-hidden="true" hidden>
-                        <span>Asset</span>
-                        <span class="holdings-col-num">Balance</span>
-                        <span class="holdings-col-num">Price</span>
-                        <span class="holdings-col-num">24h</span>
-                        <span class="holdings-col-chart">7 days</span>
-                        <span class="holdings-col-num">Value</span>
-                      </div>
-                      <ul class="holdings" id="assets-list"></ul>
-
-                      <p class="wallet-note" id="assets-empty" hidden>
-                        Nothing held yet on any of the six networks. Use Receive to get an address.
-                      </p>
                     </div>
                   </section>
 
@@ -2552,25 +2855,49 @@
                   </h2>
                 </header>
                 <div class="bridge-form-body">
-                  <div class="form">
+                  <!-- A transfer, not a form. The route is one control and the
+                       amount is the thing being decided, so the amount is the
+                       largest thing on the card and carries its unit inside the
+                       field rather than in a label above it. -->
+                  <div class="form bridge-transfer">
                     <label class="field">
-                      <span class="field-label">Direction</span>
-                      <select class="input" id="bridge-direction"></select>
+                      <span class="field-label">Route</span>
+                      <!-- The two chains, with their own marks. `#c-eth` comes
+                           from the same public icon set the holdings table
+                           draws from and `#i-logo` is Lightchain's own
+                           logomark — the marks people already recognise, not
+                           two shapes invented for this row. bridge.js swaps
+                           them when the direction does. -->
+                      <span class="bridge-route">
+                        <span class="bridge-route-marks" aria-hidden="true">
+                          <svg class="bridge-route-mark"><use id="bridge-from-mark" href="#c-eth" /></svg>
+                          <svg class="bridge-route-mark bridge-route-mark-to">
+                            <use id="bridge-to-mark" href="#i-logo" />
+                          </svg>
+                        </span>
+                        <span class="select">
+                          <select class="input" id="bridge-direction"></select>
+                          <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+                        </span>
+                      </span>
                     </label>
 
-                    <label class="field">
-                      <span class="field-label">Amount in LCAI</span>
-                      <input
-                        class="input"
-                        id="bridge-amount"
-                        type="text"
-                        inputmode="decimal"
-                        spellcheck="false"
-                        autocomplete="off"
-                        placeholder="0.0"
-                      />
+                    <label class="field bridge-amount-field">
+                      <span class="field-label">Amount</span>
+                      <span class="bridge-amount-well">
+                        <input
+                          class="bridge-amount"
+                          id="bridge-amount"
+                          type="text"
+                          inputmode="decimal"
+                          spellcheck="false"
+                          autocomplete="off"
+                          placeholder="0.0"
+                        />
+                        <span class="bridge-amount-unit" aria-hidden="true">LCAI</span>
+                      </span>
                     </label>
-                    <p class="field-hint" id="bridge-balance"></p>
+                    <p class="field-hint bridge-balance" id="bridge-balance"></p>
                   </div>
 
                   <div class="alert" data-tone="error" role="alert" id="bridge-error" hidden>
@@ -2603,8 +2930,10 @@
                        the allowance being granted is visible rather than folded
                        into the send. -->
                   <div class="bridge-actions">
-                    <button class="button" type="button" id="bridge-quote-btn" hidden>Review</button>
-                    <button class="button" type="button" id="bridge-approve-btn" hidden>
+                    <button class="button button-primary" type="button" id="bridge-quote-btn" hidden>
+                      Review transfer
+                    </button>
+                    <button class="button button-primary" type="button" id="bridge-approve-btn" hidden>
                       Approve first
                     </button>
                     <button class="button button-primary" type="button" id="bridge-send-btn" hidden>
@@ -2666,12 +2995,18 @@
 
         <label class="field">
           <span class="field-label">Network</span>
-          <select class="input" id="receive-chain"></select>
+          <span class="select">
+            <select class="input" id="receive-chain"></select>
+            <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+          </span>
         </label>
 
         <label class="field">
           <span class="field-label">Asset</span>
-          <select class="input" id="receive-token"></select>
+          <span class="select">
+            <select class="input" id="receive-token"></select>
+            <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+          </span>
         </label>
 
         <div class="alert" data-tone="warn" id="receive-warning">
@@ -2713,7 +3048,10 @@
 
         <label class="field">
           <span class="field-label">Asset</span>
-          <select class="input" id="send-asset"></select>
+          <span class="select">
+            <select class="input" id="send-asset"></select>
+            <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+          </span>
         </label>
 
         <label class="field">
@@ -2998,7 +3336,10 @@
 
         <label class="field">
           <span class="field-label">From</span>
-          <select class="input" id="swap-from"></select>
+          <span class="select">
+            <select class="input" id="swap-from"></select>
+            <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+          </span>
         </label>
 
         <label class="field">
@@ -3029,11 +3370,14 @@
 
         <label class="field">
           <span class="field-label">Slippage tolerance</span>
-          <select class="input" id="swap-slippage">
+          <span class="select">
+            <select class="input" id="swap-slippage">
             <option value="10">0.1%</option>
             <option value="50" selected>0.5%</option>
             <option value="100">1.0%</option>
           </select>
+            <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+          </span>
         </label>
 
         <div class="alert" data-tone="error" role="alert" id="swap-error" hidden>
@@ -3438,6 +3782,92 @@
           <button class="button button-primary" type="button" data-close="secure-dialog">
             Close
           </button>
+        </div>
+      </div>
+    </dialog>
+    <!-- Switching accounts -------------------------------------------------------
+         One recovery phrase holds an endless run of accounts — BIP-44 index by
+         index — and this application has derived, switched between and sealed
+         per-account state since the wallet package was written. None of it was
+         reachable: the account row opened Settings, so the only account anybody
+         could ever use was the first.
+
+         The password is asked for here rather than assumed, because listing the
+         addresses means opening the phrase, and moving to one means deriving its
+         key. Both are the vault's business and the vault wants a password.
+
+         The warning is not decoration. Rooms, transcripts, preferences and the
+         ledger are each sealed under a key only the active account can derive,
+         so switching looks exactly like the application having forgotten
+         everything — and switching back brings all of it home. Somebody has to
+         be told that before they switch, not after. -->
+    <dialog class="dialog" id="accounts-dialog">
+      <div class="dialog-form">
+        <div class="dialog-head">
+          <h2 class="dialog-title">Accounts</h2>
+          <button
+            class="dialog-close"
+            type="button"
+            id="accounts-close"
+            aria-label="Close"
+            title="Close"
+          >
+            <svg class="icon" aria-hidden="true"><use href="#i-close" /></svg>
+          </button>
+        </div>
+
+        <p class="dialog-note">
+          Every account below comes from the same twelve words. They are separate
+          identities with separate addresses, not one address in several places.
+        </p>
+
+        <!-- The accounts, straight away. No password: these come from the
+             account-level public key the wallet holds while it is open, and
+             they are public information about a wallet whose owner is already
+             here. -->
+        <div class="accounts-body" id="accounts-body">
+          <ul class="accounts" id="accounts-list"></ul>
+
+          <button class="button button-block" type="button" id="accounts-more">
+            Show more accounts
+          </button>
+
+          <!-- Asked only when somebody has chosen where they are going.
+               Switching derives a private key, which an unlocked wallet does
+               not hold — it keeps the active account's and nothing else. So
+               this is unavoidable, and it is put in front of the person at the
+               moment it is actually needed rather than as a toll on the door. -->
+          <form class="form accounts-switch" id="accounts-switch" hidden>
+            <p class="dialog-note" id="accounts-switch-to"></p>
+            <label class="field">
+              <span class="field-label">Password</span>
+              <input
+                class="input"
+                type="password"
+                id="accounts-password"
+                autocomplete="current-password"
+                required
+              />
+            </label>
+            <p class="dialog-error" id="accounts-error" role="alert" hidden></p>
+            <div class="dialog-actions">
+              <button class="button" type="button" id="accounts-cancel">Cancel</button>
+              <button class="button button-primary" type="submit" id="accounts-confirm">
+                Switch
+              </button>
+            </div>
+          </form>
+
+          <div class="alert" data-tone="warn" role="status">
+            <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+            <div class="alert-body">
+              <strong class="alert-title">Your rooms follow the account</strong>
+              <span>
+                Conversations, history and preferences belong to the account that made them.
+                Switching hides them; switching back brings them straight home. Nothing is deleted.
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </dialog>

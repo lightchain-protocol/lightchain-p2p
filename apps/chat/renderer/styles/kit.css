@@ -94,7 +94,10 @@
   font-size: var(--lc-text-xxl);
   font-weight: 600;
   line-height: var(--lc-leading-tight);
-  letter-spacing: -0.015em;
+  /* The brand sets its headings tighter than its body. At this size the
+     difference is what makes a title look set rather than merely large. */
+  letter-spacing: -0.02em;
+  color: var(--lc-text-primary);
   text-wrap: balance;
 }
 
@@ -116,11 +119,35 @@
 
 /* --- Cards ---------------------------------------------------------------- */
 
+/**
+ * A card, as the brand draws one: the darker surface, an edge softer than a
+ * hairline, and a shadow with enough spread to separate it from a page that is
+ * nearly the same colour.
+ *
+ * The soft edge matters more here than it would on a light theme. Against
+ * `#0e0c15` a full-strength rule is a drawn line and reads as a table; at
+ * around half of it the card looks lit rather than outlined, which is the
+ * difference between the brand's surfaces and a wireframe of them.
+ */
 .kit-card {
-  padding: var(--lc-space-lg);
-  border: 1px solid var(--lc-rule);
+  /**
+   * One inset, everywhere: twenty.
+   *
+   * An audit of every card in every panel found four different values in use —
+   * 0, 20, 24 and 28 — and, worse, that a card holding a head paid its inset
+   * twice. The card padded itself and then the head padded itself again, so
+   * that content started forty pixels from the card's edge while the content of
+   * a card without a head started at twenty. Two cards side by side, indented
+   * differently, for a reason no rule stated.
+   *
+   * So a card either owns its inset or delegates it, and never both: the rule
+   * below hands it to the head and the body when there is a head to hand it to.
+   */
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
   border-radius: var(--lc-radius-lg);
   background: var(--lc-bg-elevated);
+  box-shadow: var(--lc-shadow-2);
   min-width: 0;
 }
 
@@ -139,8 +166,27 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--lc-space-md);
-  padding: var(--lc-space-md) var(--lc-space-lg);
-  border-bottom: 1px solid var(--lc-rule);
+  padding: var(--lc-space-lg) 20px;
+  /* The rule between a head and its body is a division inside one object, not
+     the edge of two. At full strength it cut the card in half. */
+  border-bottom: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
+}
+
+/**
+ * A card with a head delegates its inset, and pays it once.
+ *
+ * The head has to run to the card's edges so the rule under it spans the whole
+ * card rather than floating with a gap at each end, which means the head owns
+ * its own padding — and then the card must own none.
+ */
+.kit-card:has(> .kit-card-head) {
+  padding: 0;
+}
+
+/* Everything that is not the head gets the same twenty the head has, so a
+   column of content lines up with the title above it. */
+.kit-card:has(> .kit-card-head) > :not(.kit-card-head) {
+  padding: 20px;
 }
 
 .kit-card-title {
@@ -156,7 +202,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
-  padding: var(--lc-space-md) var(--lc-space-lg);
+  padding: 20px;
 }
 
 /* --- Status rows ---------------------------------------------------------- */
@@ -169,6 +215,23 @@
  * failure that does not say what to do next is a failure somebody has to search
  * for.
  */
+/**
+ * A passing check recedes.
+ *
+ * The list shows every check now, because the useful part of a passing row is
+ * not the word PASS — it is the observation beside it: which GPU was found, how
+ * much disk is free, which runtime answered. But six rows at equal weight read
+ * as six things to attend to. Dimming what passed keeps the list scannable as
+ * "here is what is wrong" while leaving what was found in plain sight.
+ */
+.status-row[data-tone='pass'] {
+  opacity: 0.72;
+}
+
+.status-row[data-tone='pass'] .status-name {
+  font-weight: var(--lc-weight-regular);
+}
+
 .status-row {
   display: grid;
   grid-template-columns: 5.5ch minmax(0, 1fr);
@@ -266,7 +329,8 @@
   display: flex;
   gap: var(--lc-space-md);
   align-items: flex-start;
-  padding: var(--lc-space-md) var(--lc-space-lg);
+  /* The same inset as a card head, because an alert sits among cards. */
+  padding: var(--lc-space-lg) 20px;
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
   background: var(--lc-bg-elevated);
@@ -281,8 +345,16 @@
   margin-top: 2px;
 }
 
+/**
+ * Tinted, not merely outlined.
+ *
+ * A coloured border around the page's own surface is a hint; the brand fills
+ * these at about a tenth and lets the border agree with the fill, which is what
+ * makes a warning legible as a warning before a word of it is read.
+ */
 .alert[data-tone='info'] {
   border-color: color-mix(in srgb, var(--lc-brand) 45%, var(--lc-rule));
+  background: color-mix(in srgb, var(--lc-brand) 10%, var(--lc-bg-elevated));
 }
 
 .alert[data-tone='info'] .icon {
@@ -291,6 +363,7 @@
 
 .alert[data-tone='warn'] {
   border-color: color-mix(in srgb, var(--lc-warning) 45%, var(--lc-rule));
+  background: color-mix(in srgb, var(--lc-warning) 10%, var(--lc-bg-elevated));
 }
 
 .alert[data-tone='warn'] .icon {
@@ -299,6 +372,7 @@
 
 .alert[data-tone='error'] {
   border-color: color-mix(in srgb, var(--lc-danger) 55%, var(--lc-rule));
+  background: color-mix(in srgb, var(--lc-danger) 12%, var(--lc-bg-elevated));
 }
 
 .alert[data-tone='error'] .icon {
@@ -323,11 +397,14 @@
   display: inline-flex;
   align-items: center;
   gap: var(--lc-space-xs);
-  padding: 2px var(--lc-space-sm);
+  padding: var(--lc-space-xs) var(--lc-space-md);
+  border: 1px solid color-mix(in srgb, var(--lc-rule) 70%, transparent);
   border-radius: var(--lc-radius-pill);
   background: var(--lc-bg-elevated-2);
   color: var(--lc-fg-muted);
   font-size: var(--lc-text-xs);
+  font-weight: 500;
+  letter-spacing: 0.03em;
   white-space: nowrap;
 }
 
@@ -425,6 +502,20 @@
   max-width: 44ch;
 }
 
+/**
+ * Inside a dialog the measure is already set, so the form takes the width.
+ *
+ * `44ch` exists to stop a password box running eight inches across a wide
+ * panel. A dialog is not a wide panel: it is 524px, and every other child of it
+ * — the heading, the note, the actions — fills that. A form capped 31px short
+ * of them left the field and its button ending before the close button and the
+ * paragraph above, which reads as the dialog's contents being off-centre. Two
+ * caps on one measure, and the inner one wins for no reason anybody wanted.
+ */
+.dialog-form .form {
+  max-width: none;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -432,15 +523,30 @@
   min-width: 0;
 }
 
+/**
+ * The brand's label: small caps, widely tracked, quiet.
+ *
+ * Set as sentence-case body text it competed with the value under it — two
+ * lines of the same size where one is a question and the other an answer. At
+ * this size and tracking it stops being read as content and becomes what it is,
+ * which is a caption for the field.
+ */
 .field-label {
   font-size: var(--lc-text-xs);
-  font-weight: 500;
-  color: var(--lc-fg-muted);
+  font-weight: var(--lc-weight-semibold);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--lc-text-tertiary);
 }
 
 /* Passwords are typed, not pasted from a key. Monospace makes them look like
-   data; this is the one input that should read as prose. */
+   data; this is the one input that should read as prose.
+
+   A form field is also the largest control on whatever screen it is on — the
+   wallet sets its unlock field at fifty — so it takes the large height rather
+   than the same one a toolbar filter gets. */
 .form .input {
+  height: var(--lc-control-lg);
   font-family: inherit;
   font-size: var(--lc-text-md);
 }
@@ -511,4 +617,145 @@
 [data-kit-focus]:focus-visible {
   outline: var(--lc-focus-ring);
   outline-offset: var(--lc-focus-offset);
+}
+
+/* --- Waiting ---------------------------------------------------------------- */
+
+/**
+ * Two ways of saying "not yet", for two different waits.
+ *
+ * A skeleton is for a value that is arriving into a layout already on screen: a
+ * balance, a price, a row. It holds the space the value will take, so nothing
+ * jumps when the number lands, and it shimmers so the pause reads as work
+ * rather than as a page that has stopped. The word "Loading…" did neither — it
+ * is a different width from every figure that replaces it, so every panel
+ * reflowed the moment its data arrived, which is most of what made switching
+ * pages feel laggy.
+ *
+ * A spinner is for an action somebody just took and is waiting on. It goes
+ * inside the control that started it, because that is where the attention
+ * already is.
+ */
+.skeleton {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: middle;
+  border-radius: var(--lc-radius-sm);
+  background: color-mix(in srgb, var(--lc-fg) 5%, transparent);
+}
+
+/*
+ * The sheen travels by moving a background rather than by translating a box.
+ * A pseudo-element offset by its own width extends the element's scroll area,
+ * which is invisible behind `overflow: hidden` and still makes every
+ * placeholder on the page report itself as horizontally scrollable.
+ */
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--lc-fg) 9%, transparent),
+    transparent
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: lc-shimmer 1.4s infinite;
+}
+
+@keyframes lc-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+
+  to {
+    background-position: -50% 0;
+  }
+}
+
+/* A block that stands in for a whole line of text takes its height from the
+   line rather than from a number, so it matches whatever it is replacing. */
+.skeleton-text {
+  height: 1em;
+  width: 100%;
+}
+
+/**
+ * The sizes a placeholder comes in, named for what it stands in for.
+ *
+ * These were `style="width: 9ch; height: 0.9em"` in the markup, and every one
+ * of them was doing nothing: this window's policy is `style-src 'self'` with no
+ * `'unsafe-inline'`, so a `style` attribute parsed from HTML is dropped and the
+ * placeholder collapses to nothing. It fails silently — the element is there,
+ * it has the right class, and it measures zero by zero.
+ *
+ * Named by role rather than by measurement, which is what they should have been
+ * regardless: a title-shaped gap stays title-shaped when the title's size
+ * changes, and a stylesheet is where that relationship belongs.
+ *
+ * (Setting `element.style.width` from script is unaffected — CSSOM is not what
+ * `style-src` governs — so `dom.js`'s `skeleton()` helper keeps working.)
+ */
+.skeleton[data-skeleton='kicker'] {
+  width: 9ch;
+  height: 0.9em;
+}
+
+.skeleton[data-skeleton='title'] {
+  width: 17ch;
+  height: 1.7em;
+}
+
+.skeleton[data-skeleton='lede'] {
+  width: 34ch;
+  height: 1em;
+}
+
+.skeleton[data-skeleton='figure'] {
+  width: 8ch;
+  height: 0.7em;
+}
+
+.skeleton[data-skeleton='amount'] {
+  width: 7ch;
+  height: 0.8em;
+}
+
+.skeleton[data-skeleton='word'] {
+  width: 6ch;
+  height: 0.8em;
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  border: 2px solid color-mix(in srgb, var(--lc-fg) 30%, transparent);
+  border-top-color: currentcolor;
+  border-radius: var(--lc-radius-pill);
+  animation: lc-spin 0.6s linear infinite;
+}
+
+@keyframes lc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/**
+ * Neither animation runs where somebody has asked for less motion.
+ *
+ * A shimmer that never moves is still a placeholder of the right size, which is
+ * most of its job. The spinner keeps its ring so a pending control still looks
+ * different from an idle one; it simply stops turning.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after,
+  .spinner {
+    animation: none;
+  }
 }

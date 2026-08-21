@@ -4,7 +4,8 @@ import { scrypt } from '@noble/hashes/scrypt.js'
 import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from '@scure/bip39'
 import { wordlist } from '@scure/bip39/wordlists/english.js'
 import { HDKey } from '@scure/bip32'
-import { toBytes, toHex } from '@lcai-p2p/chain'
+import { toAddress, toBytes, toHex } from '@lcai-p2p/chain'
+import { secp256k1 } from '@noble/curves/secp256k1.js'
 
 /**
  * The encrypted vault holding a recovery phrase.
@@ -259,6 +260,46 @@ function validate(value: unknown): Vault {
  * spacing are significant, and lowercasing one would silently derive a
  * different wallet from the one it was written for.
  */
+/**
+ * The account-level public key, from which every account's address follows.
+ *
+ * `ACCOUNT_PATH` ends at the last hardened step, and the account index appended
+ * to it is not hardened — which is the whole point of the BIP-44 layout. So the
+ * extended *public* key at that node derives every address this phrase will
+ * ever have, and derives none of their private keys.
+ *
+ * That distinction is what lets an unlocked wallet list its accounts without
+ * being handed a password again. Holding this is not the same as holding the
+ * phrase: it names the addresses and cannot spend from any of them.
+ */
+export function accountsPublicKey(phrase: string, passphrase = ''): string {
+  const clean = normalise(phrase)
+  if (!isValidPhrase(clean)) throw new VaultError('that is not a valid recovery phrase')
+
+  const seed = mnemonicToSeedSync(clean, passphrase)
+  return HDKey.fromMasterSeed(seed).derive(ACCOUNT_PATH).publicExtendedKey
+}
+
+/**
+ * The address at an index, from the account-level public key alone.
+ *
+ * No secret goes in and none comes out. `toAddress` wants the uncompressed
+ * point and BIP-32 stores the compressed one, so the point is expanded here
+ * rather than at every call site.
+ */
+export function addressFromAccountsKey(publicKey: string, index = 0): string {
+  if (!isAccountIndex(index)) {
+    throw new VaultError(
+      `account index must be a whole number between 0 and ${MAX_ACCOUNT_INDEX}, got ${index}`
+    )
+  }
+
+  const child = HDKey.fromExtendedKey(publicKey).deriveChild(index)
+  if (!child.publicKey) throw new VaultError('derivation produced no public key')
+
+  return toAddress(secp256k1.Point.fromBytes(child.publicKey).toBytes(false))
+}
+
 export function derivePrivateKey(phrase: string, index = 0, passphrase = ''): string {
   if (!isAccountIndex(index)) {
     throw new VaultError(

@@ -1,0 +1,86 @@
+    <!-- Switching accounts -------------------------------------------------------
+         One recovery phrase holds an endless run of accounts — BIP-44 index by
+         index — and this application has derived, switched between and sealed
+         per-account state since the wallet package was written. None of it was
+         reachable: the account row opened Settings, so the only account anybody
+         could ever use was the first.
+
+         The password is asked for here rather than assumed, because listing the
+         addresses means opening the phrase, and moving to one means deriving its
+         key. Both are the vault's business and the vault wants a password.
+
+         The warning is not decoration. Rooms, transcripts, preferences and the
+         ledger are each sealed under a key only the active account can derive,
+         so switching looks exactly like the application having forgotten
+         everything — and switching back brings all of it home. Somebody has to
+         be told that before they switch, not after. -->
+    <dialog class="dialog" id="accounts-dialog">
+      <div class="dialog-form">
+        <div class="dialog-head">
+          <h2 class="dialog-title">Accounts</h2>
+          <button
+            class="dialog-close"
+            type="button"
+            id="accounts-close"
+            aria-label="Close"
+            title="Close"
+          >
+            <svg class="icon" aria-hidden="true"><use href="#i-close" /></svg>
+          </button>
+        </div>
+
+        <p class="dialog-note">
+          Every account below comes from the same twelve words. They are separate
+          identities with separate addresses, not one address in several places.
+        </p>
+
+        <!-- The accounts, straight away. No password: these come from the
+             account-level public key the wallet holds while it is open, and
+             they are public information about a wallet whose owner is already
+             here. -->
+        <div class="accounts-body" id="accounts-body">
+          <ul class="accounts" id="accounts-list"></ul>
+
+          <button class="button button-block" type="button" id="accounts-more">
+            Show more accounts
+          </button>
+
+          <!-- Asked only when somebody has chosen where they are going.
+               Switching derives a private key, which an unlocked wallet does
+               not hold — it keeps the active account's and nothing else. So
+               this is unavoidable, and it is put in front of the person at the
+               moment it is actually needed rather than as a toll on the door. -->
+          <form class="form accounts-switch" id="accounts-switch" hidden>
+            <p class="dialog-note" id="accounts-switch-to"></p>
+            <label class="field">
+              <span class="field-label">Password</span>
+              <input
+                class="input"
+                type="password"
+                id="accounts-password"
+                autocomplete="current-password"
+                required
+              />
+            </label>
+            <p class="dialog-error" id="accounts-error" role="alert" hidden></p>
+            <div class="dialog-actions">
+              <button class="button" type="button" id="accounts-cancel">Cancel</button>
+              <button class="button button-primary" type="submit" id="accounts-confirm">
+                Switch
+              </button>
+            </div>
+          </form>
+
+          <div class="alert" data-tone="warn" role="status">
+            <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+            <div class="alert-body">
+              <strong class="alert-title">Your rooms follow the account</strong>
+              <span>
+                Conversations, history and preferences belong to the account that made them.
+                Switching hides them; switching back brings them straight home. Nothing is deleted.
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </dialog>

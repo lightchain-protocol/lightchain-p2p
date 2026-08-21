@@ -94,3 +94,51 @@ export function parseOllamaTags(body: unknown): OllamaProbe {
       .filter((name): name is string => typeof name === 'string' && name !== '')
   }
 }
+
+/**
+ * The client version out of `ollama --version`.
+ *
+ * Given the command's combined output rather than its stdout, because the
+ * command answers with the client version *and* exits non-zero when no server
+ * is listening — which is exactly the state we most want to tell apart from
+ * "not installed". Judging that by exit status alone reports a working
+ * installation as an absent one.
+ */
+export function parseOllamaVersion(output: string | null): string | undefined {
+  if (output === null) return undefined
+  const match = /version\s+(?:is\s+)?v?(\d[^\s]*)/i.exec(output)
+  return match ? match[1] : undefined
+}
+
+/**
+ * A progress-bar stream, made readable in a pane that is not a terminal.
+ *
+ * `ollama pull` draws several gigabytes of download as one line it rewrites
+ * with carriage returns and colours with ANSI escapes. Appended verbatim to an
+ * element's textContent, none of that is interpreted: the escapes show up as
+ * literal `[?25l` noise and every rewrite lands beside the last, so a single
+ * pull produces one unreadable line thousands of characters wide.
+ *
+ * This keeps only what each rewritten line settled on and drops the escapes,
+ * which is the whole of what a log pane can honestly show. It is not a terminal
+ * emulator and does not try to be one — a chunk that ends mid-line is resolved
+ * as what arrived, and the next chunk continues from there.
+ */
+export function plainText(chunk: string): string {
+  // CSI sequences (colour, cursor moves, the hide/show-cursor pair Ollama
+  // brackets its progress with) and lone bare escapes.
+  //
+  // The rule against control characters in a pattern is asking whether one got
+  // in by accident. Here they are the subject: this function exists to take
+  // escapes out of text that is about to be rendered as literal characters.
+  // eslint-disable-next-line no-control-regex
+  const stripped = chunk.replace(/\u001B\[[0-?]*[ -/]*[@-~]/g, '').replace(/\u001B/g, '')
+
+  return stripped
+    .split('\n')
+    .map((line) => {
+      const rewrites = line.split('\r')
+      return rewrites[rewrites.length - 1] ?? ''
+    })
+    .join('\n')
+}

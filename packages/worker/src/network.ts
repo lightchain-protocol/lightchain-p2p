@@ -20,12 +20,16 @@ export interface NetworkProfile {
   readonly explorerUrl: string | null
   readonly beaconApiUrl: string
   /**
-   * Absent where the network has no worker gateway yet. Devnet publishes none:
-   * the hostname does not resolve, so worker hosting there is refused rather
-   * than attempted.
+   * Absent where the network has no worker gateway yet. Devnet publishes none —
+   * `worker-gateway.devnet-v2` is NXDOMAIN — so a worker there registers and
+   * runs but is sent no gateway-dispatched work.
    */
   readonly workerGatewayUrl?: string
-  /** The worker container image. Absent on devnet for the same reason. */
+  /**
+   * The worker container image. Every profile carries one; the type stays
+   * optional because a caller may build a config for a network that has not
+   * published an image, and `requireImage` is what refuses that.
+   */
   readonly image?: string
   /**
    * Where a consumer asks for inference, as distinct from `workerGatewayUrl`,
@@ -101,12 +105,34 @@ export const NETWORKS: Readonly<Record<NetworkName, NetworkProfile>> = {
     // No explorer: devnet-v2.lightscan.app does not resolve.
     explorerUrl: null,
     beaconApiUrl: 'https://beacon.devnet-v2.lightchain.ai',
-    consumerApiUrl: 'https://chat-api.devnet-v2.lightchain.ai'
-    // No workerGatewayUrl, image or relayUrl: none of those hostnames resolve
-    // yet, so worker hosting on devnet is refused rather than attempted. The
-    // WorkerRegistry genesis predeploy is live and answers aiConfig() and
-    // jobRegistry(), so contract addresses resolve at runtime exactly as on
-    // testnet — which is why none are pinned here either.
+    consumerApiUrl: 'https://chat-api.devnet-v2.lightchain.ai',
+    // The testnet image, deliberately. The worker binary takes its whole
+    // configuration from the environment — RPC_URL, CHAIN_ID and the contract
+    // addresses — and carries nothing network-specific inside it: pointed at
+    // devnet's RPC it loads its config and reaches the keystore step exactly as
+    // it does for the network it was published under. Pinning a separate devnet
+    // image would mean publishing one that differs only in its tag.
+    //
+    // Registering here works: the chain is live, the WorkerRegistry predeploy
+    // answers aiConfig() and jobRegistry(), the minimum stake is 5,000 LCAI and
+    // JobRegistry is not paused.
+    image: 'us-central1-docker.pkg.dev/lightchain/lightchain-testnet-public-docker/worker:latest',
+    // The consumer API doubles as the worker gateway here, per the operator of
+    // this deployment. `worker-gateway.devnet-v2` is NXDOMAIN — the hostname the
+    // other two networks use simply does not exist — and devnet consolidates
+    // both roles into the one service that `NEXT_PUBLIC_CONSUMER_API_URL`
+    // points at.
+    //
+    // Worth knowing, because the field's own documentation warns that confusing
+    // these two produces authentication failures that read as a bad token: on
+    // mainnet and testnet they are separate services, and probing them shows it
+    // — the gateway answers 404 as Go's net/http does, the consumer API as
+    // Fastify does. Devnet is the exception, not the rule, so this is pinned
+    // here rather than derived by pointing every gateway at its consumer API.
+    workerGatewayUrl: 'https://chat-api.devnet-v2.lightchain.ai'
+    // Still no relayUrl: relay.devnet-v2 is NXDOMAIN. Nothing in the worker's
+    // environment carries it, so it costs streamed answers rather than the
+    // ability to register and run.
   }
 }
 

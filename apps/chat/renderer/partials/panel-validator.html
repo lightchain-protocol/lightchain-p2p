@@ -1,0 +1,119 @@
+<!-- For Validators ---------------------------------------------------->
+<!--
+  The same wizard as the worker page, because it is the same job seen once:
+  a route across the top, one step in front of you, one control underneath.
+
+  What differs is the honesty at step 3. A validator needs two chain clients
+  running around the clock, and this application will not pretend to supervise
+  them — so that step hands them over with the exact commands rather than
+  offering a Start button it would drop the moment somebody quit the window.
+-->
+<div class="panel" id="panel-validator" hidden>
+  <div class="console worker">
+    <header class="page-head">
+      <div class="page-head-main">
+        <h1 class="page-title">For Validators</h1>
+        <p class="page-sub">Stake to help produce this chain's blocks, and be paid for it.</p>
+      </div>
+      <div class="page-actions">
+        <button class="button button-sm" type="button" id="validator-refresh">
+          <svg class="icon" aria-hidden="true"><use href="#i-refresh" /></svg>
+          Refresh
+        </button>
+      </div>
+    </header>
+
+    <div class="wizard" id="validator-body">
+      <!-- What the network asks, before anything asks anything of you. Three
+           numbers decide whether the rest of this page is worth reading, and
+           all three come from the chain at refresh time. -->
+      <dl class="wizard-stats" id="validator-network-body"></dl>
+
+      <nav class="wizard-rail" id="validator-rail" aria-label="Setup progress"></nav>
+
+      <div class="wizard-stage">
+        <!-- What the stage holds while the host is being probed.
+
+             Docker, Ollama, a GPU, a disk and a whitelist read off the chain
+             take a few seconds between them, and for those seconds the stage
+             held nothing at all: a route across the top, one line saying
+             "Checking the host…", and two hairlines with a page of empty
+             underneath. An empty step reads as a step with nothing in it. This
+             is the shape of the step that is coming, so the page has a size
+             before it has an answer. -->
+        <section class="wizard-step wizard-waiting" id="validator-waiting" hidden aria-hidden="true">
+          <span class="skeleton" data-skeleton="kicker"></span>
+          <span class="skeleton" data-skeleton="title"></span>
+          <span class="skeleton" data-skeleton="lede"></span>
+          <div class="wizard-waiting-rows">
+            <span class="skeleton skeleton-text"></span>
+            <span class="skeleton skeleton-text"></span>
+            <span class="skeleton skeleton-text"></span>
+          </div>
+        </section>
+        <section class="wizard-step" data-step="1" id="validator-step-keys" hidden>
+          <p class="wizard-kicker">Step 1 of 4</p>
+          <h2 class="wizard-title" id="validator-step-keys-title">Create validator keys</h2>
+          <p class="wizard-lede">
+            One recovery phrase makes as many as you like. Shown once, stored nowhere.
+          </p>
+          <div class="wizard-body">
+            <div id="validator-keys-body"></div>
+            <div class="worker-step-alert" id="validator-keys-alert" hidden></div>
+          </div>
+        </section>
+
+        <section class="wizard-step" data-step="2" id="validator-step-deposit" hidden>
+          <p class="wizard-kicker">Step 2 of 4</p>
+          <h2 class="wizard-title" id="validator-step-deposit-title">Send the deposit</h2>
+          <p class="wizard-lede">
+            This is the irreversible part. You will be asked to confirm the exact amount.
+          </p>
+          <div class="wizard-body" id="validator-deposit-body"></div>
+        </section>
+
+        <section class="wizard-step" data-step="3" id="validator-step-clients" hidden>
+          <p class="wizard-kicker">Step 3 of 4</p>
+          <h2 class="wizard-title" id="validator-step-clients-title">Run the two clients</h2>
+          <p class="wizard-lede">
+            This part runs outside this app, around the clock, and is yours to keep running.
+          </p>
+          <div class="wizard-body" id="validator-clients-body"></div>
+        </section>
+
+        <section class="wizard-step" data-step="4" id="validator-step-watch" hidden>
+          <p class="wizard-kicker">Step 4 of 4</p>
+          <h2 class="wizard-title" id="validator-step-watch-title">Watch them earn</h2>
+          <p class="wizard-lede">What the chain says about your validators, read live.</p>
+          <div class="wizard-body" id="validator-watch-body"></div>
+        </section>
+      </div>
+
+      <div class="wizard-foot">
+        <button class="button" type="button" id="validator-back" hidden>Back</button>
+        <span class="wizard-foot-note" id="validator-verdict-detail"></span>
+        <button
+          class="button button-primary button-lg"
+          type="button"
+          id="validator-action"
+          hidden
+        ></button>
+      </div>
+
+      <details class="wizard-details">
+        <summary>
+          <svg class="icon" aria-hidden="true"><use href="#i-worker" /></svg>
+          Or run a worker instead
+        </summary>
+        <div class="wizard-details-body">
+          <p class="worker-hint">
+            A worker answers questions on a GPU and is paid per job. Far less stake, no chain
+            client, and this app sets one up end to end.
+          </p>
+          <button class="button" type="button" id="validator-to-worker">Open For Workers</button>
+        </div>
+      </details>
+
+    </div>
+  </div>
+</div>

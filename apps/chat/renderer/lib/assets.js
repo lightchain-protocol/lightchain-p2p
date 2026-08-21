@@ -1,4 +1,4 @@
-import { copy, el2, svg, toast } from './dom.js'
+import { copy, el2, skeleton, svg, toast } from './dom.js'
 import { bridge, request } from './ipc.js'
 import { receivingBlocked } from './backup.js'
 import { clearQr, drawQr } from './qr.js'
@@ -342,8 +342,10 @@ export async function refreshAssets({ refresh = false } = {}) {
   closeAsset()
 
   // Six chains take a couple of seconds, and a bare dash for that long reads as
-  // a wallet holding nothing rather than one still counting. Loading is a word.
-  total.textContent = 'Loading…'
+  // a wallet holding nothing rather than one still counting. A block the width
+  // of the figure that is coming, rather than a word of a different width that
+  // shoves the line sideways the moment it is replaced.
+  total.replaceChildren(skeleton('8ch', '0.8em'))
 
   let held
   try {
@@ -387,6 +389,12 @@ export async function refreshAssets({ refresh = false } = {}) {
   empty.hidden = holdings.length > 0
   document.querySelector('.holdings-head').hidden = holdings.length === 0
   total.textContent = held.totalUsdText ?? 'Not available'
+
+  // The ticker beside the chart, from the row that is already priced. The chart
+  // is LCAI's, so the price named next to it has to be LCAI's — reading it off
+  // the holdings avoids a second round trip for a figure already on screen.
+  const lcai = holdings.find((asset) => asset.symbol === 'LCAI' && asset.priceUsd !== null)
+  document.getElementById('portfolio-price').textContent = lcai?.priceText ?? ''
 
   renderNetworks(held)
 

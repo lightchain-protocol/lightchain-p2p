@@ -17,6 +17,8 @@ export {
   SCRYPT_P,
   SCRYPT_R,
   VaultError,
+  accountsPublicKey,
+  addressFromAccountsKey,
   derivePrivateKey,
   generatePhrase,
   isAccountIndex,

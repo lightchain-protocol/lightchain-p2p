@@ -4,8 +4,25 @@
          belongs to the window itself. The brand moved to the top of the
          sidebar — the app title was in two places, and a strip whose whole
          job is to be draggable earns the simplicity. -->
+    <!-- The top bar, as the wallet draws one: the lockup on the left, and on
+         the right the network you are on and the lock. It spans the window
+         above both columns, which is what makes the two applications read as
+         one product — the brand sat at the top of the sidebar here, so it was
+         inside the navigation rather than over the whole window.
+
+         Everything in it opts out of the drag region; a strip you cannot grab
+         between the controls would be worse than no controls. -->
     <header class="titlebar" id="titlebar">
-      <!-- The only control the bar ever carries, and it is hidden until there
+      <span class="titlebar-brand">
+        <svg class="titlebar-wordmark" role="img" aria-label="Lightchain">
+          <use href="#i-wordmark" />
+        </svg>
+        <span class="titlebar-suffix">Chat</span>
+      </span>
+
+      <span class="titlebar-spacer"></span>
+
+      <!-- The only control the bar ever carries by itself, hidden until there
            is something to apply. renderer/lib/ipc.js resolves it by id. -->
       <button
         class="button button-primary button-sm titlebar-update"
@@ -14,5 +31,29 @@
         hidden
       >
         Apply update
+      </button>
+
+      <!-- Which chain everything on screen is about. It mirrors the account
+           row's network rather than reading the setting itself, so there is one
+           source for it and no second thing to keep in step. -->
+      <button
+        class="network-pill"
+        type="button"
+        id="network-pill"
+        title="Change the network in Settings"
+      >
+        <span class="network-dot" aria-hidden="true"></span>
+        <span class="network-pill-name" id="network-pill-name">—</span>
+        <svg class="icon" aria-hidden="true"><use href="#i-chevron" /></svg>
+      </button>
+
+      <button
+        class="icon-button titlebar-lock"
+        type="button"
+        id="titlebar-lock"
+        title="Lock the wallet"
+        aria-label="Lock the wallet"
+      >
+        <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
       </button>
     </header>

@@ -48,7 +48,10 @@
 
         <label class="field">
           <span class="field-label">From</span>
-          <select class="input" id="swap-from"></select>
+          <span class="select">
+            <select class="input" id="swap-from"></select>
+            <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+          </span>
         </label>
 
         <label class="field">
@@ -79,11 +82,14 @@
 
         <label class="field">
           <span class="field-label">Slippage tolerance</span>
-          <select class="input" id="swap-slippage">
+          <span class="select">
+            <select class="input" id="swap-slippage">
             <option value="10">0.1%</option>
             <option value="50" selected>0.5%</option>
             <option value="100">1.0%</option>
           </select>
+            <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+          </span>
         </label>
 
         <div class="alert" data-tone="error" role="alert" id="swap-error" hidden>

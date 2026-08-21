@@ -356,20 +356,35 @@
 
 /* The hairline is what makes a bubble a bubble on a light background, where the
    raised surface is only a couple of steps off the page behind it. */
+/**
+ * The wallet's bubble: a fill barely above the page, an edge softer than a
+ * hairline, and enough padding that the text is not touching either.
+ */
 #panel-chat .message-bubble {
   min-width: 0;
-  padding: var(--lc-space-sm) var(--lc-space-md);
+  padding: var(--lc-space-md) 15px;
   border-radius: var(--lc-radius-bubble);
   background: var(--lc-surface-2);
-  box-shadow: inset 0 0 0 1px var(--lc-rule);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lc-rule) 60%, transparent);
 }
 
-/* Accent-tinted rather than one more grey. Which side a message is on is the
-   fastest way to read a conversation and colour is the second; two neutrals a
-   step apart give you neither at a glance. */
+/**
+ * Your own turn wears the brand, as it does in the wallet's thread: magenta to
+ * violet across the bubble, at about a sixth, with an edge that agrees.
+ *
+ * Which side a message is on is the fastest way to read a conversation and
+ * colour is the second; two neutrals a step apart give you neither at a glance.
+ * A flat accent tint gave you the second and looked like every other chat. The
+ * gradient runs the same way as the brand's own, and both stops are far below
+ * the point where they would compete with the words on top.
+ */
 #panel-chat .message.is-own .message-bubble {
-  background: var(--lc-accent-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lc-accent) 22%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--lc-brand-magenta) 16%, transparent),
+    color-mix(in srgb, var(--lc-brand-violet) 14%, transparent)
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lc-brand-violet) 32%, transparent);
 }
 
 /* The corner nearest its owner is squared off, which is what makes a bubble

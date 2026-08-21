@@ -4,10 +4,18 @@
    they were born — this sheet is only the page's own layout, and everything
    here is scoped under `.bridge-page` so none of it leaks. */
 
-/* A reading flow, not a console grid: the three cards stack in one column at
-   a measure a form can be read at, rather than stretching edge to edge. */
+/**
+ * A reading flow, not a console grid: the three cards stack in one column at a
+ * measure a form can be read at, rather than stretching edge to edge.
+ *
+ * Centred, which it was not. A 64ch column pinned to the left of a maximised
+ * window leaves half the screen empty beside it and reads as a layout that has
+ * failed rather than one that has chosen a measure. The wallet centres every
+ * one of its cards for the same reason.
+ */
 .bridge-page .console-body {
   grid-template-columns: minmax(0, 64ch);
+  justify-content: center;
   align-content: start;
   overflow-y: auto;
 }
@@ -23,8 +31,24 @@
   gap: var(--lc-space-lg);
 }
 
+/**
+ * The five things worth knowing, set at the size of five things worth knowing.
+ *
+ * At body size they filled the screen and the transfer they gate was pushed off
+ * the bottom of it — so the page opened as a legal notice with a form somewhere
+ * underneath. Not shortened and not hidden: every one of them is a real
+ * property of this bridge, and the consent below is only meaningful if they are
+ * on the page. Set one step down and given the room between them that a list
+ * needs, they are read rather than scrolled past.
+ */
 .bridge-terms-body .bridge-disclosure {
-  font-size: var(--lc-type-body);
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-relaxed);
+  color: var(--lc-text-secondary);
+}
+
+.bridge-terms-body .bridge-disclosure li + li {
+  margin-top: var(--lc-space-md);
 }
 
 .bridge-form-body {
@@ -34,10 +58,143 @@
 
 /* The action row: Review, then Approve, then Bridge — right-aligned, in the
    order they become available. */
+/**
+ * The route: the two chains' marks, then the control that picks between them.
+ *
+ * The marks overlap slightly, the way a pair does everywhere else in this
+ * interface, so they read as one route rather than as two separate logos that
+ * happen to be adjacent.
+ */
+.bridge-route {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-md);
+  min-width: 0;
+}
+
+.bridge-route-marks {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.bridge-route-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-bg-elevated-2);
+  /* The plate is what stops a mark with its own transparent ground reading as
+     a hole in the row. */
+  box-shadow: 0 0 0 1px var(--lc-rule);
+}
+
+.bridge-route-mark-to {
+  margin-left: -10px;
+}
+
+.bridge-route .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/**
+ * The amount, as the thing the card is actually about.
+ *
+ * It was a text input the same size as every other field on the page, under a
+ * label reading "Amount in LCAI" — so the one number somebody is deciding
+ * looked exactly like the one they are not. A transfer surface puts the figure
+ * in a well of its own, at a size you can read across a room, with the unit
+ * beside it rather than in the label.
+ */
+.bridge-transfer {
+  display: grid;
+  gap: var(--lc-space-lg);
+  /*
+   * `.form` caps itself at 44ch so a password box in a wide panel does not end
+   * up eight inches long. Right everywhere else, wrong here: the card is
+   * already held to a measure, so the cap only made the route and the amount
+   * stop short of the button underneath them — three controls in one card, two
+   * of them a hundred and sixty pixels narrower than the third.
+   */
+  max-width: none;
+}
+
+.bridge-amount-well {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-md);
+  padding: var(--lc-space-lg) 20px;
+  border: 2px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: color-mix(in srgb, var(--lc-fg) 3%, transparent);
+  transition: border-color var(--lc-motion-fast) ease-out;
+}
+
+/* The well takes the focus ring, because the field inside it has no edge of
+   its own — without this, typing into it looks like typing into nothing. */
+.bridge-amount-well:focus-within {
+  border-color: var(--lc-brand-violet);
+}
+
+.bridge-amount {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--lc-text-primary);
+  font-family: inherit;
+  font-size: 32px;
+  font-weight: var(--lc-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  user-select: text;
+}
+
+.bridge-amount:focus {
+  outline: none;
+}
+
+.bridge-amount::placeholder {
+  color: var(--lc-text-tertiary);
+}
+
+/* The unit, quiet beside the figure. In the label it was read as part of the
+   question; here it is read as part of the answer. */
+.bridge-amount-unit {
+  flex: 0 0 auto;
+  font-size: var(--lc-text-md);
+  font-weight: var(--lc-weight-semibold);
+  color: var(--lc-text-tertiary);
+  letter-spacing: 0.04em;
+}
+
+/* What is available, directly under the well it constrains. */
+.bridge-balance:not(:empty) {
+  margin: calc(-1 * var(--lc-space-sm)) 0 0;
+  color: var(--lc-text-tertiary);
+}
+
+/**
+ * The transfer's own controls, full width.
+ *
+ * These sat small and right-aligned in the corner of the card, styled as
+ * secondaries — so the control that begins the whole flow looked like a
+ * footnote, and "Review" read as something optional. Exactly one of the three
+ * is ever on screen; whichever it is, it is the thing the page is asking for.
+ */
 .bridge-actions {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
   gap: var(--lc-space-sm);
+}
+
+.bridge-actions .button {
+  width: 100%;
+  height: var(--lc-control-lg);
+  padding-inline: 28px;
+  font-size: var(--lc-text-md);
 }
 
 .bridge-status-note {

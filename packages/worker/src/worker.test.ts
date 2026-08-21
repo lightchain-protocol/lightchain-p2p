@@ -110,7 +110,7 @@ describe('the devnet profile', () => {
   it('is pinned to the probed devnet endpoints', () => {
     // Verified live against the devnet: chain id 48221 (0xbc5d), with the RPC,
     // beacon and consumer API answering. The worker gateway, relay and
-    // explorer hostnames do not resolve, so the profile carries none of them.
+    // explorer hostnames are NXDOMAIN, so the profile carries none of them.
     const devnet = NETWORKS.devnet
     expect(devnet.name).toBe('devnet')
     expect(devnet.chainId).toBe(48221)
@@ -120,9 +120,18 @@ describe('the devnet profile', () => {
     expect(devnet.beaconApiUrl).toBe('https://beacon.devnet-v2.lightchain.ai')
     expect(devnet.consumerApiUrl).toBe('https://chat-api.devnet-v2.lightchain.ai')
     expect(devnet.explorerUrl).toBeNull()
-    expect(devnet.workerGatewayUrl).toBeUndefined()
-    expect(devnet.image).toBeUndefined()
+    // Devnet consolidates the worker gateway into its consumer API; the
+    // worker-gateway hostname the other networks use is NXDOMAIN here.
+    expect(devnet.workerGatewayUrl).toBe('https://chat-api.devnet-v2.lightchain.ai')
+    expect(devnet.workerGatewayUrl).toBe(devnet.consumerApiUrl)
     expect(devnet.relayUrl).toBeUndefined()
+    // The image is the one exception, and it is the testnet build on purpose.
+    // The binary is configured entirely by environment — pointed at devnet's
+    // RPC it loads its config and reaches the keystore step exactly as it does
+    // for its own network — so hosting here needs no separate publication.
+    // Without this the profile has no image and `requireImage` refuses every
+    // docker verb, which is what made devnet unusable for a worker at all.
+    expect(devnet.image).toBe(NETWORKS.testnet.image)
     // No pinned contracts, same as testnet: the WorkerRegistry genesis
     // predeploy is live on devnet and resolves them at runtime.
     expect(devnet.aiConfigAddress).toBeUndefined()
@@ -140,35 +149,39 @@ describe('the devnet profile', () => {
     expect(NETWORKS.testnet.relayUrl).toBe('wss://relay.testnet.lightchain.ai/ws')
   })
 
-  it('resolves a devnet config with no image or gateway', () => {
+  it('resolves a devnet config with its image and consolidated gateway', () => {
     const devnet = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD, network: 'devnet' })
     expect(devnet.chainId).toBe(48221)
     expect(devnet.rpcUrl).toBe(NETWORKS.devnet.rpcUrl)
     expect(devnet.beaconApiUrl).toBe(NETWORKS.devnet.beaconApiUrl)
-    expect(devnet.image).toBeUndefined()
-    expect(devnet.workerGatewayUrl).toBeUndefined()
+    expect(devnet.image).toBe(NETWORKS.testnet.image)
+    expect(devnet.workerGatewayUrl).toBe(NETWORKS.devnet.consumerApiUrl)
+    // Still not runnable until the addresses resolve — that is the ordinary
+    // rule for any network whose profile pins none, not a devnet refusal.
     expect(isRunnable(devnet)).toBe(false)
   })
 
-  it('refuses every container launch on devnet, naming the missing hosting', () => {
-    // The profile publishes no image, so no docker command may be built — a
-    // command with "undefined" interpolated starts, then fails looking like a
-    // protocol fault.
+  it('builds the container commands on devnet, against the testnet image', () => {
+    // Devnet used to refuse every docker verb for want of an image, which made
+    // the network unusable for a worker even though its chain, registry and
+    // stake are all live. The binary is configured entirely by environment, so
+    // the testnet build serves here; what is still missing is the gateway, and
+    // that costs dispatched work rather than the ability to run.
     const devnet = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD, network: 'devnet' })
-    for (const launch of [
-      () => pullImage(devnet),
-      () => runWorker(devnet, '/data/ks'),
-      () => register(devnet, '/data/ks'),
-      () => generateEncryptionKey(devnet)
-    ]) {
-      expect(launch).toThrow(WorkerConfigError)
-      expect(launch).toThrow(/worker hosting is not available on devnet yet/)
+    for (const cmd of [pullImage(devnet), register(devnet, '/data/ks')]) {
+      expect(cmd.argv.join(' ')).toContain('lightchain-testnet-public-docker')
     }
+    // Nothing may hand the container the literal string "undefined" for a
+    // hostname that does not exist.
+    expect(register(devnet, '/data/ks').argv.join(' ')).toContain(
+      'WORKER_GATEWAY_URL=https://chat-api.devnet-v2.lightchain.ai'
+    )
+    expect(register(devnet, '/data/ks').argv.join(' ')).not.toContain('undefined')
   })
 
-  it('still refuses after the registry addresses resolve, since hosting is what is missing', async () => {
+  it('runs once the registry addresses resolve, which is all it was ever missing', async () => {
     // The WorkerRegistry predeploy answers on devnet, so the addresses come
-    // back fine — the wall is the absent image, and it stays up.
+    // back fine. With an image pinned there is no second wall behind them.
     const devnet = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD, network: 'devnet' })
     const rpc = {
       async call(request: { to: string; data: string }) {
@@ -181,9 +194,9 @@ describe('the devnet profile', () => {
     }
     const resolved = await resolveContractAddresses(devnet, rpc)
     expect(isRunnable(resolved)).toBe(true)
-    expect(() => runWorker(resolved, '/data/ks')).toThrow(
-      /worker hosting is not available on devnet yet/
-    )
+    const cmd = runWorker(resolved, '/data/ks')
+    expect(cmd.argv).toContain(NETWORKS.testnet.image)
+    expect(cmd.argv.join(' ')).toContain('CHAIN_ID=48221')
   })
 })
 

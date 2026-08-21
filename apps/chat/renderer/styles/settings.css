@@ -17,7 +17,7 @@
 
 .settings {
   position: fixed;
-  inset: 38px 0 0;
+  inset: var(--lc-titlebar-height) 0 0;
   z-index: 20;
   background: var(--lc-surface-1);
 }
@@ -134,12 +134,23 @@
   min-width: 0;
   overflow-y: auto;
   /* Less on the right than the left, because the scrollbar occupies that edge
-     and a symmetric pad leaves the thumb floating away from the panel. */
+     and a symmetric pad leaves the thumb floating away from the panel. The
+     column inside centres itself in whatever is left. */
   padding: var(--lc-space-xxl) var(--lc-space-lg) var(--lc-space-xxl) var(--lc-space-xxl);
 }
 
+/**
+ * The column of settings, in the middle of the space it has.
+ *
+ * `62ch` is the measure — prose this long is unreadable set wider, and that
+ * does not change with the window. What did need to change is where the
+ * measure sits: pinned to the left edge it left four hundred pixels of nothing
+ * down the right of every settings page, which reads as a layout that failed
+ * rather than as a deliberate column.
+ */
 .settings-page {
   max-width: 62ch;
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
   gap: var(--lc-space-lg);
@@ -236,13 +247,6 @@
   color: var(--lc-text-primary);
 }
 
-.settings-check input[type='checkbox'] {
-  width: var(--lc-control-icon);
-  height: var(--lc-control-icon);
-  margin: 0;
-  accent-color: var(--lc-accent);
-}
-
 /* --- Templates -------------------------------------------------------------- */
 
 .template-list {
@@ -309,3 +313,16 @@
 
 /* First run lives in styles/onboarding.css, which is the whole of that surface:
    the stage, the steps, the phrase and every route back in. */
+
+/**
+ * A form on a settings page fills the column, like everything above it.
+ *
+ * `.form` caps itself at `44ch` so a password box does not run eight inches
+ * across a wide panel. A settings page is not a wide panel: it is a 625px
+ * column whose headings, prose and standalone fields all fill that width. A
+ * form capped inside it made some fields full width and others two thirds,
+ * on the same page, for no reason a reader could see.
+ */
+.settings-page .form {
+  max-width: none;
+}

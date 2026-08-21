@@ -38,6 +38,92 @@ body {
   user-select: none;
   display: flex;
   flex-direction: column;
+  /* The orbs below are fixed and have to have something to sit inside. */
+  position: relative;
+  isolation: isolate;
+}
+
+/**
+ * The two blurred orbs the brand signs its surfaces with.
+ *
+ * Violet low on the left, magenta-to-gold high on the right, each five hundred
+ * pixels across and blurred until it is a gradient rather than a shape. This is
+ * the one piece of the brand that is not a component: it is what makes a nearly
+ * black page look like this company's nearly black page instead of any other's.
+ *
+ * Fixed rather than scrolled, behind everything, and inert. `z-index: -1` puts
+ * them under content without needing every panel to raise itself, and the
+ * `isolation` above keeps them from escaping into the window's own layers.
+ *
+ * Turned off where somebody has asked for less motion and less noise, and where
+ * the light theme would have them glowing on white.
+ */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  /*
+   * The geometry from the wallet, not an interpretation of it.
+   *
+   * These were widened to 1000px and blurred to 200px on the theory that a
+   * softer falloff would keep the edges lit. It did the opposite: spreading the
+   * same light over four times the area, at two thirds the opacity, took the
+   * page floor to near-black everywhere, and the content's own gutter then read
+   * as a black frame down the right side against the lighter cards. Tight and
+   * bright reaches the corners; wide and faint reaches nothing.
+   */
+  width: 500px;
+  height: 500px;
+  border-radius: var(--lc-radius-pill);
+  filter: blur(100px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+body::before {
+  left: -250px;
+  bottom: -180px;
+  background: var(--lc-brand-violet);
+  opacity: 0.25;
+}
+
+body::after {
+  right: -250px;
+  top: -250px;
+  background: linear-gradient(45deg, var(--lc-brand-magenta), var(--lc-accent));
+  opacity: 0.18;
+}
+
+/* A wash this soft is invisible on a light page and merely costs a repaint. */
+:root[data-theme='light'] body::before,
+:root[data-theme='light'] body::after {
+  display: none;
+}
+
+/* --- Switching surfaces ----------------------------------------------------- */
+
+/**
+ * The panel that becomes visible fades up, briefly.
+ *
+ * Switching is instant — it is one `hidden` attribute moving — and instant is
+ * exactly what made it feel wrong: the whole window replaced itself between two
+ * frames with no sense that anything had been asked for, and then reflowed a
+ * moment later when the data arrived. The reflow is what the skeletons fix. The
+ * hard cut is what this fixes.
+ *
+ * No JavaScript and no class to remember to remove: an element coming back from
+ * `display: none` restarts its animations, so unhiding a panel plays this and
+ * hiding it again rearms it.
+ */
+@keyframes lc-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.panel:not([hidden]) {
+  animation: lc-panel-in var(--lc-motion-base) var(--lc-easing);
 }
 
 /* --- Scrollbars ----------------------------------------------------------- */
@@ -171,10 +257,22 @@ body {
 
 .nav-item:focus-visible,
 .button:focus-visible,
-.input:focus-visible,
+input[type='checkbox']:focus-visible,
 .composer-input:focus-visible {
   outline: 2px solid var(--lc-brand);
   outline-offset: 2px;
+}
+
+/**
+ * A field says it is focused with its own edge.
+ *
+ * `.input` carries a two-pixel border that turns brand violet on focus, and it
+ * was taking the shared ring as well — so a focused field wore two concentric
+ * rings in two different violets, which looked like a rendering fault rather
+ * than like focus. The border alone is unambiguous and meets contrast.
+ */
+.input:focus-visible {
+  outline: none;
 }
 
 /* A column, and this is load-bearing.
@@ -252,42 +350,114 @@ body {
   justify-content: center;
   gap: var(--lc-space-sm);
   height: var(--lc-control-md);
-  padding: 0 var(--lc-space-md);
+  /* Twenty rather than twelve. Theirs is twenty-eight on the large control and
+     sixteen on the small; at twelve a label sits against both edges and the
+     button reads as a box somebody put text in. */
+  padding: 0 20px;
   appearance: none;
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
   font: inherit;
   font-size: var(--lc-text-sm);
   font-weight: 500;
+  /* The half-pixel of tracking the brand's own buttons carry. At this size it
+     is the difference between a control and a word in a box. */
+  letter-spacing: 0.3px;
   line-height: 1;
-  color: var(--lc-fg);
-  background: var(--lc-bg-elevated-2);
+  color: var(--lc-text-primary);
+  /* Translucent rather than a flat surface colour.
+     `--lc-bg-elevated-2` against a card is two neutrals a step apart, which is
+     why a secondary button read as a grey rectangle rather than as a control.
+     A wash of the foreground lifts off whatever it is on — including the brand
+     glow behind it — which is what the wallet's ghost button does. */
+  background: color-mix(in srgb, var(--lc-fg) 6%, transparent);
   cursor: default;
   white-space: nowrap;
   transition:
     background-color var(--lc-motion-fast) ease-out,
     border-color var(--lc-motion-fast) ease-out,
+    box-shadow var(--lc-motion-fast) ease-out,
+    transform var(--lc-motion-fast) ease-out,
+    filter var(--lc-motion-fast) ease-out,
     color var(--lc-motion-fast) ease-out;
 }
 
+/**
+ * The large control, for the one thing a page is asking.
+ *
+ * Lives with the button rather than with the page that first needed it: a
+ * wizard step, a dialog's confirm and an empty state's call to action are the
+ * same object at the same size, and three surfaces inventing it separately is
+ * how they end up three sizes.
+ */
+/**
+ * The large control, for the one thing a page is asking.
+ *
+ * `height`, not `min-height`. `.button` sets an explicit height, and an
+ * explicit height beats a minimum from a later rule — so every large button in
+ * the application was exactly the size of a toolbar button, and had been since
+ * the class was written. It looked like a size that had been chosen.
+ */
+.button-lg {
+  height: var(--lc-control-lg);
+  padding-inline: 28px;
+  font-size: var(--lc-text-md);
+}
+
+/* Brighter, not more violet. The wallet's ghost lifts from six per cent to ten
+   and firms its edge; tinting a secondary button with the brand on hover made
+   every one of them look like it was about to become the primary. */
 .button:hover:not(:disabled) {
-  border-color: var(--lc-brand);
-  background: color-mix(in srgb, var(--lc-brand) 14%, var(--lc-bg-elevated-2));
+  border-color: var(--lc-rule-strong);
+  background: color-mix(in srgb, var(--lc-fg) 10%, transparent);
 }
 
 .button:active:not(:disabled) {
-  background: color-mix(in srgb, var(--lc-brand) 22%, var(--lc-bg-elevated-2));
+  background: color-mix(in srgb, var(--lc-fg) 14%, transparent);
 }
 
 .button-sm {
   height: var(--lc-control-sm);
-  padding: 0 var(--lc-space-sm);
+  padding: 0 var(--lc-space-lg);
   font-size: var(--lc-text-xs);
 }
 
 .button-block {
   display: flex;
   width: 100%;
+}
+
+/**
+ * The circular chip an action button carries its icon in.
+ *
+ * The signature of the wallet's own Send and Receive: the glyph sits in a disc
+ * a shade lighter than the button rather than floating beside the word. It is
+ * what makes those two read as the page's actions rather than as two more
+ * toolbar buttons that happen to be bigger.
+ *
+ * On the primary the disc lightens against the gradient instead, since a wash
+ * of the foreground there would be invisible.
+ */
+.button-chip {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  margin-left: -6px;
+  border-radius: var(--lc-radius-pill);
+  background: color-mix(in srgb, var(--lc-fg) 8%, transparent);
+  color: var(--lc-text-secondary);
+}
+
+.button-chip .icon {
+  width: 13px;
+  height: 13px;
+}
+
+.button-primary .button-chip {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--lc-on-brand);
 }
 
 /* Flat accent, not a gradient of the mark's two colours.
@@ -297,38 +467,204 @@ body {
    action read as decoration rather than as the thing to press. `accentContrast`
    is the paired foreground, so the label is legible by construction rather than
    because white happened to work against both ends of a gradient. */
+/**
+ * The primary control carries the brand gradient, as it does on the website and
+ * in the wallet.
+ *
+ * A flat accent fill was correct and anonymous: the same button in three
+ * Lightchain products in three different violets. The gradient is the one thing
+ * that makes them recognisably one product, and it costs nothing in legibility
+ * because the label is `accentContrast` — a near-black chosen against the
+ * lightest stop, so it holds across all three.
+ */
 .button-primary {
-  border-color: transparent;
-  color: var(--lc-accent-contrast);
-  background: var(--lc-accent);
+  /**
+   * No border at all, rather than a transparent one.
+   *
+   * A background is painted over the border box but sized to the padding box,
+   * so a gradient behind a transparent border *tiles* — and that one-pixel ring
+   * showed the gradient's first stop, magenta, down the right edge and along the
+   * bottom of every primary button in the application. It read as a red hairline
+   * that no rule anywhere drew.
+   *
+   * `background-origin` fixes it too, and is kept below as a second line of
+   * defence, but the honest fix is not to have a border the gradient can leak
+   * into. `box-sizing` is border-box, so losing the pixel changes no geometry.
+   */
+  border: 0;
+  /**
+   * The gradient is sized to the border box, not the padding box.
+   *
+   * `.button` carries a one-pixel border and the primary makes it transparent.
+   * A background is painted over the border box but sized to the padding box by
+   * default, so a gradient *tiles* — and the one-pixel ring outside the padding
+   * box showed the gradient's first stop, magenta, down the right edge and
+   * along the bottom. It read as a red hairline drawn around every primary
+   * button in the application, and no rule anywhere drew it.
+   */
+  /* White, because the gradient is not light. See `onBrand`: the near-black
+     paired with the flat accent makes 2.82 against this gradient's violet end. */
+  color: var(--lc-on-brand);
+  background: var(--lc-grad-brand);
+  /* After the shorthand, which resets both of these to their defaults. Stated
+     before it they did nothing at all, and the hairline stayed. */
+  background-origin: border-box;
+  background-repeat: no-repeat;
+  /**
+   * A glow beneath it, and the highlight along its top edge.
+   *
+   * The spread and the alpha matter more than they look. At `-12px` with 55%
+   * magenta the shadow rect is only a little smaller than the button, and 22px
+   * of blur carries it back out past the sides — which on a saturated magenta
+   * against a near-black page is not a glow but a red hairline down each edge.
+   * Pushed further down, shrunk further in and taken to a third of the alpha,
+   * what escapes is under the button where a glow belongs.
+   */
+  box-shadow:
+    0 12px 26px -18px color-mix(in srgb, var(--lc-brand-magenta) 40%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
-.button-primary:hover:not(:disabled),
+/**
+ * Brightness and a lift rather than a second gradient: two gradients a hair
+ * apart read as a rendering artefact rather than as a state.
+ *
+ * The gradient is restated all the same, and has to be. `.button:hover` sets
+ * `background` — the shorthand — which resets `background-image` to none, and
+ * both rules have the same specificity. Leaving it out let a hovered primary
+ * button fall back to the secondary's grey wash while keeping its glow and its
+ * white label: the one control on the screen went blank under the pointer.
+ */
+.button-primary:hover:not(:disabled) {
+  background: var(--lc-grad-brand);
+  background-origin: border-box;
+  background-repeat: no-repeat;
+  filter: brightness(1.06);
+  transform: translateY(-2px);
+  box-shadow:
+    0 18px 30px -20px color-mix(in srgb, var(--lc-brand-magenta) 55%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
 .button-primary:active:not(:disabled) {
-  border-color: transparent;
-  background: var(--lc-accent);
-  filter: brightness(1.12);
+  background: var(--lc-grad-brand);
+  background-origin: border-box;
+  background-repeat: no-repeat;
+  transform: translateY(0);
+  filter: brightness(1.06);
+}
+
+/* A lifted button that is disabled has nothing to lift for. */
+.button-primary:disabled {
+  box-shadow: none;
+  transform: none;
+  filter: none;
 }
 
 .button:disabled {
   opacity: 0.45;
 }
 
+/**
+ * Transparent, with a two-pixel border.
+ *
+ * The brand's own field: the box is drawn by its edge rather than by a fill, so
+ * a form reads as a set of outlines on the page instead of a stack of lighter
+ * rectangles. Two pixels rather than one because at one the border disappears
+ * against a card that is already a step lighter than the page.
+ */
 .input {
   width: 100%;
   height: var(--lc-control-md);
   padding: 0 var(--lc-space-md);
-  border: 1px solid var(--lc-rule);
+  border: 2px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
   font-family: var(--lc-mono);
   font-size: var(--lc-text-sm);
   line-height: var(--lc-leading-normal);
   color: var(--lc-fg);
-  background: var(--lc-bg);
+  background: transparent;
   user-select: text;
   transition:
     border-color var(--lc-motion-fast) ease-out,
     box-shadow var(--lc-motion-fast) ease-out;
+}
+
+/* The brand violet, not the lighter accent. A focused field in their wallet is
+   ringed in `#5b4bff` and it reads as switched on; the softer accent read as a
+   slightly different grey. This is a border on a two-pixel edge, not text, so
+   it answers to being seen rather than to being read. */
+/**
+ * A tick box big enough to aim at.
+ *
+ * The browser's default is about thirteen pixels, which is below every pointer
+ * target guideline there is — and these gate the two most consequential things
+ * in the application: the bridge's consent and which models a machine will
+ * answer for.
+ */
+/**
+ * A tick box drawn rather than accented.
+ *
+ * `accent-color` recolours the platform's own control and leaves everything
+ * else about it: a hard square, a stock tick, and a checked state that is a
+ * flat block of colour beside buttons that carry a gradient. These gate the two
+ * most consequential things in the application — the bridge's consent and which
+ * models a machine answers for — so they are worth drawing.
+ */
+input[type='checkbox'] {
+  appearance: none;
+  display: grid;
+  place-content: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 2px solid var(--lc-rule-strong);
+  border-radius: var(--lc-radius-sm);
+  background: color-mix(in srgb, var(--lc-fg) 4%, transparent);
+  cursor: pointer;
+  transition:
+    border-color var(--lc-motion-fast) var(--lc-easing),
+    background var(--lc-motion-fast) var(--lc-easing);
+}
+
+input[type='checkbox']:hover:not(:disabled) {
+  border-color: var(--lc-brand);
+}
+
+input[type='checkbox']:checked {
+  border-color: transparent;
+  background: var(--lc-grad-brand);
+  /* After the shorthand, and for the same reason the primary button needs
+     them: a gradient sized to the padding box tiles into a transparent
+     border. */
+  background-origin: border-box;
+  background-repeat: no-repeat;
+}
+
+/* The tick, cut out of a solid rather than set as a glyph — a character would
+   take whatever the interface face gives it and sit off the centre line. */
+input[type='checkbox']::after {
+  content: '';
+  width: 11px;
+  height: 11px;
+  background: var(--lc-on-brand);
+  clip-path: polygon(14% 44%, 0 65%, 44% 100%, 100% 16%, 80% 0%, 43% 62%);
+  transform: scale(0);
+  transition: transform var(--lc-motion-fast) var(--lc-easing);
+}
+
+input[type='checkbox']:checked::after {
+  transform: scale(1);
+}
+
+input[type='checkbox']:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.input:focus {
+  border-color: var(--lc-brand-violet);
 }
 
 /* A textarea has to grow, so it gets the height as a floor and pays for its
@@ -357,23 +693,64 @@ textarea.input {
   opacity: 0.55;
 }
 
-/* `appearance: none` takes the chevron with it, and a select that looks exactly
-   like a text field is a select nobody clicks. */
+/**
+ * `appearance: none` takes the chevron with it, and a select that looks exactly
+ * like a text field is a select nobody clicks.
+ *
+ * The replacement used to be two gradients meeting at a corner, which makes a
+ * solid triangle — a shape no other control in the application uses and one
+ * that reads as a default the browser left behind. This is the same chevron the
+ * icon set draws, at the same weight, so a select looks like it belongs to the
+ * same interface as everything beside it.
+ *
+ * Inlined rather than pulled from the sprite because a background cannot
+ * reference a symbol, and stated once per theme because a data URI cannot read
+ * a custom property.
+ */
 select.input {
   appearance: none;
-  padding-right: var(--lc-space-xxl);
+  /* Room for the chevron, which is drawn over the field rather than in it. */
+  padding-right: 44px;
+  width: 100%;
   font-family: inherit;
   font-size: var(--lc-text-md);
-  background-image:
-    linear-gradient(45deg, transparent 50%, var(--lc-fg-dim) 50%),
-    linear-gradient(135deg, var(--lc-fg-dim) 50%, transparent 50%);
-  background-position:
-    right calc(var(--lc-space-lg) + 4px) center,
-    right var(--lc-space-lg) center;
-  background-size:
-    5px 5px,
-    5px 5px;
-  background-repeat: no-repeat;
+}
+
+/**
+ * A select and its chevron.
+ *
+ * The chevron used to be a `data:` URI background, stated twice so each theme
+ * could hard-code a stroke colour — a background cannot reference a sprite
+ * symbol and a data URI cannot read a custom property. It also never appeared:
+ * this window's policy is `img-src 'self' blob:`, `data:` is not in it, and a
+ * background image blocked by CSP fails silently. Every select in the
+ * application has been a bare box with no affordance at all.
+ *
+ * An element beside the field instead. It is the same `#i-chevron` every other
+ * control draws, at the same weight, taking its colour from a property like
+ * everything else — and it needs nothing added to the policy. `pointer-events:
+ * none` keeps the whole control clickable, chevron included.
+ */
+.select {
+  position: relative;
+  display: block;
+}
+
+.select-chevron {
+  position: absolute;
+  right: var(--lc-space-lg);
+  top: 50%;
+  /* `#i-chevron` points right — it is the same mark the nav rows and the
+     disclosure use. A menu opens downwards, so this one is turned rather than
+     drawn a second time in another direction. */
+  transform: translateY(-50%) rotate(90deg);
+  color: var(--lc-fg-muted);
+  pointer-events: none;
+}
+
+.select:hover .select-chevron,
+.select:focus-within .select-chevron {
+  color: var(--lc-fg);
 }
 
 select.input option {
@@ -383,6 +760,14 @@ select.input option {
 
 /* --- Dialogs -------------------------------------------------------------- */
 
+/**
+ * The wallet's modal: a card lifted well clear of the page.
+ *
+ * The shadow is deeper and further than a panel's on purpose — a dialog is the
+ * only surface in the application that is genuinely above everything, and one
+ * with a panel's shadow reads as a panel that has landed in the middle of the
+ * window.
+ */
 .dialog {
   width: min(52ch, 90vw);
   border: 1px solid var(--lc-rule);
@@ -390,7 +775,7 @@ select.input option {
   padding: 0;
   color: var(--lc-fg);
   background: var(--lc-bg-elevated);
-  box-shadow: 0 24px 48px -12px rgb(0 0 0 / 0.65);
+  box-shadow: 0 40px 90px -30px rgb(0 0 0 / 0.9);
 }
 
 /* A dialog that appears between one frame and the next reads as a glitch. The
@@ -406,9 +791,16 @@ select.input option {
   }
 }
 
+/**
+ * Blurred hard, the way the wallet blurs behind its own.
+ *
+ * Two pixels is a scrim with a rumour of a blur in it; at eight the page behind
+ * genuinely goes out of focus, which is what makes the dialog the only thing
+ * there is to deal with.
+ */
 .dialog::backdrop {
   background: var(--lc-scrim);
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(8px);
 }
 
 .dialog-form {
@@ -582,7 +974,7 @@ select.input option {
      with auto margins. Freeing the bottom and the left lets `top` and `right`
      dock the card where dom.js measures it. */
   inset: auto;
-  top: calc(38px + var(--lc-space-md)); /* docked precisely by dom.js */
+  top: calc(var(--lc-titlebar-height) + var(--lc-space-md)); /* docked precisely by dom.js */
   right: var(--lc-space-lg);
   z-index: 30;
   display: flex;
@@ -685,14 +1077,22 @@ select.input option {
    and a thousand wide — the first thing anybody saw on opening the application
    was a brown bar. The tone now comes from the icon and a hairline rule, and
    the strip itself sits on the page's own surface. */
+/**
+ * The standing reminder, tinted rather than barred.
+ *
+ * It carried an inset two-pixel amber edge down its left side, and because the
+ * banner starts flush against the sidebar that bar landed exactly on the seam
+ * between the two — so it read as a stray line the renderer had left behind
+ * rather than as an accent on anything. The tint and the amber icon already say
+ * what it is.
+ */
 .backup-banner {
   display: flex;
   align-items: center;
-  gap: var(--lc-space-sm);
-  padding: var(--lc-space-xs) var(--lc-space-lg);
-  background: var(--lc-surface-2);
-  border-bottom: 1px solid var(--lc-rule);
-  box-shadow: inset 2px 0 0 var(--lc-warning);
+  gap: var(--lc-space-md);
+  padding: var(--lc-space-md) var(--lc-space-lg);
+  background: color-mix(in srgb, var(--lc-warning) 8%, var(--lc-surface-2));
+  border-bottom: 1px solid color-mix(in srgb, var(--lc-warning) 25%, var(--lc-rule));
   color: var(--lc-warning);
   flex: 0 0 auto;
 }
@@ -713,4 +1113,118 @@ select.input option {
    answer the banner wants is "Back it up", not "go away". */
 .backup-banner .backup-banner-dismiss {
   flex: 0 0 auto;
+}
+
+/* --- Dropdowns -------------------------------------------------------------- */
+
+/**
+ * The list a dropdown opens, drawn here rather than by the platform.
+ *
+ * A `<select>` can be styled shut and not open: press it and macOS draws its
+ * own panel — its grey, its type, its tick, its corner radius — and Windows
+ * draws a different one. `lib/select.js` keeps the native element as the value
+ * and puts this face over it, so the menus look like the rest of the
+ * application on every platform.
+ */
+.select-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.select-face {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lc-space-sm);
+  width: 100%;
+  height: var(--lc-control-md);
+  padding: 0 var(--lc-space-lg);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated);
+  color: var(--lc-fg);
+  font: inherit;
+  font-size: var(--lc-text-md);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--lc-motion-fast) var(--lc-easing),
+    background var(--lc-motion-fast) var(--lc-easing);
+}
+
+.select-face:hover:not(:disabled) {
+  border-color: var(--lc-rule-strong);
+}
+
+.select-face:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.select.is-open .select-face {
+  border-color: var(--lc-brand);
+}
+
+.select-value {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The chevron moves inside the face, so it turns with the control. */
+.select .select-chevron {
+  position: static;
+  transform: rotate(90deg);
+  flex: 0 0 auto;
+  transition: transform var(--lc-motion-fast) var(--lc-easing);
+}
+
+.select.is-open .select-chevron {
+  transform: rotate(-90deg);
+}
+
+.select-list {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 16rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--lc-space-xs);
+  list-style: none;
+  border: 1px solid var(--lc-rule-strong);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-bg-elevated-2);
+  box-shadow: var(--lc-shadow-2);
+}
+
+.select-option {
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  border-radius: var(--lc-radius-sm);
+  color: var(--lc-fg);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-option.is-active {
+  background: var(--lc-surface-hover);
+}
+
+/* Chosen reads as chosen without a tick borrowed from another interface. */
+.select-option[aria-selected='true'] {
+  background: color-mix(in srgb, var(--lc-brand) 18%, transparent);
+  color: var(--lc-fg);
+  font-weight: 600;
+}
+
+.select-option[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

@@ -12,10 +12,15 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  width: 17rem;
+  /* 236px, as the wallet's rail is. Seventeen rem was a hair wider and the two
+     applications side by side looked like a mistake rather than a family. */
+  width: 14.75rem;
   flex: 0 0 auto;
-  background: var(--lc-surface-2);
-  border-right: 1px solid var(--lc-rule);
+  /* A shade under the page rather than a shade over it. The wallet sinks its
+     rail; lifting it made the sidebar read as the content and the content as
+     the background. */
+  background: var(--lc-bg-sidebar);
+  border-right: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
   transition: width var(--lc-motion-base) var(--lc-easing);
 }
 
@@ -41,9 +46,22 @@
   min-width: 0;
 }
 
+/**
+ * The brand's own lockup, drawn rather than set.
+ *
+ * The mark is inside it, which is why nothing sits beside it any more — a
+ * separate logomark next to a lockup that already contains one put the mark on
+ * screen twice, once at forty pixels and once at eight.
+ *
+ * Monochrome and filled with `currentColor`, so the one asset is legible on the
+ * dark page and on the light one. The aspect ratio is fixed by the symbol's
+ * viewBox; only the height is set here.
+ */
 .sidebar-wordmark {
-  font-size: var(--lc-type-body-strong);
-  font-weight: var(--lc-weight-semibold);
+  height: 17px;
+  width: calc(17px * (1200 / 251));
+  flex: 0 0 auto;
+  stroke: none;
   color: var(--lc-text-primary);
   letter-spacing: -0.01em;
   overflow: hidden;
@@ -168,11 +186,14 @@
 /* A label, not a nav item. "Conversations" names what the list is; the list
    itself is the destination, and the same word was briefly both, which put
    one destination on screen twice. */
+/* The same micro-caps as the group title below it. Two labels doing the same
+   job in two voices is how a rail stops looking designed. */
 .sidebar-rooms-title {
-  font-size: var(--lc-type-caption);
+  font-size: var(--lc-text-xs);
   font-weight: var(--lc-weight-semibold);
   color: var(--lc-text-tertiary);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
 }
 
 .sidebar-actions {
@@ -214,12 +235,16 @@
 .nav-item {
   display: flex;
   align-items: center;
-  gap: var(--lc-space-sm);
+  /* The wallet sets twelve between a nav icon and its word. At eight the icon
+     crowds the label and the row reads as one glyph-shaped thing. */
+  gap: var(--lc-space-md);
   width: 100%;
   min-height: var(--lc-control-md);
-  padding: var(--lc-space-xs) var(--lc-space-sm);
-  border: 0;
-  border-radius: var(--lc-radius-sm);
+  padding: var(--lc-space-sm) var(--lc-space-md);
+  /* Transparent rather than absent, so a chosen row can firm its edge without
+     the row beneath it shifting by two pixels. */
+  border: 1px solid transparent;
+  border-radius: var(--lc-radius-md);
   background: transparent;
   color: var(--lc-text-secondary);
   font: inherit;
@@ -237,26 +262,41 @@
   color: var(--lc-text-primary);
 }
 
-/* Accent wash and an accent bar, rather than a fifth grey. A chosen row has to
-   be tellable from a hovered one at a glance, and two neutrals one step apart
-   are not. */
+/**
+ * A chosen row wears the brand's wash: magenta at the left, violet at the
+ * right, both at about a seventh.
+ *
+ * A flat accent tint was tellable from a hover and anonymous — the same
+ * selected row any application draws. The gradient runs the same direction as
+ * the brand's own navigation and costs nothing in legibility, because both
+ * stops are far below the point where they would compete with the label.
+ */
 .nav-item.is-active {
-  background: var(--lc-accent-soft);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--lc-brand-magenta) 16%, transparent),
+    color-mix(in srgb, var(--lc-brand-violet) 12%, transparent)
+  );
   color: var(--lc-text-primary);
   font-weight: var(--lc-weight-medium);
+  /* An edge as well as a wash. In their rail the chosen row is a card; with the
+     wash alone it was a tint that could be mistaken for a hover. */
+  border-color: color-mix(in srgb, var(--lc-brand-violet) 35%, transparent);
 }
 
-.nav-item.is-active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 60%;
-  border-radius: var(--lc-radius-pill);
-  background: var(--lc-accent);
+/* The icon takes the brand colour with it, which is what stops the row reading
+   as a highlight with a grey glyph sitting on top of it. */
+.nav-item.is-active .nav-icon {
+  color: var(--lc-brand);
+  opacity: 1;
 }
+
+/*
+ * No bar. There was one when the chosen row was a flat tint and needed help
+ * being told from a hover; with the wash and the edge it is a third marker for
+ * one state, and on a two-line room row all three together looked like damage.
+ * The wallet's own chosen row is the wash alone.
+ */
 
 .nav-label {
   min-width: 0;
@@ -271,11 +311,19 @@
    rounding match the identity row's mark below, so a mark means the same thing
    wherever it appears. `.identicon` itself is sized for the roster; the box
    here wins on specificity. */
+/**
+ * A room's mark, at the size of the row it belongs to.
+ *
+ * It was `--lc-control-icon`, eighteen pixels, which is the size of a line
+ * icon — beside two lines of text it read as a speck of colour that had ended
+ * up in the wrong place rather than as the room's identity. The wallet sets the
+ * avatar on rows like this at thirty-two.
+ */
 .nav-item-mark {
-  width: var(--lc-control-icon);
-  height: var(--lc-control-icon);
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
-  border-radius: var(--lc-radius-sm);
+  border-radius: var(--lc-radius-md);
   overflow: hidden;
   background: var(--lc-surface-3);
   display: grid;
@@ -285,6 +333,10 @@
 .nav-item-mark .identicon {
   width: 100%;
   height: 100%;
+  /* The mark is square and so is the drawing; without this it keeps the
+     roster's 26px and sits off-centre inside the plate. */
+  object-fit: cover;
+  border-radius: 0;
 }
 
 .nav-item-body {
@@ -369,13 +421,22 @@
   border-top: 1px solid var(--lc-rule);
 }
 
+/**
+ * A group's name, in the brand's micro-caps.
+ *
+ * Sentence case at caption size put it in the same voice as the rows beneath
+ * it, so "Elsewhere" read as a destination rather than as a heading over four
+ * of them. Caps and wide tracking are what make a label stop competing with the
+ * list it labels.
+ */
 .sidebar-group-title {
   margin: 0;
-  padding: var(--lc-space-xs) var(--lc-space-md) var(--lc-space-xs);
-  font-size: var(--lc-type-caption);
+  padding: var(--lc-space-lg) var(--lc-space-md) var(--lc-space-sm);
+  font-size: var(--lc-text-xs);
   font-weight: var(--lc-weight-semibold);
   color: var(--lc-text-tertiary);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
 }
 
 .sections {
@@ -502,9 +563,13 @@
 }
 
 .account-balance {
-  display: block;
+  /* A 21px-tall target is a line of text somebody has to hit exactly. It says
+     what this key holds and opens the wallet when pressed, so it gets the
+     height the rest of the interface's small controls have. */
+  display: flex;
+  align-items: center;
   width: 100%;
-  margin-top: var(--lc-space-xs);
+  min-height: var(--lc-control-xs);
   padding: 0 var(--lc-space-sm);
   border: 0;
   background: transparent;

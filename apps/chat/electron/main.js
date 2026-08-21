@@ -60,6 +60,10 @@ if (pearStore) app.setPath('userData', pearStore)
 // directory so a broken install can be asked for them; the diagnostics export
 // lists their names and sizes but never copies their contents, because a
 // minidump is an image of process memory and can hold keys.
+// Before anything reads a vault: an installation left in `$TMPDIR` by an
+// older build is moved somewhere the operating system will not delete it.
+rescueLegacyStorage()
+
 app.setPath('crashDumps', path.join(storageDir(), 'crashes'))
 crashReporter.start({
   productName: appName,
@@ -132,19 +136,66 @@ function writableByRenderer(data) {
  */
 function storageDir() {
   if (pearStore) return pearStore
-  if (!app.isPackaged) return path.join(os.tmpdir(), 'pear', appName)
-  if (isMac) return path.join(os.homedir(), 'Library', 'Application Support', appName)
+  return durableDir(app.isPackaged ? appName : `${appName} (dev)`)
+}
+
+/** The platform's own place for data that is meant to outlive a reboot. */
+function durableDir(dirName) {
+  if (isMac) return path.join(os.homedir(), 'Library', 'Application Support', dirName)
 
   if (isLinux) {
     const isSnap = !!process.env.SNAP_USER_COMMON
     const linuxConfigHome = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config')
 
     return isSnap
-      ? path.join(process.env.SNAP_USER_COMMON, appName)
-      : path.join(linuxConfigHome, appName)
+      ? path.join(process.env.SNAP_USER_COMMON, dirName)
+      : path.join(linuxConfigHome, dirName)
   }
 
-  return path.join(os.homedir(), 'AppData', 'Local', appName)
+  return path.join(os.homedir(), 'AppData', 'Local', dirName)
+}
+
+/**
+ * Where an unpackaged build used to keep everything, and must not again.
+ *
+ * This was `os.tmpdir()`, on the reasoning that a build run from a checkout is
+ * throwaway. The wallet is not throwaway. macOS deletes files under `$TMPDIR`
+ * that have gone a few days untouched, so a vault written on Monday is gone by
+ * Thursday — and what the app then shows is not an empty wallet but onboarding,
+ * followed by "wrong password, or the vault has been altered" when the real
+ * password is typed against whatever wallet was made next. The seed phrase is
+ * the only way back and it went with the file. Nobody testing a chat app
+ * expects the operating system to be the thing that loses their keys.
+ */
+function legacyTmpDir() {
+  return path.join(os.tmpdir(), 'pear', appName)
+}
+
+/**
+ * Moves a `$TMPDIR` installation to the durable directory, once.
+ *
+ * Only when the destination has nothing yet: an existing installation there is
+ * the real one, and a half-purged temporary copy must never be allowed to
+ * overwrite it. A copy rather than a rename, and the source is left alone —
+ * this runs before anything has read the vault, and the one unforgivable
+ * outcome here is to lose the file while moving it.
+ */
+function rescueLegacyStorage() {
+  const to = storageDir()
+  const from = legacyTmpDir()
+
+  if (pearStore) return
+  if (from === to) return
+  if (!fs.existsSync(path.join(from, 'chat', 'vault.json'))) return
+  if (fs.existsSync(path.join(to, 'chat', 'vault.json'))) return
+
+  try {
+    fs.mkdirSync(to, { recursive: true })
+    fs.cpSync(from, to, { recursive: true, force: false, errorOnExist: false })
+    console.warn(`moved storage out of the temporary directory: ${from} -> ${to}`)
+  } catch (error) {
+    console.warn(`could not move storage out of ${from}: ${error.message}`)
+  }
 }
 
 /**
@@ -272,7 +323,10 @@ function getWorker(specifier) {
  * owns. 38px is what comparable Electron applications settled on and what
  * `.titlebar` already uses.
  */
-const TITLEBAR_HEIGHT = 38
+// 56, as the wallet's bar is. The renderer's `.titlebar` is locked to this: a
+// shorter bar leaves a band of the page showing behind the caption buttons, a
+// taller one puts the buttons above its own bottom edge.
+const TITLEBAR_HEIGHT = 56
 
 // Brand identity is the same on every platform; window chrome is not. macOS
 // keeps its traffic lights and insets our content behind them, while Windows
@@ -364,7 +418,11 @@ async function createWindow() {
     minHeight: 480,
     // Painted before the renderer loads. Without it the window flashes white,
     // which is jarring against a dark interface.
-    backgroundColor: '#06060e',
+    // The theme's own ground, not a near-black of its own. Anything the
+    // renderer has not painted yet — during a resize, before the first frame —
+    // shows this, and at `#06060e` that was a black band beside the page rather
+    // than a moment nobody notices.
+    backgroundColor: '#0e0c15',
     show: false,
     ...windowChrome(),
     webPreferences: {

@@ -42,6 +42,7 @@ import { watchDeposits } from './deposits.mjs'
 import { Api, History, isAnswerVerified } from '@lcai-p2p/inference'
 import { roomHandlers } from './handlers/rooms.mjs'
 import { walletHandlers } from './handlers/wallet.mjs'
+import { validatorHandlers } from './handlers/validator.mjs'
 import { assetHandlers, chainPools } from './handlers/assets.mjs'
 import { historyHandlers } from './handlers/history.mjs'
 import { bridgeHandlers } from './handlers/bridge.mjs'
@@ -400,6 +401,30 @@ function lockRegistry() {
  * the actual backup; this file is convenience.
  */
 const vaultFile = path.join(chatDir, 'vault.json')
+
+/**
+ * When this vault was last written, for the screen that asks for its password.
+ *
+ * The address cannot be shown on a locked screen — it is inside the ciphertext,
+ * and recording it outside would be a privacy decision rather than a fix. The
+ * file's own timestamp costs nothing and answers the question that actually
+ * traps people: *which* wallet is this. A vault the operating system deleted
+ * and an onboarding flow silently replaced is indistinguishable from the
+ * original one until the password fails, and then it reads as the application
+ * refusing a password that is plainly correct — because for the wallet somebody
+ * remembers, it is.
+ *
+ * A modification time, honestly labelled as one. Copying a vault between
+ * machines moves it, which is why the screen says "last written" rather than
+ * claiming a creation date it cannot know.
+ */
+function vaultWrittenAt() {
+  try {
+    return fs.statSync(vaultFile).mtimeMs
+  } catch {
+    return null
+  }
+}
 
 const vaultStore = {
   read() {
@@ -1097,6 +1122,7 @@ const ctx = {
   session,
   swarm,
   wallet,
+  vaultWrittenAt,
   network: () => network,
   /**
    * The chain this build expects, from the pinned profile rather than from the
@@ -1155,6 +1181,7 @@ const handlers = {
   ...swapHandlers(ctx),
   ...aiHandlers(ctx),
   ...workerHandlers(ctx),
+  ...validatorHandlers(ctx),
   ...settingsHandlers(ctx),
   ...localHandlers(ctx),
   // Loaded on demand, since a working session never calls it: packs the logs,
