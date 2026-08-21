@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FailoverRpc, RpcPool } from './pool.js'
 import { Rpc, RpcError } from './rpc.js'
-import { CHAINS, LIGHTCHAIN_TESTNET, chainById } from './chains.js'
+import { CHAINS, LIGHTCHAIN_DEVNET, LIGHTCHAIN_TESTNET, chainById } from './chains.js'
 
 /**
  * The pool exists for one failure that has to be impossible.
@@ -216,6 +216,23 @@ describe('the chain registry', () => {
     // A test network beside five holding real money is one mis-click from
     // somebody sending to it.
     expect(CHAINS.some((c) => c.id === 8200)).toBe(false)
+  })
+
+  it('keeps the devnet out of the list somebody picks from, same as the testnet', () => {
+    // Same posture as the testnet: reachable as a constant, never offered
+    // alongside chains holding real money.
+    expect(CHAINS.some((c) => c.id === 48221)).toBe(false)
+    expect(chainById(48221)).toBeNull()
+    expect(LIGHTCHAIN_DEVNET).toEqual({
+      id: 48221,
+      name: 'Lightchain devnet',
+      symbol: 'LCAI',
+      coinName: 'Lightchain AI',
+      decimals: 18,
+      rpcUrls: ['https://rpc.devnet-v2.lightchain.ai'],
+      explorerUrl: 'https://devnet-v2.lightscan.app',
+      multicall3: null
+    })
   })
 
   it('gives every chain a symbol and eighteen decimals', () => {

@@ -22,6 +22,22 @@ export interface DockerCommand {
 
 const REDACTED = '<redacted>'
 
+/**
+ * The image a docker invocation runs, or a refusal when the network has none.
+ *
+ * Devnet publishes no worker image, gateway or relay — those hostnames do not
+ * resolve — so every launch path names that plainly instead of producing a
+ * container command with "undefined" in it.
+ */
+function requireImage(config: WorkerConfig): string {
+  if (!config.image) {
+    throw new WorkerConfigError(
+      `worker hosting is not available on ${config.network} yet: the profile publishes no worker image, gateway or relay. Only the chain endpoints are live there.`
+    )
+  }
+  return config.image
+}
+
 function build(argv: readonly string[], secrets: readonly string[]): DockerCommand {
   const display = argv
     .map((arg) => {
@@ -37,7 +53,7 @@ function build(argv: readonly string[], secrets: readonly string[]): DockerComma
 }
 
 export function pullImage(config: WorkerConfig): DockerCommand {
-  return build(['pull', config.image], [])
+  return build(['pull', requireImage(config)], [])
 }
 
 /*
@@ -72,7 +88,7 @@ export function generateEncryptionKey(config: WorkerConfig): DockerCommand {
       ...environment(config),
       '--entrypoint',
       '/bin/lightchain-worker',
-      config.image,
+      requireImage(config),
       'keygen'
     ],
     [config.keystorePassword]
@@ -97,7 +113,7 @@ export function register(config: WorkerConfig, keystoreFile: string): DockerComm
       ...environment(config, keystoreFile),
       '--entrypoint',
       '/bin/lightchain-worker',
-      config.image,
+      requireImage(config),
       'register'
     ],
     [config.keystorePassword]
@@ -105,6 +121,7 @@ export function register(config: WorkerConfig, keystoreFile: string): DockerComm
 }
 
 export function runWorker(config: WorkerConfig, keystoreFile: string): DockerCommand {
+  const image = requireImage(config)
   if (!isRunnable(config)) {
     throw new WorkerConfigError(
       `aiConfigAddress and jobRegistryAddress must be resolved before the worker can run. The ${config.network} profile pins none — read them from the WorkerRegistry with resolveContractAddresses(config, rpc) first.`
@@ -127,7 +144,7 @@ export function runWorker(config: WorkerConfig, keystoreFile: string): DockerCom
       '-v',
       `${config.keysDir}:/data`,
       ...environment(config, keystoreFile),
-      config.image
+      image
     ],
     [config.keystorePassword]
   )
@@ -157,10 +174,12 @@ function environment(config: WorkerConfig, keystoreFile?: string): string[] {
     ['OLLAMA_URL', config.ollamaUrl],
     ['BEACON_API_URL', config.beaconApiUrl],
     ['BLOB_MODE', 'beacon'],
-    ['SESSION_KEY_FILE', '/data/session-keys.enc'],
-    ['WORKER_GATEWAY_URL', config.workerGatewayUrl]
+    ['SESSION_KEY_FILE', '/data/session-keys.enc']
   ]
 
+  // Absent on devnet, which has no gateway; passing it would hand the
+  // container the literal string "undefined".
+  if (config.workerGatewayUrl) env.push(['WORKER_GATEWAY_URL', config.workerGatewayUrl])
   if (config.aiConfigAddress) env.push(['AI_CONFIG_ADDRESS', config.aiConfigAddress])
   if (config.jobRegistryAddress) env.push(['JOB_REGISTRY_ADDRESS', config.jobRegistryAddress])
   if (config.debug) {

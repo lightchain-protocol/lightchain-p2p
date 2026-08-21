@@ -102,6 +102,85 @@ describe('configuration', () => {
   })
 })
 
+describe('the devnet profile', () => {
+  it('is pinned to the probed devnet endpoints', () => {
+    // Verified live against the devnet: chain id 48221 (0xbc5d), with the RPC,
+    // beacon and consumer API answering. The worker gateway, relay and
+    // explorer hostnames do not resolve, so the profile carries none of them.
+    const devnet = NETWORKS.devnet
+    expect(devnet.name).toBe('devnet')
+    expect(devnet.chainId).toBe(48221)
+    expect(devnet.symbol).toBe('LCAI')
+    expect(devnet.decimals).toBe(18)
+    expect(devnet.rpcUrl).toBe('https://rpc.devnet-v2.lightchain.ai')
+    expect(devnet.beaconApiUrl).toBe('https://beacon.devnet-v2.lightchain.ai')
+    expect(devnet.consumerApiUrl).toBe('https://chat-api.devnet-v2.lightchain.ai')
+    expect(devnet.explorerUrl).toBeNull()
+    expect(devnet.workerGatewayUrl).toBeUndefined()
+    expect(devnet.image).toBeUndefined()
+    expect(devnet.relayUrl).toBeUndefined()
+    // No pinned contracts, same as testnet: the WorkerRegistry genesis
+    // predeploy is live on devnet and resolves them at runtime.
+    expect(devnet.aiConfigAddress).toBeUndefined()
+    expect(devnet.jobRegistryAddress).toBeUndefined()
+  })
+
+  it('leaves mainnet and testnet byte-identical', () => {
+    expect(NETWORKS.mainnet.explorerUrl).toBe('https://mainnet.lightscan.app')
+    expect(NETWORKS.mainnet.workerGatewayUrl).toBe('https://worker-gateway.mainnet.lightchain.ai')
+    expect(NETWORKS.mainnet.image).toContain('lightchain-mainnet-public-docker')
+    expect(NETWORKS.mainnet.relayUrl).toBe('wss://relay.mainnet.lightchain.ai/ws')
+    expect(NETWORKS.testnet.explorerUrl).toBe('https://testnet.lightscan.app')
+    expect(NETWORKS.testnet.workerGatewayUrl).toBe('https://worker-gateway.testnet.lightchain.ai')
+    expect(NETWORKS.testnet.image).toContain('lightchain-testnet-public-docker')
+    expect(NETWORKS.testnet.relayUrl).toBe('wss://relay.testnet.lightchain.ai/ws')
+  })
+
+  it('resolves a devnet config with no image or gateway', () => {
+    const devnet = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD, network: 'devnet' })
+    expect(devnet.chainId).toBe(48221)
+    expect(devnet.rpcUrl).toBe(NETWORKS.devnet.rpcUrl)
+    expect(devnet.beaconApiUrl).toBe(NETWORKS.devnet.beaconApiUrl)
+    expect(devnet.image).toBeUndefined()
+    expect(devnet.workerGatewayUrl).toBeUndefined()
+    expect(isRunnable(devnet)).toBe(false)
+  })
+
+  it('refuses every container launch on devnet, naming the missing hosting', () => {
+    // The profile publishes no image, so no docker command may be built — a
+    // command with "undefined" interpolated starts, then fails looking like a
+    // protocol fault.
+    const devnet = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD, network: 'devnet' })
+    for (const launch of [
+      () => pullImage(devnet),
+      () => runWorker(devnet, '/data/ks'),
+      () => register(devnet, '/data/ks'),
+      () => generateEncryptionKey(devnet)
+    ]) {
+      expect(launch).toThrow(WorkerConfigError)
+      expect(launch).toThrow(/worker hosting is not available on devnet yet/)
+    }
+  })
+
+  it('still refuses after the registry addresses resolve, since hosting is what is missing', async () => {
+    // The WorkerRegistry predeploy answers on devnet, so the addresses come
+    // back fine — the wall is the absent image, and it stays up.
+    const devnet = resolveConfig({ keysDir: '/k', keystorePassword: PASSWORD, network: 'devnet' })
+    const rpc = {
+      async call(request: { to: string; data: string }) {
+        const address =
+          request.data === encodeCall('aiConfig()')
+            ? '0x1111111111111111111111111111111111111111'
+            : '0x2222222222222222222222222222222222222222'
+        return `0x${'0'.repeat(24)}${address.slice(2)}`
+      }
+    }
+    const resolved = await resolveContractAddresses(devnet, rpc)
+    expect(isRunnable(resolved)).toBe(true)
+    expect(() => runWorker(resolved, '/data/ks')).toThrow(/worker hosting is not available on devnet yet/)
+  })
+})
+
 describe('per-field config inspection', () => {
   it('reports every bad field rather than collapsing at the first', () => {
     // One bad field used to throw and hide the rest, so a panel could only say

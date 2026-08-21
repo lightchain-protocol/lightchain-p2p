@@ -174,3 +174,23 @@ export const LIGHTCHAIN_TESTNET: EvmChain = {
   explorerUrl: 'https://testnet.lightscan.app',
   multicall3: null
 }
+
+/**
+ * The Lightchain devnet (chain id 48221), same posture as the testnet: kept
+ * out of {@link CHAINS} and of `chainById`, reachable as a constant for the
+ * builds that want it.
+ *
+ * `devnet-v2.lightscan.app` is the intended explorer but does not resolve yet;
+ * the URL is held here so it does not have to be rediscovered when it goes
+ * live. The RPC and beacon endpoints are live and answering.
+ */
+export const LIGHTCHAIN_DEVNET: EvmChain = {
+  id: 48221,
+  name: 'Lightchain devnet',
+  symbol: 'LCAI',
+  coinName: 'Lightchain AI',
+  decimals: 18,
+  rpcUrls: ['https://rpc.devnet-v2.lightchain.ai'],
+  explorerUrl: 'https://devnet-v2.lightscan.app',
+  multicall3: null
+}

@@ -6,7 +6,7 @@
  * connects, and then fails in ways that look like a protocol fault.
  */
 
-export type NetworkName = 'mainnet' | 'testnet'
+export type NetworkName = 'mainnet' | 'testnet' | 'devnet'
 
 export interface NetworkProfile {
   readonly name: NetworkName
@@ -16,19 +16,25 @@ export interface NetworkProfile {
   readonly symbol: string
   /** How many of its smallest units make one. Eighteen, as on every EVM chain so far. */
   readonly decimals: number
-  /** Where a transaction can be looked up, without a trailing slash. */
-  readonly explorerUrl: string
+  /** Where a transaction can be looked up, without a trailing slash. Null on devnet, which has no explorer. */
+  readonly explorerUrl: string | null
   readonly beaconApiUrl: string
-  readonly workerGatewayUrl: string
-  readonly image: string
+  /**
+   * Absent where the network has no worker gateway yet. Devnet publishes none:
+   * the hostname does not resolve, so worker hosting there is refused rather
+   * than attempted.
+   */
+  readonly workerGatewayUrl?: string
+  /** The worker container image. Absent on devnet for the same reason. */
+  readonly image?: string
   /**
    * Where a consumer asks for inference, as distinct from `workerGatewayUrl`,
    * which is where workers report for duty. Easy to confuse, and confusing them
    * produces authentication failures that look like a bad token.
    */
   readonly consumerApiUrl: string
-  /** Where answers stream back from. */
-  readonly relayUrl: string
+  /** Where answers stream back from. Absent where there is no relay, as on devnet. */
+  readonly relayUrl?: string
   /**
    * The deployed AIConfig contract, where the network publishes one.
    *
@@ -45,7 +51,8 @@ export interface NetworkProfile {
 }
 
 /**
- * Genesis predeploy. Identical on both networks.
+ * Genesis predeploy. Identical on all three networks — probed live on devnet
+ * (chain id 48221), where `aiConfig()` and `jobRegistry()` both answer.
  *
  * Per https://docs.lightchain.ai/docs/getting-started/mainnet/contracts,
  * genesis predeploys are part of the chain's genesis state and stable across
@@ -84,6 +91,22 @@ export const NETWORKS: Readonly<Record<NetworkName, NetworkProfile>> = {
     image: 'us-central1-docker.pkg.dev/lightchain/lightchain-testnet-public-docker/worker:latest',
     consumerApiUrl: 'https://chat-api.testnet.lightchain.ai',
     relayUrl: 'wss://relay.testnet.lightchain.ai/ws'
+  },
+  devnet: {
+    name: 'devnet',
+    rpcUrl: 'https://rpc.devnet-v2.lightchain.ai',
+    chainId: 48221,
+    symbol: 'LCAI',
+    decimals: 18,
+    // No explorer: devnet-v2.lightscan.app does not resolve.
+    explorerUrl: null,
+    beaconApiUrl: 'https://beacon.devnet-v2.lightchain.ai',
+    consumerApiUrl: 'https://chat-api.devnet-v2.lightchain.ai'
+    // No workerGatewayUrl, image or relayUrl: none of those hostnames resolve
+    // yet, so worker hosting on devnet is refused rather than attempted. The
+    // WorkerRegistry genesis predeploy is live and answers aiConfig() and
+    // jobRegistry(), so contract addresses resolve at runtime exactly as on
+    // testnet — which is why none are pinned here either.
   }
 }
 

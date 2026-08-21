@@ -20,8 +20,8 @@ export interface WorkerConfigInput {
   /**
    * Defaults to the network profile's published address. An explicit value
    * still wins — the escape hatch for a deployment the profile predates.
-   * When the profile carries none (testnet), resolved from the registry by
-   * `resolveContractAddresses()`.
+   * When the profile carries none (testnet, devnet), resolved from the
+   * registry by `resolveContractAddresses()`.
    */
   readonly aiConfigAddress?: string
   /** Same resolution as `aiConfigAddress`. */
@@ -39,8 +39,10 @@ export interface WorkerConfig {
   readonly rpcUrl: string
   readonly chainId: number
   readonly beaconApiUrl: string
-  readonly workerGatewayUrl: string
-  readonly image: string
+  /** Absent on devnet, which has no worker gateway — hosting there is refused. */
+  readonly workerGatewayUrl?: string
+  /** Absent on devnet for the same reason. */
+  readonly image?: string
   readonly workerRegistryAddress: string
   readonly aiConfigAddress?: string
   readonly jobRegistryAddress?: string
@@ -94,7 +96,7 @@ export function inspectConfig(input: WorkerConfigInput): ConfigInspection {
       network: null,
       config: null,
       problems: [
-        { field: 'network', message: `unknown network "${network}". Use "mainnet" or "testnet".` }
+        { field: 'network', message: `unknown network "${network}". Use "mainnet", "testnet" or "devnet".` }
       ]
     }
   }
@@ -152,8 +154,8 @@ export function inspectConfig(input: WorkerConfigInput): ConfigInspection {
       // An explicit address wins; the profile's published one is the default,
       // so a worker that was never configured still registers against the
       // contracts everybody else is using. Where the profile carries none
-      // (testnet) this stays undefined and the registry is asked instead —
-      // see `resolveContractAddresses`.
+      // (testnet, devnet) this stays undefined and the registry is asked
+      // instead — see `resolveContractAddresses`.
       aiConfigAddress: input.aiConfigAddress ?? profile.aiConfigAddress,
       jobRegistryAddress: input.jobRegistryAddress ?? profile.jobRegistryAddress,
       keysDir: input.keysDir,
@@ -197,12 +199,13 @@ export type RegistryReader = Pick<Rpc, 'call'>
  * The AIConfig and JobRegistry addresses, read from the WorkerRegistry
  * genesis predeploy when nothing pinned them.
  *
- * Testnet's profile deliberately carries no contract addresses: a baked-in
- * copy goes stale and points a worker at a contract nobody else is using. The
- * registry is a genesis predeploy, identical on both networks, and knows the
- * live pair — so a worker on testnet asks it at startup rather than never
- * starting at all. Addresses already set, from the profile or explicitly,
- * always win and are never re-read.
+ * Testnet's and devnet's profiles deliberately carry no contract addresses: a
+ * baked-in copy goes stale and points a worker at a contract nobody else is
+ * using. The registry is a genesis predeploy, identical on all three networks
+ * (probed live on devnet), and knows the live pair — so a worker on those
+ * networks asks it at startup rather than never starting at all. Addresses
+ * already set, from the profile or explicitly, always win and are never
+ * re-read.
  */
 export async function resolveContractAddresses(
   config: WorkerConfig,
