@@ -350,3 +350,149 @@ describe('a session the chain expired', () => {
     expect(mocks.draw).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('the job lifecycle', () => {
+  it('tracks a job from submitted to answered, with its refundable-from deadline', async () => {
+    const { api, mocks, workerEncryption } = makeApi()
+    const conversation = makeConversation(api)
+    await conversation.start()
+    const sessionKey = sessionKeyFrom(mocks, workerEncryption)
+
+    expect(conversation.jobs()).toEqual([])
+    expect(conversation.job('7')).toBeNull()
+
+    const asking = conversation.ask('hi')
+    await untilSubmitted(mocks)
+
+    // The moment the job exists on chain it is in the history, paid for
+    // whatever happens next.
+    const submitted = conversation.job('7')
+    expect(submitted?.state).toBe('submitted')
+    expect(submitted?.fee).toBeNull()
+    // The deadline is the submission time plus the chain's response timeout —
+    // ninety seconds from AIConfig.ackTimeout unless configured otherwise.
+    expect(conversation.responseTimeout).toBe(90_000)
+    expect(conversation.answerTimeout).toBe(180_000)
+    expect(submitted!.deadline - submitted!.submittedAt).toBe(90_000)
+
+    relays[0]!.handlers.onMessage(frame(sessionKey, 'hello', { type: 'complete' }))
+    await expect(asking).resolves.toEqual({ jobId: '7', text: 'hello' })
+
+    expect(conversation.job('7')?.state).toBe('answered')
+    expect(conversation.jobs().map((entry) => entry.jobId)).toEqual(['7'])
+  })
+
+  it('marks a job timed-out — visibly refundable — when the wait expires', async () => {
+    const { api, mocks } = makeApi()
+    const conversation = makeConversation(api)
+    await conversation.start()
+
+    await expect(conversation.ask('slow', () => {}, 40)).rejects.toThrow(/produced no answer/)
+
+    const tracked = conversation.job('7')
+    expect(tracked?.state).toBe('timed-out')
+    // Still paid for, with the deadline a claim can be argued from.
+    expect(tracked!.deadline).toBeGreaterThan(tracked!.submittedAt)
+    // No answer arrived, so there is no evidence — which is what makes the
+    // job refundable rather than disputable.
+    expect(conversation.evidenceFor('7')).toBeNull()
+  })
+
+  it('marks a job failed when the worker reports an error', async () => {
+    const { api, mocks } = makeApi()
+    const conversation = makeConversation(api)
+    await conversation.start()
+
+    const asking = conversation.ask('hi')
+    await untilSubmitted(mocks)
+    relays[0]!.handlers.onMessage(
+      JSON.stringify({ type: 'error', jobId: '7', error: 'the model crashed' })
+    )
+
+    await expect(asking).rejects.toThrow(/the model crashed/)
+    expect(conversation.job('7')?.state).toBe('failed')
+  })
+
+  it('accumulates every job across asks, oldest first', async () => {
+    const { api, mocks, workerEncryption } = makeApi()
+    mocks.submit.mockResolvedValueOnce('7').mockResolvedValueOnce('8')
+    const conversation = makeConversation(api)
+    await conversation.start()
+    const sessionKey = sessionKeyFrom(mocks, workerEncryption)
+
+    const first = conversation.ask('one')
+    await untilSubmitted(mocks)
+    relays[0]!.handlers.onMessage(frame(sessionKey, 'first', { type: 'complete', jobId: '7' }))
+    await first
+
+    const second = conversation.ask('two')
+    await untilSubmitted(mocks, 2)
+    relays[0]!.handlers.onMessage(frame(sessionKey, 'second', { type: 'complete', jobId: '8' }))
+    await second
+
+    const jobs = conversation.jobs()
+    expect(jobs.map((entry) => entry.jobId)).toEqual(['7', '8'])
+    expect(jobs.map((entry) => entry.state)).toEqual(['answered', 'answered'])
+  })
+
+  it("keeps each job's evidence: a second ask does not clobber the first's", async () => {
+    const { api, mocks, workerEncryption } = makeApi()
+    mocks.submit.mockResolvedValueOnce('7').mockResolvedValueOnce('8')
+    const conversation = makeConversation(api)
+    await conversation.start()
+    const sessionKey = sessionKeyFrom(mocks, workerEncryption)
+
+    const firstFrame = frame(sessionKey, 'first', { type: 'complete', jobId: '7' })
+    const first = conversation.ask('one')
+    await untilSubmitted(mocks)
+    relays[0]!.handlers.onMessage(firstFrame)
+    await first
+
+    const secondFrame = frame(sessionKey, 'second', { type: 'complete', jobId: '8' })
+    const second = conversation.ask('two')
+    await untilSubmitted(mocks, 2)
+    relays[0]!.handlers.onMessage(secondFrame)
+    await second
+
+    const firstPayload = (JSON.parse(firstFrame) as { payload: string }).payload
+    const secondPayload = (JSON.parse(secondFrame) as { payload: string }).payload
+
+    const firstEvidence = conversation.evidenceFor('7')
+    expect(firstEvidence?.ciphertext).toBe(firstPayload)
+    expect(firstEvidence?.signatures).toEqual([''])
+    expect(firstEvidence?.worker).toBe(signer.address)
+
+    const secondEvidence = conversation.evidenceFor('8')
+    expect(secondEvidence?.ciphertext).toBe(secondPayload)
+
+    // The legacy latest-only form now describes the second job — and is null
+    // here because these frames are unsigned, which is the rule it has
+    // always had. The first job's proof survived the second ask either way.
+    expect(conversation.evidence()).toBeNull()
+    expect(conversation.evidenceFor('9')).toBeNull()
+  })
+
+  it('takes the answer wait and the chain deadline as options', async () => {
+    const { api, mocks, workerEncryption } = makeApi()
+    const conversation = new Conversation({
+      api,
+      relayUrl: 'wss://relay.example',
+      model: MODEL,
+      verify: false,
+      answerTimeout: 5_000,
+      responseTimeout: 120_000
+    })
+    await conversation.start()
+    const sessionKey = sessionKeyFrom(mocks, workerEncryption)
+
+    const asking = conversation.ask('hi')
+    await untilSubmitted(mocks)
+    relays[0]!.handlers.onMessage(frame(sessionKey, 'ok', { type: 'complete' }))
+    await asking
+
+    expect(conversation.answerTimeout).toBe(5_000)
+    expect(conversation.responseTimeout).toBe(120_000)
+    const tracked = conversation.job('7')
+    expect(tracked!.deadline - tracked!.submittedAt).toBe(120_000)
+  })
+})

@@ -50,11 +50,80 @@ export interface ConversationOptions {
    * default: an unverified answer is one a relay could have written.
    */
   readonly verify?: boolean
+  /**
+   * How long {@link Conversation.ask} waits for an answer, in milliseconds.
+   *
+   * Defaults to three minutes, deliberately generous against the chain's
+   * ninety-second response deadline so a worker still inside its SLA is not
+   * given up on.
+   */
+  readonly answerTimeout?: number
+  /**
+   * The chain's response deadline in milliseconds, used to compute when each
+   * job becomes refundable through `claimTimeout`.
+   *
+   * On chain the deadline is set at submission to `block.timestamp +
+   * AIConfig.ackTimeout` (ninety seconds by default) and moves to
+   * `ackTime + completionTimeout` (a hundred and twenty) when the worker
+   * acknowledges, so the figure here is the earliest a job can be claimed.
+   * Defaults to ninety seconds; pass the live value where chain config has
+   * been read.
+   */
+  readonly responseTimeout?: number
 }
 
 export interface Answer {
   readonly jobId: string
   readonly text: string
+}
+
+/**
+ * Where a job this conversation submitted has got to, as far as the client
+ * knows without a chain read.
+ *
+ * The chain keeps the authoritative record in `JobRegistry.getJob` — this is
+ * its local shadow, kept so a job that never answered is visible as timed out
+ * and refundable rather than silently paid for.
+ */
+export type ConversationJobState = 'submitted' | 'answered' | 'timed-out' | 'failed'
+
+/** One submitted job, as {@link Conversation.jobs} reports it. */
+export interface ConversationJob {
+  readonly jobId: string
+  readonly state: ConversationJobState
+  /** Local clock, milliseconds since the epoch, when the job was submitted. */
+  readonly submittedAt: number
+  /**
+   * The earliest the job becomes refundable through `claimTimeout`:
+   * `submittedAt` plus the configured response timeout.
+   *
+   * An estimate in the client's favour — the on-chain deadline is set from
+   * the submission block's timestamp and moves later when the worker
+   * acknowledges, so the real refundable-from time is never earlier.
+   */
+  readonly deadline: number
+  /**
+   * The escrowed fee in wei, once a chain read (for example
+   * {@link Conversation.commitment}) has seen the job record. Null until
+   * then: the fee is escrowed on chain and the client does not set it.
+   */
+  readonly fee: bigint | null
+}
+
+/**
+ * The signed material behind one job's answer, kept per job so that asking a
+ * second question cannot overwrite the proof of the first.
+ *
+ * Shape mirrors {@link Conversation.evidence}: an answer that arrived as a
+ * single frame has its `ciphertext` here; a streamed answer has one
+ * ciphertext per piece and no single artifact, so `ciphertext` is null and
+ * `signatures` carries one entry per piece in wire order.
+ */
+export interface JobEvidence {
+  readonly ciphertext: string | null
+  readonly signatures: string[]
+  /** The worker whose signature the answer was checked against. */
+  readonly worker: string | null
 }
 
 export type Progress =
@@ -68,6 +137,31 @@ export type Progress =
 
 /** The event that carries the id the contract assigned. */
 const SESSION_CREATED = 'SessionCreated(uint256,address,bytes32,address,bytes,bytes)'
+
+/**
+ * The chain's response deadline, from `AIConfig`: a job is submitted with
+ * `deadline = submitBlockTime + ackTimeout` (ninety seconds by default), and
+ * the deadline moves to `ackTime + completionTimeout` (a hundred and twenty)
+ * when the worker acknowledges. Ninety seconds is therefore the earliest a
+ * job can become refundable through `claimTimeout`, and the figure used here
+ * unless the caller passes the live value.
+ */
+const DEFAULT_RESPONSE_TIMEOUT = 90_000
+
+/** How long `ask` waits for an answer before giving up on the wait. */
+const DEFAULT_ANSWER_TIMEOUT = 180_000
+
+/** The job record the class keeps per submission. */
+interface TrackedJob {
+  /** The model the job runs on, by id. */
+  model: string
+  /** The worker the job was submitted to — it can change across a reopen. */
+  worker: string | null
+  state: ConversationJobState
+  submittedAt: number
+  deadline: number
+  fee: bigint | null
+}
 
 export class ConversationError extends Error {
   constructor(message: string) {
@@ -110,19 +204,49 @@ export class Conversation {
    */
   #evidence = new Map<number, { ciphertext: string; signature: string }>()
 
+  /**
+   * Every job this conversation has submitted, in submission order.
+   *
+   * The chain's `JobRegistry` is the record of truth; this is the client's
+   * shadow of it, so the state of a paid job survives the answer coming back
+   * — or not.
+   */
+  readonly #jobs = new Map<string, TrackedJob>()
+  /**
+   * The signed frames behind each answered job, snapshotted when the answer
+   * completes. `#evidence` is cleared per question, so without this a second
+   * ask would destroy the first job's proof.
+   */
+  readonly #jobEvidence = new Map<
+    string,
+    { frames: Map<number, { ciphertext: string; signature: string }>; worker: string | null }
+  >()
+
   readonly #chain: ConversationOptions['chain']
   readonly #verify: boolean
+  readonly #answerTimeout: number
+  readonly #responseTimeout: number
 
   /** What the signature check needs, learned once when the session opens. */
   #chainId: number | null = null
   #jobRegistry: string | null = null
 
-  constructor({ api, relayUrl, model, chain, verify = true }: ConversationOptions) {
+  constructor({
+    api,
+    relayUrl,
+    model,
+    chain,
+    verify = true,
+    answerTimeout = DEFAULT_ANSWER_TIMEOUT,
+    responseTimeout = DEFAULT_RESPONSE_TIMEOUT
+  }: ConversationOptions) {
     this.#api = api
     this.#relayUrl = relayUrl.replace(/\/$/, '')
     this.model = model
     this.#chain = chain
     this.#verify = verify
+    this.#answerTimeout = answerTimeout
+    this.#responseTimeout = responseTimeout
   }
 
   get sessionId(): string | null {
@@ -135,6 +259,16 @@ export class Conversation {
 
   get open(): boolean {
     return this.#sessionId !== null && this.#socket !== null
+  }
+
+  /** How long `ask` waits for an answer before declaring the job unanswered. */
+  get answerTimeout(): number {
+    return this.#answerTimeout
+  }
+
+  /** The chain response deadline each job's refundable-from time is computed from. */
+  get responseTimeout(): number {
+    return this.#responseTimeout
   }
 
   /**
@@ -459,8 +593,9 @@ export class Conversation {
   async ask(
     prompt: string,
     onProgress: (progress: Progress) => void = () => {},
-    timeout = 180_000
+    timeout?: number
   ): Promise<Answer> {
+    const wait = timeout ?? this.#answerTimeout
     if (!this.open || !this.#sessionKey || !this.#sessionId) {
       throw new ConversationError('the conversation has not been started')
     }
@@ -508,28 +643,48 @@ export class Conversation {
     }
 
     this.#activeJob = jobId
+
+    // Recorded the moment the job exists on chain, because from here on it is
+    // paid for whatever happens — the state this starts in is the one a
+    // refund claim is argued from.
+    const submittedAt = Date.now()
+    this.#jobs.set(jobId, {
+      model: this.model.id,
+      worker: this.#worker,
+      state: 'submitted',
+      submittedAt,
+      deadline: submittedAt + this.#responseTimeout,
+      fee: null
+    })
+
     onProgress({ phase: 'waiting', jobId })
 
     let timer: ReturnType<typeof setTimeout> | undefined
+    let timedOut = false
     let text: string
     try {
       text = await Promise.race([
         answer,
         new Promise<never>((_, reject) => {
-          timer = setTimeout(
-            () =>
-              reject(
-                // The job is submitted and paid whether or not the answer
-                // arrives, so this says so rather than implying a retry is free.
-                new ConversationError(
-                  `job ${jobId} produced no answer within ${Math.round(timeout / 1000)}s. It was submitted and paid for; the worker may still respond.`
-                )
-              ),
-            timeout
-          )
+          timer = setTimeout(() => {
+            timedOut = true
+            reject(
+              // The job is submitted and paid whether or not the answer
+              // arrives, so this says so rather than implying a retry is free.
+              new ConversationError(
+                `job ${jobId} produced no answer within ${Math.round(wait / 1000)}s. It was submitted and paid for; the worker may still respond.`
+              )
+            )
+          }, wait)
         })
       ])
     } catch (err) {
+      // A timed-out job is refundable through `claimTimeout` once its chain
+      // deadline passes; any other ending — relay close, worker error, a frame
+      // that failed verification, a cancel — is recorded as failed. Either
+      // way the job keeps its place in the history rather than vanishing.
+      const tracked = this.#jobs.get(jobId)
+      if (tracked) tracked.state = timedOut ? 'timed-out' : 'failed'
       // Whatever ended the wait — timeout, relay close, worker error, a frame
       // that failed verification — what was gathered is part of an answer,
       // and part of an answer is not evidence: `commitment()` would be
@@ -542,6 +697,15 @@ export class Conversation {
       this.#pending = null
       this.#activeJob = null
     }
+
+    const tracked = this.#jobs.get(jobId)
+    if (tracked) tracked.state = 'answered'
+    // Snapshot the frames before the next ask clears them: the evidence for
+    // one job must survive the questions that come after it.
+    this.#jobEvidence.set(jobId, {
+      frames: new Map(this.#evidence),
+      worker: tracked?.worker ?? this.#worker
+    })
 
     onProgress({ phase: 'done', jobId })
     return { jobId, text }
@@ -585,6 +749,9 @@ export class Conversation {
 
     for (let attempt = 0; attempt < attempts; attempt++) {
       const record = await job(this.#chain.rpc, jobRegistry, BigInt(jobId))
+      // The read knows the escrowed fee; the submission path never saw it.
+      const tracked = this.#jobs.get(jobId)
+      if (tracked && tracked.fee === null) tracked.fee = record.escrowedFee
       last = checkCommitment(record.responseCiphertextHash, record.state, ciphertext)
       if (last.status !== 'pending') return last
       await new Promise((resolve) => setTimeout(resolve, interval))
@@ -671,6 +838,61 @@ export class Conversation {
       ciphertext: only.ciphertext,
       sessionKey: toHex(this.#sessionKey),
       signature: only.signature
+    }
+  }
+
+  /**
+   * Every job this conversation has submitted, oldest first, with the state
+   * the client knows it to be in and the time it becomes refundable.
+   *
+   * A job that reads `timed-out` past its `deadline` is the one
+   * `claimTimeout` on `JobRegistry` exists for: the worker is slashed and the
+   * escrowed fee returns to the prepaid balance.
+   */
+  jobs(): ConversationJob[] {
+    return [...this.#jobs.entries()].map(([jobId, tracked]) => ({
+      jobId,
+      state: tracked.state,
+      submittedAt: tracked.submittedAt,
+      deadline: tracked.deadline,
+      fee: tracked.fee
+    }))
+  }
+
+  /** One job from {@link jobs}, or null if this conversation never submitted it. */
+  job(jobId: string): ConversationJob | null {
+    const tracked = this.#jobs.get(jobId)
+    if (!tracked) return null
+    return {
+      jobId,
+      state: tracked.state,
+      submittedAt: tracked.submittedAt,
+      deadline: tracked.deadline,
+      fee: tracked.fee
+    }
+  }
+
+  /**
+   * The signed material behind one job's answer, by job id.
+   *
+   * {@link evidence} answers for the latest job only, because it predates the
+   * per-job record; this is the form to use wherever a specific job is being
+   * quoted, disputed, or audited — a later question cannot clobber it.
+   *
+   * Null when the job never answered (a timed-out job has no evidence, which
+   * is precisely what makes it refundable rather than disputable) or was
+   * never submitted here.
+   */
+  evidenceFor(jobId: string): JobEvidence | null {
+    const kept = this.#jobEvidence.get(jobId)
+    if (!kept) return null
+
+    const frames = [...kept.frames.entries()].sort(([a], [b]) => a - b).map(([, frame]) => frame)
+
+    return {
+      ciphertext: frames.length === 1 ? (frames[0]?.ciphertext ?? null) : null,
+      signatures: frames.map((frame) => frame.signature),
+      worker: kept.worker
     }
   }
 
