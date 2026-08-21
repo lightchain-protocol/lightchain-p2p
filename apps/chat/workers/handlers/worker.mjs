@@ -69,9 +69,24 @@ const WORKER_REGISTERED_TOPIC = toHex(keccak256(new TextEncoder().encode('Worker
  * wiped install where a fixable mistake stood.
  */
 async function stakeProbe(rpc, config) {
+  let names
+  try {
+    names = fs.readdirSync(path.join(config.keysDir, KEYSTORE_DIR))
+  } catch (err) {
+    // A missing directory is the ordinary first-run state — the machine has
+    // never had a worker key — and reads exactly as the empty one does: quiet,
+    // not a raw ENOENT with a platform path in it. Anything else (permissions,
+    // a file in the directory's place) is a real problem the operator needs
+    // named.
+    if (err?.code !== 'ENOENT' && !/ENOENT/.test(err?.message ?? '')) {
+      return { address: null, problem: err.message }
+    }
+    names = []
+  }
+
   let address
   try {
-    address = selectKeystore(fs.readdirSync(path.join(config.keysDir, KEYSTORE_DIR))).address
+    address = selectKeystore(names).address
   } catch (err) {
     if (/no keystore file found/.test(err.message)) {
       // No keystore yet, so there is no address to fund and nothing useful to

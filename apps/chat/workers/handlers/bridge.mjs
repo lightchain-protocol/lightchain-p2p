@@ -171,6 +171,23 @@ export const DISCLOSURE = [
   'No explorer indexes this bridge, so a transfer cannot be looked up. This wallet infers that it arrived by watching your balance on the other side.'
 ]
 
+/**
+ * A route, refused when the registry no longer knows either of its chains.
+ *
+ * `routeFor` dereferences the records it resolves — ids, names, explorer URLs
+ * — without a null check anywhere downstream, so a registry that dropped
+ * Ethereum or Lightchain would surface a bare TypeError mid-transfer on a
+ * request that was valid. Failing here, with a plain message, keeps the two
+ * failure shapes apart: an unsupported chain is refused, a broken registry is
+ * reported.
+ */
+function knownRoute(route) {
+  if (!route.from || !route.to) {
+    throw new Error('this bridge cannot route: a chain it runs on is missing from the chain registry')
+  }
+  return route
+}
+
 export function bridgeHandlers(ctx) {
   const { wallet, localState, poolFor, guard } = ctx
 
@@ -187,25 +204,25 @@ export function bridgeHandlers(ctx) {
    */
   function routeFor(fromChainId) {
     if (fromChainId === 1) {
-      return {
+      return knownRoute({
         from: chainById(1),
         to: chainById(LIGHTCHAIN_DOMAIN),
         router: BRIDGE.ethereumRouter,
         destination: LIGHTCHAIN_DOMAIN,
         token: BRIDGE.ethereumToken,
         needsApproval: true
-      }
+      })
     }
 
     if (fromChainId === LIGHTCHAIN_DOMAIN) {
-      return {
+      return knownRoute({
         from: chainById(LIGHTCHAIN_DOMAIN),
         to: chainById(1),
         router: BRIDGE.lightchainRouter,
         destination: ETHEREUM_DOMAIN,
         token: null,
         needsApproval: false
-      }
+      })
     }
 
     throw new Error('this bridge only runs between Ethereum and Lightchain')
@@ -216,10 +233,14 @@ export function bridgeHandlers(ctx) {
     'bridge.terms': () => ({
       acknowledged: acknowledged(),
       disclosure: DISCLOSURE,
-      routes: [
-        { fromChainId: 1, fromName: 'Ethereum', toChainId: 9200, toName: 'Lightchain' },
-        { fromChainId: 9200, fromName: 'Lightchain', toChainId: 1, toName: 'Ethereum' }
-      ]
+      // Derived from the planner's own table rather than restated, so the
+      // screen can never advertise a route a transfer would refuse.
+      routes: [routeFor(ETHEREUM_DOMAIN), routeFor(LIGHTCHAIN_DOMAIN)].map((route) => ({
+        fromChainId: route.from.id,
+        fromName: route.from.name,
+        toChainId: route.to.id,
+        toName: route.to.name
+      }))
     }),
 
     /**

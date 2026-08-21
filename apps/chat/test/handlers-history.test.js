@@ -52,7 +52,7 @@ function poolWith({ incoming = [], outgoing = [], latest = 1_000n, sendImpl = nu
   }
 }
 
-const transferLog = ({ from = OTHER, to = ADDRESS, value = 10n, block = 100n } = {}) => ({
+const transferLog = ({ from = OTHER, to = ADDRESS, value = 10n, block = 100n, logIndex = null } = {}) => ({
   transactionHash: HASH,
   topics: [
     TRANSFER_TOPIC,
@@ -60,7 +60,10 @@ const transferLog = ({ from = OTHER, to = ADDRESS, value = 10n, block = 100n } =
     `0x${'0'.repeat(24)}${to.slice(2)}`
   ],
   data: `0x${value.toString(16).padStart(64, '0')}`,
-  blockNumber: `0x${block.toString(16)}`
+  blockNumber: `0x${block.toString(16)}`,
+  // Only present when a test says so: plenty of nodes omit it, and the dedup
+  // has to hold either way.
+  ...(logIndex === null ? {} : { logIndex: `0x${logIndex.toString(16)}` })
 })
 
 beforeEach(() => {
@@ -294,10 +297,10 @@ describe('the log-scan path', () => {
     expect(history.blindTo).toMatch(/ECONNREFUSED/)
   })
 
-  it('lists a self-transfer twice, once from each direction query', async () => {
-    // A transfer from this address to itself matches both indexed topics, and
-    // nothing deduplicates between the two queries. Pinned here so a future
-    // dedup is a deliberate change rather than an accident.
+  it('lists a self-transfer once, though it matches both direction queries', async () => {
+    // A transfer from this address to itself matches both indexed topics, so
+    // both queries return it. It is one transfer: the dedup by transaction and
+    // log is what keeps the list honest.
     const pool = poolWith({
       incoming: [transferLog({ from: ADDRESS, to: ADDRESS, value: 7n })],
       outgoing: [transferLog({ from: ADDRESS, to: ADDRESS, value: 7n })]
@@ -306,7 +309,20 @@ describe('the log-scan path', () => {
 
     const history = await handlers['history.forAsset']({ chainId: 1 })
 
-    expect(history.entries).toHaveLength(2)
-    expect(history.entries.every((entry) => entry.value === '7')).toBe(true)
+    expect(history.entries).toHaveLength(1)
+    expect(history.entries[0]).toMatchObject({ value: '7', from: ADDRESS, to: ADDRESS })
+  })
+
+  it('keeps two transfers that share a transaction but are different logs', async () => {
+    // One transaction can move a token twice — a contract splitting a payment,
+    // say. The dedup keys on the log, not the hash, so both survive.
+    const pool = poolWith({
+      incoming: [transferLog({ value: 10n, logIndex: 0 }), transferLog({ value: 5n, logIndex: 1 })]
+    })
+    const handlers = historyHandlers(ctxWith({ pool }))
+
+    const history = await handlers['history.forAsset']({ chainId: 1 })
+
+    expect(history.entries.map((entry) => entry.value).sort()).toEqual(['10', '5'])
   })
 })

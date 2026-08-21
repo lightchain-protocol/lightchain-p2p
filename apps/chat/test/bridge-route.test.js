@@ -1,4 +1,21 @@
 import { describe, expect, it, vi } from 'vitest'
+
+/**
+ * A chain registry that can be told to forget a chain, so the defensive half
+ * of route resolution — the registry having dropped a chain the bridge runs
+ * on — is exercised rather than assumed. Empty by default: every import below
+ * behaves exactly as the real module unless a test drops a chain.
+ */
+const registryState = vi.hoisted(() => ({ drop: new Set() }))
+
+vi.mock('@lcai-p2p/chain', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    chainById: (id) => (registryState.drop.has(id) ? null : actual.chainById(id))
+  }
+})
+
 import {
   BRIDGE,
   ETHEREUM_DOMAIN,
@@ -205,6 +222,56 @@ describe('chains the bridge refuses', () => {
   })
 })
 
+describe('a registry that dropped a chain the bridge runs on', () => {
+  async function withDroppedChain(domain, run) {
+    registryState.drop.add(domain)
+    try {
+      await run()
+    } finally {
+      registryState.drop.clear()
+    }
+  }
+
+  it('fails a quote with a plain message, not a TypeError from a null deref', async () => {
+    await withDroppedChain(LIGHTCHAIN_DOMAIN, async () => {
+      const { ctx } = ctxWith({ held: 10_000n, nativeBalance: 10_000n })
+      const handlers = bridgeHandlers(ctx)
+
+      const failure = await handlers['bridge.quote']({ fromChainId: 1, amount: AMOUNT }).catch(
+        (err) => err
+      )
+
+      expect(failure).toBeInstanceOf(Error)
+      expect(failure).not.toBeInstanceOf(TypeError)
+      expect(failure.message).toMatch(/missing from the chain registry/)
+    })
+  })
+
+  it('fails a send the same way, whichever side of the route went missing', async () => {
+    await withDroppedChain(ETHEREUM_DOMAIN, async () => {
+      const { ctx } = ctxWith({ nativeBalance: 10_000n })
+      const handlers = bridgeHandlers(ctx)
+
+      const failure = await handlers['bridge.send']({ fromChainId: 9200, amount: AMOUNT }).catch(
+        (err) => err
+      )
+
+      expect(failure).toBeInstanceOf(Error)
+      expect(failure).not.toBeInstanceOf(TypeError)
+      expect(failure.message).toMatch(/missing from the chain registry/)
+    })
+  })
+
+  it('fails the terms screen plainly too, rather than advertising a broken route', async () => {
+    await withDroppedChain(LIGHTCHAIN_DOMAIN, async () => {
+      const { ctx } = ctxWith()
+      const handlers = bridgeHandlers(ctx)
+
+      expect(() => handlers['bridge.terms']()).toThrow(/missing from the chain registry/)
+    })
+  })
+})
+
 describe('the route shape the rest of the flow consumes', () => {
   it('finds nothing to approve on the native route', async () => {
     const { ctx, guard, pooled } = ctxWith()
@@ -266,8 +333,9 @@ describe('the route shape the rest of the flow consumes', () => {
       }
     ])
 
-    // The terms table is hardcoded separately from routeFor — every route it
-    // advertises has to be one the planner will actually resolve.
+    // The terms table is derived from the planner's own route table, so an
+    // advertised route the planner would refuse is impossible by construction —
+    // and this test is the tripwire if that derivation is ever undone.
     for (const route of routes) {
       await expect(
         handlers['bridge.quote']({ fromChainId: route.fromChainId, amount: AMOUNT })

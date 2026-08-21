@@ -130,7 +130,23 @@ export function historyHandlers(ctx) {
       }
     }
 
-    return found
+    // A transfer from this address to itself matches both indexed-topic
+    // queries and would otherwise be listed twice. Dedup is by the log's own
+    // identity — transaction and index within it — with the topics and data
+    // as the fallback for a node that omits logIndex, so two genuinely
+    // different transfers sharing one transaction are both kept.
+    const seen = new Set()
+    const unique = found.filter((log) => {
+      const key = `${log.transactionHash}:${
+        log.logIndex ??
+        `${String(log.topics?.[1])}/${String(log.topics?.[2])}/${String(log.data)}`
+      }`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+
+    return unique
       .map((log) => {
         const from = `0x${String(log.topics?.[1] ?? '').slice(26)}`
         const recipient = `0x${String(log.topics?.[2] ?? '').slice(26)}`

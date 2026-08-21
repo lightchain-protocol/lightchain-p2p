@@ -202,6 +202,43 @@ describe('worker.stake', () => {
     expect(stake.balance).toBeNull()
   })
 
+  it('reads a missing keystore directory as the same quiet first-run state', async () => {
+    // First run: nothing has ever created the directory, so readdirSync throws
+    // ENOENT before selectKeystore's handled case is reached. That is the
+    // empty state, not a fault — and certainly not a raw ENOENT with a
+    // platform path on the Earn panel.
+    memFs()
+    mockFs.readdirSync.mockImplementation(() => {
+      throw Object.assign(
+        new Error("ENOENT: no such file or directory, scandir '/keys/eth-keystore'"),
+        { code: 'ENOENT' }
+      )
+    })
+    const handlers = workerHandlers(ctxWith())
+
+    const stake = await handlers['worker.stake']()
+
+    expect(stake.address).toBeNull()
+    expect(stake.problem).toBeNull()
+    expect(stake.minimum).toBeNull()
+    expect(stake.balance).toBeNull()
+  })
+
+  it('still names a keystore directory that is unreadable for any other reason', async () => {
+    // Missing is ordinary; refused is not. A permission failure has a fix the
+    // operator can make, and it must not render as a wiped install.
+    memFs()
+    mockFs.readdirSync.mockImplementation(() => {
+      throw Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' })
+    })
+    const handlers = workerHandlers(ctxWith())
+
+    const stake = await handlers['worker.stake']()
+
+    expect(stake.address).toBeNull()
+    expect(stake.problem).toMatch(/EPERM/)
+  })
+
   it('reports the configuration problem when there is no worker config', async () => {
     const handlers = workerHandlers(ctxWith({ config: null, problem: 'keysDir is required' }))
 
