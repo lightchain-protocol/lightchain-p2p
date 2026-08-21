@@ -1,31 +1,62 @@
-# Ownership follows the two engineering tracks. Track A owns the data plane,
-# Track B owns the applications. Shared packages need both reviewers because a
-# mistake in a schema is permanent — append-only logs cannot be migrated.
+# CODEOWNERS
 #
-# Replace the placeholders with real GitHub handles before enabling branch
-# protection.
+# Order matters: later rules win over earlier ones, so the specific areas are
+# listed after the catch-all.
+#
+# OWNERSHIP PLACEHOLDERS. The only handle verifiable from this repository's git
+# history is @lightchainai, so it is the default. Every @lightchain-protocol/*
+# team below is a placeholder for a team that does not exist on GitHub yet —
+# create the teams (or substitute real handles) before enabling branch
+# protection, or review assignment will silently do nothing.
+#
+# The split follows the work, not the org chart: chain and wallet changes move
+# money; inference changes move money and carry the protocol's recovery half;
+# the Bare worker is the data plane; the renderer and the Electron shell are
+# the view. Shared packages append to permanent, signed logs, so they ask for
+# a second reviewer.
 
 # Default
-*                       @lightchain-protocol/p2p
+*                                    @lightchainai
 
-# Track A — data plane
-/packages/drive/        @track-a
-/packages/da/           @track-a
-/packages/blind/        @track-a
-/apps/seeder/           @track-a
-/ops/                   @track-a
+# Money and the chain
+/packages/chain/                     @lightchainai @lightchain-protocol/p2p-chain
+/packages/wallet/                    @lightchainai @lightchain-protocol/p2p-chain
+/packages/prices/                    @lightchainai @lightchain-protocol/p2p-chain
 
-# Track B — applications
-/apps/supervisor/       @track-b
-/apps/chat/             @track-b
+# Inference: sessions, jobs, refunds, disputes, and the wire crypto
+/packages/inference/                 @lightchainai @lightchain-protocol/p2p-inference
+/packages/inference-crypto/          @lightchainai @lightchain-protocol/p2p-inference
 
-# Shared — both reviewers required
-/packages/protocol/     @track-a @track-b
-/packages/chain/        @track-a @track-b
-/packages/testkit/      @track-a @track-b
-/packages/safety/       @track-a @track-b
+# Data plane: permanent schemas — both reviewers, because a schema mistake
+# in an append-only log cannot be migrated away
+/packages/protocol/                  @lightchainai @lightchain-protocol/p2p-data @lightchain-protocol/p2p-app
+/packages/room/                      @lightchainai @lightchain-protocol/p2p-data @lightchain-protocol/p2p-app
+/packages/drive/                     @lightchainai @lightchain-protocol/p2p-data
+/packages/blind/                     @lightchainai @lightchain-protocol/p2p-data
+/packages/seed/                      @lightchainai @lightchain-protocol/p2p-data
+/apps/seeder/                        @lightchainai @lightchain-protocol/p2p-data
 
-# Foundation
-/.github/               @track-a @track-b
-/packages/typescript-config/  @track-a @track-b
-/packages/eslint-config/      @track-a @track-b
+# Worker hosting: staking, Docker orchestration, host readiness
+/packages/worker/                    @lightchainai @lightchain-protocol/p2p-worker
+/packages/host/                      @lightchainai @lightchain-protocol/p2p-worker
+/packages/preflight/                 @lightchainai @lightchain-protocol/p2p-worker
+/apps/supervisor/                    @lightchainai @lightchain-protocol/p2p-worker
+
+# The chat application. workers/ is Bare data-plane code, not UI — the more
+# specific rules must come after the app-wide one.
+/apps/chat/                          @lightchainai @lightchain-protocol/p2p-app
+/apps/chat/workers/                  @lightchainai @lightchain-protocol/p2p-data @lightchain-protocol/p2p-app
+/apps/chat/renderer/                 @lightchainai @lightchain-protocol/p2p-app
+/apps/chat/electron/                 @lightchainai @lightchain-protocol/p2p-app
+
+# Shared tooling and what is left
+/packages/safety/                    @lightchainai @lightchain-protocol/p2p-data @lightchain-protocol/p2p-app
+/packages/testkit/                   @lightchainai @lightchain-protocol/p2p-data @lightchain-protocol/p2p-app
+/packages/ui/                        @lightchainai @lightchain-protocol/p2p-app
+/packages/typescript-config/         @lightchainai
+/packages/eslint-config/             @lightchainai
+/packages/vitest-config/             @lightchainai
+
+# CI and the words
+/.github/workflows/                  @lightchainai @lightchain-protocol/p2p-ops
+/docs/                               @lightchainai

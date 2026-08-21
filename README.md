@@ -13,18 +13,18 @@ chain.
 ## Contents
 
 - [What we are building](#what-we-are-building)
-- [Status today](#status-today)
+- [BETA status](#beta-status)
 - [Architecture](#architecture)
 - [Repository layout](#repository-layout)
 - [Getting started](#getting-started)
-- [How the build works](#how-the-build-works)
+- [Packaging](#packaging)
+- [Driving the app: the harnesses](#driving-the-app-the-harnesses)
 - [CI and release](#ci-and-release)
 - [Platform support](#platform-support)
 - [Testing](#testing)
 - [The rules that matter](#the-rules-that-matter)
 - [Decisions](#decisions)
 - [Reference material](#reference-material)
-- [What is next](#what-is-next)
 
 ---
 
@@ -54,49 +54,93 @@ repository removes the install-and-update problem, not the inference dependency.
 
 ---
 
-## Status today
+## BETA status
 
-Be skeptical of anything not listed as verified. The foundation is real and
-proven in CI. The applications are real too, and were scaffolds when this line
-last said so — what is still missing is a signed release, not the code.
+The repository is mid-way through a four-sprint BETA programme. The plan of
+record is [docs/BETA-PLAN.md](docs/BETA-PLAN.md) — a five-specialist audit of
+the whole workspace, with every finding citing the code it came from — and the
+execution sequencing is [docs/SPRINTS.md](docs/SPRINTS.md). Read those before
+trusting any summary, including this one.
 
-| Component                   | State           | Notes                                                                                                            |
-| --------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Workspace, CI, build matrix | **Verified**    | Green on Linux; six-target matrix builds and runs its own binaries                                               |
-| `packages/safety`           | **Real**        | Refusal-list decision logic, 10 tests                                                                            |
-| `packages/testkit`          | **Real**        | Two-machine harness, 6 tests including a negative control                                                        |
-| `packages/protocol`         | **Real**        | Model references, manifests, room entries and the rules for resolving them, 92 tests                             |
-| `packages/drive`            | **Real**        | Publish, resolve and range-read a model drive, 9 tests including publisher-offline                               |
-| `packages/blind`            | **Real**        | Blind-peer registration, 4 tests against a real server with every holder offline                                 |
-| `packages/room`             | **Real**        | Multi-writer rooms, presence, attachments and a suite of abuses, 112 tests                                       |
-| `packages/wallet`           | **Real**        | BIP-39 phrase and passphrase, BIP-32 accounts, idle locking, a sealed local store, Keystore V3, 139 tests        |
-| `packages/inference`        | **Real**        | The session handshake, the prompt, the relay and what a model is shown of the conversation, under Bare, 77 tests |
-| `packages/inference-crypto` | **Real**        | ECDH P-256 and AES-256-GCM as the deployed workers speak it, 15 tests                                            |
-| `packages/host`             | **Real**        | Probes the machine a worker would run on, 15 tests                                                               |
-| `packages/ui`               | **Real**        | Design tokens and identicons, held to WCAG contrast, 57 tests                                                    |
-| `packages/preflight`        | **Real**        | Host readiness checks with actionable remedies, 28 tests                                                         |
-| `packages/worker`           | **Real**        | Network profiles, config validation, Docker orchestration, 33 tests                                              |
-| `apps/supervisor`           | **Real**        | Full worker lifecycle, contract addresses read from the registry, 17 tests                                       |
-| `packages/chain`            | **Real**        | Six EVM chains: signing, fees, ERC-20, Multicall3, endpoint failover, the bridge, 193 tests                      |
-| `packages/prices`           | **Real**        | Chainlink feeds and one Uniswap pool, read from the chain rather than an API, 54 tests                           |
-| `packages/da`               | **Not started** | Referenced in CODEOWNERS so ownership is settled before the code exists                                          |
-| Blind peer infrastructure   | **Not started** | There is no public fleet; we must operate our own servers or nothing stays available                             |
-| `packages/seed`             | **Real**        | Holds and serves drives, 6 tests                                                                                 |
-| `apps/seeder`               | **Real**        | Always-on seeding; verified holding a real Pear-staged release                                                   |
-| `apps/chat`                 | **Real**        | Rooms, a six-chain wallet, paid inference, OTA updates; 102 unit tests and 432 checks over nineteen harnesses    |
-| Code signing                | **Not started** | Longest external lead time; blocks release on four platforms                                                     |
-| iOS, Android                | **Deferred**    | By decision — see [ADR 0001](docs/decisions/0001-defer-mobile.md)                                                |
+The audit's verdict: the engineering core — key handling, the signing boundary,
+SIWE hygiene, answer verification, config validation, the CI guard wall — is
+release-grade. What blocked BETA was a set of money-safety bugs, the recovery
+half of the inference protocol being unwired in the client, and the
+distribution layer.
+
+Sprints 1 and 2 have landed:
+
+- **Money-safety guards.** The confirm threshold is chain-aware (a 50 ETH send
+  was getting no confirmation), spending limits apply on the main spend path
+  rather than only in rooms, and a failed job submit no longer wedges the
+  session or risks a worker crash.
+- **The recovery half of the protocol.** Every job's lifecycle is tracked from
+  submit to completion or timeout, with the refundable deadline per job; a
+  timed-out job can be claimed back on chain, a wrong answer disputed, and the
+  delegate allowance revoked from the Wallet panel. Dispute evidence persists
+  in the encrypted transcript log, so a restart inside the dispute window no
+  longer forfeits the remedy.
+- **The stake is guarded.** Registering a worker stakes 50,000 LCAI on mainnet
+  (5,000 on testnet) plus gas, in a transaction signed inside the worker
+  container. The guard now shows the exact stake and destination registry
+  before launch, probed against the live `getMinWorkerStake()` rather than a
+  constant, and the registration transaction is recorded in the ledger. The
+  details — overpayment is kept, gas comes out of the same balance — are in
+  [docs/running-a-worker.md](docs/running-a-worker.md).
+- **Finality is taken seriously.** Money moves wait for three confirmations,
+  and settled ledger entries are re-validated so a reorg un-settles them rather
+  than leaving a receipt for funds that went back. Lightchain reads fail over
+  across a two-endpoint pool.
+- **OTA hardening and diagnostics.** A failed over-the-air apply is retryable
+  instead of latched, crashes are reported locally, worker output goes to a
+  rotating log, and Settings can export a diagnostics bundle that never
+  contains keys or transcripts.
+
+Sprint 3 is hardening and verification: test backfill, live harness re-runs,
+and a full QA pass. Sprint 4 is release execution and needs the external items
+with long lead times — signing certificates and a production update channel
+under a real multisig — which run in parallel and are user-owned.
+
+Known accepted tradeoffs, stated here because they belong in the open: the
+guard dialog is renderer-drawn (a compromised renderer can self-confirm), the
+`pear:startWorker` allowlist is broad, and local-data keys are derived from a
+fixed-sentence signature, which is phishing-sensitive. The dispatcher, relay,
+disputer and blob submitter are one foundation operator, and a
+wrong-but-plausible answer is not client-detectable — only equivocation is
+disputable. The funding dialog and Settings say the same.
+
+### What the numbers are
+
+Be skeptical of anything not listed as verified. The packages are real and
+proven: **~1,170 vitest tests** across the workspace, all green in CI, plus the
+CDP harnesses described below, which are how the numbers like "25/25, 43/43"
+were produced — manually, against mainnet, not in vitest.
+
+| Area                                                  | State           | Notes                                                                                                                                                                       |
+| ----------------------------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/chain`                                      | **Real**        | Six EVM chains: signing, fees, ERC-20, Multicall3, endpoint failover, the bridge, Uniswap v3 swaps                                                                          |
+| `packages/wallet`                                     | **Real**        | BIP-39 phrase and passphrase, BIP-32 accounts, idle locking, a sealed local store, Keystore V3                                                                              |
+| `packages/inference` + `inference-crypto`             | **Real**        | Session handshake, job lifecycle, per-frame worker-signature verification before decryption; ECDH P-256 and AES-256-GCM as the deployed workers speak it                    |
+| `packages/protocol`, `room`, `drive`, `blind`, `seed` | **Real**        | Model references and manifests; multi-writer rooms with presence and attachments; publish, resolve and range-read a model drive; blind-peer registration; always-on seeding |
+| `packages/worker`, `host`, `preflight`                | **Real**        | Network profiles, config validation, Docker orchestration; host probing; readiness checks with actionable remedies                                                          |
+| `packages/prices`                                     | **Real**        | Chainlink feeds and one Uniswap pool, read from the chain rather than an API                                                                                                |
+| `packages/safety`, `ui`, `testkit`                    | **Real**        | Refusal-list decisions; design tokens held to WCAG contrast; the two-machine harness                                                                                        |
+| `apps/chat`                                           | **Real**        | Rooms, a six-chain wallet, paid inference with refunds and disputes, swaps, the bridge, worker hosting, OTA updates                                                         |
+| `apps/supervisor`                                     | **Real**        | Full worker lifecycle as a self-contained binary, contract addresses read from the registry                                                                                 |
+| `apps/seeder`                                         | **Real**        | Always-on seeding; verified holding a real Pear-staged release                                                                                                              |
+| Code signing                                          | **Not started** | Longest external lead time; blocks release on four platforms                                                                                                                |
+| Blind peer fleet                                      | **Not started** | The code is tested against a real server with every holder offline; what does not exist is a machine running one                                                            |
+| iOS, Android                                          | **Deferred**    | By decision — see [ADR 0001](docs/decisions/0001-defer-mobile.md)                                                                                                           |
 
 One placeholder in `apps/supervisor` will bite you if you assume otherwise: its
 Bare worker is still `hello-pear-worker`, the template's, required verbatim by
 `workers/main.js`.
 
-Its `upgrade` link is its own now, from `pear touch`. It was not the template's
-but something worse: the same link the chat client uses, which would have made
-staging either one push it to the other's installs. `scripts/check-links.mjs`
-fails the build if that recurs. Both links are still development ones, whose
-secret keys sit on a single machine — a release needs one under the multisig
-policy.
+Both apps' `upgrade` links are their own now, and `scripts/check-links.mjs`
+fails the build if two apps ever share one again — a link is an update channel,
+so a shared link means staging either pushes it to the other's installs. Both
+links are still development ones, whose secret keys sit on a single machine; a
+release needs one under the multisig policy.
 
 ---
 
@@ -124,16 +168,26 @@ storage or cryptography is worker code, and anything touching a screen, keyboard
 or window is UI code. If it could run unchanged behind a terminal UI, it is
 worker code.
 
+The renderer runs sandboxed and **cannot load native addons at all**, so
+Hypercore, Hyperswarm and sodium-native could not live there even if that were
+wanted. The signing boundary follows from the same rule: keys live in the
+worker, the renderer sends intents, and the worker builds the transaction,
+reports exactly what it built, and only then offers to sign it.
+
 This is also why one team can credibly target five platforms. Nearly nothing is
 platform-specific — the peer-to-peer logic, protocol logic and cryptography all
 live in a Bare worker that embeds identically everywhere. Only the shell differs.
 
-### Two engineering tracks
-
-Track A owns the data plane (`packages/drive`, `da`, `blind`, `apps/seeder`,
-`ops`). Track B owns the applications (`apps/supervisor`, `apps/chat`). Shared
-packages require a reviewer from both, because a schema mistake in an append-only
-log is permanent. See [CODEOWNERS](.github/CODEOWNERS).
+Where the money paths run: swaps go through a single thin Uniswap v3 pool on
+Ethereum (canonical SwapRouter02/QuoterV2, quotes via `eth_call`, the plan
+re-derived at send), and the bridge is a Hyperlane warp route between ETH and
+LCAI. Contract addresses are not hardcoded: they resolve live from the
+`WorkerRegistry` predeploy, and the worker container is given
+`AI_CONFIG_ADDRESS` for the AIConfig **proxy** (`0x24D1…Ce77D`). The
+`0x2e832E…D402` address in the [public contract
+docs](https://docs.lightchain.ai/docs/getting-started/mainnet/contracts) is the
+implementation, not the proxy — sending the container the implementation is the
+kind of thing that only fails at registration time.
 
 ---
 
@@ -141,17 +195,40 @@ log is permanent. See [CODEOWNERS](.github/CODEOWNERS).
 
 ```
 apps/
+  chat/              Electron + Bare P2P app: chat, wallet, swaps, bridge,
+                     paid inference, worker hosting
   supervisor/        Bare terminal app: installs, supervises, updates a worker
+  seeder/            Always-on seeding for staged releases
 packages/
+  chain/             Six EVM chains: signing, fees, ERC-20, the bridge, swaps
+  wallet/            BIP-39/32, Keystore V3, sealed store, idle locking
+  inference/         Session handshake, job lifecycle, verification, disputes
+  inference-crypto/  ECDH P-256 + AES-256-GCM as deployed workers speak it
+  protocol/          Model references, manifests, room entries, resolution
+  room/              Multi-writer rooms, presence, attachments
+  drive/             Publish, resolve and range-read a model drive
+  blind/             Blind-peer registration
+  seed/              Holds and serves drives
+  host/              Probes the machine a worker would run on
+  preflight/         Host readiness checks with remedies
+  worker/            Network profiles, config validation, Docker orchestration
+  prices/            Chainlink feeds and one Uniswap pool, read from chain
   safety/            Refusal-list decision logic
   testkit/           Two-machine test harness
+  ui/                Design tokens and identicons
   typescript-config/ Shared tsconfig bases (base, node, bare)
   eslint-config/     Shared flat config, including the Pear import boundary
   vitest-config/     Shared test preset
 scripts/
   make.mjs           Builds a standalone binary. Must run from the repo root.
-  setup-hooks.mjs    Points core.hooksPath at .githooks on install
-docs/decisions/      Architecture decision records
+  run-app.ps1        Starts a clean chat instance with a debug port
+  check-*.mjs        Guards CI runs; see below
+docs/
+  BETA-PLAN.md       The audit and what blocks BETA — read this first
+  SPRINTS.md         Execution sequencing, four sprints
+  install.md         What installing will involve (there is no release yet)
+  running-a-worker.md  The stake, the order of operations, getting it back
+  decisions/         Architecture decision records
 .githooks/           Version-controlled git hooks
 ```
 
@@ -163,6 +240,8 @@ You need Node 20 or newer and pnpm 10.33.0 (declared in `packageManager`, so
 Corepack will select it).
 
 ```bash
+git clone https://github.com/lightchain-protocol/lightchain-p2p
+cd lightchain-p2p
 pnpm install
 pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
@@ -170,39 +249,103 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 That should be green from a clean clone. `pnpm install` also repairs
 `core.hooksPath`, which matters — see [commit authorship](#commit-authorship).
 
-To run the supervisor from source, or build a native binary for your machine:
+To run the chat app from source:
 
 ```bash
-cd apps/supervisor && pnpm start          # runs under the Bare runtime
-node scripts/make.mjs supervisor          # from the repo root
+pnpm --filter @lcai-p2p/chat start
 ```
 
-The binary lands in `apps/supervisor/out/<host>/`. It is self-contained: whoever
-runs it installs no Node, no Bare and no Pear CLI.
+The app opens on wallet setup. It generates twelve words, shows them once and
+asks for three back before continuing — write them down, because nobody can
+recover them for you. To ask a model anything you need LCAI deposited into the
+job registry from the Wallet section; mainnet charges 0.02 LCAI a job.
+[docs/install.md](docs/install.md) has the detail.
+
+To run the worker supervisor from source:
+
+```bash
+cd apps/supervisor && pnpm start
+```
+
+Becoming a worker means **staking LCAI** — 50,000 on mainnet plus gas — and
+that is the step people miss, because nothing about the software hints at it
+until a transaction fails. [docs/running-a-worker.md](docs/running-a-worker.md)
+is the money-first version.
 
 ---
 
-## How the build works
+## Packaging
 
-pnpm workspaces with [Turborepo](https://turbo.build) for task orchestration and
-caching. Nothing exotic — but two things about the Bare toolchain will cost you
-an afternoon if you meet them cold.
+The chat app packages with electron-forge, behind a wrapper script:
 
-**`bare-build` must run from the repository root.** It resolves modules against
-its base directory, and in a monorepo the dependencies are in the root
-`node_modules`. Building from inside `apps/supervisor` produces a binary that
-compiles cleanly and then dies at startup with `MODULE_NOT_FOUND` for a path like
-`file:///C:/node_modules/…`. `scripts/make.mjs` exists to enforce the correct
-working directory, and the app's `make` script delegates to it.
+```bash
+cd apps/chat
+pnpm package        # an unpacked executable for this platform
+pnpm make           # the installer artifacts
+```
 
-**`.npmrc` sets `node-linker=hoisted`.** The Bare toolchain cannot follow pnpm's
-symlinked layout when resolving transitive dependencies, so the workspace uses a
-flattened `node_modules`. This is a deliberate trade of pnpm's strictness for a
-toolchain that works; do not remove it without checking that a built binary still
+The makers are DMG on macOS, MSIX on Windows, AppImage on Linux, with Flatpak
+and Snap configured but undecided — both are read-only mounts, and an app
+installed from either **cannot receive peer-to-peer updates**, which is most of
+the point of building on this stack. AppImage is the primary Linux artifact for
+that reason.
+
+The supervisor builds to a single self-contained binary per platform:
+
+```bash
+node scripts/make.mjs supervisor    # from the repo root
+```
+
+The binary lands in `apps/supervisor/out/<host>/`. Whoever runs it installs no
+Node, no Bare and no Pear CLI.
+
+Two things about the Bare toolchain will cost you an afternoon if you meet them
+cold. **`bare-build` must run from the repository root** — it resolves modules
+against its base directory, and building from inside an app produces a binary
+that compiles cleanly and then dies at startup with `MODULE_NOT_FOUND`.
+`scripts/make.mjs` exists to enforce the working directory. And **`.npmrc` sets
+`node-linker=hoisted`**, because the Bare toolchain cannot follow pnpm's
+symlinked layout; do not remove it without checking that a built binary still
 starts.
 
-`--standalone` embeds the JavaScript bundle into a prebuilt portable runtime,
-giving a PE executable on Windows, Mach-O on macOS and ELF on Linux.
+No `out/make` installer has been signed or released yet. What that will involve
+per platform is in [docs/install.md](docs/install.md) and
+[docs/signing-procurement.md](docs/signing-procurement.md).
+
+---
+
+## Driving the app: the harnesses
+
+Unit tests cannot see the renderer-to-worker seam, so the app is also verified
+by driving a real instance over the DevTools protocol. The harness scripts live
+in `apps/chat/scripts/*.mjs` — twenty-odd of them, one per surface or flow:
+`send-check`, `swap-check`, `bridge-check`, `surfaces-check`,
+`inference-check`, `drive-two-instances`, `hostile-renderer`, and the rest.
+
+Start a clean instance from the repo root, then run a harness from `apps/chat`:
+
+```powershell
+.\scripts\run-app.ps1 -Storage A -Port 9301 -Fresh   # -Fresh wipes the storage
+```
+
+```bash
+cd apps/chat
+node scripts/send-check.mjs 9301
+```
+
+Each storage letter is a separate instance with its own wallet; two letters on
+one machine is also how a real conversation with yourself is tested. The
+harnesses share one agreed password (`scripts/harness.mjs`) because a storage
+directory holds exactly one wallet, and every script inventing its own once
+cost an hour on four separate occasions.
+
+There are no test hooks in the application — a harness clicks the same buttons
+a person would, so a pass covers the renderer, the IPC seam, the worker and the
+DHT at once. The live ones (`swap-check`, `bridge-check`, `send-check`) run
+against mainnet and are deliberately outside `pnpm test`. The money-path
+harnesses stop at the confirmation the operating system draws, which cannot be
+clicked through the DevTools protocol — which is exactly the property that
+makes it worth having.
 
 ---
 
@@ -211,17 +354,17 @@ giving a PE executable on Windows, Mach-O on macOS and ELF on Linux.
 Two workflows.
 
 [`ci.yml`](.github/workflows/ci.yml) runs on every push and pull request to
-`main`: install, format check, lint, typecheck, test, build. Single Ubuntu
-runner, about a minute.
-
-It also runs seven checks for faults that produce no error and no visible
-symptom, and so cannot be caught by review: a design token nothing defines, a
-surface stylesheet redeclaring a shared component, `index.html` not matching the
-partials it is assembled from, an icon sprite edited by hand rather than
-generated, a deep link scheme that disagrees between the four places it is
-declared, a CSS class styled and worn by nothing, and two apps sharing one
-`pear://` upgrade link. Each was added after the fault it describes had already
-happened here unnoticed.
+`main`: install, format check, lint, typecheck, test, build, then fifteen
+guards for faults that produce no error and no visible symptom, and so cannot
+be caught by review. Eleven check the code: a design token nothing defines, a
+surface stylesheet redeclaring a shared component, generated markup, sprite or
+coin marks edited by hand rather than regenerated, a deep link scheme that
+disagrees between the places it is declared, a CSS class styled and worn by
+nothing, two apps sharing one `pear://` upgrade link, Bare runtimes disagreeing
+on a major. Four survey the chain: that the chains, tokens, bridge route and
+prices are as the registries describe. Each was added after the fault it
+describes had already happened here unnoticed. A final job drives the built
+application on a headless display and keeps the screenshots.
 
 [`build-matrix.yml`](.github/workflows/build-matrix.yml) runs on
 `workflow_dispatch` or a `v*` tag. Six native runners, each building **and
@@ -256,10 +399,6 @@ no working reference implementation, and an open model catalogue is a plausible
 App Store rejection that no amount of engineering solves. The reasoning and the
 conditions for revisiting are in [ADR 0001](docs/decisions/0001-defer-mobile.md).
 
-Also worth knowing for Linux: Snap and Flatpak cannot receive peer-to-peer
-updates either, because their read-only mounts defeat the file swap. AppImage is
-the primary Linux artifact for that reason.
-
 ---
 
 ## Testing
@@ -269,7 +408,7 @@ only appear when the publisher goes offline, and code that reads its own
 Corestore will pass every assertion you write while being completely unable to
 serve a peer.
 
-So the bar for `packages/drive`, `packages/da` and `packages/blind` is a
+So the bar for `packages/drive` and `packages/blind` is a
 two-machine test using [`packages/testkit`](packages/testkit), with the publisher
 offline for part of the run:
 
@@ -287,6 +426,9 @@ Each peer gets its own Corestore in its own temporary directory, and peers join 
 local DHT rather than the public one. The harness carries a negative control
 asserting that genuinely unavailable content _fails_ to arrive — keep it, because
 a harness that passes regardless of whether replication works is worse than none.
+
+Above that sit the CDP harnesses, above, which exist because a unit test equally
+cannot see whether the window, the IPC seam and the worker agree.
 
 ---
 
@@ -331,6 +473,11 @@ anything that would otherwise be re-litigated, especially where the reasoning is
 non-obvious or the alternative was reasonable.
 
 - [0001 — Defer iOS and Android to a later release](docs/decisions/0001-defer-mobile.md)
+- [0002 — Publish round trip, and what it proved](docs/decisions/0002-publish-round-trip.md)
+- [0003 — Windows signing, proven with a throwaway certificate](docs/decisions/0003-windows-signing.md)
+- [0004 — Reaching the chain from a Bare worker](docs/decisions/0004-chain-access-from-bare.md)
+- [0005 — Which channels to distribute through](docs/decisions/0005-distribution-channels.md)
+- [0006 — Hardware wallets, and why the transport was never the problem](docs/decisions/0006-hardware-wallets.md)
 
 ---
 
@@ -340,63 +487,18 @@ The Pear/Holepunch stack changed substantially in version 3 and much of what is
 on the open internet is stale. Prefer these, which are checked in so the repo is
 self-contained:
 
+- [BETA completion plan](docs/BETA-PLAN.md) — the audit, what blocks BETA, and the sequencing
+- [Sprint plan](docs/SPRINTS.md) — four sprints, strict file ownership per agent
+- [Installing](docs/install.md) — what a real install will involve, per platform
+- [Running a worker](docs/running-a-worker.md) — the stake, stated before anything else
+- [Signing procurement](docs/signing-procurement.md) — the longest external lead time
 - [The DAO proposal](docs/proposals/lightchain-on-pear.md) — defines the five advancements
 - [Cross-platform delivery plan](docs/proposals/cross-platform-delivery-plan.md) — build, sign, distribute and update, per platform
 - [Safety framework proposal](docs/proposals/safety-framework-proposal.md) — the refusal list `packages/safety` implements
 - [Audit](docs/proposals/AUDIT.md) — what the current Lightchain stack actually does, verified against source
+- [Lightchain mainnet contracts](https://docs.lightchain.ai/docs/getting-started/mainnet/contracts) — the deployment the app resolves against
 
 Two corrections that catch people out: **`pear run` does not exist**, it was
 removed in Pear 3 and apps start via their own `npm start`; and **the IPC stream
 carries bytes, not objects**, with no built-in JSON or length framing, so pick a
 framing format and use it on both sides.
-
----
-
-## What is next
-
-In rough order of leverage:
-
-1. **Start certificate and account procurement.** The only item with external
-   lead time. Windows EV certificates ship on hardware tokens and can take weeks;
-   the Apple Developer account gates macOS notarization. It blocks release, not
-   development, so it should be running in the background from day one.
-2. **Full publish round trip** on a throwaway link: `pear touch`, stage, seed,
-   install, publish an update, observe it apply. Unsigned-to-signed is where most
-   surprises live. The links are at least distinct now — both apps shared one
-   until recently, which would have made staging either overwrite the other.
-3. **Operate a blind-peer fleet.** The code is finished and tested against a real
-   server with every holder offline; what does not exist is a machine running
-   one. Until somebody does, a room stops being available the moment its last
-   member closes the app.
-4. ~~**Finish the supervisor's two loose ends.**~~ Both done: contract addresses
-   are read from the `WorkerRegistry` before the container is created, and the
-   keystore password lives in a `0600` file rather than the environment. What is
-   left is not ours — the worker image accepts the password only as
-   `WORKER_KEYSTORE_PASSWORD`, so it stays visible in `docker inspect`.
-
-Two decisions from the delivery plan are still open: whether to ship a
-conventional Windows `.exe` installer alongside MSIX, and who holds the signing
-certificates and how that relates to the release multisig. Those are different
-key sets protecting different things and both need custody rules.
-
-### A workstream that is larger than it looks
-
-The **install experience** is part of the product rather than a packaging
-detail. It is the first thing a user sees and the point at which most of them
-are lost — an unsigned binary warning, an MSIX sideload prompt that wants
-developer mode enabled, or an AppImage with no obvious way to run it each cost
-more users than any feature gains.
-
-The graphical interface itself is built and is no longer the open half of this.
-What that work found is worth carrying into the install experience: five design
-tokens defined nowhere, three stylesheets silently replacing shared components
-across the whole app, and a partial that swallowed the page after it into a
-hidden subtree — none of which produced an error or a symptom on the page at
-fault. Each now has a check in CI, because that class of fault is invisible to
-review by construction.
-
-This deserves dedicated design time rather than being treated as the last step
-before release, and it interacts with decisions made much earlier: the MSIX
-Publisher CN is permanent, and the choice of Linux artifact determines whether
-users can receive peer-to-peer updates at all. Plan it before the pipeline
-hardens around a shape we then have to live with.
