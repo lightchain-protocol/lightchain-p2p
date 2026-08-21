@@ -57,6 +57,10 @@ const ERROR_SIGNATURES = [
   'SignatureExpired(uint256,uint256)',
   'DeadlineExceeded(uint256,uint256,uint256)',
   'DisputeWindowExpired(uint256,uint256,uint256)',
+  'NotTimedOut(uint256,uint256,uint256)',
+  'InsufficientDisputeBond(uint256,uint256)',
+  'UnauthorizedDisputeCaller(uint256,address)',
+  'InvalidWorkerSignature()',
   // Contract state
   'EnforcedPause()',
   'ReentrancyGuardReentrantCall()',
@@ -115,6 +119,82 @@ export async function resolveAddresses(
 export async function jobFee(rpc: Rpc, aiConfig: string, model: string): Promise<bigint> {
   const data = encodeCall('calculateJobFee(bytes32)', ['bytes32'], [modelId(model)])
   return decodeUint256(await rpc.call({ to: aiConfig, data }))
+}
+
+/** A no-argument AIConfig getter that answers one word. They are all shaped alike. */
+async function configUint(rpc: Rpc, aiConfig: string, signature: string): Promise<bigint> {
+  return decodeUint256(await rpc.call({ to: aiConfig, data: encodeCall(signature) }))
+}
+
+/**
+ * The dispute bond rate, in basis points of the escrowed fee.
+ *
+ * `disputeJob` takes no bond argument — the contract computes the bond itself
+ * as `escrowedFee * getDisputeBondMultiplier() / 10_000` and expects it as the
+ * transaction's value, refunding any excess. Read this first and set the value
+ * from `requiredDisputeBond`; sending too little reverts with
+ * `InsufficientDisputeBond`.
+ */
+export async function disputeBondMultiplier(rpc: Rpc, aiConfig: string): Promise<bigint> {
+  return configUint(rpc, aiConfig, 'getDisputeBondMultiplier()')
+}
+
+/**
+ * The bond `disputeJob` expects as its value, for a job with this escrowed fee.
+ *
+ * The formula is the contract's own, integer truncation included, so the value
+ * sent is the value accepted — never one wei short because of a rounding
+ * difference.
+ */
+export function requiredDisputeBond(escrowedFee: bigint, multiplier: bigint): bigint {
+  return (escrowedFee * multiplier) / 10_000n
+}
+
+/**
+ * How long after completion a job can be disputed, in seconds.
+ *
+ * After `completedAt + disputeWindow` the result is final and `disputeJob`
+ * reverts with `DisputeWindowExpired`, so this is the clock that decides
+ * whether verifying an answer is still worth doing.
+ */
+export async function disputeWindow(rpc: Rpc, aiConfig: string): Promise<bigint> {
+  return configUint(rpc, aiConfig, 'getDisputeWindow()')
+}
+
+/**
+ * How long the disputer has to resolve a dispute, in seconds.
+ *
+ * Once `disputeCreatedAt + resolutionTimeout` passes, anyone may call
+ * `claimTimeout` on the disputed job and the bond goes to the filer — the
+ * protocol's answer to a disputer that never rules.
+ */
+export async function resolutionTimeout(rpc: Rpc, aiConfig: string): Promise<bigint> {
+  return configUint(rpc, aiConfig, 'getResolutionTimeout()')
+}
+
+/**
+ * Seconds a worker has to acknowledge a submitted job before it can be timed
+ * out. The job's `deadline` starts as `submittedAt + ackTimeout` and moves to
+ * `block.timestamp + completionTimeout` on acknowledgement, so both are needed
+ * to know when `claimTimeout` becomes possible.
+ */
+export async function ackTimeout(rpc: Rpc, aiConfig: string): Promise<bigint> {
+  return configUint(rpc, aiConfig, 'getAckTimeout()')
+}
+
+/** Seconds an acknowledged job has to complete. See {@link ackTimeout}. */
+export async function completionTimeout(rpc: Rpc, aiConfig: string): Promise<bigint> {
+  return configUint(rpc, aiConfig, 'getCompletionTimeout()')
+}
+
+/**
+ * Seconds a session may sit idle before it is treated as abandoned.
+ *
+ * Read this rather than hardcoding it: the timeout is governance-settable and
+ * the value at deployment is not the value forever.
+ */
+export async function sessionInactivityTimeout(rpc: Rpc, aiConfig: string): Promise<bigint> {
+  return configUint(rpc, aiConfig, 'getSessionInactivityTimeout()')
 }
 
 /** What a user has deposited and not yet spent, in wei. */
@@ -268,6 +348,96 @@ export function submitJob(sessionId: bigint, blobHash: string): string {
   return encodeCall('submitJob(uint256,bytes32)', ['uint256', 'bytes32'], [sessionId, blobHash])
 }
 
+/**
+ * Call data for `closeSession`, the owner's way out of a session.
+ *
+ * Only the session owner may close one, and only while it is Active or
+ * Reassigning — a closed session rejects new jobs with `SessionNotActive`, and
+ * closing one twice reverts the same way.
+ */
+export function closeSession(sessionId: bigint): string {
+  return encodeCall('closeSession(uint256)', ['uint256'], [sessionId])
+}
+
+/** Where a session has got to. The order is the contract's; the numbers are the wire. */
+export const SESSION_STATUS = ['active', 'reassigning', 'closed'] as const
+
+export type SessionStatus = (typeof SESSION_STATUS)[number]
+
+export interface Session {
+  readonly user: string
+  readonly modelId: string
+  readonly worker: string
+  readonly status: SessionStatus
+  /** The session key sealed for the worker, as stored on chain. */
+  readonly encWorkerKey: Uint8Array
+  /** The session key sealed for the disputer, as stored on chain. */
+  readonly encDisputerKey: Uint8Array
+  readonly jobCount: bigint
+  /** Unix seconds. */
+  readonly lastActivityAt: bigint
+  readonly reassignCount: bigint
+  readonly deposit: bigint
+}
+
+/**
+ * A session as the registry has it.
+ *
+ * Unlike `Job` this struct is not flat: `encWorkerKey`, `encDisputerKey` and
+ * `excludedWorkers` are dynamic, and a struct with dynamic members is itself
+ * dynamic, so the return is one offset word pointing at the struct head rather
+ * than the head itself. Offsets inside the head are measured from the head,
+ * not from the return. The two key bytes are decoded; `excludedWorkers` is
+ * not, because nothing in the client acts on it and a decoded array nobody
+ * reads is a decoder path nobody tests.
+ */
+export async function session(rpc: Rpc, jobRegistry: string, sessionId: bigint): Promise<Session> {
+  const raw = await rpc.call({
+    to: jobRegistry,
+    data: encodeCall('getSession(uint256)', ['uint256'], [sessionId])
+  })
+
+  const bytes = toBytes(raw)
+  if (bytes.length < 12 * 32) {
+    throw new Error(`getSession returned ${bytes.length} bytes, expected at least ${12 * 32}`)
+  }
+
+  /** Where the struct head starts, per the leading offset word. */
+  const base = Number(decodeUint256(toHex(bytes.slice(0, 32))))
+  if (base + 11 * 32 > bytes.length) {
+    throw new Error(`getSession head at offset ${base} runs past ${bytes.length} bytes of return`)
+  }
+  const word = (index: number) => bytes.slice(base + index * 32, base + index * 32 + 32)
+
+  /** A dynamic `bytes` field: head word is the offset, then length, then data. */
+  const bytesAt = (index: number) => {
+    const offset = base + Number(decodeUint256(toHex(word(index))))
+    if (offset + 32 > bytes.length) {
+      throw new Error(`getSession field ${index} points past the return data`)
+    }
+    const length = Number(decodeUint256(toHex(bytes.slice(offset, offset + 32))))
+    if (offset + 32 + length > bytes.length) {
+      throw new Error(`getSession field ${index} runs past the return data`)
+    }
+    return bytes.slice(offset + 32, offset + 32 + length)
+  }
+
+  const statusIndex = Number(decodeUint256(toHex(word(3))))
+
+  return {
+    user: toChecksumAddress(toHex(word(0).slice(12)), keccak256),
+    modelId: toHex(word(1)),
+    worker: toChecksumAddress(toHex(word(2).slice(12)), keccak256),
+    status: SESSION_STATUS[statusIndex] ?? 'active',
+    encWorkerKey: bytesAt(4),
+    encDisputerKey: bytesAt(5),
+    jobCount: decodeUint256(toHex(word(6))),
+    lastActivityAt: decodeUint256(toHex(word(7))),
+    reassignCount: decodeUint256(toHex(word(8))),
+    deposit: decodeUint256(toHex(word(9)))
+  }
+}
+
 /** Where a job has got to. The order is the contract's; the numbers are the wire. */
 export const JOB_STATE = [
   'submitted',
@@ -359,4 +529,57 @@ export function submitJobOnBehalf(user: string, sessionId: bigint, blobHash: str
     ['address', 'uint256', 'bytes32'],
     [user, sessionId, blobHash]
   )
+}
+
+/**
+ * Call data for `disputeJob`, contesting a completed answer.
+ *
+ * Payable, and the bond is the transaction's **value**, not an argument: the
+ * contract computes `escrowedFee * getDisputeBondMultiplier() / 10_000` itself
+ * and reverts with `InsufficientDisputeBond` when the value falls short, so
+ * compute it first with {@link disputeBondMultiplier} and
+ * {@link requiredDisputeBond}. Anything above the bond is refunded.
+ *
+ * Only the session owner or the designated disputer may file — anyone else
+ * reverts with `UnauthorizedDisputeCaller` — and only within
+ * `completedAt + getDisputeWindow()`.
+ */
+export function disputeJob(jobId: bigint): string {
+  return encodeCall('disputeJob(uint256)', ['uint256'], [jobId])
+}
+
+/**
+ * Call data for `claimTimeout`, which does two different jobs.
+ *
+ * On a Submitted or Acknowledged job past its `deadline` it slashes the worker,
+ * marks the job TimedOut and refunds the escrowed fee to the session owner —
+ * calling it early reverts with `NotTimedOut`. On a Disputed job whose
+ * resolution timeout has passed it rules for the filer by default, returning
+ * the bond. Anyone may call it; the contract works out which case it is from
+ * the job's state.
+ */
+export function claimTimeout(jobId: bigint): string {
+  return encodeCall('claimTimeout(uint256)', ['uint256'], [jobId])
+}
+
+/**
+ * Call data for `claimRefund`, withdrawing whatever the registry owes you.
+ *
+ * Refunds are pull, not push: a failed transfer during a timeout or withdrawal
+ * is parked in `pendingRefunds` and left for the owner to collect. The function
+ * takes no arguments — it always refunds the caller — and reverts with
+ * `NoPendingRefund` when there is nothing to collect.
+ */
+export function claimRefund(): string {
+  return encodeCall('claimRefund()')
+}
+
+/** What the registry owes `account` and has not yet paid out, in wei. */
+export async function pendingRefund(
+  rpc: Rpc,
+  jobRegistry: string,
+  account: string
+): Promise<bigint> {
+  const data = encodeCall('pendingRefund(address)', ['address'], [account])
+  return decodeUint256(await rpc.call({ to: jobRegistry, data }))
 }
