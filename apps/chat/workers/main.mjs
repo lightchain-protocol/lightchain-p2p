@@ -54,6 +54,7 @@ import {
 } from './handlers/worker.mjs'
 import { settingsHandlers } from './handlers/settings.mjs'
 import { localHandlers } from './handlers/local.mjs'
+import { applyStagedUpdate } from './update-apply.mjs'
 
 /**
  * The data plane.
@@ -1163,17 +1164,13 @@ if (config.updates !== false) {
 
 async function onLine(text) {
   if (text === 'pear:applyUpdate') {
-    // Answered either way. Only the success was reported before, so an update
-    // that threw left the main process waiting on a confirmation that was never
-    // coming and the window showing "Updating…" on a dead button until somebody
-    // restarted the application.
-    try {
-      await pear.ready()
-      await pear.updater.applyUpdate()
-      pipe.write('pear:updateApplied\n')
-    } catch (err) {
-      pipe.write(`pear:updateFailed ${String(err?.message ?? err).replace(/\r?\n/g, ' ')}\n`)
-    }
+    // Answered either way — see workers/update-apply.mjs. Only the success was
+    // reported before, so an update that threw left the main process waiting
+    // on a confirmation that was never coming and the window showing
+    // "Updating…" on a dead button until somebody restarted the application.
+    // A failure also resets the updater's one-shot `applied` latch, which is
+    // what makes the renderer's "Try the update again" a real second attempt.
+    await applyStagedUpdate(pear, (line) => pipe.write(line))
     return
   }
 
