@@ -717,6 +717,94 @@ report(
   `composer ${JSON.stringify(sent)}, stored ${JSON.stringify(afterSend?.drafts ?? {})}`
 )
 
+// --- A room pinned to the top of the sidebar --------------------------------------
+
+// Pinning a room is this machine's ordering of its own list — it lives in the
+// same sealed document as the mutes, not in the room — but the rule that makes
+// it a feature rather than a flag is that the list actually moves. `second`
+// was created after `created`, so it sits lower; pinning it has to lift it
+// above, through the control the row itself offers.
+
+// The pin control is hover-revealed, which a synthesized click does not care
+// about — it is in the document either way.
+const pinningRoom = await evaluate(`(async () => {
+  const row = [...document.querySelectorAll('#room-list .room-item')].find((r) =>
+    r.textContent.includes(${JSON.stringify(otherLabel)})
+  )
+  const control = row?.querySelector('.room-pin')
+  if (!control) return { missing: true }
+  const label = control.getAttribute('aria-label')
+  control.click()
+  await new Promise((r) => setTimeout(r, 900))
+  return { missing: false, label }
+})()`)
+
+report(
+  'a room row offers a labelled pin control',
+  pinningRoom?.missing !== true && pinningRoom?.label === 'Pin to the top',
+  pinningRoom?.missing ? 'no .room-pin on the row' : JSON.stringify(pinningRoom?.label)
+)
+
+const orderAfterPin = await until(
+  `(() => {
+    const names = [...document.querySelectorAll('#room-list .nav-item-name')].map((n) => n.textContent)
+    const pinned = names.findIndex((n) => n.includes(${JSON.stringify(otherLabel)}))
+    const plain = names.findIndex((n) => n.includes(${JSON.stringify(label)}))
+    return pinned !== -1 && plain !== -1 && pinned < plain
+      ? JSON.stringify(names)
+      : false
+  })()`,
+  'the pinned room to rise above the older one'
+)
+report('a pinned room lists above an older unpinned one', Boolean(orderAfterPin), orderAfterPin)
+
+const marked = await evaluate(`(() => {
+  const row = [...document.querySelectorAll('#room-list .room-item')].find((r) =>
+    r.textContent.includes(${JSON.stringify(otherLabel)})
+  )
+  return {
+    marker: Boolean(row?.querySelector('.nav-item .nav-item-pin')),
+    controlNow: row?.querySelector('.room-pin')?.getAttribute('aria-label') ?? null
+  }
+})()`)
+
+report('the pinned row wears the pin marker', marked?.marker === true, JSON.stringify(marked))
+
+report(
+  'and the same control becomes the way back down',
+  marked?.controlNow === 'Unpin from the top',
+  JSON.stringify(marked?.controlNow)
+)
+
+// The store, not only the screen: a pin that lived only in the window would
+// not survive the restart.
+const pinnedNow = await ask('local.pinned')
+report(
+  'the pin is written to the sealed store',
+  Array.isArray(pinnedNow?.pinned) && pinnedNow.pinned.includes(second.key),
+  JSON.stringify(pinnedNow?.pinned ?? null)
+)
+
+const unpinningRoom = await evaluate(`(async () => {
+  const row = [...document.querySelectorAll('#room-list .room-item')].find((r) =>
+    r.textContent.includes(${JSON.stringify(otherLabel)})
+  )
+  row?.querySelector('.room-pin')?.click()
+  await new Promise((r) => setTimeout(r, 900))
+  const names = [...document.querySelectorAll('#room-list .nav-item-name')].map((n) => n.textContent)
+  const was = names.findIndex((n) => n.includes(${JSON.stringify(otherLabel)}))
+  const older = names.findIndex((n) => n.includes(${JSON.stringify(label)}))
+  return { order: names, backBelow: was > older, markerGone: !document.querySelector('#room-list .nav-item-pin') }
+})()`)
+
+report(
+  'unpinning puts the room back below the older one',
+  unpinningRoom?.backBelow === true,
+  JSON.stringify(unpinningRoom?.order)
+)
+
+report('and takes the marker off with it', unpinningRoom?.markerGone === true, '')
+
 // --- Nothing broke on the way ----------------------------------------------------
 
 report(

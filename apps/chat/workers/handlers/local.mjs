@@ -2,7 +2,8 @@
  * Everything one person keeps to themselves.
  *
  * Unread marks, half-typed drafts, muted rooms, blocked people, notification
- * preferences, an address book and which conversations have been put away.
+ * preferences, an address book, which conversations have been put away and
+ * which have been pinned to the top of the list.
  * None of it is anybody else's business and none of it is replicated:
  * `ctx.localState` seals each document under the unlocked account and writes it
  * beside the room list, so no peer ever learns any of this exists and a locked
@@ -19,13 +20,13 @@
  *
  *     unread         { [roomKey]: { lastReadId, count } }
  *     drafts         { [roomKey]: text }
- *     moderation     { muted: { [roomKey]: until }, blocked: [address], archived: [roomKey] }
+ *     moderation     { muted: { [roomKey]: until }, blocked: [address], archived: [roomKey], pinned: [roomKey] }
  *     notifications  { enabled, sound, rooms: { [roomKey]: { enabled?, sound? } } }
  *     contacts       { [address]: label }
  *
- * Muting, blocking and archiving share a document because they are one decision
- * asked three ways — what this person does not want to see — and anything
- * drawing a room list reads all three together.
+ * Muting, blocking, archiving and pinning share a document because they are one
+ * decision asked four ways — how this person's own list reads — and anything
+ * drawing a room list reads all four together.
  *
  * ## Every reply says whether it was written
  *
@@ -309,7 +310,7 @@ const shapeDrafts = (held) =>
   )
 
 /**
- * The three lists of what somebody does not want to see.
+ * The four lists of how this person's own list reads.
  *
  * Mutes that have run out are dropped as the document is read, which is both
  * how a mute ends and how the file stays small: every write starts from this
@@ -325,7 +326,8 @@ function shapeModeration(held) {
       typeof until === 'number' && Number.isFinite(until) && until > now ? until : undefined
     ),
     blocked: listOf(document.blocked, ADDRESS, ADDRESSES_BLOCKED),
-    archived: listOf(document.archived, ROOM_KEY, ROOMS_TRACKED)
+    archived: listOf(document.archived, ROOM_KEY, ROOMS_TRACKED),
+    pinned: listOf(document.pinned, ROOM_KEY, ROOMS_TRACKED)
   }
 }
 
@@ -646,6 +648,43 @@ export function localHandlers(ctx) {
       held.archived = [...archived].sort()
       const written = localState.write(MODERATION, held)
       return { written, archived: written ? held.archived : [] }
+    },
+
+    'local.pinned': () => ({ pinned: moderation().pinned }),
+
+    /**
+     * First in the list rather than out of it: ordering, and nothing else.
+     *
+     * A pinned room is not muted and not archived — it still notifies, still
+     * replicates and still shows everything it showed; the pin only decides
+     * where the row sits. An archived room cannot be pinned, because the two
+     * are contradictory answers to where a conversation belongs, and refusing
+     * is kinder than quietly answering one question with the other's answer.
+     */
+    'local.pin': (req) => {
+      const room = roomKeyOf(req.room)
+      const on = req.on === undefined ? true : Boolean(req.on)
+      const held = moderation()
+      const pinned = new Set(held.pinned)
+
+      if (on) {
+        if (held.archived.includes(room)) {
+          throw new Error('that room is archived; bring it back out before pinning it')
+        }
+        requireSpaceFor(
+          pinned.has(room),
+          pinned.size,
+          ROOMS_TRACKED,
+          `at most ${ROOMS_TRACKED} rooms may be pinned; unpin one first`
+        )
+        pinned.add(room)
+      } else {
+        pinned.delete(room)
+      }
+
+      held.pinned = [...pinned].sort()
+      const written = localState.write(MODERATION, held)
+      return { written, pinned: written ? held.pinned : [] }
     },
 
     'local.notificationPreferences': () => ({ preferences: preferences() }),

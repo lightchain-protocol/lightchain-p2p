@@ -311,6 +311,53 @@
   white-space: nowrap;
 }
 
+/* --- A row's pin ------------------------------------------------------------- */
+
+/* One entry in the list is the conversation's row button and the pin control
+   beside it. The control cannot sit inside the row — a button in a button is
+   not markup — so the list item is the flex container and the row takes the
+   rest of it. */
+.room-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.room-item .nav-item {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Revealed on hover and on keyboard focus rather than always shown: a control
+   on every row of a long list is a stripe of pins, and a pinned room already
+   says so through the marker below. `visibility` rather than `display`, so the
+   row's width does not shift when the control appears. */
+.room-pin {
+  visibility: hidden;
+  flex: 0 0 auto;
+}
+
+.room-item:hover .room-pin,
+.room-pin:focus-visible {
+  visibility: visible;
+}
+
+/* The marker a pinned row wears, at its trailing edge. Tertiary rather than
+   accent: it says where the room sits, it does not ask to be pressed. */
+.nav-item-pin {
+  display: grid;
+  place-items: center;
+  width: var(--lc-control-icon);
+  height: var(--lc-control-icon);
+  flex: 0 0 auto;
+  color: var(--lc-text-tertiary);
+}
+
+.nav-item-pin .icon {
+  width: 12px;
+  height: 12px;
+}
+
 /* --- Everything that is not a conversation ----------------------------------- */
 
 /* The elsewhere group: Models, Account, Earn, in the contract's order, behind
@@ -514,6 +561,8 @@
 .sidebar.is-collapsed .sidebar-empty,
 .sidebar.is-collapsed .nav-label,
 .sidebar.is-collapsed .nav-item-body,
+.sidebar.is-collapsed .nav-item-pin,
+.sidebar.is-collapsed .room-pin,
 .sidebar.is-collapsed .account-text,
 .sidebar.is-collapsed .account-chevron,
 .sidebar.is-collapsed .account-balance,

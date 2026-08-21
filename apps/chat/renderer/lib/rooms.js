@@ -93,6 +93,59 @@ const rooms = new Map()
 let activeKey = null
 
 /**
+ * Which rooms are pinned to the top of the list.
+ *
+ * Mirrored in a Set beside the rooms rather than read per render, the way the
+ * drafts are: the list is redrawn on every push and ordering it should not
+ * wait on a round trip. Filled once from the sealed store and afterwards kept
+ * in step from the replies to `local.pin`, which answer with the whole list —
+ * so a write the store refused never leaves a room marked on screen that
+ * nothing stored.
+ */
+const pinnedRooms = new Set()
+let pinnedLoaded = false
+
+/**
+ * Reads the pinned list, once it can be read at all.
+ *
+ * Same constraint as the drafts: the store is sealed under the account and the
+ * application boots locked, so this is attempted whenever rooms arrive rather
+ * than wired back through the unlock flow, and the list redraws when it lands
+ * because the first render may already be on screen in the unpinned order.
+ */
+async function loadPinned() {
+  if (pinnedLoaded) return
+
+  const stored = (await request('local.pinned'))?.pinned
+  if (!Array.isArray(stored)) return
+
+  pinnedRooms.clear()
+  for (const key of stored) if (typeof key === 'string') pinnedRooms.add(key)
+  pinnedLoaded = true
+}
+
+/**
+ * Pins a room to the top of the list, or takes it back down.
+ *
+ * The reply carries the whole list rather than a yes, and the screen is
+ * rebuilt from it: a pin the store refused — the wallet locked, the list full,
+ * the room archived — changes nothing here, which is the same contract every
+ * local.* write keeps.
+ */
+async function togglePin(key) {
+  try {
+    const reply = await request('local.pin', { room: key, on: !pinnedRooms.has(key) })
+    if (reply?.written !== true || !Array.isArray(reply.pinned)) return
+
+    pinnedRooms.clear()
+    for (const pinned of reply.pinned) pinnedRooms.add(pinned)
+    renderRooms()
+  } catch (err) {
+    toast(err.message, 'error')
+  }
+}
+
+/**
  * What the composer is carrying besides text.
  *
  * All three are about the next message rather than the room, so they are
@@ -114,6 +167,17 @@ export function adopt(states) {
   renderRoom()
 
   if (activeKey) loadDraftsFor(activeKey)
+
+  // A second read behind the rooms themselves. The list above may already be
+  // on screen in plain arrival order; the redraw puts the pinned rooms on top
+  // the moment the sealed store answers.
+  if (!pinnedLoaded) {
+    void loadPinned()
+      .then(() => {
+        if (pinnedLoaded) renderRooms()
+      })
+      .catch(() => {})
+  }
 }
 
 /**
@@ -215,8 +279,23 @@ function renderRooms() {
   // conversations yet" with two of them listed alongside.
   renderNothingChosen()
 
-  for (const room of rooms.values()) {
+  // Pinned rooms first, then the rest — two stable groups rather than a sort,
+  // each keeping the arrival order the list already has, because a sort would
+  // have to invent an order the list does not otherwise keep.
+  const arrived = [...rooms.values()]
+  const ordered = arrived
+    .filter((room) => pinnedRooms.has(room.key))
+    .concat(arrived.filter((room) => !pinnedRooms.has(room.key)))
+
+  for (const room of ordered) {
+    const pinned = pinnedRooms.has(room.key)
+
+    // The list item, not the row button, is the flex container: the pin
+    // control beside the row cannot sit inside it, because a button in a
+    // button is not markup.
     const item = document.createElement('li')
+    item.className = 'room-item'
+
     const button = document.createElement('button')
     button.type = 'button'
     button.className = 'nav-item' + (room.key === activeKey ? ' is-active' : '')
@@ -255,8 +334,35 @@ function renderRooms() {
 
     body.append(name, sub)
     button.append(mark, body)
+
+    if (pinned) {
+      // Why this room sits above the rest, said at the row's trailing edge.
+      // Tertiary rather than accent: it states where the room sits, it does
+      // not ask to be pressed — that is the control beside the row.
+      const pinnedMark = el2('span', 'nav-item-pin', '')
+      pinnedMark.title = 'Pinned to the top'
+      const glyph = svg('svg', { class: 'icon', 'aria-hidden': 'true' })
+      glyph.append(svg('use', { href: '#i-pin' }))
+      pinnedMark.append(glyph)
+      button.append(pinnedMark)
+    }
+
     button.addEventListener('click', () => select(room.key))
-    item.append(button)
+
+    // The pin control is a sibling of the row, revealed on hover and on
+    // keyboard focus rather than always shown: a control on every row of a
+    // long list is a stripe of pins, and the state is already said by the
+    // marker above.
+    const pinButton = el2('button', 'icon-button room-pin', '')
+    pinButton.type = 'button'
+    pinButton.title = pinned ? 'Unpin from the top' : 'Pin to the top'
+    pinButton.setAttribute('aria-label', pinButton.title)
+    const pinGlyph = svg('svg', { class: 'icon', 'aria-hidden': 'true' })
+    pinGlyph.append(svg('use', { href: '#i-pin' }))
+    pinButton.append(pinGlyph)
+    pinButton.addEventListener('click', () => void togglePin(room.key))
+
+    item.append(button, pinButton)
     el.roomList.append(item)
   }
 }

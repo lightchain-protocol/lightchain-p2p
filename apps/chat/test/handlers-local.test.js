@@ -295,6 +295,61 @@ describe('local.archive', () => {
   })
 })
 
+describe('local.pin', () => {
+  it('pins by default and takes the room back down on explicit false', () => {
+    const { handlers } = handlersFor()
+
+    expect(handlers['local.pin']({ room: ROOM }).pinned).toEqual([ROOM])
+    expect(handlers['local.pin']({ room: ROOM_B }).pinned).toEqual([ROOM, ROOM_B])
+    expect(handlers['local.pin']({ room: ROOM, on: false }).pinned).toEqual([ROOM_B])
+    expect(handlers['local.pinned']()).toEqual({ pinned: [ROOM_B] })
+  })
+
+  it('refuses a malformed room key before anything is stored', () => {
+    const { handlers, localState } = handlersFor()
+
+    expect(() => handlers['local.pin']({ room: 'not-a-key' })).toThrow(
+      /not a room key: 64 hex characters/
+    )
+    expect(localState.read('moderation', {})).toEqual({})
+  })
+
+  it('refuses to pin an archived room, because the two contradict each other', () => {
+    const { handlers } = handlersFor()
+
+    handlers['local.archive']({ room: ROOM })
+    expect(() => handlers['local.pin']({ room: ROOM })).toThrow(/archived/)
+    expect(handlers['local.pinned']()).toEqual({ pinned: [] })
+
+    // Out of the archive, the same pin is an ordinary one.
+    handlers['local.archive']({ room: ROOM, on: false })
+    expect(handlers['local.pin']({ room: ROOM }).pinned).toEqual([ROOM])
+  })
+
+  it('refuses a 1001st pin but still lets a pinned room change', () => {
+    const { handlers, localState } = handlersFor()
+
+    // Seeded directly rather than pinned one at a time: a thousand sealed
+    // writes to reach a cap the handler can be shown to enforce either way.
+    const full = Array.from({ length: 1000 }, (_, i) => i.toString(16).padStart(64, '0'))
+    localState.write('moderation', { muted: {}, blocked: [], archived: [], pinned: full })
+
+    expect(() => handlers['local.pin']({ room: ROOM })).toThrow(
+      /at most 1000 rooms may be pinned; unpin one first/
+    )
+    // The cap traps nobody: unpinning, and re-pinning what is already there,
+    // still work at the ceiling.
+    expect(handlers['local.pin']({ room: full[999] }).pinned).toHaveLength(1000)
+    expect(handlers['local.pin']({ room: full[999], on: false }).pinned).toHaveLength(999)
+  })
+
+  it('answers written:false with the empty shape while locked', () => {
+    const { handlers } = handlersFor(false)
+    expect(handlers['local.pin']({ room: ROOM })).toEqual({ written: false, pinned: [] })
+    expect(handlers['local.pinned']()).toEqual({ pinned: [] })
+  })
+})
+
 describe('notification preferences', () => {
   it('reads back the defaults when nothing is stored', () => {
     const { handlers } = handlersFor()
@@ -499,6 +554,19 @@ describe('reading what an older release wrote', () => {
     expect(handlers['local.muted']().muted).toEqual({ [ROOM_B]: expect.any(Number) })
     expect(handlers['local.blocked']().blocked).toEqual([ADDR])
     expect(handlers['local.archived']().archived).toEqual([])
+  })
+
+  it('reads pinned as a sorted, deduplicated list and drops the rest', () => {
+    const { handlers, localState } = handlersFor()
+
+    localState.write('moderation', {
+      pinned: ['not-a-room-key', ROOM_B.toUpperCase(), ROOM, ROOM_B, 42, null]
+    })
+
+    expect(handlers['local.pinned']()).toEqual({ pinned: [ROOM, ROOM_B] })
+    // And a pinned field that is not a list at all is simply none.
+    localState.write('moderation', { pinned: { [ROOM]: true } })
+    expect(handlers['local.pinned']()).toEqual({ pinned: [] })
   })
 
   it('reads a contacts document that has become a number as an empty book', () => {
