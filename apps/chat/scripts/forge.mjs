@@ -89,8 +89,12 @@ run(
 // volume.node at install time. The staging copy therefore lacks the binary
 // and maker-dmg dies demanding it. Rebuild just that package, in the staging
 // tree, and only where the DMG maker runs.
+//
+// Not `npm rebuild`: the node-gyp npm bundles with Node 20 still imports
+// distutils, which the runner's Python 3.14 removed. node-gyp 10+ dropped it,
+// so the rebuild runs through a current node-gyp fetched by npx.
 if (step === 'make' && process.platform === 'darwin') {
-  run('npm', ['rebuild', 'macos-alias'], stagingDir)
+  run('npx', ['--yes', 'node-gyp@11', 'rebuild'], join(stagingDir, 'node_modules', 'macos-alias'))
 }
 
 const forgeArgs = ['electron-forge', step]
