@@ -521,6 +521,48 @@
   animation: blink 1s steps(2, start) infinite;
 }
 
+/* --- The job behind a turn -------------------------------------------------- */
+
+/**
+ * What the chain says about the fee, and the way to claim it back or to report
+ * the answer.
+ *
+ * A block inside the bubble rather than a badge in the meta row, because it is
+ * a sentence and a decision, not a mark. The hairline separates it from what
+ * was said: the text above is the speaker's, everything below the line is the
+ * interface accounting for the money.
+ */
+.ai-transcript .message-job,
+.ai-transcript .message-report {
+  margin-top: var(--lc-space-sm);
+  padding-top: var(--lc-space-sm);
+  border-top: 1px solid var(--lc-rule);
+}
+
+/* Quiet and factual on purpose: this is the worst news the panel delivers, and
+   the tone it should not also deliver is alarm. */
+.ai-transcript .message-job-text,
+.ai-transcript .message-report-text {
+  margin: 0;
+  font-size: var(--lc-text-xs);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-fg-muted);
+}
+
+/* An empty status paragraph still takes its line-height without this, and the
+   gap reads as a stray blank line between the explanation and its actions. */
+.ai-transcript .message-report-text:empty {
+  display: none;
+}
+
+.ai-transcript .message-job-actions,
+.ai-transcript .message-report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lc-space-sm);
+  margin-top: var(--lc-space-sm);
+}
+
 @keyframes blink {
   to {
     visibility: hidden;
