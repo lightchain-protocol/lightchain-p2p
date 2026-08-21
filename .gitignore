@@ -27,3 +27,6 @@ apps/chat/renderer/tokens.css
 # Screenshots from scripts/shoot.mjs, for looking at a design change rather than
 # reasoning about the stylesheet. Regenerated on demand.
 apps/chat/shots/
+
+# Raw QA harness captures; the distilled archives live in docs/audit/.
+qa-logs/
