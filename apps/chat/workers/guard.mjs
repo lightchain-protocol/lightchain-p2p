@@ -41,10 +41,13 @@
  * transfer goes, because a wallet that interrupts for every coffee teaches
  * people to click without reading.
  *
- * The figure is in Lightchain's native wei and means what it says only there:
- * a hundred LCAI is an amount a person might move without ceremony. The same
- * figure read in ether is a house deposit, so this threshold does not travel —
- * see `allow` for what every other chain does instead.
+ * The figure is in Lightchain's native wei and means what it says only in that
+ * unit: a hundred LCAI is an amount a person might move without ceremony. The
+ * same figure read in ether is a house deposit, so this threshold does not
+ * travel to a chain priced like one — see `allow` for what those chains do
+ * instead. It does travel to the play-money networks, whose unit is also LCAI:
+ * testnet and devnet tokens are worth nothing, and a confirm calibrated for
+ * real value would only gate a play-money flow.
  */
 export const DEFAULT_CONFIRM_ABOVE = 100n * 10n ** 18n
 
@@ -56,6 +59,22 @@ export const DEFAULT_CONFIRM_ABOVE = 100n * 10n ** 18n
  * depending on nothing that parses the outside world.
  */
 export const LIGHTCHAIN_CHAIN_ID = 9200
+
+/**
+ * The play-money networks, for the same reason and with the same caveat.
+ *
+ * Both run in LCAI units and both are worth nothing, so they follow the
+ * mainnet threshold rather than the any-value rule for ether-priced chains.
+ */
+export const LIGHTCHAIN_TESTNET_CHAIN_ID = 8200
+export const LIGHTCHAIN_DEVNET_CHAIN_ID = 48221
+
+/** The chains the hundred-token threshold is read on. */
+const LCAI_THRESHOLD_CHAINS = new Set([
+  LIGHTCHAIN_CHAIN_ID,
+  LIGHTCHAIN_TESTNET_CHAIN_ID,
+  LIGHTCHAIN_DEVNET_CHAIN_ID
+])
 
 import b4a from 'b4a'
 import crypto from 'hypercore-crypto'
@@ -157,7 +176,8 @@ export function createGuard({ wallet, send, settings, onAutoLock, randomId = ran
      * that is about to be signed.
      *
      * The threshold is read against the chain the value is spent on. On
-     * Lightchain the default of a hundred tokens stands. On any other named
+     * Lightchain — mainnet, and the play-money testnet and devnet, which share
+     * its unit — the default of a hundred tokens stands. On any other named
      * chain any native value at all is asked about — the unit there is ether
      * or something priced like it, and a threshold written in LCAI wei would
      * wave a fifty-ether send through. A call that says nothing about the
@@ -168,7 +188,7 @@ export function createGuard({ wallet, send, settings, onAutoLock, randomId = ran
       const amount = typeof value === 'bigint' ? value : 0n
 
       const above =
-        chainId === undefined || chainId === LIGHTCHAIN_CHAIN_ID
+        chainId === undefined || LCAI_THRESHOLD_CHAINS.has(chainId)
           ? amount >= threshold('confirmAboveWei', DEFAULT_CONFIRM_ABOVE)
           : amount > 0n
 

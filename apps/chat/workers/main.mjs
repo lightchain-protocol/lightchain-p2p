@@ -53,7 +53,7 @@ import {
   readWorkerPassword,
   workerHandlers
 } from './handlers/worker.mjs'
-import { settingsHandlers } from './handlers/settings.mjs'
+import { networkName, settingsHandlers } from './handlers/settings.mjs'
 import { localHandlers } from './handlers/local.mjs'
 import { applyStagedUpdate } from './update-apply.mjs'
 
@@ -560,7 +560,7 @@ function setting(key, envName) {
   return typeof fromEnv === 'string' && fromEnv !== '' ? fromEnv : undefined
 }
 
-const networkOf = () => (setting('network', 'NETWORK') === 'testnet' ? 'testnet' : 'mainnet')
+const networkOf = () => networkName(setting('network', 'NETWORK'))
 
 let network = networkOf()
 let rpc = null

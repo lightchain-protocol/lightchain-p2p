@@ -37,6 +37,7 @@ import { KEYSTORE_DIR, keystoreFileName } from '@lcai-p2p/worker'
 import {
   WORKER_PASSWORD_DOC,
   checkKeystorePassword,
+  hostingAvailable,
   migrateWorkerPassword,
   readWorkerPassword,
   workerHandlers
@@ -58,8 +59,22 @@ const CONFIG = {
   containerName: 'lightchain-worker',
   supportedModels: ['llama3-8b'],
   ollamaUrl: 'http://localhost:11434',
+  // A resolved mainnet config always carries these; a devnet one never does.
+  workerGatewayUrl: 'https://worker-gateway.mainnet.lightchain.ai',
+  image: 'worker:latest',
   aiConfigAddress: `0x${'11'.repeat(20)}`,
   jobRegistryAddress: `0x${'22'.repeat(20)}`
+}
+
+/** What resolveConfig produces on devnet: a chain, and nothing to host with. */
+const DEVNET_CONFIG = {
+  ...CONFIG,
+  network: 'devnet',
+  chainId: 48221,
+  workerGatewayUrl: undefined,
+  image: undefined,
+  aiConfigAddress: undefined,
+  jobRegistryAddress: undefined
 }
 
 /** An RPC mock that answers by call signature, in real ABI words. */
@@ -461,5 +476,91 @@ describe('worker.doctor', () => {
       ok: null,
       problem: 'no keystore password is available; unlock the wallet'
     })
+  })
+})
+
+describe('a network with no worker image or gateway', () => {
+  it('is recognised by the capability check, not by the name', () => {
+    // A profile that gains an image starts working without a code change, and
+    // one that loses it refuses — the gate is the fields, not the word devnet.
+    expect(hostingAvailable(CONFIG)).toBe(true)
+    expect(hostingAvailable(DEVNET_CONFIG)).toBe(false)
+    expect(hostingAvailable(null)).toBe(false)
+  })
+
+  it('worker.stake says hosting is unavailable without reading the chain', async () => {
+    // The short-circuit is the point: the stake minimum is a number for a
+    // flow that cannot happen on devnet, and quoting it would read as an
+    // invitation. The chain must not even be asked.
+    memFs({ [`/keys/${KEYSTORE_DIR}/${KEYSTORE_NAME}`]: '{}' })
+    const rpc = rpcWith()
+    const handlers = workerHandlers(ctxWith({ config: DEVNET_CONFIG, rpc }))
+
+    const stake = await handlers['worker.stake']()
+
+    expect(stake.configured).toBe(true)
+    expect(stake.network).toBe('devnet')
+    expect(stake.address).toBeNull()
+    expect(stake.minimum).toBeNull()
+    expect(stake.balance).toBeNull()
+    expect(stake.problem).toMatch(/worker hosting is not available on devnet yet/)
+    expect(rpc.call).not.toHaveBeenCalled()
+    expect(rpc.balanceOf).not.toHaveBeenCalled()
+  })
+
+  it('worker.status says the same without asking Docker or the chain', async () => {
+    const rpc = rpcWith()
+    const handlers = workerHandlers(ctxWith({ config: DEVNET_CONFIG, rpc }))
+
+    const status = await handlers['worker.status']()
+
+    expect(status).toEqual({
+      configured: true,
+      available: false,
+      network: 'devnet',
+      chainId: 48221,
+      problem: expect.stringMatching(/worker hosting is not available on devnet yet/)
+    })
+    expect(mockHost.runAsync).not.toHaveBeenCalled()
+    expect(rpc.call).not.toHaveBeenCalled()
+  })
+
+  it('worker.doctor still checks the host but never reads a stake minimum', async () => {
+    // The hardware probes are about this machine and stay honest; the stake
+    // row is skipped because there is no stake to read.
+    memFs({ [`/keys/${KEYSTORE_DIR}/${KEYSTORE_NAME}`]: '{}' })
+    const rpc = rpcWith()
+    const handlers = workerHandlers(ctxWith({ config: DEVNET_CONFIG, rpc }))
+
+    const doctor = await handlers['worker.doctor']()
+
+    expect(doctor.network).toBe('devnet')
+    expect(doctor.results.some((check) => check.id === 'stake')).toBe(false)
+    expect(rpc.call).not.toHaveBeenCalled()
+  })
+
+  it('refuses pull, register and start before any stake is read or command built', async () => {
+    for (const t of ['worker.pull', 'worker.register', 'worker.start']) {
+      vi.clearAllMocks()
+      memFs({ [`/keys/${KEYSTORE_DIR}/${KEYSTORE_NAME}`]: '{}' })
+      const rpc = rpcWith()
+      const handlers = workerHandlers(ctxWith({ config: DEVNET_CONFIG, rpc }))
+
+      await expect(handlers[t]({ t })).rejects.toThrow(
+        /worker hosting is not available on devnet yet/
+      )
+      expect(mockHost.runAsync).not.toHaveBeenCalled()
+      expect(rpc.call).not.toHaveBeenCalled()
+    }
+  })
+
+  it('still lets worker.stop through: a running container must stay stoppable', async () => {
+    // Stop needs only the container name, and a container started while
+    // another network was selected has to remain stoppable after the switch.
+    mockHost.runAsync.mockResolvedValue({ ok: true, status: 0, stdout: 'lightchain-worker', stderr: '' })
+    const handlers = workerHandlers(ctxWith({ config: DEVNET_CONFIG }))
+
+    await expect(handlers['worker.stop']({ t: 'worker.stop' })).resolves.toEqual({ ok: true })
+    expect(mockHost.runAsync).toHaveBeenCalledOnce()
   })
 })

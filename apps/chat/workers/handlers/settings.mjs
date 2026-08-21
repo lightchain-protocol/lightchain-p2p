@@ -77,6 +77,19 @@ const WRITABLE = new Set([
   'ollamaUrl'
 ])
 
+/**
+ * The network a stored value selects, of the three the profiles know.
+ *
+ * Anything unrecognised — a typo in the file, a network a newer build retired —
+ * reads as mainnet rather than as a crash at the first `NETWORKS` lookup:
+ * landing somewhere safe beats standing still. Exported rather than kept in
+ * `main.mjs`, which cannot be imported without booting the worker, so the
+ * mapping has one implementation and the tests can reach it.
+ */
+export function networkName(value) {
+  return value === 'testnet' || value === 'devnet' ? value : 'mainnet'
+}
+
 export function settingsHandlers(ctx) {
   const {
     availability,

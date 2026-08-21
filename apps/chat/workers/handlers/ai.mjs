@@ -40,6 +40,23 @@ async function modelFee(rpc, aiConfig, id) {
   )
 }
 
+/**
+ * Where answers stream back from, or a plain refusal.
+ *
+ * Devnet has a consumer API — signing in, listing models, funding and reading
+ * a balance all work there — but no relay, and a Conversation cannot even be
+ * constructed without one (`relayUrl` is dereferenced in its constructor).
+ * The refusal has to come from here: the TypeError otherwise arrives mid-flow
+ * and reads as a bug in the app rather than as the state of the network.
+ */
+export function relayUrlFor(network) {
+  const url = NETWORKS[network]?.relayUrl
+  if (url) return url
+  throw new Error(
+    `model conversations are not available on ${network} yet — that network has no relay for answers to stream back through. Checking a balance and funding work there; asking a question does not.`
+  )
+}
+
 /** Where the local store keeps what this identity has decided about spending. */
 const LIMITS = 'limits'
 
@@ -1142,6 +1159,10 @@ export function aiHandlers(ctx) {
       const model = models.find((m) => m.id === req.modelId || m.name === req.model)
       if (!model) throw new Error(`no model called ${req.model ?? req.modelId}`)
 
+      // Before anything else is spent on setup: a network with no relay cannot
+      // host a conversation, however live its consumer API is.
+      const relayUrl = relayUrlFor(network())
+
       const log = await transcripts()
 
       // Picking up an earlier conversation rather than beginning one. The chain
@@ -1165,7 +1186,7 @@ export function aiHandlers(ctx) {
       session.conversation?.close()
       session.conversation = new Conversation({
         api,
-        relayUrl: NETWORKS[network()].relayUrl,
+        relayUrl,
         model,
         // Deployments without sortition expect the caller to send the
         // createSession transaction, so the wallet has to come along.
@@ -1462,6 +1483,10 @@ export function aiHandlers(ctx) {
       const model = models.find((m) => m.name === req.model)
       if (!model) throw new Error(`no model called ${req.model}`)
 
+      // Same refusal as the Models page, and before the fee is read or a draw
+      // is announced: no relay means no conversation.
+      const relayUrl = relayUrlFor(network())
+
       // Refused before a session is opened, because a draw takes most of a
       // minute and a limit that only bites after that has already wasted it.
       const fee = await feeFor(model)
@@ -1479,7 +1504,7 @@ export function aiHandlers(ctx) {
 
       const asking = new Conversation({
         api,
-        relayUrl: NETWORKS[network()].relayUrl,
+        relayUrl,
         model,
         chain: { rpc: rpc(), account: wallet.account(), chainId: ctx.chainId() }
       })

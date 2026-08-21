@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import { DEFAULT_CONFIRM_ABOVE, LIGHTCHAIN_CHAIN_ID, createGuard } from '../workers/guard.mjs'
+import {
+  DEFAULT_CONFIRM_ABOVE,
+  LIGHTCHAIN_CHAIN_ID,
+  LIGHTCHAIN_DEVNET_CHAIN_ID,
+  LIGHTCHAIN_TESTNET_CHAIN_ID,
+  createGuard
+} from '../workers/guard.mjs'
 
 /**
  * The threshold's chain awareness — the regression for a fifty-ether send that
@@ -99,5 +105,40 @@ describe('a threshold that knows which chain it is on', () => {
     // A chain-aware policy that quietly moved the existing line would be its
     // own kind of bug.
     expect(DEFAULT_CONFIRM_ABOVE).toBe(100n * ONE)
+  })
+})
+
+describe('the play-money networks', () => {
+  it('knows both of them by chain id', () => {
+    // The mapping the devnet work added: these literals are the contract every
+    // per-chain switch in the worker is keyed by, and a drift here is silent.
+    expect(LIGHTCHAIN_TESTNET_CHAIN_ID).toBe(8200)
+    expect(LIGHTCHAIN_DEVNET_CHAIN_ID).toBe(48221)
+  })
+
+  it('applies the LCAI threshold on testnet and devnet, not the any-value rule', async () => {
+    // Testnet and devnet tokens are play money in LCAI units, so the
+    // hundred-token courtesy travels to them. The any-value rule is calibrated
+    // for ether-priced chains, and a confirm calibrated for real value must
+    // not gate a play-money flow — down to a single wei going unasked.
+    for (const chainId of [LIGHTCHAIN_TESTNET_CHAIN_ID, LIGHTCHAIN_DEVNET_CHAIN_ID]) {
+      const { guard, pushed } = guardWith()
+      await expect(guard.allow({ value: 1n, chainId, details })).resolves.toBeUndefined()
+      await expect(guard.allow({ value: 50n * ONE, chainId, details })).resolves.toBeUndefined()
+      expect(pushed).toHaveLength(0)
+    }
+  })
+
+  it('still asks on them past the threshold', async () => {
+    // Valueless is not unguarded: a hundred and fifty of anything is worth a
+    // glance, and the habit the dialog teaches carries back to mainnet.
+    for (const chainId of [LIGHTCHAIN_TESTNET_CHAIN_ID, LIGHTCHAIN_DEVNET_CHAIN_ID]) {
+      const { guard, pushed, answer } = guardWith()
+      const allowed = guard.allow({ value: 150n * ONE, chainId, details })
+
+      await answer(true)
+      await expect(allowed).resolves.toBeUndefined()
+      expect(pushed[0].t).toBe('wallet.confirm')
+    }
   })
 })

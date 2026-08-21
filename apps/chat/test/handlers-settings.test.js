@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import ID from 'hypercore-id-encoding'
 import { NETWORKS } from '@lcai-p2p/worker'
-import { settingsHandlers } from '../workers/handlers/settings.mjs'
+import { networkName, settingsHandlers } from '../workers/handlers/settings.mjs'
 
 /**
  * The settings handler's boundary tests.
@@ -52,7 +52,9 @@ function ctxWith({ stored = {}, password = undefined, host = null, net = 'mainne
       calls.forgot += 1
     },
     host,
-    network: () => current.network ?? 'mainnet',
+    // Mapped the way main.mjs maps it: an unrecognised stored value resolves
+    // to mainnet, so writing one is not a network change and tears nothing down.
+    network: () => networkName(current.network),
     reconnectChain: () => {
       calls.reconnected += 1
     },
@@ -71,6 +73,18 @@ function ctxWith({ stored = {}, password = undefined, host = null, net = 'mainne
 }
 
 describe('settings.read', () => {
+  it('resolves the effective chain for each of the three networks', () => {
+    // The panel's effective block is keyed by the same mapping the worker
+    // boots with, so devnet must come back as devnet — chain id, RPC and all.
+    const { ctx } = ctxWith({ net: 'devnet' })
+
+    const read = settingsHandlers(ctx)['settings.read']()
+
+    expect(read.effective.network).toBe('devnet')
+    expect(read.effective.rpcUrl).toBe(NETWORKS.devnet.rpcUrl)
+    expect(read.effective.chainId).toBe(NETWORKS.devnet.chainId)
+  })
+
   it('never returns the stored worker password, only whether one is set', () => {
     const { ctx } = ctxWith({
       stored: { theme: 'dark', workerPassword: 'SEALED-ELSEWHERE' },
@@ -254,6 +268,41 @@ describe('settings.write, the closed list', () => {
     handlers['settings.write']({ values: { network: 'testnet' } })
     expect(calls.reconnected).toBe(1)
     expect(calls.forgot).toBe(1)
+  })
+
+  it('accepts devnet and tears down exactly as a mainnet-to-testnet switch does', () => {
+    // The Sprint 3 teardown — reconnect the chain client, forget the
+    // inference session — is keyed by the network actually changing, and
+    // devnet has to trip it like any other switch or the worker would go on
+    // talking to the chain it booted on.
+    const { ctx, calls } = ctxWith()
+    const handlers = settingsHandlers(ctx)
+
+    handlers['settings.write']({ values: { network: 'devnet' } })
+    expect(calls.reconnected).toBe(1)
+    expect(calls.forgot).toBe(1)
+
+    // And back again: the switch is symmetric, not a one-way door.
+    handlers['settings.write']({ values: { network: 'mainnet' } })
+    expect(calls.reconnected).toBe(2)
+    expect(calls.forgot).toBe(2)
+  })
+
+  it('maps an unrecognised network value to mainnet rather than crashing later', () => {
+    // A hand-edited settings file, or a network a newer build retired, must
+    // land somewhere safe. Writing it does not tear anything down, because
+    // the resolved network never left mainnet.
+    expect(networkName('devnet')).toBe('devnet')
+    expect(networkName('testnet')).toBe('testnet')
+    expect(networkName('mainnet')).toBe('mainnet')
+    for (const bad of ['devnet2', '', 'MAINNET', 'constructor', undefined]) {
+      expect(networkName(bad)).toBe('mainnet')
+    }
+
+    const { ctx, calls } = ctxWith()
+    settingsHandlers(ctx)['settings.write']({ values: { network: 'nonsense' } })
+    expect(calls.reconnected).toBe(0)
+    expect(calls.forgot).toBe(0)
   })
 
   it('treats an absent or malformed patch as no change at all', () => {

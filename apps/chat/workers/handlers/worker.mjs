@@ -51,6 +51,24 @@ const WORKER_REGISTERED_TOPIC = toHex(keccak256(new TextEncoder().encode('Worker
  */
 
 /**
+ * Whether this network can host a worker at all.
+ *
+ * Devnet publishes no worker image and no gateway — those hostnames do not
+ * resolve — so hosting there is a state of the network, not a configuration
+ * problem the operator can fix. Checked on the resolved config rather than on
+ * the network's name, so a profile that gains an image starts working here
+ * without a code change, and one that loses it refuses.
+ */
+export function hostingAvailable(config) {
+  return Boolean(config?.image && config?.workerGatewayUrl)
+}
+
+/** The one sentence every Earn surface on such a network says. */
+function hostingUnavailable(network) {
+  return `worker hosting is not available on ${network} yet — that network publishes no worker image, gateway or relay, so there is nothing to register or run. Asking a model works there; earning does not.`
+}
+
+/**
  * Whether the worker's own address can afford to register.
  *
  * Registering stakes `AIConfig.getMinWorkerStake()` as the transaction's value,
@@ -69,6 +87,14 @@ const WORKER_REGISTERED_TOPIC = toHex(keccak256(new TextEncoder().encode('Worker
  * wiped install where a fixable mistake stood.
  */
 async function stakeProbe(rpc, config) {
+  // A network with no worker image or gateway has nothing to register or run,
+  // so there is no stake to quote. Short-circuited before the chain is read at
+  // all: the minimum is a number for a flow that cannot happen there, and
+  // quoting it would read as an invitation.
+  if (!hostingAvailable(config)) {
+    return { address: null, unavailable: true, problem: hostingUnavailable(config.network) }
+  }
+
   let names
   try {
     names = fs.readdirSync(path.join(config.keysDir, KEYSTORE_DIR))
@@ -343,9 +369,10 @@ export function workerHandlers(ctx) {
 
     await guard.allow({
       value: probe.minimum,
-      // The guard's hundred-token threshold is calibrated on Lightchain's
-      // chain id; testnet's id is deliberately not mainnet's, and any value
-      // at all is asked about there.
+      // The guard's hundred-token threshold is calibrated in LCAI and follows
+      // every Lightchain-family chain — mainnet, testnet and devnet share the
+      // unit, and the play-money two are worth nothing. A chain id from
+      // outside the family is asked about at any value instead.
       chainId: resolved.chainId,
       details: {
         amount: `${readableAmount(probe.minimum, NETWORKS[resolved.network]?.symbol ?? 'LCAI')} staked to register this machine as a worker`,
@@ -497,6 +524,15 @@ export function workerHandlers(ctx) {
     const { config, problem } = workerConfig()
     if (!config) throw new Error(problem ?? 'the worker is not configured')
 
+    // A network with no image or gateway has nothing to pull, register or
+    // start — refused here, before a stake is read or a container command
+    // could be built around an absent image. Stop still goes through: it
+    // needs only the container name, and a container started while another
+    // network was selected must remain stoppable after the switch.
+    if (req.t !== 'worker.stop' && !hostingAvailable(config)) {
+      throw new Error(hostingUnavailable(config.network))
+    }
+
     if (busyWith) throw new Error(`already ${busyWith}`)
     busyWith = {
       'worker.pull': 'pulling',
@@ -610,6 +646,19 @@ export function workerHandlers(ctx) {
       // the panel. Only start and register do.
       const { config, problem } = workerConfig({ keystorePassword: 'unset' })
       if (!config) return { configured: false, problem, network: null }
+
+      // On a network with no image or gateway there is nothing to inspect —
+      // no container Docker could be running, no stake the chain should be
+      // asked about. Said plainly, without probing either.
+      if (!hostingAvailable(config)) {
+        return {
+          configured: true,
+          available: false,
+          network: config.network,
+          chainId: config.chainId,
+          problem: hostingUnavailable(config.network)
+        }
+      }
 
       const [res, probe] = await Promise.all([
         runAsync('docker', inspectWorker(config).argv, { timeout: 15_000 }),

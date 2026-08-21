@@ -243,8 +243,7 @@ describe('the stake confirmation', () => {
   })
 })
 
-describe('recording the stake', () => {
-  it('writes the registration to the ledger after the container exits', async () => {
+describe('recording the stake', () => {  it('writes the registration to the ledger after the container exits', async () => {
     const { ctx, state } = ctxWith()
     containerRegisters(state)
     const handlers = workerHandlers(ctx)
@@ -320,5 +319,37 @@ describe('recording the stake', () => {
 
     expect(error).toHaveBeenCalledWith(expect.stringContaining('recording'))
     error.mockRestore()
+  })
+})
+
+describe('registering on a network with no image or gateway', () => {
+  it('refuses plainly, before the guard is asked, the chain is read or docker runs', async () => {
+    // Devnet publishes no worker image, gateway or relay. The refusal must
+    // come first: a stake read would quote a minimum for a flow that cannot
+    // happen, and a container command would be built around "undefined".
+    const { ctx, guard, rpc } = ctxWith()
+    ctx.workerConfig = (overrides = {}) => ({
+      config: {
+        ...CONFIG,
+        network: 'devnet',
+        chainId: 48221,
+        workerGatewayUrl: undefined,
+        image: undefined,
+        aiConfigAddress: undefined,
+        jobRegistryAddress: undefined,
+        ...overrides
+      },
+      problem: null
+    })
+    const handlers = workerHandlers(ctx)
+
+    await expect(handlers['worker.register']({ t: 'worker.register' })).rejects.toThrow(
+      /worker hosting is not available on devnet yet/
+    )
+
+    expect(guard.allow).not.toHaveBeenCalled()
+    expect(rpc.call).not.toHaveBeenCalled()
+    expect(mockHost.runAsync).not.toHaveBeenCalled()
+    expect(recordTransaction).not.toHaveBeenCalled()
   })
 })
