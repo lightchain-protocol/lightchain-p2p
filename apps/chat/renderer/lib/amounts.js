@@ -78,3 +78,42 @@ export function toBaseUnits(typed, decimals) {
     BigInt(whole || '0') * 10n ** BigInt(decimals) + BigInt((fraction || '0').padEnd(decimals, '0'))
   )
 }
+
+/**
+ * Wei as an LCAI amount, to four places, grouped.
+ *
+ * Four places because a shortfall is arithmetic between two balances, so it
+ * arrives with all eighteen decimals attached, and "Short
+ * 50000.500000420201387974 LCAI" is a number nobody can read about the one
+ * figure on the page they have to act on.
+ *
+ * **Truncate first, then strip.** The setup pages each had a copy of this and
+ * the copies performed the same two steps in opposite orders. Stripping the
+ * trailing zeros from all eighteen digits before taking four leaves the zeros
+ * that are interior to the four it keeps: 0.10005 came out as "0.1000" rather
+ * than "0.1". The validator page had that version.
+ */
+export function lcai(wei) {
+  const value = BigInt(wei)
+  const whole = value / 10n ** 18n
+  const fraction = (value % 10n ** 18n).toString().padStart(18, '0').slice(0, 4).replace(/0+$/, '')
+  const grouped = whole.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return fraction === '' ? grouped : `${grouped}.${fraction}`
+}
+
+/**
+ * A long value with its middle taken out.
+ *
+ * Here rather than beside `short` in dom.js because that module reaches for
+ * `document` as it loads, so nothing in it can be exercised without a window —
+ * and this is pure string work that three modules were each doing their own
+ * way. The widths are arguments because the things it shortens are not the
+ * same length: an address is 42 characters and a validator's public key is 98,
+ * and six-and-four on the latter hides the part somebody is checking.
+ *
+ * Anything already short enough comes back untouched, rather than gaining an
+ * ellipsis that saves no space and only removes information.
+ */
+export function truncate(value, head = 10, tail = 6) {
+  return value.length <= head + tail + 1 ? value : `${value.slice(0, head)}…${value.slice(-tail)}`
+}

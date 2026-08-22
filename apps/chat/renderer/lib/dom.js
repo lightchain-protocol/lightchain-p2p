@@ -1,3 +1,4 @@
+import { truncate } from './amounts.js'
 /**
  * The document, and the handful of pieces every panel needs.
  *
@@ -154,7 +155,7 @@ export function skeleton(width, height = '1em') {
 }
 
 export function short(key) {
-  return `${key.slice(0, 6)}…${key.slice(-4)}`
+  return truncate(key, 6, 4)
 }
 
 /**

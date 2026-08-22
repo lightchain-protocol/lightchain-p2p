@@ -1,5 +1,7 @@
 import { copy, el, el2, skeleton, svg, time } from './dom.js'
-import { firstOutstanding, isReachable, workerRoute } from './route.js'
+import { lcai, truncate } from './amounts.js'
+import { workerRoute } from './route.js'
+import { createWizard } from './wizard.js'
 import { bridge, request } from './ipc.js'
 import { openSettings } from './settings.js'
 import { drawQr } from './qr.js'
@@ -82,28 +84,6 @@ function line(term, value) {
 /** `1 warning`, `2 warnings`. */
 function plural(count, noun) {
   return `${count} ${noun}${count === 1 ? '' : 's'}`
-}
-
-/**
- * Wei, as people write amounts: `5000.1`, never `5.0001e21` and never eighteen
- * trailing zeros. The value crosses the IPC as a decimal string because JSON
- * has no bigint.
- */
-function lcai(wei) {
-  const value = BigInt(wei)
-  const whole = value / 10n ** 18n
-  // Four places, and grouped. A shortfall is arithmetic between two balances,
-  // so it arrives with all eighteen decimals attached — and
-  // "Short 50000.500000420201387974 LCAI" is a number nobody can read, in a
-  // chip, about the one figure on the page somebody has to act on.
-  const fraction = (value % 10n ** 18n).toString().padStart(18, '0').slice(0, 4).replace(/0+$/, '')
-  const grouped = whole.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-  return fraction === '' ? grouped : `${grouped}.${fraction}`
-}
-
-/** `0x60B0…8E42` — an address is copied, not read. The full value is on the element. */
-function truncate(address) {
-  return `${address.slice(0, 6)}…${address.slice(-4)}`
 }
 
 /**
@@ -206,130 +186,20 @@ const STEPS = [
 
 const backButton = document.getElementById('worker-back')
 
-/**
- * The step being looked at.
- *
- * Null means "wherever the route says", which is the state after every refresh
- * and the state somebody is in almost all of the time. It becomes a number only
- * when they walk the route themselves, and goes back to null the moment the
- * route moves on — arriving at a new step and being shown an old one is the
- * kind of thing that makes an interface feel like it is arguing.
- */
-let viewing = null
-let route = STEPS.map(() => 'todo')
 /** What would finish each step, when that is a thing to press. */
 let offers = STEPS.map(() => null)
 
-/* Built once. Only the states change after this. */
-for (const [index, step] of STEPS.entries()) {
-  const pip = document.createElement('button')
-  pip.className = 'wizard-pip'
-  pip.type = 'button'
-  pip.dataset.state = 'todo'
+const wizard = createWizard({
+  steps: STEPS,
+  rail,
+  back: backButton,
+  waiting: document.getElementById('worker-waiting'),
+  action: (at) => setAction(stepAction(at, offers))
+})
 
-  const mark = document.createElement('span')
-  mark.className = 'wizard-pip-mark'
-  mark.textContent = String(index + 1)
-
-  const label = document.createElement('span')
-  label.className = 'wizard-pip-label'
-  label.textContent = step.label
-
-  pip.append(mark, label)
-  pip.setAttribute('aria-label', `Step ${index + 1}: ${step.label}`)
-  pip.addEventListener('click', () => show(index))
-  rail.append(pip)
-}
-
-/** The circle at the top of a step: its number, or a tick once it is behind you. */
-function markStep(mark, index, done) {
-  if (!mark) return
-  if (done) {
-    if (mark.dataset.done === 'true') return
-    mark.dataset.done = 'true'
-    mark.replaceChildren(svg('svg', { class: 'icon', 'aria-hidden': 'true' }))
-    mark.firstElementChild.append(svg('use', { href: '#i-check' }))
-    return
-  }
-  if (mark.dataset.done !== 'true' && mark.textContent === String(index + 1)) return
-  delete mark.dataset.done
-  mark.replaceChildren(String(index + 1))
-}
-
-/** Which step the route says somebody is on: the first that is not behind them. */
-const currentStep = () => firstOutstanding(route)
-
-/** Puts one step on screen, and marks the rail to match. */
-function show(index) {
-  viewing = index
-  paint()
-}
-
-function paint() {
-  const at = viewing ?? currentStep()
-
-  // An answer has arrived, so the stand-in stands down.
-  const waiting = document.getElementById('worker-waiting')
-  if (waiting) waiting.hidden = true
-
-  for (const [index, step] of STEPS.entries()) {
-    const card = document.getElementById(step.id)
-    if (card) card.hidden = index !== at
-
-    const pip = rail.children[index]
-    if (pip) {
-      // What the route thinks of the step, except for the one being looked at,
-      // which says so — otherwise walking back to a finished step shows a tick
-      // and no sign of where you are.
-      pip.dataset.state =
-        index === at && route[index] !== 'blocked'
-          ? 'current'
-          : route[index] === 'done'
-            ? 'done'
-            : route[index]
-
-      // A step you have not reached yet is not somewhere to go.
-      //
-      // The pips are buttons, and they were all live: from step 2 with nothing
-      // ticked you could press straight through to Register. Nothing downstream
-      // would have worked, and the wizard would have been asking you to do
-      // things in an order it had itself said was wrong.
-      //
-      // Reachable means done, or the first thing still outstanding, or anything
-      // before that. Steps already finished stay reachable even when something
-      // earlier is not — the key exists whether or not a model is chosen, and
-      // hiding a finished step to enforce an order it does not depend on would
-      // be a different kind of lie.
-      pip.disabled = !isReachable(route, index)
-
-      // A finished step shows the interface's own tick rather than its number.
-      // This used to be `font-size: 0` on the digit with the tick drawn as
-      // `::after` content — which left the number in the accessibility tree
-      // under a mark that no longer said it, and set the tick at a size the
-      // type scale does not have.
-      markStep(pip.firstElementChild, index, pip.dataset.state === 'done')
-    }
-  }
-
-  backButton.hidden = at === 0
-  backButton.onclick = () => show(Math.max(0, at - 1))
-
-  setAction(stepAction(at, offers))
-}
-
-/**
- * Adopts a freshly computed route.
- *
- * A step somebody walked back to is left alone while it is still behind the
- * one the route is on; the moment the route reaches further, the page follows
- * it rather than stranding them on an old screen.
- */
-function applySteps(states) {
-  const before = currentStep()
-  route = states
-  if (viewing !== null && currentStep() !== before) viewing = null
-  paint()
-}
+const show = (index) => wizard.show(index)
+const route = () => wizard.states()
+const applySteps = (states) => wizard.apply(states)
 
 /** What a step says about itself while it is closed. */
 function setSummary(id, text) {
@@ -724,8 +594,8 @@ function renderKey(stake) {
     )
   } else {
     setChip(keyState, 'ok', 'Key ready')
-    setSummary('worker-key-summary', truncate(address))
-    keyAddress.textContent = truncate(address)
+    setSummary('worker-key-summary', truncate(address, 6, 4))
+    keyAddress.textContent = truncate(address, 6, 4)
     keyAddress.dataset.full = address
     // A fresh read that found a key settles whatever the forms last reported.
     stepAlert('worker-key-alert', null)
@@ -862,7 +732,7 @@ function renderStake(stake) {
 
   const text = document.createElement('span')
   text.className = 'worker-address-text'
-  text.textContent = truncate(stake.address)
+  text.textContent = truncate(stake.address, 6, 4)
   text.dataset.full = stake.address
 
   const copyBtn = document.createElement('button')
@@ -949,7 +819,7 @@ function renderRegister(stake) {
 
   clearChip(registerState)
   button.disabled = false
-  registerHint.textContent = `Registering stakes ${lcai(stake.minimum)} LCAI — the live minimum — plus gas from ${truncate(stake.address)}. Before anything leaves the key you will be asked to confirm that exact amount and the worker registry it goes to.`
+  registerHint.textContent = `Registering stakes ${lcai(stake.minimum)} LCAI — the live minimum — plus gas from ${truncate(stake.address, 6, 4)}. Before anything leaves the key you will be asked to confirm that exact amount and the worker registry it goes to.`
 }
 
 /** Docker's container health as a word, and how much alarm it deserves. */
@@ -1047,7 +917,7 @@ function renderContainer(status) {
  * that refuses to continue is worse than no Continue.
  */
 function stepAction(at, offers) {
-  if (route[at] === 'done' && at < STEPS.length - 1) {
+  if (route()[at] === 'done' && at < STEPS.length - 1) {
     return { label: 'Continue', run: () => show(at + 1) }
   }
   return offers[at] ?? null
@@ -1184,7 +1054,7 @@ function renderVerdict(host, models, stake, status) {
   setVerdict(
     'warn',
     'Ready to register',
-    `One transaction posts ${lcai(stake.minimum)} LCAI from ${truncate(stake.address)}.`
+    `One transaction posts ${lcai(stake.minimum)} LCAI from ${truncate(stake.address, 6, 4)}.`
   )
   offers[4] = { label: 'Register', run: () => document.getElementById('worker-register').click() }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatUnits, plainUnits, toBaseUnits } from '../renderer/lib/amounts.js'
+import { formatUnits, lcai, plainUnits, toBaseUnits } from '../renderer/lib/amounts.js'
 
 /**
  * Turning what somebody typed into what gets signed.
@@ -134,5 +134,31 @@ describe('what the Max button fills in', () => {
       const shown = plainUnits(base, decimals)
       expect(toBaseUnits(shown, decimals)?.toString(), `${base} @ ${decimals}`).toBe(base)
     }
+  })
+})
+
+/**
+ * The two setup pages each had a copy of this, and the copies performed the
+ * same two steps in opposite orders — so one of them was wrong on any amount
+ * whose significant digit followed a run of zeros.
+ */
+describe('lcai', () => {
+  it('writes whole amounts with thousands separators', () => {
+    expect(lcai(500_000n * 10n ** 18n)).toBe('500,000')
+    expect(lcai(0n)).toBe('0')
+    expect(lcai('1000000000000000000')).toBe('1')
+  })
+
+  it('keeps four decimal places and no more', () => {
+    // A shortfall is arithmetic between two balances, so it arrives with all
+    // eighteen decimals attached.
+    expect(lcai('50000500000420201387974')).toBe('50,000.5')
+  })
+
+  it('strips the zeros it added, not the ones inside the number', () => {
+    // The defect in the copy that stripped before truncating.
+    expect(lcai(100_500_000_000_000_000n)).toBe('0.1005')
+    expect(lcai(100_050_000_000_000_000n)).toBe('0.1')
+    expect(lcai(500_000_000_000_000_000n)).toBe('0.5')
   })
 })

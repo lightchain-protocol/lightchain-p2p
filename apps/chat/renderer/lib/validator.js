@@ -1,5 +1,7 @@
-import { copy, showSection, svg } from './dom.js'
-import { firstOutstanding, isReachable, validatorRoute } from './route.js'
+import { copy, showSection } from './dom.js'
+import { lcai, truncate } from './amounts.js'
+import { validatorRoute } from './route.js'
+import { createWizard } from './wizard.js'
 import { bridge, request } from './ipc.js'
 
 /**
@@ -44,54 +46,20 @@ const STEPS = [
 
 const backButton = document.getElementById('validator-back')
 
-let viewing = null
-let route = STEPS.map(() => 'todo')
 /** What would finish each step, when that is a thing to press. */
 let offers = STEPS.map(() => null)
 
-/* Built once. Only the states change after this. */
-for (const [index, step] of STEPS.entries()) {
-  const pip = document.createElement('button')
-  pip.className = 'wizard-pip'
-  pip.type = 'button'
-  pip.dataset.state = 'todo'
+const wizard = createWizard({
+  steps: STEPS,
+  rail,
+  back: backButton,
+  waiting: document.getElementById('validator-waiting'),
+  action: (at) => setAction(stepAction(at))
+})
 
-  const mark = document.createElement('span')
-  mark.className = 'wizard-pip-mark'
-  mark.textContent = String(index + 1)
-
-  const label = document.createElement('span')
-  label.className = 'wizard-pip-label'
-  label.textContent = step.label
-
-  pip.append(mark, label)
-  pip.setAttribute('aria-label', `Step ${index + 1}: ${step.label}`)
-  pip.addEventListener('click', () => show(index))
-  rail.append(pip)
-}
-
-/** The circle at the top of a step: its number, or a tick once it is behind you. */
-function markStep(mark, index, done) {
-  if (!mark) return
-  if (done) {
-    if (mark.dataset.done === 'true') return
-    mark.dataset.done = 'true'
-    mark.replaceChildren(svg('svg', { class: 'icon', 'aria-hidden': 'true' }))
-    mark.firstElementChild.append(svg('use', { href: '#i-check' }))
-    return
-  }
-  if (mark.dataset.done !== 'true' && mark.textContent === String(index + 1)) return
-  delete mark.dataset.done
-  mark.replaceChildren(String(index + 1))
-}
-
-/** Which step the route says somebody is on: the first that is not behind them. */
-const currentStep = () => firstOutstanding(route)
-
-function show(index) {
-  viewing = index
-  paint()
-}
+const show = (index) => wizard.show(index)
+const route = () => wizard.states()
+const applySteps = (states) => wizard.apply(states)
 
 /**
  * The primary control, decided by the step in front of you.
@@ -101,7 +69,7 @@ function show(index) {
  * application's to start, and a button there would say otherwise.
  */
 function stepAction(at) {
-  if (route[at] === 'done' && at < STEPS.length - 1) {
+  if (route()[at] === 'done' && at < STEPS.length - 1) {
     return { label: 'Continue', run: () => show(at + 1) }
   }
   return offers[at] ?? null
@@ -124,77 +92,9 @@ function setAction(offer) {
   nextAction.addEventListener('click', offer.run)
 }
 
-function paint() {
-  const at = viewing ?? currentStep()
-
-  // An answer has arrived, so the stand-in stands down.
-  const waiting = document.getElementById('validator-waiting')
-  if (waiting) waiting.hidden = true
-
-  for (const [index, step] of STEPS.entries()) {
-    const card = document.getElementById(step.id)
-    if (card) card.hidden = index !== at
-
-    const pip = rail.children[index]
-    if (pip) {
-      pip.dataset.state =
-        index === at && route[index] !== 'blocked'
-          ? 'current'
-          : route[index] === 'done'
-            ? 'done'
-            : route[index]
-
-      // A step you have not reached yet is not somewhere to go.
-      //
-      // The pips are buttons, and they were all live: from step 2 with nothing
-      // ticked you could press straight through to Register. Nothing downstream
-      // would have worked, and the wizard would have been asking you to do
-      // things in an order it had itself said was wrong.
-      //
-      // Reachable means done, or the first thing still outstanding, or anything
-      // before that. Steps already finished stay reachable even when something
-      // earlier is not — the key exists whether or not a model is chosen, and
-      // hiding a finished step to enforce an order it does not depend on would
-      // be a different kind of lie.
-      pip.disabled = !isReachable(route, index)
-
-      // A finished step shows the interface's own tick rather than its number.
-      // This used to be `font-size: 0` on the digit with the tick drawn as
-      // `::after` content — which left the number in the accessibility tree
-      // under a mark that no longer said it, and set the tick at a size the
-      // type scale does not have.
-      markStep(pip.firstElementChild, index, pip.dataset.state === 'done')
-    }
-  }
-
-  backButton.hidden = at === 0
-  backButton.onclick = () => show(Math.max(0, at - 1))
-  setAction(stepAction(at))
-}
-
-function applySteps(states) {
-  const before = currentStep()
-  route = states
-  if (viewing !== null && currentStep() !== before) viewing = null
-  paint()
-}
-
-/** Wei as people write amounts, with thousands separators for the big ones. */
-function lcai(wei) {
-  const value = BigInt(wei)
-  const whole = value / 10n ** 18n
-  const fraction = (value % 10n ** 18n).toString().padStart(18, '0').replace(/0+$/, '').slice(0, 4)
-  const grouped = whole.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-  return fraction === '' ? grouped : `${grouped}.${fraction}`
-}
-
 /** Gwei as a decimal string to wei, which is what `lcai` reads. */
 function weiFromGwei(gwei) {
   return (BigInt(gwei) * 1_000_000_000n).toString()
-}
-
-function truncate(value, head = 10, tail = 6) {
-  return value.length <= head + tail + 1 ? value : `${value.slice(0, head)}…${value.slice(-tail)}`
 }
 
 /**
