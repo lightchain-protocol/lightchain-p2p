@@ -54,6 +54,14 @@ jobs:
       - name: Design tokens resolve
         run: node apps/chat/scripts/check-tokens.mjs
 
+      # A resource the window's own policy refuses is not an error anybody sees:
+      # the element stays in the document with the right class and the wrong
+      # size, and the background simply never paints. Thirteen style attributes
+      # and the chevron on every select had been shipping dead, both reviewed as
+      # correct, before this existed.
+      - name: Nothing the content policy refuses
+        run: node apps/chat/scripts/check-csp.mjs
+
       # tokens.css is generated from @lcai-p2p/ui and was the one generator
       # without a check. A hand edit there produces no error and no symptom: the
       # value resolves, the interface uses it, every other check stays green,
