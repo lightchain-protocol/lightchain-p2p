@@ -272,8 +272,6 @@ function paint() {
   const waiting = document.getElementById('worker-waiting')
   if (waiting) waiting.hidden = true
 
-
-
   for (const [index, step] of STEPS.entries()) {
     const card = document.getElementById(step.id)
     if (card) card.hidden = index !== at

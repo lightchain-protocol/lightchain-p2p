@@ -180,8 +180,16 @@ export async function recordTransaction(ctx, kind, sent) {
 }
 
 export function walletHandlers(ctx) {
-  const { wallet, rpc, network, useWalletInRooms, forgetInference, guard, saveSettings, vaultWrittenAt } =
-    ctx
+  const {
+    wallet,
+    rpc,
+    network,
+    useWalletInRooms,
+    forgetInference,
+    guard,
+    saveSettings,
+    vaultWrittenAt
+  } = ctx
   const ledger = transactionLedger(ctx)
 
   /**

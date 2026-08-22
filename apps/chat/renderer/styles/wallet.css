@@ -789,7 +789,6 @@
    a full row like the balance and activity cards above it rather than a grid
    column. */
 
-
 /* One column below the width where three cards stop being readable. Every card
    spans everything rather than half-collapsing into an awkward two. */
 @media (max-width: 60rem) {

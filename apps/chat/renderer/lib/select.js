@@ -91,12 +91,13 @@ function enhance(select) {
         item.setAttribute('aria-selected', String(index === select.selectedIndex))
         item.textContent = option.textContent.trim()
         if (option.disabled) item.setAttribute('aria-disabled', 'true')
-        else item.addEventListener('mousedown', (event) => {
-          // `mousedown` rather than `click`: the button's blur would otherwise
-          // close the list before the click landed.
-          event.preventDefault()
-          choose(index)
-        })
+        else
+          item.addEventListener('mousedown', (event) => {
+            // `mousedown` rather than `click`: the button's blur would otherwise
+            // close the list before the click landed.
+            event.preventDefault()
+            choose(index)
+          })
         return item
       })
     )
