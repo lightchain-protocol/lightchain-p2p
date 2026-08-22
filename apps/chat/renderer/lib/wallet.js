@@ -117,6 +117,30 @@ export function showWallet(status) {
    * application looks like it is refusing a password that is plainly correct.
    * A date makes the substitution visible.
    */
+  /*
+   * A vault that cannot be read says so before a password is tried.
+   *
+   * No password opens an unreadable file, so somebody typing theirs correctly
+   * is told it is wrong — which is precisely the confusion this whole change
+   * exists to remove. The unlock form goes with it: there is nothing useful to
+   * do with it in this state.
+   */
+  const unreadable = status.unreadable === true
+  document.getElementById('unlock-unreadable')?.toggleAttribute('hidden', !unreadable)
+  document.getElementById('unlock-form')?.toggleAttribute('hidden', unreadable)
+
+  // "Welcome back — unlock to continue" is the wrong sentence over a file that
+  // will not open for anybody. The screen keeps its shape and changes what it
+  // says it is about.
+  const title = document.getElementById('title-unlock')
+  const lede = title?.nextElementSibling
+  if (title) title.textContent = unreadable ? 'This wallet needs attention' : 'Welcome back'
+  if (lede?.classList.contains('step-body')) {
+    lede.textContent = unreadable
+      ? 'The wallet on this machine is here, and cannot be opened as it stands.'
+      : 'Unlock the wallet on this machine to continue.'
+  }
+
   const age = document.getElementById('unlock-vault-age')
   if (age) {
     const written = status.vaultWrittenAt

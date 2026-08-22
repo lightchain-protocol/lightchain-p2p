@@ -69,6 +69,20 @@ export class WalletError extends Error {
 export const REPLACE_CONFIRMATION = 'REPLACE'
 
 export interface VaultStore {
+  /**
+   * The vault, or `null` when this machine genuinely has none.
+   *
+   * **`null` must mean absent.** A store that answers `null` because the file
+   * was there and could not be read is telling this class that the machine has
+   * no wallet, and everything downstream believes it: the interface offers to
+   * create one, and `create` writes over the ciphertext without asking, because
+   * the gate that demands a typed confirmation is keyed on a wallet being
+   * present. One unreadable byte and a phrase is gone.
+   *
+   * So a store that cannot read a file which exists must throw. What it throws
+   * reaches {@link Wallet.status} as `unreadable`, and every path that needs
+   * the vault fails loudly instead of quietly deciding there is nothing there.
+   */
   read(): Vault | null
   write(vault: Vault): void
   clear(): void
@@ -76,6 +90,16 @@ export interface VaultStore {
 
 export interface WalletStatus {
   readonly exists: boolean
+  /**
+   * A vault is on this machine and cannot be read.
+   *
+   * Distinct from `exists: false`, and the distinction is the whole point:
+   * one means "make a wallet", the other means "do not touch anything until
+   * somebody has looked at that file". An interface that collapses them offers
+   * onboarding over a wallet whose owner has simply hit a corrupt file, a
+   * half-finished write, or a permissions problem.
+   */
+  readonly unreadable: boolean
   readonly unlocked: boolean
   /** Only known while unlocked: the address lives in the phrase, not beside it. */
   readonly address: string | null
@@ -241,8 +265,11 @@ export class Wallet {
   }
 
   status(now = Date.now()): WalletStatus {
+    const on = this.#onDisk()
+
     return {
-      exists: this.#store.read() !== null,
+      exists: on !== 'absent',
+      unreadable: on === 'unreadable',
       unlocked: this.#account !== null,
       address: this.#account?.address ?? null,
       accountIndex: this.#index,
@@ -298,6 +325,40 @@ export class Wallet {
     if (this.#account !== null) this.#lastUsed = now
   }
 
+  /**
+   * What is on disk, without deciding what it means.
+   *
+   * `status` is asked constantly and by things that cannot handle an exception
+   * — a status call that throws takes a window's whole refresh with it — so the
+   * three outcomes are values here rather than a value and a throw.
+   */
+  #onDisk(): 'absent' | 'unreadable' | Vault {
+    try {
+      const vault = this.#store.read()
+      return vault === null ? 'absent' : vault
+    } catch {
+      return 'unreadable'
+    }
+  }
+
+  /**
+   * The vault, for the paths that cannot proceed without it.
+   *
+   * Says which of the two failures happened. "There is no wallet" sent somebody
+   * to onboarding; "the vault cannot be read" sends them to the file, which is
+   * the only place the answer is.
+   */
+  #require(): Vault {
+    const on = this.#onDisk()
+    if (on === 'absent') throw new WalletError('there is no wallet on this machine')
+    if (on === 'unreadable') {
+      throw new WalletError(
+        'the wallet file on this machine could not be read. It is still there — nothing has been changed. Restore it from a backup, or restore the wallet from its recovery phrase.'
+      )
+    }
+    return on
+  }
+
   /** Derivation and the record of what was derived, kept together. */
   #use(secret: Secret, index: number, now = Date.now()): void {
     this.#account = fromPrivateKey(derivePrivateKey(secret.phrase, index, secret.passphrase))
@@ -334,7 +395,17 @@ export class Wallet {
    * phrase without having written the one meant to succeed it.
    */
   #displacing(confirmation: string | undefined, refusal: string): boolean {
-    if (this.#store.read() === null) return false
+    /*
+     * A vault that cannot be read is still a vault.
+     *
+     * This gate asked `read() === null` and the store answered `null` for a
+     * file it had failed to parse — so a corrupt byte, a half-finished write or
+     * a permissions problem turned "there is a wallet here, type REPLACE" into
+     * "there is nothing here, go ahead". The ciphertext was then written over
+     * without anybody being asked, and the phrase it held was the only way back
+     * to that money.
+     */
+    if (this.#onDisk() === 'absent') return false
     if (!confirms(confirmation)) throw new WalletError(refusal)
     return true
   }
@@ -431,8 +502,7 @@ export class Wallet {
   unlock(password: string, index = 0): WalletStatus {
     requireAccountIndex(index)
 
-    const vault = this.#store.read()
-    if (!vault) throw new WalletError('there is no wallet to unlock')
+    const vault = this.#require()
 
     this.#use(open(vault, password), index)
     return this.status()
@@ -511,8 +581,7 @@ export class Wallet {
    * comes from the vault rather than from the window's own say-so.
    */
   verifyPassword(password: string, now = Date.now()): boolean {
-    const vault = this.#store.read()
-    if (!vault) throw new WalletError('there is no wallet')
+    const vault = this.#require()
 
     try {
       open(vault, password)
@@ -544,8 +613,7 @@ export class Wallet {
    * in a field it was not thinking about.
    */
   revealSecret(password: string): Secret {
-    const vault = this.#store.read()
-    if (!vault) throw new WalletError('there is no wallet')
+    const vault = this.#require()
     return open(vault, password)
   }
 
@@ -581,8 +649,7 @@ export class Wallet {
    * password that would have opened it is the one just discarded.
    */
   changePassword(current: string, next: string): WalletStatus {
-    const vault = this.#store.read()
-    if (!vault) throw new WalletError('there is no wallet')
+    const vault = this.#require()
 
     const secret = open(vault, current)
     if (next === current) throw new WalletError('that is the password it already has')
@@ -620,8 +687,7 @@ export class Wallet {
    * anyway, since `seal` refuses anything under eight characters.
    */
   remove(options: RemoveOptions = {}): WalletStatus {
-    const vault = this.#store.read()
-    if (!vault) throw new WalletError('there is no wallet to remove')
+    const vault = this.#require()
 
     const password = options.password ?? ''
     if (password !== '') {

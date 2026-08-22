@@ -280,6 +280,24 @@
                password that is plainly correct, because for the wallet somebody
                remembers, it is. -->
           <p class="step-note" id="unlock-vault-age" hidden></p>
+
+          <!-- A vault that is on the machine and cannot be read.
+               Said here rather than left for the password to discover: no
+               password opens an unreadable file, so somebody typing theirs
+               correctly would be told it was wrong. Nothing about the file has
+               been changed, and the two ways out are a backup or the phrase. -->
+          <div class="alert" data-tone="warn" role="alert" id="unlock-unreadable" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
+            <div class="alert-body">
+              <strong class="alert-title">This wallet's file cannot be read</strong>
+              <span>
+                It is still on this machine and nothing has been changed. No password will open
+                it while it is in this state. Restore the file from a backup, or use
+                &ldquo;Forgotten your password?&rdquo; to set this wallet up again from its
+                recovery phrase.
+              </span>
+            </div>
+          </div>
           <form class="form" id="unlock-form">
             <label class="field">
               <span class="field-label">Password</span>

@@ -29,7 +29,7 @@ describe('a new wallet', () => {
   })
 
   it('cannot be unlocked or used before it exists', () => {
-    expect(() => wallet.unlock(PASSWORD)).toThrow(/no wallet to unlock/)
+    expect(() => wallet.unlock(PASSWORD)).toThrow(/no wallet on this machine/)
     expect(() => wallet.account()).toThrow(/locked/)
     expect(() => wallet.revealPhrase(PASSWORD)).toThrow(/no wallet/)
   })
@@ -76,6 +76,83 @@ describe('a new wallet', () => {
     expect(() => wallet.unlock('nearly right')).toThrow(
       /wrong password, or the vault has been altered/
     )
+  })
+})
+
+/**
+ * A vault that is there and cannot be read.
+ *
+ * The store used to answer `null` for this, which is the same answer it gives
+ * for a machine that has never had a wallet — so a corrupt byte, a half-written
+ * file or a permissions problem all reported "no wallet here". The application
+ * believed it, offered onboarding, and `create` wrote over the ciphertext
+ * without asking, because the gate demanding a typed REPLACE is keyed on a
+ * wallet being present.
+ */
+describe('a vault that cannot be read', () => {
+  /** A store holding a file it cannot parse, which is what corruption is. */
+  const brokenStore = () => {
+    let cleared = false
+    return {
+      read() {
+        if (cleared) return null
+        throw new Error('unexpected token in JSON at position 0')
+      },
+      write() {
+        throw new Error('this test must never reach a write')
+      },
+      clear() {
+        cleared = true
+      }
+    }
+  }
+
+  it('is reported as present and unreadable, not as absent', () => {
+    const wallet = new Wallet(brokenStore())
+
+    expect(wallet.status()).toMatchObject({ exists: true, unreadable: true, unlocked: false })
+  })
+
+  it('does not take a status call down with it', () => {
+    // Status is asked constantly, including by things that cannot handle an
+    // exception. One that throws takes a whole refresh with it.
+    const wallet = new Wallet(brokenStore())
+
+    expect(() => wallet.status()).not.toThrow()
+  })
+
+  it('refuses to be replaced without the confirmation', () => {
+    // The defect, stated as a test: before this, both of these succeeded and
+    // wrote over the ciphertext. `write` throws in this store, so a call that
+    // got past the gate would fail loudly here rather than pass quietly.
+    const wallet = new Wallet(brokenStore())
+
+    expect(() => wallet.create(PASSWORD)).toThrow(/a wallet already exists/i)
+    expect(() => wallet.importPhrase(PHRASE, PASSWORD)).toThrow(/a wallet already exists/i)
+  })
+
+  it('can still be replaced deliberately, by somebody who means it', () => {
+    // Refusing is not the same as trapping somebody. A person who has lost the
+    // file and has their phrase must be able to say so and carry on.
+    const wallet = new Wallet(brokenStore())
+
+    expect(() =>
+      wallet.importPhrase(PHRASE, PASSWORD, { confirmation: REPLACE_CONFIRMATION })
+    ).toThrow(/must never reach a write/)
+  })
+
+  it('sends somebody to the file rather than to onboarding', () => {
+    const wallet = new Wallet(brokenStore())
+
+    expect(() => wallet.unlock(PASSWORD)).toThrow(/could not be read/)
+    expect(() => wallet.revealPhrase(PASSWORD)).toThrow(/could not be read/)
+    expect(() => wallet.changePassword(PASSWORD, 'another password')).toThrow(/could not be read/)
+  })
+
+  it('says nothing has been changed, because nothing has', () => {
+    const wallet = new Wallet(brokenStore())
+
+    expect(() => wallet.unlock(PASSWORD)).toThrow(/still there/)
   })
 })
 

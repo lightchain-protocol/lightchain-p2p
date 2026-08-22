@@ -427,11 +427,32 @@ function vaultWrittenAt() {
 }
 
 const vaultStore = {
+  /**
+   * The vault, or `null` only when there genuinely is not one.
+   *
+   * This used to catch everything and answer `null`, so a corrupt byte, a
+   * half-written file or a permissions problem all reported "this machine has
+   * no wallet". The application believed it: onboarding offered to make one,
+   * and the gate that demands a typed REPLACE is keyed on a wallet being
+   * present, so it did not fire — the ciphertext was overwritten and the phrase
+   * it held was the only way back to that money.
+   *
+   * Absent is `ENOENT` and nothing else. Anything else is a file that is there
+   * and cannot be read, which is a thing to say out loud.
+   */
   read() {
+    let raw
     try {
-      return JSON.parse(fs.readFileSync(vaultFile, 'utf8'))
-    } catch {
-      return null
+      raw = fs.readFileSync(vaultFile, 'utf8')
+    } catch (err) {
+      if (err.code === 'ENOENT') return null
+      throw new Error(`the wallet file could not be read: ${err.message}`, { cause: err })
+    }
+
+    try {
+      return JSON.parse(raw)
+    } catch (err) {
+      throw new Error(`the wallet file is not readable JSON: ${err.message}`, { cause: err })
     }
   },
   write(vault) {
