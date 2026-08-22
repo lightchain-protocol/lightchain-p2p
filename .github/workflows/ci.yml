@@ -240,7 +240,7 @@ jobs:
 
             for harness in onboarding-check hostile-renderer conversation-check transcript-search \
                            clipboard-check locking-check assets-check send-check \
-                           asset-page-check bridge-check; do
+                           asset-page-check bridge-check design-check; do
               echo "--- $harness"
               node "scripts/$harness.mjs" 9222
             done
