@@ -434,6 +434,17 @@ export const MONO =
  */
 export const CONTROL = {
   /**
+   * The floor any pointer target has to clear.
+   *
+   * WCAG 2.2 SC 2.5.8 (Target Size, minimum) puts it at 24x24 CSS pixels. The
+   * rungs below are all comfortably over it, so this is not for buttons — it is
+   * for the handful of controls that are a line of text rather than a box: a
+   * count under a title, a link that opens a panel. They inherit their height
+   * from the type scale, which knows nothing about pointers, and they came out
+   * at 21.
+   */
+  target: 24,
+  /**
    * Controls that ride inside another control or a card's head.
    *
    * A range tab in a chart header, a Max button inside the field it fills, a

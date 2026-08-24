@@ -210,6 +210,11 @@
                    that got you here; the address is the thing that is actually
                    worth knowing before you read a balance. -->
               <header class="account-bar">
+                <!-- Named for a screen reader only. The visible title was
+                     dropped on purpose (see above) — but a surface with no
+                     title at all is a surface a reader cannot announce, and
+                     Account was the one page of six that had none. -->
+                <h1 class="page-title visually-hidden">Account</h1>
                 <button class="account-pill" type="button" id="wallet-account-pill">
                   <span class="account-pill-mark" id="wallet-account-mark" aria-hidden="true"></span>
                   <span class="account-pill-text">

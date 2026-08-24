@@ -770,6 +770,12 @@
    thing it is a summary of. A label that describes a panel and does not open
    it is a label somebody has to hunt for the control of. */
 #panel-chat .room-people {
+  /* A control that is a line of text takes its height from the type scale,
+     which knows nothing about pointers — this came out at 21px. The floor is
+     the standard's, not a taste; see CONTROL.target in packages/ui. */
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--lc-control-target);
   padding: 0;
   border: 0;
   background: none;

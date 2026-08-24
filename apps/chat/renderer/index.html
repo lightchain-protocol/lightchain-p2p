@@ -405,6 +405,11 @@
 
          Everything in it opts out of the drag region; a strip you cannot grab
          between the controls would be worse than no controls. -->
+    <!-- First focusable thing in the document, which is the only place a
+         bypass is any use. It lives in this partial because this is the first
+         one the build writes into the body. -->
+    <a class="skip-link" href="#content">Skip to content</a>
+
     <header class="titlebar" id="titlebar">
       <span class="titlebar-brand">
         <svg class="titlebar-wordmark" role="img" aria-label="Lightchain">
@@ -1456,7 +1461,7 @@
         </div>
       </nav>
 
-      <section class="content">
+      <section class="content" id="content" tabindex="-1">
         <!-- Standing until the words are written down — but it can rest.
 
              Deferring the backup has to be a real option or people photograph
@@ -2454,6 +2459,11 @@
                    that got you here; the address is the thing that is actually
                    worth knowing before you read a balance. -->
               <header class="account-bar">
+                <!-- Named for a screen reader only. The visible title was
+                     dropped on purpose (see above) — but a surface with no
+                     title at all is a surface a reader cannot announce, and
+                     Account was the one page of six that had none. -->
+                <h1 class="page-title visually-hidden">Account</h1>
                 <button class="account-pill" type="button" id="wallet-account-pill">
                   <span class="account-pill-mark" id="wallet-account-mark" aria-hidden="true"></span>
                   <span class="account-pill-text">
@@ -3007,9 +3017,9 @@
          because a line reading "ETH — the network's own coin" explains what
          the select above it already said. The options themselves are built by
          `fillTokenPicker` in lib/assets.js. -->
-    <dialog class="dialog" id="receive-dialog">
+    <dialog aria-labelledby="receive-title" class="dialog" id="receive-dialog">
       <div class="dialog-form">
-        <h2 class="dialog-title">Receive</h2>
+        <h2 id="receive-title" class="dialog-title">Receive</h2>
 
         <label class="field">
           <span class="field-label">Network</span>
@@ -3060,9 +3070,9 @@
          there a button that signs. A single-step form would mean the figures on
          screen were the ones the form guessed rather than the ones about to be
          signed, and those are not always the same thing. -->
-    <dialog class="dialog" id="send-dialog">
+    <dialog aria-labelledby="send-title" class="dialog" id="send-dialog">
       <form method="dialog" class="dialog-form" id="send-form">
-        <h2 class="dialog-title">Send</h2>
+        <h2 id="send-title" class="dialog-title">Send</h2>
 
         <label class="field">
           <span class="field-label">Asset</span>
@@ -3142,9 +3152,9 @@
          reintroduce a `bridge-` id, or the page and this dialog's ghost would
          answer to the same name. -->
 
-    <dialog class="dialog" id="join-dialog">
+    <dialog aria-labelledby="join-title" class="dialog" id="join-dialog">
       <form method="dialog" class="dialog-form" id="join-form">
-        <h2 class="dialog-title">Join a room</h2>
+        <h2 id="join-title" class="dialog-title">Join a room</h2>
         <p class="dialog-body">
           Paste the invite you were sent. You will arrive able to write, and nothing else is needed
           from either side.
@@ -3191,9 +3201,9 @@
       </form>
     </dialog>
 
-    <dialog class="dialog dialog-wide" id="invite-dialog">
+    <dialog aria-labelledby="invite-title" class="dialog dialog-wide" id="invite-dialog">
       <div class="dialog-form">
-        <h2 class="dialog-title">Invite someone</h2>
+        <h2 id="invite-title" class="dialog-title">Invite someone</h2>
         <p class="dialog-body">
           Send them this. It carries no room key, so it cannot be used to read the room — it is
           spent once, when they join, and they arrive able to write.
@@ -3249,9 +3259,9 @@
       </div>
     </dialog>
 
-    <dialog class="dialog" id="pay-dialog">
+    <dialog aria-labelledby="pay-title" class="dialog" id="pay-dialog">
       <form method="dialog" class="dialog-form" id="pay-form">
-        <h2 class="dialog-title">Send LCAI</h2>
+        <h2 id="pay-title" class="dialog-title">Send LCAI</h2>
         <p class="dialog-body">
           Straight from your wallet to theirs, on chain. Nothing about this goes through the room —
           it is a transfer, and it is irreversible.
@@ -3280,9 +3290,9 @@
       </form>
     </dialog>
 
-    <dialog class="dialog" id="rename-dialog">
+    <dialog aria-labelledby="rename-title" class="dialog" id="rename-dialog">
       <form method="dialog" class="dialog-form" id="rename-form">
-        <h2 class="dialog-title">Name this room</h2>
+        <h2 id="rename-title" class="dialog-title">Name this room</h2>
         <p class="dialog-body">
           Everyone in the room sees the same name, and any writer can change it. It is written into
           the room's history, so it survives every member going offline.
@@ -3317,10 +3327,10 @@
          that buys the wrong token. The route strip under the title says the
          direction in marks rather than words: ether in, LCAI out, Uniswap
          doing the trade. -->
-    <dialog class="dialog" id="swap-dialog">
+    <dialog aria-labelledby="swap-title" class="dialog" id="swap-dialog">
       <form method="dialog" class="dialog-form" id="swap-form">
         <div class="dialog-head">
-          <h2 class="dialog-title">Swap into LCAI</h2>
+          <h2 id="swap-title" class="dialog-title">Swap into LCAI</h2>
           <button
             class="dialog-close"
             type="button"
@@ -3463,10 +3473,10 @@
          from the transaction it is about to sign; the window is only the
          frame. A second request arriving while one is open queues rather than
          clobbering it — see lib/confirm.js. -->
-    <dialog class="dialog" id="confirm-dialog">
+    <dialog aria-labelledby="confirm-title" class="dialog" id="confirm-dialog">
       <div class="dialog-form">
         <div class="dialog-head">
-          <h2 class="dialog-title">Confirm this transfer</h2>
+          <h2 id="confirm-title" class="dialog-title">Confirm this transfer</h2>
           <button
             class="dialog-close"
             type="button"
@@ -3819,10 +3829,10 @@
          so switching looks exactly like the application having forgotten
          everything — and switching back brings all of it home. Somebody has to
          be told that before they switch, not after. -->
-    <dialog class="dialog" id="accounts-dialog">
+    <dialog aria-labelledby="accounts-title" class="dialog" id="accounts-dialog">
       <div class="dialog-form">
         <div class="dialog-head">
-          <h2 class="dialog-title">Accounts</h2>
+          <h2 id="accounts-title" class="dialog-title">Accounts</h2>
           <button
             class="dialog-close"
             type="button"
@@ -3892,7 +3902,7 @@
 
     <!-- One dialog for both directions. Two forms that differ by which endpoint
          they call is two places to fix the amount parsing. -->
-    <dialog class="dialog" id="move-dialog">
+    <dialog aria-labelledby="move-title" class="dialog" id="move-dialog">
       <form method="dialog" class="dialog-form" id="move-form">
         <h2 class="dialog-title" id="move-title">Deposit</h2>
         <p class="dialog-body" id="move-body"></p>

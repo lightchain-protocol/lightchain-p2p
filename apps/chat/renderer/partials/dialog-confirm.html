@@ -6,10 +6,10 @@
          from the transaction it is about to sign; the window is only the
          frame. A second request arriving while one is open queues rather than
          clobbering it — see lib/confirm.js. -->
-    <dialog class="dialog" id="confirm-dialog">
+    <dialog aria-labelledby="confirm-title" class="dialog" id="confirm-dialog">
       <div class="dialog-form">
         <div class="dialog-head">
-          <h2 class="dialog-title">Confirm this transfer</h2>
+          <h2 id="confirm-title" class="dialog-title">Confirm this transfer</h2>
           <button
             class="dialog-close"
             type="button"
