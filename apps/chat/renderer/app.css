@@ -1126,6 +1126,34 @@ select.input option {
  * and puts this face over it, so the menus look like the rest of the
  * application on every platform.
  */
+/**
+ * Bypass the sidebar.
+ *
+ * Ten-odd controls stand between the window's first tab stop and the surface a
+ * person came to use, on every surface, every time. WCAG 2.2 SC 2.4.1 exists
+ * for exactly that. Off screen until focused, then a real control in the
+ * corner — never a target the pointer can find, and never a gap in the layout.
+ */
+.skip-link {
+  position: absolute;
+  top: var(--lc-space-sm);
+  left: var(--lc-space-sm);
+  z-index: 100;
+  padding: var(--lc-space-sm) var(--lc-space-lg);
+  transform: translateY(-200%);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-surface-3);
+  color: var(--lc-text-primary);
+  font-size: var(--lc-type-body);
+  text-decoration: none;
+  transition: transform var(--lc-motion-fast) var(--lc-easing);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: var(--lc-focus-ring);
+}
+
 .select-native {
   position: absolute;
   width: 1px;

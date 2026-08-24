@@ -345,6 +345,17 @@ describe('brand consistency', () => {
     expect(CONTROL.sm).toBeLessThan(CONTROL.md)
   })
 
+  // The floor is a standard's number, not a taste, so it is asserted as one.
+  // Every other rung has to clear it too — a rung under the floor would be a
+  // control the system itself says is too small to hit.
+  it('keeps every control at or above the WCAG 2.2 target-size floor', () => {
+    expect(CONTROL.target).toBe(24)
+    for (const [name, value] of Object.entries(CONTROL)) {
+      if (name === 'icon') continue
+      expect(value, `CONTROL.${name}`).toBeGreaterThanOrEqual(CONTROL.target)
+    }
+  })
+
   // An icon smaller than the text it labels reads as a bullet point.
   it('sizes icons against the body text rather than independently', () => {
     expect(CONTROL.icon).toBeGreaterThanOrEqual(TYPE.scale.md)

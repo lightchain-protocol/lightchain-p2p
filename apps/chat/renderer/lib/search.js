@@ -85,6 +85,9 @@ function surface() {
   const dialog = document.createElement('dialog')
   dialog.id = 'search-dialog'
   dialog.className = 'dialog dialog-wide search-dialog'
+  // This palette has no visible title to point at, so it carries its own name.
+  // A modal without one is announced as "dialog" and nothing else.
+  dialog.setAttribute('aria-label', 'Search messages')
 
   const body = el2('div', 'dialog-form search-body')
 
