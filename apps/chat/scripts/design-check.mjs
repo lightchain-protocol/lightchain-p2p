@@ -197,7 +197,30 @@ const MEASURE = `(() => {
       add('collapsed', name(el) + ' height=' + Math.round(r.height))
     }
 
-    if (el.scrollWidth - el.clientWidth > 2 && cs.overflowX !== 'visible') {
+    /**
+     * Clipped by accident, not clipped on purpose.
+     *
+     * Two things clip legitimately and both were being reported as faults. A
+     * label that declares text-overflow:ellipsis has opted into truncation —
+     * that is what a room called something long is supposed to do, and the
+     * check only ever passed because no test room had a long enough name. And
+     * an element held off screen for a screen reader is one pixel wide by
+     * construction; its content overflowing is the technique working.
+     *
+     * (No backticks in here: this whole block is a template literal evaluated
+     * in the page, and one would end it.)
+     *
+     * What is left is the case worth catching: a box whose content is wider
+     * than it is with nothing in the design saying so.
+     */
+    const truncatesOnPurpose = cs.textOverflow === 'ellipsis'
+    const offScreenForReaders = el.classList.contains('visually-hidden')
+    if (
+      el.scrollWidth - el.clientWidth > 2 &&
+      cs.overflowX !== 'visible' &&
+      !truncatesOnPurpose &&
+      !offScreenForReaders
+    ) {
       add('overflow', name(el) + ' scrollW=' + el.scrollWidth + ' clientW=' + el.clientWidth)
     }
   }

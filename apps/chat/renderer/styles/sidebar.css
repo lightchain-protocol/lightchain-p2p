@@ -35,40 +35,6 @@
   flex: 0 0 auto;
 }
 
-/* The app brand lives here, at the top of the column, rather than in the
-   title bar — the title was in two places, and the bar's whole job is to be
-   somewhere to grab the window. The mark is the logomark; the wordmark is
-   plain text, because the brand gradient is for the logo only. */
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: var(--lc-space-sm);
-  min-width: 0;
-}
-
-/**
- * The brand's own lockup, drawn rather than set.
- *
- * The mark is inside it, which is why nothing sits beside it any more — a
- * separate logomark next to a lockup that already contains one put the mark on
- * screen twice, once at forty pixels and once at eight.
- *
- * Monochrome and filled with `currentColor`, so the one asset is legible on the
- * dark page and on the light one. The aspect ratio is fixed by the symbol's
- * viewBox; only the height is set here.
- */
-.sidebar-wordmark {
-  height: 17px;
-  width: calc(17px * (1200 / 251));
-  flex: 0 0 auto;
-  stroke: none;
-  color: var(--lc-text-primary);
-  letter-spacing: -0.01em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .sidebar-collapse {
   flex: 0 0 auto;
 }
@@ -620,7 +586,6 @@
   width: 3.5rem;
 }
 
-.sidebar.is-collapsed .sidebar-wordmark,
 .sidebar.is-collapsed .sidebar-rooms-title,
 .sidebar.is-collapsed .sidebar-group-title,
 .sidebar.is-collapsed .sidebar-empty,

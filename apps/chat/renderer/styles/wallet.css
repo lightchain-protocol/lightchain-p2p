@@ -339,24 +339,6 @@
   text-align: right;
 }
 
-.holdings-total {
-  display: flex;
-  flex-direction: column;
-  gap: var(--lc-space-xs);
-  padding-bottom: var(--lc-space-md);
-}
-
-.holdings-total-label {
-  font-size: var(--lc-text-xs);
-  color: var(--lc-fg-muted);
-}
-
-.holdings-total-value {
-  font-size: var(--lc-text-xxl);
-  line-height: var(--lc-leading-tight);
-  font-variant-numeric: tabular-nums;
-}
-
 .holdings {
   list-style: none;
   margin: 0;
@@ -777,10 +759,6 @@
   align-items: start;
 }
 
-.wallet-portfolio {
-  grid-column: span 2;
-}
-
 .wallet-holdings {
   grid-column: 1 / -1;
 }
@@ -794,10 +772,6 @@
 @media (max-width: 60rem) {
   .wallet-grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .wallet-portfolio {
-    grid-column: 1 / -1;
   }
 }
 

@@ -167,10 +167,17 @@ export const BRAND = {
    * Lifted from the website's `.btn-default` and the wallet that ports it, so
    * a primary control here is the same object people press on the site. It is
    * a fill and never a text colour: every one of its stops fails contrast
-   * against this page, which is exactly why the label on top of it comes from
-   * `accentContrast` and not from the gradient.
+   * against this page, which is why the label on top of it is `onBrand`.
+   *
+   * The magenta stop is two shades off the site's `#df04ae`. White on that
+   * original measured 4.41:1 — under WCAG 2.2 AA's 4.5, on the one control
+   * every screen has. The other two stops were already clear at 6.6 and 6.9,
+   * so only the first moved, by about three percent. The mark itself is
+   * untouched: `logoFrom`/`logoTo` are a different pair and the logomark draws
+   * from those. `the label clears AA on every stop of the brand gradient`
+   * holds this so it cannot drift back.
    */
-  gradient: 'linear-gradient(135deg, #df04ae 0%, #8a1cd4 50%, #412ffd 100%)',
+  gradient: 'linear-gradient(135deg, #d803a8 0%, #8a1cd4 50%, #412ffd 100%)',
   /**
    * The third identicon ink, and the reason it is here rather than borrowed.
    *
