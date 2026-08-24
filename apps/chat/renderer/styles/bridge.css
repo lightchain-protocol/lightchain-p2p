@@ -5,22 +5,23 @@
    here is scoped under `.bridge-page` so none of it leaks. */
 
 /**
- * A reading flow, not a console grid: the three cards stack in one column at a
- * measure a form can be read at, rather than stretching edge to edge.
+ * A console grid, not a reading flow: the cards take the width the page gives
+ * them rather than stacking at a measure.
  *
- * Centred, which it was not. A 64ch column pinned to the left of a maximised
- * window leaves half the screen empty beside it and reads as a layout that has
- * failed rather than one that has chosen a measure. The wallet centres every
- * one of its cards for the same reason.
+ * They were held to a 64ch column. Centring that column fixed the worse
+ * version of the same mistake — a column pinned to the left of a maximised
+ * window with half the screen empty beside it — but it still left an empty
+ * gutter on both sides and the bottom right of the panel black. What the cards
+ * hold is a transfer form, a disclosure list and a review of the last
+ * transfer. None of it is prose, so none of it needs a measure.
  */
 /* The column both this and the page's header keep to. */
 .bridge-page {
-  --lc-page-column: 64ch;
+  --lc-page-column: 100%;
 }
 
 .bridge-page .console-body {
-  grid-template-columns: minmax(0, var(--lc-page-column));
-  justify-content: center;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   overflow-y: auto;
 }
