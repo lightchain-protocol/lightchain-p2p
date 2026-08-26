@@ -28,6 +28,7 @@ import { createRegistry } from './services/registry.mjs'
 import { createAttachments } from './services/attachments.mjs'
 import { createWalletBinding } from './services/wallet-binding.mjs'
 import { createWorkerConfig } from './services/worker-config.mjs'
+import { createHolding } from './services/holding.mjs'
 import { createContext } from './context.mjs'
 import { createDispatch } from './dispatch.mjs'
 
@@ -125,7 +126,13 @@ const config = {
   upgrade: argv(2),
   name: argv(3),
   dir: argv(4) || persistent(),
-  app: argv(5)
+  app: argv(5),
+  // `--no-room-gate` on the command line. The harnesses drive scratch wallets
+  // that hold nothing, and every suite that makes a room would otherwise be
+  // asserting against the gate rather than against the thing it tests. Absent,
+  // this reads undefined and the gate is on, so a build nobody passed a flag to
+  // is a build that enforces.
+  roomGate: argv(6) !== 'false'
 }
 
 const pipe = new FramedStream(Bare.IPC)
@@ -258,6 +265,18 @@ guard.watchIdle()
 // all three learn about an endpoint being down from the same place.
 const poolFor = chainPools(settings.values)
 
+// The condition on making a room. Reads the Lightchain balance through the
+// chain client rather than through `poolFor`, which is keyed by the chains in
+// `@lcai-p2p/chain` and does not know testnet or devnet — the profile's own
+// endpoint does, and a gate that threw on two of the three networks would be a
+// gate that failed closed for the reason it must never fail closed for.
+const holding = createHolding({
+  rpc: chain.rpc,
+  wallet,
+  network: settings.network,
+  enforced: config.roomGate
+})
+
 // --- The seam between the two ---------------------------------------------------
 
 /**
@@ -273,6 +292,7 @@ const ctx = createContext({
   chatDir,
   chatStore,
   guard,
+  holding,
   hosting,
   inference,
   poolFor,

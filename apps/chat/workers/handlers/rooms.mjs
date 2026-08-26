@@ -85,7 +85,7 @@ function messageId(value, action) {
 }
 
 export function roomHandlers(ctx) {
-  const { attachmentsFor, forgetAttachments, rooms, swarm } = ctx
+  const { attachmentsFor, forgetAttachments, holding, rooms, swarm } = ctx
 
   return {
     // The window can be reloaded while the worker keeps running, and `ready` is
@@ -93,7 +93,21 @@ export function roomHandlers(ctx) {
     // an empty room list over a worker that is still in every room.
     'room.list': () => rooms.states(),
 
-    'room.create': () => rooms.create(),
+    /**
+     * What the window asks before offering to make a room.
+     *
+     * Read-only, and answered whether or not the gate would allow it, because
+     * the interesting cases are the ones it refuses — a dialog saying how much
+     * is held against how much is needed cannot be built out of an exception.
+     */
+    'room.holding': () => holding.check(),
+
+    // Asked again here rather than trusted from the window. The check the
+    // window did is for the person's benefit; this one is the condition.
+    'room.create': async () => {
+      await holding.require()
+      return rooms.create()
+    },
 
     /**
      * Opens a room from its two keys, without anybody being online to invite.

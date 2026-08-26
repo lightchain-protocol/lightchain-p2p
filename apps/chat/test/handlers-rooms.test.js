@@ -50,6 +50,12 @@ function ctxWith({ rooms: roomOver = {}, store = null, attachmentsFor = null } =
     rooms,
     attachmentsFor: attachmentsFor ?? vi.fn(async () => store),
     forgetAttachments: vi.fn(async () => {}),
+    // Open by default. What the gate itself decides is `holding.test.js`; here
+    // it only has to not stand in the way of the argument checks below.
+    holding: {
+      check: vi.fn(async () => ({ ok: true })),
+      require: vi.fn(async () => ({ ok: true }))
+    },
     swarm: { dht: { defaultKeyPair: { publicKey: DHT_KEY } } }
   }
 

@@ -6,8 +6,10 @@
  * module, below everything it calls.
  */
 
-import { copy, el, toast } from '../dom.js'
+import { copy, el, sentence, toast } from '../dom.js'
 import { bridge, request } from '../ipc.js'
+import { formatUnits } from '../amounts.js'
+import { openReceive } from '../assets.js'
 
 import { clearQr, drawQr } from '../qr.js'
 
@@ -56,7 +58,7 @@ document.getElementById('rename-form').addEventListener('submit', async (evt) =>
     adopt([await request('room.rename', { room: state.activeKey, name: renameInput.value })])
     renameDialog.close()
   } catch (err) {
-    renameError.textContent = err.message
+    renameError.textContent = sentence(err.message)
     renameError.hidden = false
   } finally {
     renameSubmit.disabled = false
@@ -136,9 +138,43 @@ document.getElementById('empty-create-btn')?.addEventListener('click', () => {
   el.createBtn.click()
 })
 
+/**
+ * The gate's answer, put on screen.
+ *
+ * A balance of null is a balance that could not be read, which never reaches
+ * here — the worker allows the room in that case rather than refusing over an
+ * outage — but the dash is kept so this cannot render "undefined LCAI" if that
+ * ever changes.
+ */
+const holdingDialog = document.getElementById('holding-dialog')
+
+function showHolding(verdict) {
+  const amount = (base) =>
+    base === null ? '—' : `${formatUnits(base, verdict.decimals)} ${verdict.symbol}`
+
+  document.getElementById('holding-minimum').textContent = amount(verdict.minimum)
+  document.getElementById('holding-balance').textContent = amount(verdict.balance)
+  holdingDialog.showModal()
+}
+
+document.getElementById('holding-receive')?.addEventListener('click', () => {
+  holdingDialog.close()
+  void openReceive()
+})
+
 el.createBtn.addEventListener('click', async () => {
   el.createBtn.disabled = true
   try {
+    // Asked before anything is attempted, so a refusal can be a dialog holding
+    // both figures rather than a line of toast that says "not enough" and
+    // vanishes. The worker asks the same question again before it makes
+    // anything: this call is for the person, not for the rule.
+    const verdict = await request('room.holding')
+    if (!verdict.ok) {
+      showHolding(verdict)
+      return
+    }
+
     const room = await request('room.create')
     rooms.set(room.key, room)
     select(room.key)
@@ -195,7 +231,7 @@ el.joinForm.addEventListener('submit', async (evt) => {
     select(room.key)
     toast('Joined')
   } catch (err) {
-    el.joinError.textContent = err.message
+    el.joinError.textContent = sentence(err.message)
     el.joinError.hidden = false
   } finally {
     el.joinSubmit.disabled = false
@@ -223,7 +259,7 @@ el.inviteBtn.addEventListener('click', async () => {
     await drawQr(link)
   } catch (err) {
     el.inviteValue.textContent = ''
-    el.inviteError.textContent = err.message
+    el.inviteError.textContent = sentence(err.message)
     el.inviteError.hidden = false
   }
 })
@@ -253,7 +289,7 @@ document.getElementById('grant-form').addEventListener('submit', async (evt) => 
     input.value = ''
     toast('They can write in this room now')
   } catch (err) {
-    error.textContent = err.message
+    error.textContent = sentence(err.message)
     error.hidden = false
   } finally {
     button.disabled = false

@@ -43,6 +43,12 @@ const cmd = command(
   sloppy({ flags: true }),
   flag('--storage <dir>', 'pass custom storage to pear-runtime'),
   flag('--no-updates', 'start without OTA updates'),
+  // For the harnesses, which drive scratch wallets holding nothing. Hidden
+  // because it is not an option a user has a reason to reach for — and because
+  // presenting it as one would imply the gate is a defence somebody might want
+  // to switch off, which it is not. It is a product condition, and the renderer
+  // it lives beside is editable text on disk.
+  flag('--no-room-gate', 'allow rooms from a wallet holding no LCAI').hide(),
   flag('--no-sandbox', 'start without Chromium sandbox').hide()
 )
 
@@ -50,6 +56,7 @@ cmd.parse(app.isPackaged ? process.argv.slice(1) : process.argv.slice(2))
 
 const pearStore = cmd.flags.storage
 const updates = cmd.flags.updates
+const roomGate = cmd.flags.roomGate
 
 if (pearStore) app.setPath('userData', pearStore)
 
@@ -267,7 +274,8 @@ function getWorker(specifier) {
     upgrade,
     productName + extension,
     dir,
-    appPath
+    appPath,
+    roomGate
   ])
   const pipe = new FramedStream(worker)
 

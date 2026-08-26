@@ -35,7 +35,7 @@ Push-Location $chat
 try {
   $electron = & node -p "require('electron')"
   Start-Process $electron -WorkingDirectory $chat -ArgumentList @(
-    '.', '--no-updates', "--remote-debugging-port=$Port", '--storage', $dir
+    '.', '--no-updates', '--no-room-gate', "--remote-debugging-port=$Port", '--storage', $dir
   ) | Out-Null
 } finally {
   Pop-Location

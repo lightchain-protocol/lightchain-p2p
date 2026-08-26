@@ -305,8 +305,8 @@ where the interesting failures are, and they are invisible otherwise.
 ## Proving it end to end
 
 ```bash
-pnpm exec electron . --no-updates --remote-debugging-port=9301 --storage /tmp/chat-a
-pnpm exec electron . --no-updates --remote-debugging-port=9302 --storage /tmp/chat-b
+pnpm exec electron . --no-updates --no-room-gate --remote-debugging-port=9301 --storage /tmp/chat-a
+pnpm exec electron . --no-updates --no-room-gate --remote-debugging-port=9302 --storage /tmp/chat-b
 node scripts/drive-two-instances.mjs
 ```
 
@@ -314,6 +314,31 @@ Drives both windows through the DevTools protocol: create a room, join it, grant
 write access, talk both ways, and compare the rendered history. There are no test
 hooks in the application — it clicks the same buttons a person would — so a pass
 covers the renderer, the IPC seam, the worker and the DHT at once.
+
+### Making a room asks for LCAI
+
+Starting a conversation is gated on the wallet holding at least 1 LCAI; being
+invited to one is not, so a fresh install is never a dead end. The condition
+lives in `workers/services/holding.mjs` and is applied in `room.create`.
+
+It is a product condition, not a security boundary, and nothing in the interface
+claims otherwise. The renderer is unbundled ES modules in the application
+directory and the transport underneath is Hyperswarm, which has never heard of a
+token — anybody determined to make a room without holding one will.
+
+A balance that could not be read allows the room. Failing closed would let an
+unreachable endpoint, which looks exactly like an empty wallet from here, stop a
+peer-to-peer application from working.
+
+`--no-room-gate` turns it off. Every harness above uses it, because they drive
+scratch wallets holding nothing and would otherwise all be asserting against the
+gate instead of against what they test. The gate itself therefore needs an
+instance started _without_ the flag:
+
+```bash
+pnpm exec electron . --no-updates --remote-debugging-port=9401 --storage /tmp/chat-gate
+node scripts/room-gate-check.mjs 9401
+```
 
 It is deliberately outside `pnpm test`, which needs neither a window nor the
 public network. Run it after changing anything on the renderer-to-worker path;

@@ -228,7 +228,7 @@ jobs:
           # read must be the one the window wrote.
           xvfb-run --auto-servernum bash -e -c '
             rm -rf /tmp/ci-chat
-            pnpm exec electron . --no-updates --remote-debugging-port=9222 --storage /tmp/ci-chat &
+            pnpm exec electron . --no-updates --no-room-gate --remote-debugging-port=9222 --storage /tmp/ci-chat &
             APP_PID=$!
             trap "kill $APP_PID 2>/dev/null || true" EXIT
 
@@ -247,6 +247,29 @@ jobs:
             node scripts/review.mjs 9222 /tmp/ci-shots
           '
 
+      # The one suite that needs the gate ON. Everything above runs with
+      # `--no-room-gate`, because those wallets hold nothing and would otherwise
+      # be asserting against the gate rather than against what they test — which
+      # means the gate itself is only covered by giving it its own instance,
+      # started without the flag. It reads a balance from a live chain, so it
+      # takes the same non-blocking bargain as the surveys below.
+      - name: Making a room asks for LCAI
+        continue-on-error: true
+        working-directory: apps/chat
+        run: |
+          xvfb-run --auto-servernum bash -e -c '
+            rm -rf /tmp/ci-gate
+            pnpm exec electron . --no-updates --remote-debugging-port=9224 --storage /tmp/ci-gate &
+            APP_PID=$!
+            trap "kill $APP_PID 2>/dev/null || true" EXIT
+            for i in $(seq 1 40); do
+              if curl -sf http://127.0.0.1:9224/json/list > /dev/null; then break; fi
+              sleep 3
+            done
+            curl -sf http://127.0.0.1:9224/json/list > /dev/null || { echo "the window never came up"; exit 1; }
+            node scripts/room-gate-check.mjs 9224
+          '
+
       # `surfaces-check` asks whether what is on screen agrees with what the
       # worker says. It stays out of the blocking list above because it reads
       # balances and model fees from a live chain — but leaving it unrun is how
@@ -259,7 +282,7 @@ jobs:
         run: |
           xvfb-run --auto-servernum bash -e -c '
             rm -rf /tmp/ci-surfaces
-            pnpm exec electron . --no-updates --remote-debugging-port=9223 --storage /tmp/ci-surfaces &
+            pnpm exec electron . --no-updates --no-room-gate --remote-debugging-port=9223 --storage /tmp/ci-surfaces &
             APP_PID=$!
             trap "kill $APP_PID 2>/dev/null || true" EXIT
             for i in $(seq 1 40); do

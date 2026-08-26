@@ -3218,6 +3218,47 @@
          reintroduce a `bridge-` id, or the page and this dialog's ghost would
          answer to the same name. -->
 
+    <!-- The condition on making a room ---------------------------------------
+         Shown when the wallet holds less than the minimum. The worker asks the
+         same question again before it makes anything — see
+         workers/services/holding.mjs — so this dialog is the explanation, not
+         the check.
+
+         The wording says what is needed and what is held and stops there. It is
+         a condition this application puts on its own New conversation button,
+         not a claim about what the network will accept: the transport
+         underneath is Hyperswarm and it has never heard of a token. Copy that
+         implied otherwise would be a promise nothing here can keep. -->
+    <dialog aria-labelledby="holding-title" class="dialog" id="holding-dialog">
+      <div class="dialog-form">
+        <h2 id="holding-title" class="dialog-title">Making a room needs LCAI</h2>
+
+        <p class="dialog-body">
+          Starting a conversation is for people holding the token. Being invited to one is not —
+          an invite works with an empty wallet, so somebody can bring you in whatever you hold.
+        </p>
+
+        <dl class="facts">
+          <dt>Needed</dt>
+          <dd id="holding-minimum"></dd>
+          <dt>This wallet holds</dt>
+          <dd id="holding-balance"></dd>
+        </dl>
+
+        <p class="dialog-note">
+          Receive shows the address to send to, and the network it has to arrive on. The balance is
+          read again every time, so there is nothing to restart once it lands.
+        </p>
+
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close="holding-dialog">Close</button>
+          <button class="button button-primary" type="button" id="holding-receive">
+            Show my address
+          </button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog aria-labelledby="join-title" class="dialog" id="join-dialog">
       <form method="dialog" class="dialog-form" id="join-form">
         <h2 id="join-title" class="dialog-title">Join a room</h2>
