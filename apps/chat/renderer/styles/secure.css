@@ -63,18 +63,45 @@
   display: flex;
   flex-direction: column;
   gap: var(--lc-space-md);
+  padding-top: var(--lc-space-xl);
+  /* A rule between passages instead of a box around each. It is the cheapest
+     separator there is and the only one that does not add a container. */
+  border-top: 1px solid var(--lc-rule);
 }
 
-.secure-layer-head {
-  display: flex;
-  align-items: center;
-  gap: var(--lc-space-sm);
+.secure-layer p {
+  margin: 0;
+  color: var(--lc-text-secondary);
+  line-height: var(--lc-leading-relaxed);
+  text-wrap: pretty;
 }
 
-.secure-layer-head .icon {
-  color: var(--lc-accent);
+/**
+ * The algorithm, beside the heading rather than badged on the right of a card.
+ *
+ * Set as a fact, not a label: lighter than the title it follows and in the mono
+ * face the rest of the app uses for keys and amounts, so it reads as the name of
+ * a thing rather than as a category somebody filed the section under.
+ */
+.secure-algo {
+  margin-left: var(--lc-space-sm);
+  color: var(--lc-text-tertiary);
+  font-family: var(--lc-mono);
+  font-size: var(--lc-type-caption);
+  font-weight: var(--lc-weight-regular);
+  white-space: nowrap;
 }
 
+/**
+ * A layer is a passage, not a card.
+ *
+ * This was `.kit-card` with a header of icon + title + algorithm chip, a
+ * label-column `<dl>`, a boxed caveat and a row of chip-shaped links — five
+ * times over, identically. Four levels of container and a caps micro-label used
+ * as a layout device is the shape of generated documentation, not of something
+ * written. What is left is a heading, the algorithm named beside it, prose, and
+ * the specifications as links.
+ */
 .secure-layer-title {
   margin: 0;
   font-size: var(--lc-type-title-3);
@@ -82,58 +109,16 @@
   line-height: var(--lc-leading-tight);
 }
 
-/* The primitive, right of the title. It is the fact somebody scanning the page
-   for "what is this actually" is looking for, and it belongs beside the name of
-   the layer rather than three lines into the paragraph. */
-.secure-layer-head .chip {
-  margin-left: auto;
-}
-
-/* The same two questions, in the same order, for every layer, aligned down one
-   column so the four cards can be read against each other. Both labels are one
-   word: at two they wrap, and a label wrapping under itself reads as a second
-   entry rather than as a heading. */
-.secure-terms {
-  display: grid;
-  grid-template-columns: minmax(0, 11ch) minmax(0, 1fr);
-  gap: var(--lc-space-md) var(--lc-space-lg);
-  /* The label sits on the first line of its answer rather than in the middle of
-     a four-line paragraph. Baseline rather than a nudge in pixels, because the
-     two are set at different sizes and any fixed offset is wrong at one of
-     them. */
-  align-items: baseline;
-  margin: 0;
-}
-
-.secure-terms dt {
-  color: var(--lc-text-tertiary);
-  font-size: var(--lc-type-caption);
-  font-weight: var(--lc-weight-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.secure-terms dd {
-  margin: 0;
-  min-width: 0;
-  line-height: var(--lc-leading-normal);
-  text-wrap: pretty;
-}
-
-.secure-terms code {
-  font-family: var(--lc-mono);
-  overflow-wrap: anywhere;
-}
-
 /* What the layer does not do, given a rule of its own so it cannot be read as
    part of the claim above it. Never colour alone: every one of these opens with
    the words that say what the limit is. */
+/* What the layer does not do. Marked by a rule down its edge rather than boxed:
+   it is an aside to the passage above it, not a separate object. Never colour
+   alone — every one of these opens with the words that say what the limit is. */
 .secure-caveat {
   margin: 0;
-  padding: var(--lc-space-sm) var(--lc-space-md);
-  border: 1px solid color-mix(in srgb, var(--lc-warning) 30%, var(--lc-rule));
-  border-radius: var(--lc-radius-md);
-  background: color-mix(in srgb, var(--lc-warning) 8%, transparent);
+  padding-left: var(--lc-space-md);
+  border-left: 2px solid color-mix(in srgb, var(--lc-warning) 55%, transparent);
   color: var(--lc-text-secondary);
   font-size: var(--lc-type-caption);
   line-height: var(--lc-leading-normal);
@@ -144,9 +129,7 @@
    what this machine actually checked, so it is drawn as a measurement. */
 .secure-live {
   margin: 0;
-  padding: var(--lc-space-sm) var(--lc-space-md);
-  border-radius: var(--lc-radius-md);
-  background: var(--lc-surface-3);
+  color: var(--lc-text-tertiary);
   font-size: var(--lc-type-caption);
   text-wrap: pretty;
 }
@@ -157,21 +140,14 @@
 
 /* --- Where to read more --------------------------------------------------- */
 
+/* A row of links, spaced like words. The rule that used to sit above them moved
+   to the top of each layer, where it separates passages instead of decorating
+   one. */
 .secure-refs {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--lc-space-sm);
-  padding-top: var(--lc-space-sm);
-  border-top: 1px solid color-mix(in srgb, var(--lc-rule) 55%, transparent);
-}
-
-.secure-refs-label {
-  color: var(--lc-text-tertiary);
-  font-size: var(--lc-type-caption);
-  font-weight: var(--lc-weight-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  gap: var(--lc-space-md);
 }
 
 /**
@@ -187,23 +163,23 @@
   display: inline-flex;
   align-items: center;
   gap: var(--lc-space-xs);
-  height: var(--lc-control-xs);
-  padding: 0 var(--lc-space-sm);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-pill);
+  /* The floor a pointer target needs, without a box to sit in. */
+  min-height: var(--lc-control-target);
+  padding: 0;
+  border: 0;
   background: none;
   color: var(--lc-accent);
   font: inherit;
   font-size: var(--lc-type-caption);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--lc-accent) 40%, transparent);
+  text-underline-offset: 0.2em;
   cursor: pointer;
-  transition:
-    border-color var(--lc-motion-fast) var(--lc-easing),
-    background var(--lc-motion-fast) var(--lc-easing);
+  transition: text-decoration-color var(--lc-motion-fast) var(--lc-easing);
 }
 
 .secure-ref:hover {
-  border-color: var(--lc-accent);
-  background: var(--lc-accent-soft);
+  text-decoration-color: var(--lc-accent);
 }
 
 /* Matching `.chip .icon` in the kit, so the pill beside a title and the pill
@@ -221,17 +197,6 @@
    the least important. */
 .secure-exposed {
   border-color: color-mix(in srgb, var(--lc-warning) 40%, var(--lc-rule));
-}
-
-.secure-exposed .secure-layer-head .icon {
-  color: var(--lc-warning);
-}
-
-.secure-exposed-lede {
-  margin: 0;
-  color: var(--lc-text-secondary);
-  font-size: var(--lc-type-caption);
-  text-wrap: pretty;
 }
 
 .secure-exposures {
@@ -270,26 +235,8 @@
 
 /* Below this the label column costs more than it earns: two words of heading
    over a wrapped sentence, against a sentence that has nowhere left to wrap. */
-@media (max-width: 640px) {
-  .secure-terms {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--lc-space-xs);
-  }
-
-  /* Stacked, one gap would space a label from its own answer exactly as far as
-     from the answer above, and the pairs stop reading as pairs. */
-  .secure-terms dt:not(:first-of-type) {
-    margin-top: var(--lc-space-md);
-  }
-
-  .secure-layer-head {
-    flex-wrap: wrap;
-  }
-
-  .secure-layer-head .chip {
-    margin-left: 0;
-  }
-}
+/* Nothing here needs a narrow-width rule any more. The label column and the
+   header row were what broke at 640px; prose reflows on its own. */
 
 /* ---------------------------------------------------------------------------
    The shared dialogs' own pieces (dialogs.html)

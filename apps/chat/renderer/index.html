@@ -3628,230 +3628,151 @@
           word of it.
         </p>
 
-        <section class="kit-card secure-layer">
-          <header class="secure-layer-head">
-            <svg class="icon" aria-hidden="true"><use href="#i-storage" /></svg>
-            <h3 class="secure-layer-title">Where it sits on this disk</h3>
-            <span class="chip">XSalsa20</span>
-          </header>
-          <dl class="secure-terms">
-            <dt>Protects</dt>
-            <dd>
-              Everything ever said in this room, in the folder on this machine. Copying that folder
-              — or being the blind peer that holds it — gets you ciphertext.
-            </dd>
-            <dt>Mechanism</dt>
-            <dd>
-              Hypercore's default block encryption. Every block goes through libsodium's
-              <code>crypto_stream_xor</code>, which is XSalsa20, under a block key that BLAKE2b
-              derives from this room's encryption key and the core's public key. The eight bytes of
-              padding in front of each block are blinded under a second key derived from the first.
-            </dd>
-          </dl>
+        <section class="secure-layer">
+          <h3 class="secure-layer-title">Where it sits on this disk <span class="secure-algo">XSalsa20</span></h3>
+
+          <p>
+            Everything ever said in this room, in the folder on this machine. Copying that folder —
+            or being the blind peer that holds it — gets you ciphertext.
+          </p>
+
+          <p>
+            Hypercore's default block encryption. Every block goes through libsodium's
+            crypto_stream_xor, which is XSalsa20, under a block key that BLAKE2b derives from this
+            room's encryption key and the core's public key. The eight bytes of padding in front of
+            each block are blinded under a second key derived from the first.
+          </p>
+
           <p class="secure-caveat">
             No authentication tag. A stream cipher conceals a block; it cannot tell you a byte
             changed. Detection belongs to the layer above it — a BLAKE2b Merkle tree over the log,
             with an Ed25519 signature over the root.
           </p>
-          <div class="secure-refs">
-            <span class="secure-refs-label">Specifications</span>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://doc.libsodium.org/advanced/stream_ciphers/xsalsa20"
-            >
-              libsodium — XSalsa20
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+
+          <p class="secure-refs">
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://doc.libsodium.org/advanced/stream_ciphers/xsalsa20">
+              libsodium — XSalsa20<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://www.blake2.net/"
-            >
-              BLAKE2
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://www.blake2.net/">
+              BLAKE2<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://ed25519.cr.yp.to/"
-            >
-              Ed25519
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://ed25519.cr.yp.to/">
+              Ed25519<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-          </div>
+          </p>
         </section>
 
-        <section class="kit-card secure-layer">
-          <header class="secure-layer-head">
-            <svg class="icon" aria-hidden="true"><use href="#i-routing" /></svg>
-            <h3 class="secure-layer-title">On the way to another peer</h3>
-            <span class="chip">Noise XX</span>
-          </header>
-          <dl class="secure-terms">
-            <dt>Protects</dt>
-            <dd>
-              Every byte that leaves this machine, including the replication traffic carrying the
-              room. A relay, a node on the DHT, or anything sitting between two peers, sees
-              ciphertext.
-            </dd>
-            <dt>Mechanism</dt>
-            <dd>
-              <code>@hyperswarm/secret-stream</code>. A connection opens with a Noise XX handshake
-              — ChaCha20-Poly1305 for the handshake messages, BLAKE2b for the hashing, Ed25519
-              static keys through <code>noise-curve-ed</code>. The session that follows runs on
-              XChaCha20-Poly1305 through libsodium's secretstream. It is a separate layer from the
-              one above: the room's own encryption is still underneath it.
-            </dd>
-          </dl>
+        <section class="secure-layer">
+          <h3 class="secure-layer-title">On the way to another peer <span class="secure-algo">Noise XX</span></h3>
+
+          <p>
+            Every byte that leaves this machine, including the replication traffic carrying the
+            room. A relay, a node on the DHT, or anything sitting between two peers, sees
+            ciphertext.
+          </p>
+
+          <p>
+            @hyperswarm/secret-stream. A connection opens with a Noise XX handshake —
+            ChaCha20-Poly1305 for the handshake messages, BLAKE2b for the hashing, Ed25519 static
+            keys through noise-curve-ed. The session that follows runs on XChaCha20-Poly1305 through
+            libsodium's secretstream. It is a separate layer from the one above: the room's own
+            encryption is still underneath it.
+          </p>
+
           <p class="secure-caveat">
             A handshake proves the far end holds a particular key. It does not say who is holding
             it. Which people belong in a room is settled by the invite that let them in, not by the
             transport.
           </p>
-          <div class="secure-refs">
-            <span class="secure-refs-label">Specifications</span>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://noiseprotocol.org/noise.html"
-            >
-              The Noise Protocol Framework
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+
+          <p class="secure-refs">
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://noiseprotocol.org/noise.html">
+              The Noise Protocol Framework<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://doc.libsodium.org/secret-key_cryptography/secretstream"
-            >
-              libsodium — secretstream
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://doc.libsodium.org/secret-key_cryptography/secretstream">
+              libsodium — secretstream<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://www.rfc-editor.org/rfc/rfc8439"
-            >
-              RFC 8439 — ChaCha20-Poly1305
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://www.rfc-editor.org/rfc/rfc8439">
+              RFC 8439 — ChaCha20-Poly1305<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-          </div>
+          </p>
         </section>
 
-        <section class="kit-card secure-layer">
-          <header class="secure-layer-head">
-            <svg class="icon" aria-hidden="true"><use href="#i-wallet" /></svg>
-            <h3 class="secure-layer-title">The wallet on this machine</h3>
-            <span class="chip">scrypt + AES-256-GCM</span>
-          </header>
-          <dl class="secure-terms">
-            <dt>Protects</dt>
-            <dd>
-              The recovery phrase this machine signs with — not the room. A stolen vault file is an
-              offline guessing problem, not a readable conversation.
-            </dd>
-            <dt>Mechanism</dt>
-            <dd>
-              scrypt stretches the password into a 32-byte key at N = 262,144, r = 8, p = 1, and
-              AES-256-GCM encrypts the phrase under it. Those parameters are written into the vault
-              rather than assumed, so they can be raised later without orphaning wallets that
-              already exist.
-            </dd>
-          </dl>
+        <section class="secure-layer">
+          <h3 class="secure-layer-title">The wallet on this machine <span class="secure-algo">scrypt + AES-256-GCM</span></h3>
+
+          <p>
+            The recovery phrase this machine signs with — not the room. A stolen vault file is an
+            offline guessing problem, not a readable conversation.
+          </p>
+
+          <p>
+            scrypt stretches the password into a 32-byte key at N = 262,144, r = 8, p = 1, and
+            AES-256-GCM encrypts the phrase under it. Those parameters are written into the vault
+            rather than assumed, so they can be raised later without orphaning wallets that already
+            exist.
+          </p>
+
           <p class="secure-caveat">
             The password is the weak part, not the cipher. Nobody is going to break AES-256-GCM;
-            somebody holding the file will guess passwords offline, and all scrypt does is make
-            each guess cost memory.
+            somebody holding the file will guess passwords offline, and all scrypt does is make each
+            guess cost memory.
           </p>
-          <div class="secure-refs">
-            <span class="secure-refs-label">Specifications</span>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://www.rfc-editor.org/rfc/rfc7914"
-            >
-              RFC 7914 — scrypt
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+
+          <p class="secure-refs">
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://www.rfc-editor.org/rfc/rfc7914">
+              RFC 7914 — scrypt<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf"
-            >
-              NIST SP 800-38D — GCM
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf">
+              NIST SP 800-38D — GCM<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-          </div>
+          </p>
         </section>
 
-        <section class="kit-card secure-layer">
-          <header class="secure-layer-head">
-            <svg class="icon" aria-hidden="true"><use href="#i-shield" /></svg>
-            <h3 class="secure-layer-title">Who wrote what</h3>
-            <span class="chip">EIP-191</span>
-          </header>
-          <dl class="secure-terms">
-            <dt>Protects</dt>
-            <dd>
-              The name on a message. Encryption keeps strangers out of the room; it says nothing
-              about which member wrote a given line inside it.
-            </dd>
-            <dt>Mechanism</dt>
-            <dd>
-              An EIP-191 signature from the author's wallet, over a preimage naming this room's
-              key, the message id, the writer, the clock and a hash of the whole entry. This
-              machine recovers an address from that signature and compares it with the one the
-              message claims. Naming the room key is what stops a signature being lifted out of
-              this conversation and replayed into another.
-            </dd>
-          </dl>
+        <section class="secure-layer">
+          <h3 class="secure-layer-title">Who wrote what <span class="secure-algo">EIP-191</span></h3>
+
+          <p>
+            The name on a message. Encryption keeps strangers out of the room; it says nothing about
+            which member wrote a given line inside it.
+          </p>
+
+          <p>
+            An EIP-191 signature from the author's wallet, over a preimage naming this room's key,
+            the message id, the writer, the clock and a hash of the whole entry. This machine
+            recovers an address from that signature and compares it with the one the message claims.
+            Naming the room key is what stops a signature being lifted out of this conversation and
+            replayed into another.
+          </p>
+
+          <!-- Filled live from this room: how many signatures this machine has
+               actually checked. `rooms/controls.js` writes it by id. -->
           <p class="secure-live" id="secure-signatures"></p>
+
           <p class="secure-caveat">
             A message with no signature is not a forgery. It predates signing, or came from a peer
             with no wallet, so it is shown unattributed rather than thrown away.
           </p>
-          <div class="secure-refs">
-            <span class="secure-refs-label">Specifications</span>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://eips.ethereum.org/EIPS/eip-191"
-            >
-              EIP-191 — signed data standard
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+
+          <p class="secure-refs">
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://eips.ethereum.org/EIPS/eip-191">
+              EIP-191 — signed data standard<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-          </div>
+          </p>
         </section>
 
-        <!--
-          Last, and at the same weight as the four above it. A protection page
-          listing only what is covered tells you nothing about the decision you
-          are actually making.
-        -->
-        <section class="kit-card secure-layer secure-exposed">
-          <header class="secure-layer-head">
-            <svg class="icon" aria-hidden="true"><use href="#i-eye" /></svg>
-            <h3 class="secure-layer-title">What none of this hides</h3>
-          </header>
-          <p class="secure-exposed-lede">
-            Encryption protects what was said. It does not protect the shape of the conversation
-            around it, and the four things below are visible without decrypting anything.
-          </p>
+        <section class="secure-layer secure-exposed">
+          <h3 class="secure-layer-title">What none of this hides</h3>
+
+          <p>Encryption protects what was said. It does not protect the shape of the conversation
+          around it, and the four things below are visible without decrypting anything.</p>
+
           <ul class="secure-exposures">
             <li>
-              <strong>That this room exists.</strong> Peers find each other by announcing the
-              room's discovery key — a BLAKE2b hash of the room key — on a public DHT. The hash
-              does not give up the key, but anyone watching that topic learns a room is there and
-              that somebody is looking for it.
+              <strong>That this room exists.</strong> Peers find each other by announcing the room's
+              discovery key — a BLAKE2b hash of the room key — on a public DHT. The hash does not
+              give up the key, but anyone watching that topic learns a room is there and that
+              somebody is looking for it.
             </li>
             <li>
               <strong>Who is connected to it.</strong> Connections are direct wherever they can be,
