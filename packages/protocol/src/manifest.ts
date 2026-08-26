@@ -167,7 +167,5 @@ export function encodeManifest(manifest: ModelManifest): string {
     publishedAt: manifest.publishedAt,
     files: manifest.files.map((f) => ({ path: f.path, bytes: f.bytes, role: f.role }))
   }
-  return (
-    JSON.stringify(ordered, (_key, value) => (value === undefined ? undefined : value), 2) + '\n'
-  )
+  return JSON.stringify(ordered, (_key: string, value: unknown) => value, 2) + '\n'
 }

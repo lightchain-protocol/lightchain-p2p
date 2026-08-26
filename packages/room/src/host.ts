@@ -76,12 +76,19 @@ export interface RoomAvailability {
   registerAutobase(base: unknown, opts?: { announce?: boolean }): Promise<void>
 }
 
-/** What a host needs to check an author claim, if it is to check them at all. */
+/**
+ * What a host needs to check an author claim, if it is to check them at all.
+ *
+ * Declared as function-typed properties rather than as methods, because that is
+ * how they are used: `verifyAuthor` is handed `recover` and `hashText` on their
+ * own, detached from whatever object supplied them. A method declaration would
+ * say they may rely on a `this` that is not going to be there.
+ */
 export interface AuthorChecks {
-  recover(preimage: string, signature: string): string
-  hashText(text: string): string
+  recover: (preimage: string, signature: string) => string
+  hashText: (text: string) => string
   /** Checks a relayed model answer. Omit and answers are shown unproven. */
-  answer?(answer: ModelAnswer, text: string): boolean
+  answer?: (answer: ModelAnswer, text: string) => boolean
 }
 
 /** Everything a view needs to render one room. */
@@ -821,7 +828,7 @@ export class RoomHost {
       // From the same messages already in hand, rather than a second read.
       name: resolved.name,
       messages: attributed,
-      conversation: resolved.messages as readonly ResolvedAttributedMessage[],
+      conversation: resolved.messages,
       // A plain object because this crosses into the view as JSON, and a Map
       // arrives there as `{}`.
       names: Object.fromEntries(resolved.names),

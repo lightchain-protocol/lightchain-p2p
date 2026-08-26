@@ -486,7 +486,7 @@ export class Conversation {
       signature?: string
     }
     try {
-      message = JSON.parse(frame)
+      message = JSON.parse(frame) as typeof message
     } catch {
       return
     }

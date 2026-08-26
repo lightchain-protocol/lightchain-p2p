@@ -41,8 +41,12 @@ beforeAll(async () => {
     let body = ''
     req.on('data', (chunk) => (body += chunk))
     req.on('end', () => {
-      const { id, method, params } = JSON.parse(body)
-      seen.push({ method, params })
+      const { id, method, params } = JSON.parse(body) as {
+        id: number
+        method: string
+        params?: unknown[]
+      }
+      seen.push({ method, params: params ?? [] })
       let result: unknown
       try {
         result = handler(method, params ?? [])

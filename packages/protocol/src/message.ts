@@ -544,7 +544,7 @@ export function parseEntry(value: unknown): RoomEntry {
   const attributed =
     author === undefined && sig === undefined
       ? withReply
-      : { ...withReply, author: author as string | undefined, sig: sig as string | undefined }
+      : { ...withReply, author: author, sig: sig }
 
   const withAnswer = answer === undefined ? attributed : { ...attributed, answer }
   const withEvent = event === undefined ? withAnswer : { ...withAnswer, event }
@@ -744,8 +744,7 @@ function parseAnswer(value: unknown): ModelAnswer | undefined {
   if (value === undefined) return undefined
   if (!isRecord(value)) throw new MessageError('message answer must be an object')
 
-  const { model, jobId, sessionId, worker, ciphertext, sessionKey, signature, frames } =
-    value as Record<string, unknown>
+  const { model, jobId, sessionId, worker, ciphertext, sessionKey, signature, frames } = value
 
   // Checked before anything else, because a shape from the future must not be
   // measured against this build's fields. An answer carrying none of the forms

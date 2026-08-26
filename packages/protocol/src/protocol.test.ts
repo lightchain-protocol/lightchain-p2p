@@ -50,6 +50,17 @@ describe('model references', () => {
 })
 
 describe('manifest', () => {
+  /**
+   * A manifest reparsed as a bag of fields.
+   *
+   * These tests exist to bend one field into something the type forbids — an
+   * unknown key, a relative path, a fractional byte count — so the value they
+   * work on cannot be a `ModelManifest`. Typed as a bag rather than left as the
+   * `any` that `JSON.parse` returns, which makes every read off it unchecked.
+   */
+  type LooseManifest = Record<string, unknown> & { files: Record<string, unknown>[] }
+  const reparse = (m: ModelManifest) => JSON.parse(encodeManifest(m)) as LooseManifest
+
   const valid: ModelManifest = {
     manifestVersion: MANIFEST_VERSION,
     name: 'test-model',
@@ -74,9 +85,9 @@ describe('manifest', () => {
   it('ignores unknown fields so a new publisher does not break an old reader', () => {
     // This is the forward-compatibility guarantee. If this test starts failing,
     // every already-shipped client breaks the next time a field is added.
-    const withFuture = JSON.parse(encodeManifest(valid))
+    const withFuture = reparse(valid)
     withFuture.somethingAddedIn2027 = { nested: true }
-    withFuture.files[0].futureRoleHint = 'adapter'
+    withFuture.files[0]!.futureRoleHint = 'adapter'
 
     const parsed = parseManifest(JSON.stringify(withFuture))
     expect(parsed.name).toBe('test-model')
@@ -89,26 +100,26 @@ describe('manifest', () => {
   })
 
   it('refuses a manifest from the future', () => {
-    const ahead = { ...JSON.parse(encodeManifest(valid)), manifestVersion: MANIFEST_VERSION + 1 }
+    const ahead = { ...reparse(valid), manifestVersion: MANIFEST_VERSION + 1 }
     expect(() => parseManifest(JSON.stringify(ahead))).toThrow(/newer than this build/)
   })
 
   it('requires paths to be absolute within the drive', () => {
-    const m = JSON.parse(encodeManifest(valid))
-    m.files[0].path = 'model.gguf'
+    const m = reparse(valid)
+    m.files[0]!.path = 'model.gguf'
     expect(() => parseManifest(JSON.stringify(m))).toThrow(/must be absolute/)
   })
 
   it('rejects duplicate paths', () => {
-    const m = JSON.parse(encodeManifest(valid))
-    m.files[1].path = m.files[0].path
+    const m = reparse(valid)
+    m.files[1]!.path = m.files[0]!.path
     expect(() => parseManifest(JSON.stringify(m))).toThrow(/duplicate file path/)
   })
 
   it('rejects negative or fractional byte counts', () => {
     for (const bytes of [-1, 1.5, Number.NaN]) {
-      const m = JSON.parse(encodeManifest(valid))
-      m.files[0].bytes = bytes
+      const m = reparse(valid)
+      m.files[0]!.bytes = bytes
       expect(() => parseManifest(JSON.stringify(m)), String(bytes)).toThrow(/non-negative integer/)
     }
   })
