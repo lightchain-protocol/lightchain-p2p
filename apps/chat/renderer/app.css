@@ -80,17 +80,26 @@ body::after {
   pointer-events: none;
 }
 
+/*
+ * The two corner lights, drawn from the accent rather than from the mark.
+ *
+ * They were the mark's own violet and magenta, which CONTRACT §1.3 reserves for
+ * the logo. At `blur(100px)` and a fifth of full opacity what reaches the eye is
+ * a temperature, not a hue, so this costs the duotone and nothing else. If the
+ * warm corner turns out to be worth keeping, the honest fix is to say so in the
+ * contract and let the wash name the mark — not to leave the rule broken.
+ */
 body::before {
   left: -250px;
   bottom: -180px;
-  background: var(--lc-brand-violet);
+  background: var(--lc-accent);
   opacity: 0.25;
 }
 
 body::after {
   right: -250px;
   top: -250px;
-  background: linear-gradient(45deg, var(--lc-brand-magenta), var(--lc-accent));
+  background: var(--lc-accent);
   opacity: 0.18;
 }
 
@@ -521,7 +530,7 @@ input[type='checkbox']:focus-visible,
    * what escapes is under the button where a glow belongs.
    */
   box-shadow:
-    0 12px 26px -18px color-mix(in srgb, var(--lc-brand-magenta) 40%, transparent),
+    0 12px 26px -18px color-mix(in srgb, var(--lc-accent) 40%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
@@ -542,7 +551,7 @@ input[type='checkbox']:focus-visible,
   filter: brightness(1.06);
   transform: translateY(-2px);
   box-shadow:
-    0 18px 30px -20px color-mix(in srgb, var(--lc-brand-magenta) 55%, transparent),
+    0 18px 30px -20px color-mix(in srgb, var(--lc-accent) 55%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 
@@ -661,10 +670,6 @@ input[type='checkbox']:checked::after {
 input[type='checkbox']:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-.input:focus {
-  border-color: var(--lc-brand-violet);
 }
 
 /* A textarea has to grow, so it gets the height as a floor and pays for its
@@ -1086,7 +1091,15 @@ select.input option {
  * rather than as an accent on anything. The tint and the amber icon already say
  * what it is.
  */
-.backup-banner {
+/**
+ * Two standing notices, one shape.
+ *
+ * They differ only in tone and in what they ask for, so the layout is written
+ * once. A second copy of these six properties is how the two end up a pixel
+ * apart when one of them is edited.
+ */
+.backup-banner,
+.beta-banner {
   display: flex;
   align-items: center;
   gap: var(--lc-space-md);
@@ -1097,11 +1110,21 @@ select.input option {
   flex: 0 0 auto;
 }
 
-.backup-banner .icon {
+/* Informational rather than a warning: this one is telling you where you are,
+   not that something needs doing. */
+.beta-banner {
+  background: color-mix(in srgb, var(--lc-accent) 8%, var(--lc-surface-2));
+  border-bottom: 1px solid color-mix(in srgb, var(--lc-accent) 25%, var(--lc-rule));
+  color: var(--lc-accent);
+}
+
+.backup-banner .icon,
+.beta-banner .icon {
   flex: 0 0 auto;
 }
 
-.backup-banner-text {
+.backup-banner-text,
+.beta-banner-text {
   flex: 1 1 auto;
   min-width: 0;
   font-size: var(--lc-type-caption);
@@ -1111,8 +1134,15 @@ select.input option {
 
 /* The snooze. Smaller and quieter than the action beside it, because the
    answer the banner wants is "Back it up", not "go away". */
-.backup-banner .backup-banner-dismiss {
+.backup-banner .backup-banner-dismiss,
+.beta-banner .beta-banner-dismiss {
   flex: 0 0 auto;
+}
+
+/* The version, in the dialog, where it is the thing somebody will be asked for. */
+.beta-version {
+  font-family: var(--lc-mono);
+  color: var(--lc-text-tertiary);
 }
 
 /* --- Dropdowns -------------------------------------------------------------- */

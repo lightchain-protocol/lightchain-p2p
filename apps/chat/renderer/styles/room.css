@@ -378,13 +378,13 @@
  * gradient runs the same way as the brand's own, and both stops are far below
  * the point where they would compete with the words on top.
  */
+/* Your own turns, tinted. This was a magenta-to-violet wash at 16 and 14
+   percent — the mark's two colours used as interface, which CONTRACT §1.3
+   reserves for the logo. `--lc-accent-soft` is the token that exists for
+   exactly this: a tint under the accent. */
 #panel-chat .message.is-own .message-bubble {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--lc-brand-magenta) 16%, transparent),
-    color-mix(in srgb, var(--lc-brand-violet) 14%, transparent)
-  );
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lc-brand-violet) 32%, transparent);
+  background: var(--lc-accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lc-accent) 32%, transparent);
 }
 
 /* The corner nearest its owner is squared off, which is what makes a bubble
