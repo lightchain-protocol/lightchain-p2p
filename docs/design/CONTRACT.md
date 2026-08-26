@@ -102,8 +102,13 @@ draws from it.
 - **Spacing:** `--lc-space-xs/sm/md/lg/xl/xxl` = 4 / 8 / 12 / 16 / 24 / 32.
 - **Radius:** `--lc-radius-sm/md/lg/pill` = 6 / 10 / 14 / 999, plus
   `--lc-radius-bubble` = 16, reserved for message bubbles.
-- **Control heights:** `--lc-control-sm/md/lg` = 32 / 40 / 44,
+- **Control heights:** `--lc-control-xs/sm/md/lg` = 32 / 38 / 44 / 50,
   `--lc-control-icon` = 18. Controls are sized by height, not padding.
+  (This line read `sm/md/lg = 32 / 40 / 44` long after `packages/ui` had moved
+  on. The source is `CONTROL` in `packages/ui/src/tokens.ts`.)
+- **Target-size floor:** `--lc-control-target` = 24 — WCAG 2.2 SC 2.5.8. Not for
+  buttons, which all clear it: for the handful of controls that are a line of
+  text rather than a box and take their height from the type scale.
 - **Focus:** `--lc-focus-ring` (the whole `outline` value — use this),
   `--lc-focus-width`, `--lc-focus-offset` for the cases that must compose it.
   Ring colour is the accent; `:focus-visible` only.
@@ -128,9 +133,13 @@ they predate the kit and are equally shared.
 ### Page archetypes
 
 - `.page` — a reading page: prose, centred, 74ch measure.
-- `.console` / `.console-body` / `.console-body-split` — a console page: fills
-  its width, its panes scroll (the page does not), optional two-column body that
-  collapses below 1100px.
+- `.console` / `.console-body` — a console page: fills its width, and its panes
+  scroll rather than the page. Below 1100px the page scrolls again.
+
+  There was a `.console-body-split` here, a two-column body collapsing to one.
+  No surface ever adopted it, so `check-css` was right to call it unworn: a
+  component nothing has used is an intention, not part of the kit. Reinstate it
+  the day a second surface wants two columns, not before.
 
 ### Page head
 
@@ -178,6 +187,12 @@ they predate the kit and are equally shared.
 - `.form` > `.field` (`.field-label` + `.input`) — one stack of labelled fields,
   max 44ch; the submit button is `.button` and does not stretch.
 
+### Utilities
+
+- `.visually-hidden` — text for a screen reader and not for the eye, by the
+  clip-rect technique so it stays in the accessibility tree. For naming
+  something the design has deliberately left unlabelled; not for hiding content.
+
 ### Focus
 
 - `[data-kit-focus]` — the attribute that opts any custom focusable element into
@@ -196,15 +211,21 @@ Navigation order is fixed (plan §1). The room list is the sidebar body;
    `Join with an invite` (`#join-btn`) pinned under the list header.
 3. **"Elsewhere" group, in this exact order:**
 
-   | Label   | `data-section` | Icon id     |
-   | ------- | -------------- | ----------- |
-   | Models  | `models`       | `#i-models` |
-   | Account | `wallet`       | `#i-wallet` |
-   | Bridge  | `bridge`       | `#i-bridge` |
-   | Earn    | `worker`       | `#i-worker` |
+   | Label          | `data-section` | Icon id     |
+   | -------------- | -------------- | ----------- |
+   | Models         | `models`       | `#i-models` |
+   | Account        | `wallet`       | `#i-wallet` |
+   | Bridge         | `bridge`       | `#i-bridge` |
+   | For Workers    | `worker`       | `#i-worker` |
+   | For Validators | `validator`    | `#i-shield` |
 
-   (A `chat` nav row exists in the current markup as a transition artefact; it
-   is not part of the target IA — no destination appears twice.)
+   The `chat` nav row is gone — no destination appears twice.
+
+   This table said four rows ending in **Earn** for some time after the app had
+   five ending in **For Validators**, and `surfaces-check` asserted the same
+   stale four. Both were corrected together. The two labels were reworded to say
+   who the row is for rather than what it earns, which is the distinction
+   somebody scanning the rail is actually making.
 
    The Bridge row arrived with the bridge's promotion to a page (`0aacdf8`):
    moving LCAI between chains is an irreversible, externally-relayed transfer
@@ -227,51 +248,55 @@ Every new element id, its owner, its purpose. `lib/dom.js` resolves 64 ids at
 import; an unregistered id is a silent `null` and a use-time crash. Add the row
 here **before** the markup that uses it; A2 wires `dom.js`/`main.js`.
 
-| Id                                                             | Owner | Purpose                                                                                                            | Added in  |
-| -------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------ | --------- |
-| `backup-banner-dismiss`                                        | A2    | Closes the backup banner without opening Settings.                                                                 | `6494f7c` |
-| `worker-step-host-title`                                       | W     | Step 1 heading ("Host ready"); the card's `aria-labelledby`.                                                       | `fa009aa` |
-| `worker-host-state`                                            | W     | Step 1 chip: failures/warnings/Ready.                                                                              | `fa009aa` |
-| `worker-host-alert`                                            | W     | Step 1's inline error slot.                                                                                        | `fa009aa` |
-| `worker-step-key-title`                                        | W     | Step 2 heading ("Worker key").                                                                                     | `fa009aa` |
-| `worker-key-state`                                             | W     | Step 2 chip: No key / Key ready.                                                                                   | `fa009aa` |
-| `worker-key-present`                                           | W     | Step 2 body when a key exists (address + copy).                                                                    | `fa009aa` |
-| `worker-key-absent`                                            | W     | Step 2 body when there is no key (both forms).                                                                     | `fa009aa` |
-| `worker-key-address`                                           | W     | The worker key's address, truncated; full value on `dataset.full`.                                                 | `fa009aa` |
-| `worker-key-copy`                                              | W     | Copies the worker key's address.                                                                                   | `fa009aa` |
-| `worker-import-form`                                           | W     | Import-an-existing-key form (submits `worker.importKey`).                                                          | `fa009aa` |
-| `worker-import-key`                                            | W     | Private-key input, cleared the moment it is read.                                                                  | `fa009aa` |
-| `worker-import-password`                                       | W     | Keystore password input for the import.                                                                            | `fa009aa` |
-| `worker-import-submit`                                         | W     | Import form's submit.                                                                                              | `fa009aa` |
-| `worker-create-form`                                           | W     | Create-a-new-key form (submits `worker.createKey`).                                                                | `fa009aa` |
-| `worker-create-password`                                       | W     | Keystore password input for the creation.                                                                          | `fa009aa` |
-| `worker-create-submit`                                         | W     | Create form's submit.                                                                                              | `fa009aa` |
-| `worker-created`                                               | W     | The once-only recovery-phrase backup block.                                                                        | `fa009aa` |
-| `worker-created-phrase`                                        | W     | Where the phrase is shown.                                                                                         | `fa009aa` |
-| `worker-created-copy`                                          | W     | Copies the phrase.                                                                                                 | `fa009aa` |
-| `worker-key-alert`                                             | W     | Step 2's inline error slot.                                                                                        | `fa009aa` |
-| `worker-step-stake-title`                                      | W     | Step 3 heading ("Stake").                                                                                          | `fa009aa` |
-| `worker-stake-state`                                           | W     | Step 3 chip: Funded / Short N LCAI / Unknown.                                                                      | `fa009aa` |
-| `worker-stake-body`                                            | W     | Step 3 body, rendered from the chain's figures.                                                                    | `fa009aa` |
-| `worker-step-register-title`                                   | W     | Step 4 heading ("Register").                                                                                       | `fa009aa` |
-| `worker-register-state`                                        | W     | Step 4 chip: Waiting / Registered.                                                                                 | `fa009aa` |
-| `worker-register-hint`                                         | W     | What registering does, or which step it waits on.                                                                  | `fa009aa` |
-| `worker-register-alert`                                        | W     | Step 4's inline error slot.                                                                                        | `fa009aa` |
-| `worker-step-run-title`                                        | W     | Step 5 heading ("Run").                                                                                            | `fa009aa` |
-| `worker-run-alert`                                             | W     | Step 5's inline error slot (pull/start/stop).                                                                      | `fa009aa` |
-| `panel-bridge`                                                 | A4    | The bridge page: disclosure gate, transfer form, transfer status.                                                  | `0aacdf8` |
-| `bridge-terms` / `bridge-terms-title`                          | A4    | The "Read this first" card and its heading.                                                                        | `0aacdf8` |
-| `bridge-disclosure`                                            | A4    | The terms list; the worker writes the lines, the page renders them.                                                | `0aacdf8` |
-| `bridge-accept`                                                | A4    | The consent checkbox — a row beside its sentence, measured by `review.mjs`.                                        | `0aacdf8` |
-| `bridge-form` / `bridge-form-title`                            | A4    | The transfer card; hidden until the terms are accepted.                                                            | `0aacdf8` |
-| `bridge-direction`                                             | A4    | Route picker (Lightchain → Ethereum, Ethereum → Lightchain).                                                       | `0aacdf8` |
-| `bridge-amount` / `bridge-balance`                             | A4    | Amount field and its available-balance hint.                                                                       | `0aacdf8` |
-| `bridge-error`                                                 | A4    | The form's inline error slot ("This cannot be bridged").                                                           | `0aacdf8` |
-| `bridge-review` + `bridge-review-amount/-from/-to/-fee/-note`  | A4    | What the worker quoted, shown before anything is signed.                                                           | `0aacdf8` |
-| `bridge-quote-btn` / `bridge-approve-btn` / `bridge-send-btn`  | A4    | Review, then Approve (its own transaction), then Bridge it.                                                        | `0aacdf8` |
-| `bridge-status` / `bridge-status-title` / `bridge-status-note` | A4    | The post-send card: what was sent and where to watch it.                                                           | `0aacdf8` |
-| `bridge-status-check` / `bridge-status-explorer`               | A4    | Check arrival by the destination balance; view the transaction.                                                    | `0aacdf8` |
-| `set-receipts`                                                 | A3    | Settings → General privacy toggle: publish read receipts or not. Off keeps every tick on your own messages single. | `865d8f6` |
+| Id                                                                                                                                        | Owner | Purpose                                                                                                                                                                                                                                                   | Added in      |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `backup-banner-dismiss`                                                                                                                   | A2    | Closes the backup banner without opening Settings.                                                                                                                                                                                                        | `6494f7c`     |
+| `worker-step-host-title`                                                                                                                  | W     | Step 1 heading ("Host ready"); the card's `aria-labelledby`.                                                                                                                                                                                              | `fa009aa`     |
+| `worker-host-state`                                                                                                                       | W     | Step 1 chip: failures/warnings/Ready.                                                                                                                                                                                                                     | `fa009aa`     |
+| `worker-host-alert`                                                                                                                       | W     | Step 1's inline error slot.                                                                                                                                                                                                                               | `fa009aa`     |
+| `worker-step-key-title`                                                                                                                   | W     | Step 2 heading ("Worker key").                                                                                                                                                                                                                            | `fa009aa`     |
+| `worker-key-state`                                                                                                                        | W     | Step 2 chip: No key / Key ready.                                                                                                                                                                                                                          | `fa009aa`     |
+| `worker-key-present`                                                                                                                      | W     | Step 2 body when a key exists (address + copy).                                                                                                                                                                                                           | `fa009aa`     |
+| `worker-key-absent`                                                                                                                       | W     | Step 2 body when there is no key (both forms).                                                                                                                                                                                                            | `fa009aa`     |
+| `worker-key-address`                                                                                                                      | W     | The worker key's address, truncated; full value on `dataset.full`.                                                                                                                                                                                        | `fa009aa`     |
+| `worker-key-copy`                                                                                                                         | W     | Copies the worker key's address.                                                                                                                                                                                                                          | `fa009aa`     |
+| `worker-import-form`                                                                                                                      | W     | Import-an-existing-key form (submits `worker.importKey`).                                                                                                                                                                                                 | `fa009aa`     |
+| `worker-import-key`                                                                                                                       | W     | Private-key input, cleared the moment it is read.                                                                                                                                                                                                         | `fa009aa`     |
+| `worker-import-password`                                                                                                                  | W     | Keystore password input for the import.                                                                                                                                                                                                                   | `fa009aa`     |
+| `worker-import-submit`                                                                                                                    | W     | Import form's submit.                                                                                                                                                                                                                                     | `fa009aa`     |
+| `worker-create-form`                                                                                                                      | W     | Create-a-new-key form (submits `worker.createKey`).                                                                                                                                                                                                       | `fa009aa`     |
+| `worker-create-password`                                                                                                                  | W     | Keystore password input for the creation.                                                                                                                                                                                                                 | `fa009aa`     |
+| `worker-create-submit`                                                                                                                    | W     | Create form's submit.                                                                                                                                                                                                                                     | `fa009aa`     |
+| `worker-created`                                                                                                                          | W     | The once-only recovery-phrase backup block.                                                                                                                                                                                                               | `fa009aa`     |
+| `worker-created-phrase`                                                                                                                   | W     | Where the phrase is shown.                                                                                                                                                                                                                                | `fa009aa`     |
+| `worker-created-copy`                                                                                                                     | W     | Copies the phrase.                                                                                                                                                                                                                                        | `fa009aa`     |
+| `worker-key-alert`                                                                                                                        | W     | Step 2's inline error slot.                                                                                                                                                                                                                               | `fa009aa`     |
+| `worker-step-stake-title`                                                                                                                 | W     | Step 3 heading ("Stake").                                                                                                                                                                                                                                 | `fa009aa`     |
+| `worker-stake-state`                                                                                                                      | W     | Step 3 chip: Funded / Short N LCAI / Unknown.                                                                                                                                                                                                             | `fa009aa`     |
+| `worker-stake-body`                                                                                                                       | W     | Step 3 body, rendered from the chain's figures.                                                                                                                                                                                                           | `fa009aa`     |
+| `worker-step-register-title`                                                                                                              | W     | Step 4 heading ("Register").                                                                                                                                                                                                                              | `fa009aa`     |
+| `worker-register-state`                                                                                                                   | W     | Step 4 chip: Waiting / Registered.                                                                                                                                                                                                                        | `fa009aa`     |
+| `worker-register-hint`                                                                                                                    | W     | What registering does, or which step it waits on.                                                                                                                                                                                                         | `fa009aa`     |
+| `worker-register-alert`                                                                                                                   | W     | Step 4's inline error slot.                                                                                                                                                                                                                               | `fa009aa`     |
+| `worker-step-run-title`                                                                                                                   | W     | Step 5 heading ("Run").                                                                                                                                                                                                                                   | `fa009aa`     |
+| `worker-run-alert`                                                                                                                        | W     | Step 5's inline error slot (pull/start/stop).                                                                                                                                                                                                             | `fa009aa`     |
+| `panel-bridge`                                                                                                                            | A4    | The bridge page: disclosure gate, transfer form, transfer status.                                                                                                                                                                                         | `0aacdf8`     |
+| `bridge-terms` / `bridge-terms-title`                                                                                                     | A4    | The "Read this first" card and its heading.                                                                                                                                                                                                               | `0aacdf8`     |
+| `bridge-disclosure`                                                                                                                       | A4    | The terms list; the worker writes the lines, the page renders them.                                                                                                                                                                                       | `0aacdf8`     |
+| `bridge-accept`                                                                                                                           | A4    | The consent checkbox — a row beside its sentence, measured by `review.mjs`.                                                                                                                                                                               | `0aacdf8`     |
+| `bridge-form` / `bridge-form-title`                                                                                                       | A4    | The transfer card; hidden until the terms are accepted.                                                                                                                                                                                                   | `0aacdf8`     |
+| `bridge-direction`                                                                                                                        | A4    | Route picker (Lightchain → Ethereum, Ethereum → Lightchain).                                                                                                                                                                                              | `0aacdf8`     |
+| `bridge-amount` / `bridge-balance`                                                                                                        | A4    | Amount field and its available-balance hint.                                                                                                                                                                                                              | `0aacdf8`     |
+| `bridge-error`                                                                                                                            | A4    | The form's inline error slot ("This cannot be bridged").                                                                                                                                                                                                  | `0aacdf8`     |
+| `bridge-review` + `bridge-review-amount/-from/-to/-fee/-note`                                                                             | A4    | What the worker quoted, shown before anything is signed.                                                                                                                                                                                                  | `0aacdf8`     |
+| `bridge-quote-btn` / `bridge-approve-btn` / `bridge-send-btn`                                                                             | A4    | Review, then Approve (its own transaction), then Bridge it.                                                                                                                                                                                               | `0aacdf8`     |
+| `bridge-status` / `bridge-status-title` / `bridge-status-note`                                                                            | A4    | The post-send card: what was sent and where to watch it.                                                                                                                                                                                                  | `0aacdf8`     |
+| `bridge-status-check` / `bridge-status-explorer`                                                                                          | A4    | Check arrival by the destination balance; view the transaction.                                                                                                                                                                                           | `0aacdf8`     |
+| `receive-title`, `send-title`, `join-title`, `invite-title`, `pay-title`, `rename-title`, `swap-title`, `confirm-title`, `accounts-title` | —     | Each dialog's heading, so the dialog can point `aria-labelledby` at it. Eleven of twelve modals had no accessible name; a screen reader announced "dialog" and nothing else, `#confirm-dialog` — the one in front of an irreversible transfer — included. | (this change) |
+| `beta-banner` / `beta-banner-report` / `beta-banner-dismiss`                                                                              | —     | The once-per-version BETA notice, its report button and its dismissal. Dismissal writes `betaNotice` in settings as the version it was read against, so an upgrade brings it back.                                                                        | (this change) |
+| `beta-dialog` / `beta-title` / `beta-version` / `beta-report`                                                                             | —     | What BETA means, reachable from the version badge. `#version` is a button now rather than a label.                                                                                                                                                        | (this change) |
+| `content`                                                                                                                                 | —     | The `section.content` wrapper, made the skip link's target. `tabindex="-1"` so focus can land there.                                                                                                                                                      | (this change) |
+| `set-receipts`                                                                                                                            | A3    | Settings → General privacy toggle: publish read receipts or not. Off keeps every tick on your own messages single.                                                                                                                                        | `865d8f6`     |
 
 ### Removed ids
 

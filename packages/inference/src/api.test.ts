@@ -56,7 +56,7 @@ beforeAll(async () => {
     req.on('data', (chunk) => (raw += chunk))
     req.on('end', () => {
       const path = req.url ?? ''
-      const body = raw === '' ? undefined : JSON.parse(raw)
+      const body: unknown = raw === '' ? undefined : JSON.parse(raw)
       seen.push({ method: req.method ?? '', path, auth: req.headers.authorization, body })
 
       const key = `${req.method} ${path.split('?')[0]}`

@@ -224,14 +224,27 @@ function parsePayload(plaintext: string): Secret {
   return { phrase: p.phrase, passphrase: p.passphrase }
 }
 
+/**
+ * The same shape, with nothing about it believed yet. See the note on
+ * `UnvalidatedKeystore` in keystore.ts: asserting the type on the way in tells
+ * the compiler the answer to the question this function is asking, and every
+ * rejection branch below then narrows to `never`.
+ */
+interface UnvalidatedVault {
+  version?: unknown
+  kdf?: unknown
+  cipher?: unknown
+  kdfparams?: { dklen?: unknown; n?: unknown; p?: unknown; r?: unknown }
+}
+
 function validate(value: unknown): Vault {
-  const v = value as Vault
+  const v = value as UnvalidatedVault
   if (!v || typeof v !== 'object') throw new VaultError('vault must be an object')
   if (v.version !== 1 && v.version !== 2) {
-    throw new VaultError(`unsupported vault version: ${v.version}`)
+    throw new VaultError(`unsupported vault version: ${String(v.version)}`)
   }
-  if (v.kdf !== 'scrypt') throw new VaultError(`unsupported kdf: ${v.kdf}`)
-  if (v.cipher !== 'aes-256-gcm') throw new VaultError(`unsupported cipher: ${v.cipher}`)
+  if (v.kdf !== 'scrypt') throw new VaultError(`unsupported kdf: ${String(v.kdf)}`)
+  if (v.cipher !== 'aes-256-gcm') throw new VaultError(`unsupported cipher: ${String(v.cipher)}`)
 
   const p = v.kdfparams
   if (!p || typeof p.n !== 'number' || typeof p.r !== 'number' || typeof p.p !== 'number') {
@@ -240,9 +253,10 @@ function validate(value: unknown): Vault {
   // Low parameters would decrypt instantly and protect nothing; absurd ones
   // would exhaust memory on a file anyone can hand you.
   if (p.n < 16_384 || p.n > 1 << 22) throw new VaultError(`scrypt N out of range: ${p.n}`)
-  if (p.dklen !== 32) throw new VaultError(`unsupported dklen: ${p.dklen}`)
+  if (p.dklen !== 32) throw new VaultError(`unsupported dklen: ${String(p.dklen)}`)
 
-  return v
+  // Earned now, rather than assumed at the top.
+  return value as Vault
 }
 
 /**

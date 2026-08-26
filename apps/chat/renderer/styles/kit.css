@@ -58,21 +58,37 @@
   min-height: 0;
 }
 
-.console-body-split {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: start;
-}
-
-/* One column below this, and the page scrolls again. An honest fallback beats
-   a two-column grid squeezed until neither column works. */
+/* Below this width a console page scrolls again, rather than squeezing what is
+   on it. An honest fallback beats a layout held together at a size nobody can
+   use. */
 @media (max-width: 1100px) {
-  .console-body-split {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .console {
     overflow-y: auto;
   }
+}
+
+/**
+ * Text for a screen reader and not for the eye.
+ *
+ * The clip-rect pattern rather than `display: none` or `visibility: hidden`,
+ * because both of those take the element out of the accessibility tree as well
+ * as off the screen, which is the opposite of the point. Not `width: 0` either:
+ * some readers skip a box with no area.
+ *
+ * This is for naming something the design has deliberately left unlabelled —
+ * Account's page title, which would otherwise restate the nav row that got you
+ * there. It is not a licence to hide real content.
+ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* --- Page head ------------------------------------------------------------ */

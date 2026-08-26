@@ -136,12 +136,12 @@ describe('parsing the new events', () => {
 
 describe('parsing an attachment', () => {
   it('accepts a well-formed one', () => {
-    expect(parseEntry(message({ attachment: attachment() as never }))).toHaveProperty('attachment')
+    expect(parseEntry(message({ attachment: attachment() }))).toHaveProperty('attachment')
   })
 
   it('refuses one bigger than every member is willing to hold', () => {
     expect(() =>
-      parseEntry(message({ attachment: attachment({ size: MAX_ATTACHMENT_SIZE + 1 }) as never }))
+      parseEntry(message({ attachment: attachment({ size: MAX_ATTACHMENT_SIZE + 1 }) }))
     ).toThrow(/exceeds/)
   })
 
@@ -149,23 +149,21 @@ describe('parsing an attachment', () => {
     expect(() =>
       parseEntry(
         message({
-          attachment: attachment({ name: 'x'.repeat(MAX_ATTACHMENT_NAME_LENGTH + 1) }) as never
+          attachment: attachment({ name: 'x'.repeat(MAX_ATTACHMENT_NAME_LENGTH + 1) })
         })
       )
     ).toThrow(/characters/)
   })
 
   it('refuses a malformed hash, core or blob address', () => {
+    expect(() => parseEntry(message({ attachment: attachment({ hash: '0xdead' }) }))).toThrow(
+      /32 bytes of hex/
+    )
+    expect(() => parseEntry(message({ attachment: attachment({ core: 'nope' }) }))).toThrow(
+      /hex key/
+    )
     expect(() =>
-      parseEntry(message({ attachment: attachment({ hash: '0xdead' }) as never }))
-    ).toThrow(/32 bytes of hex/)
-    expect(() =>
-      parseEntry(message({ attachment: attachment({ core: 'nope' }) as never }))
-    ).toThrow(/hex key/)
-    expect(() =>
-      parseEntry(
-        message({ attachment: attachment({ blob: { ...blob, byteLength: -1 } }) as never })
-      )
+      parseEntry(message({ attachment: attachment({ blob: { ...blob, byteLength: -1 } }) }))
     ).toThrow(/non-negative/)
   })
 })

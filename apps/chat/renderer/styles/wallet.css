@@ -144,11 +144,6 @@
   margin: 0;
 }
 
-/* --- Columns -------------------------------------------------------------- */
-
-/* `.console-body-split` starts its items rather than stretching them, which is
-   right for cards that hug their content. The column asks for the whole row
-   back so its own cards can share it. */
 /* --- Balances ------------------------------------------------------------- */
 
 /**
@@ -337,24 +332,6 @@
 .holdings-col-num,
 .holdings-col-chart {
   text-align: right;
-}
-
-.holdings-total {
-  display: flex;
-  flex-direction: column;
-  gap: var(--lc-space-xs);
-  padding-bottom: var(--lc-space-md);
-}
-
-.holdings-total-label {
-  font-size: var(--lc-text-xs);
-  color: var(--lc-fg-muted);
-}
-
-.holdings-total-value {
-  font-size: var(--lc-text-xxl);
-  line-height: var(--lc-leading-tight);
-  font-variant-numeric: tabular-nums;
 }
 
 .holdings {
@@ -777,10 +754,6 @@
   align-items: start;
 }
 
-.wallet-portfolio {
-  grid-column: span 2;
-}
-
 .wallet-holdings {
   grid-column: 1 / -1;
 }
@@ -794,10 +767,6 @@
 @media (max-width: 60rem) {
   .wallet-grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .wallet-portfolio {
-    grid-column: 1 / -1;
   }
 }
 
@@ -1177,13 +1146,10 @@
   padding: var(--lc-space-xl) var(--lc-space-xl) var(--lc-space-lg);
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-lg);
-  background:
-    linear-gradient(
-      120deg,
-      color-mix(in srgb, var(--lc-brand-magenta) 10%, transparent),
-      color-mix(in srgb, var(--lc-brand-violet) 10%, transparent)
-    ),
-    var(--lc-bg-elevated);
+  /* One colour, not two layers: `background: <colour>, <colour>` is invalid —
+     only the last layer may be a colour — and the whole declaration is dropped,
+     which took the card's fill with it. The tint is mixed in instead. */
+  background: color-mix(in srgb, var(--lc-accent) 10%, var(--lc-bg-elevated));
   box-shadow: var(--lc-shadow-2);
 }
 

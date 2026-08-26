@@ -124,6 +124,27 @@ describe.each([
     }
   })
 
+  /**
+   * The primary button's label, against every stop it can land on.
+   *
+   * A gradient is not a token pair, so nothing above sees it: the palette tests
+   * check `accentContrast` on `accent` and pass while the control people
+   * actually press is filled with something else entirely. The magenta stop was
+   * at 4.41:1 under white for exactly that reason.
+   */
+  it('the label clears AA on every stop of the brand gradient', () => {
+    const stops = BRAND.gradient.match(/#[0-9a-f]{6}/gi) ?? []
+    expect(stops.length).toBeGreaterThan(1)
+    for (const palette of [DARK, LIGHT]) {
+      for (const stop of stops) {
+        expect(
+          contrastRatio(palette.onBrand, stop),
+          `${palette.onBrand} on ${stop}`
+        ).toBeGreaterThanOrEqual(AA_NORMAL)
+      }
+    }
+  })
+
   it('a label on the accent is readable, which a button cannot avoid', () => {
     expect(contrastRatio(p.accentContrast, p.accent)).toBeGreaterThanOrEqual(AA_NORMAL)
   })
@@ -343,6 +364,17 @@ describe('brand consistency', () => {
   it('keeps controls big enough to hit', () => {
     for (const value of [CONTROL.sm, CONTROL.md]) expect(value).toBeGreaterThanOrEqual(24)
     expect(CONTROL.sm).toBeLessThan(CONTROL.md)
+  })
+
+  // The floor is a standard's number, not a taste, so it is asserted as one.
+  // Every other rung has to clear it too — a rung under the floor would be a
+  // control the system itself says is too small to hit.
+  it('keeps every control at or above the WCAG 2.2 target-size floor', () => {
+    expect(CONTROL.target).toBe(24)
+    for (const [name, value] of Object.entries(CONTROL)) {
+      if (name === 'icon') continue
+      expect(value, `CONTROL.${name}`).toBeGreaterThanOrEqual(CONTROL.target)
+    }
   })
 
   // An icon smaller than the text it labels reads as a bullet point.

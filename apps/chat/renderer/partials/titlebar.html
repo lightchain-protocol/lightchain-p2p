@@ -12,6 +12,11 @@
 
          Everything in it opts out of the drag region; a strip you cannot grab
          between the controls would be worse than no controls. -->
+    <!-- First focusable thing in the document, which is the only place a
+         bypass is any use. It lives in this partial because this is the first
+         one the build writes into the body. -->
+    <a class="skip-link" href="#content">Skip to content</a>
+
     <header class="titlebar" id="titlebar">
       <span class="titlebar-brand">
         <svg class="titlebar-wordmark" role="img" aria-label="Lightchain">

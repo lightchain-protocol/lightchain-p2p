@@ -16,43 +16,12 @@
 /* --- Columns -------------------------------------------------------------- */
 
 /**
- * Each column is a stack in which one card takes the leftover height.
- *
- * `.console-body-split` starts its items rather than stretching them, which is
- * right for a column of cards that hug their content and wrong for one that has
- * to fill the row so the pane inside it can scroll. So the column asks for the
- * whole row back and distributes it itself.
- */
-.worker-column {
-  display: flex;
-  flex-direction: column;
-  align-self: stretch;
-  gap: var(--lc-space-lg);
-  min-height: 0;
-}
-
-/**
  * The flow column is the route: six steps that hug their content and scroll as
  * one when they outgrow the pane. A growing step must not push its siblings out
  * of view — the whole column scrolls instead.
  */
 .worker-flow {
   overflow-y: auto;
-}
-
-/**
- * The card that absorbs whatever height the other does not want: the log on the
- * right.
- *
- * The basis is zero rather than auto so that what is inside never bids for
- * space. Sized from its content, a log two hundred lines long asks for two
- * thousand pixels, the column has six hundred, and flex takes the difference
- * out of every card in the column — the container facts were squashed to their
- * own heading and clipped out of existence by a log that had scrolled.
- */
-.worker-fill {
-  flex: 1 1 0;
-  min-height: 0;
 }
 
 /* A scrolling pane fills its card. Left to size itself it stops at its content,
@@ -78,36 +47,37 @@
   height: 1em;
 }
 
-/* When the readiness list was last true. The check runs on open and on demand,
-   so without this there is no way to tell a fresh answer from a stale one. */
-.worker-stamp {
-  font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
-  white-space: nowrap;
-}
-
 /* --- The wizard ----------------------------------------------------------- */
 
 /**
- * One question at a time, in the middle of the window.
+ * One question at a time, filling the page it is given.
  *
- * The measure is the point. Setup text is read, and a line of it running the
- * full width of a maximised window is read badly; every onboarding flow worth
- * copying holds itself to something near a book's column and lets the rest of
- * the screen be empty. Empty is not wasted here — it is what makes the one
- * thing on screen obviously the one thing on screen.
+ * This was held to a 46rem column in the middle of the window, on the argument
+ * that setup text is read and a line of it running the full width of a
+ * maximised window is read badly. What that produced was a strip of content
+ * with a hundred and fifty pixels of empty gutter on either side and the whole
+ * bottom right of the panel black, which reads as a layout that failed rather
+ * than one that chose a measure. A step body here is a checklist, a facts list
+ * and a form — there is no prose in it, so there is no measure to protect.
+ *
+ * The variable stays declared because `.page-head` reads it too: one value, so
+ * the header and the body cannot drift apart again.
  */
 /* The column both this and the page's header keep to. */
 .console.worker {
-  --lc-page-column: 46rem;
+  --lc-page-column: 100%;
 }
 
 .wizard {
   display: flex;
   flex-direction: column;
   gap: var(--lc-space-xl);
-  width: min(var(--lc-page-column), 100%);
-  margin: 0 auto;
+  width: 100%;
+  /* Takes whatever height the head leaves rather than hugging its content, so
+     a short step does not leave the rest of the panel empty. The wizard
+     scrolls; the page does not. */
+  flex: 1 1 auto;
+  min-height: 0;
   padding-bottom: var(--lc-space-xl);
   overflow-y: auto;
 }
@@ -417,10 +387,6 @@
   color: var(--lc-text-secondary);
 }
 
-.worker-card-body {
-  padding: var(--lc-space-lg);
-}
-
 /* An alert is a block of prose, so its paragraph and its button need room
    rather than the tight stack the title alone would give. An alert that is only
    a remedy has no title above it to be spaced from. */
@@ -509,38 +475,11 @@
   white-space: nowrap;
 }
 
-/* --- Step heads and bodies --------------------------------------------------- */
-
-/* Chip, timestamp and action buttons share the head with the title. */
-.worker-head-side {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--lc-space-md);
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.worker-step-actions {
-  display: inline-flex;
-  gap: var(--lc-space-sm);
-}
-
-.worker-step-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--lc-space-md);
-  padding: var(--lc-space-lg);
-}
-
 /* A step's error or guidance belongs on the step, not in a floating toast.
    The flush variant sits under the container facts, which carry their own
    padding. */
 .worker-step-alert:not([hidden]) {
   margin-top: var(--lc-space-sm);
-}
-
-.worker-step-alert-flush:not([hidden]) {
-  margin: 0 var(--lc-space-lg) var(--lc-space-lg);
 }
 
 /* Guidance text inside a step: quieter than the verdict, louder than a
@@ -550,34 +489,6 @@
   font-size: var(--lc-text-sm);
   line-height: var(--lc-leading-normal);
   color: var(--lc-text-secondary);
-  text-wrap: pretty;
-}
-
-/**
- * Facts in a side column, where 12ch of label is most of the width.
- *
- * The shared list is sized for a full-width card. In a 450px aside it left the
- * value about 200px, which is narrower than an address — so every address broke
- * across two lines in the middle of itself, and a page of that reads as a
- * layout that has come apart rather than as text that is merely tight.
- */
-.worker-aside .facts {
-  grid-template-columns: minmax(0, 9ch) minmax(0, 1fr);
-  gap: var(--lc-space-sm) var(--lc-space-md);
-}
-
-.worker-aside .facts dd {
-  /* Values here are addresses, URLs and short states: broken between words
-     where there are any, and never through the middle of a token. */
-  overflow-wrap: normal;
-  word-break: normal;
-}
-
-/* The stake, as two plain sentences. A figure somebody has to act on should be
-   read, not looked up in a table. */
-.worker-stake-line {
-  margin: 0;
-  color: var(--lc-text-primary);
   text-wrap: pretty;
 }
 
@@ -735,24 +646,6 @@
  * scrolls within it.
  */
 @media (max-width: 1100px) {
-  /* A floor of zero is what lets a pane scroll inside a fixed height, and it is
-     exactly wrong once the page is the thing that scrolls: the grid is then free
-     to size a row shorter than the column standing in it, and the column spills
-     over the card beneath it. Here the content sets the height. */
-  .worker-column {
-    align-self: start;
-    min-height: auto;
-  }
-
-  .worker-fill {
-    flex: 0 0 auto;
-  }
-
-  /* The page scrolls now, so the steps column must not scroll within itself. */
-  .worker-steps {
-    overflow-y: visible;
-  }
-
   .worker .worker-log {
     max-height: 24em;
   }

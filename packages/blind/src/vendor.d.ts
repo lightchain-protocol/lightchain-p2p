@@ -110,7 +110,10 @@ declare module 'hyperdrive' {
     close(): Promise<void>
     put(path: string, buffer: Uint8Array): Promise<unknown>
     get(path: string, opts?: { timeout?: number; wait?: boolean }): Promise<Buffer | null>
-    entry(path: string): Promise<unknown | null>
+    /** The entry, or null when the path is not in the drive. `unknown | null`
+     *  collapses to `unknown`, so the absence has to be said with a type that
+     *  survives the union. */
+    entry(path: string): Promise<object | null>
     update(opts?: { wait?: boolean }): Promise<boolean>
     getBlobs(): Promise<{ core: unknown } | null>
   }

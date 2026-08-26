@@ -31,7 +31,10 @@ declare module 'hyperdrive' {
     update(opts?: { wait?: boolean }): Promise<boolean>
     put(path: string, buffer: Uint8Array): Promise<unknown>
     get(path: string, opts?: { timeout?: number }): Promise<Buffer | null>
-    entry(path: string): Promise<unknown | null>
+    /** The entry, or null when the path is not in the drive. `unknown | null`
+     *  collapses to `unknown`, so the absence has to be said with a type that
+     *  survives the union. */
+    entry(path: string): Promise<object | null>
     /** Synchronous despite the name; await the handle's done(). */
     download(folder?: string): Download
     getBlobs(): Promise<{ core: unknown } | null>

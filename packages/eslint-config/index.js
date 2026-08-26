@@ -217,6 +217,58 @@ export const bareWorkers = {
   }
 }
 
+/**
+ * The rules that need a type checker.
+ *
+ * `tseslint.configs.recommended` is a syntax-only pass: it never asks what a
+ * value is, so the mistakes it cannot see are the ones that matter here — a
+ * promise nobody awaited, a condition that is always true, an `any` flowing out
+ * of an untyped module and into a signing call. This project moves money on the
+ * back of async chain reads, so `no-floating-promises` alone earns the cost.
+ *
+ * Scoped to TypeScript. The applications are hand-rolled ES modules with no
+ * build step (see the interface contract), so there is no program for the
+ * checker to ask about them; typing those is a separate job with `checkJs`.
+ */
+const typeChecked = tseslint.config({
+  files: ['**/*.ts'],
+  extends: [...tseslint.configs.recommendedTypeChecked],
+  languageOptions: {
+    parserOptions: {
+      projectService: true,
+      tsconfigRootDir: process.cwd()
+    }
+  },
+  rules: {
+    /**
+     * Reported where they are not decisions.
+     *
+     * `require-await` fires on an async function that awaits nothing, which is
+     * usually an interface being conformed to rather than a mistake — a handler
+     * map whose members must all return promises, for instance. The rule cannot
+     * tell those apart and there are forty-odd of them.
+     */
+    '@typescript-eslint/require-await': 'off'
+  }
+})
+
+/**
+ * One rule that has to come off in tests, because the two tools disagree there.
+ *
+ * `no-unnecessary-type-assertion` called three assertions in `packages/chain`
+ * redundant and its fixer removed them; `tsc -p tsconfig.json` then rejected all
+ * three. The assertions narrow a string to a `0x${string}` template type, and
+ * whichever program the service resolves a test file against is not the one the
+ * package typechecks with. A rule whose fixer breaks the build is worse than no
+ * rule, and the check that matters here — `typecheck` — already covers it.
+ */
+const typeCheckedTests = tseslint.config({
+  files: ['**/*.test.ts'],
+  rules: {
+    '@typescript-eslint/no-unnecessary-type-assertion': 'off'
+  }
+})
+
 const shared = tseslint.config(
   { ignores: ['**/dist/**', '**/out/**', '**/.turbo/**', '**/node_modules/**'] },
   js.configs.recommended,
@@ -228,7 +280,9 @@ const shared = tseslint.config(
   electronRenderer,
   bareWorkers,
   bareCommonJs,
-  appTests
+  appTests,
+  ...typeChecked,
+  ...typeCheckedTests
 )
 
 export default shared

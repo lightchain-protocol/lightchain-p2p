@@ -837,11 +837,11 @@ describe('three writers', () => {
       net.createPeer('carol')
     ])
 
-    const aliceRoom = await openRoom(alice!)
-    const bobRoom = await openRoom(bob!, aliceRoom)
-    const carolRoom = await openRoom(carol!, aliceRoom)
+    const aliceRoom = await openRoom(alice)
+    const bobRoom = await openRoom(bob, aliceRoom)
+    const carolRoom = await openRoom(carol, aliceRoom)
 
-    await Promise.all([alice!.swarm.flush(), bob!.swarm.flush(), carol!.swarm.flush()])
+    await Promise.all([alice.swarm.flush(), bob.swarm.flush(), carol.swarm.flush()])
 
     await aliceRoom.addWriter(bobRoom.writerKey)
     await aliceRoom.addWriter(carolRoom.writerKey)

@@ -35,40 +35,6 @@
   flex: 0 0 auto;
 }
 
-/* The app brand lives here, at the top of the column, rather than in the
-   title bar — the title was in two places, and the bar's whole job is to be
-   somewhere to grab the window. The mark is the logomark; the wordmark is
-   plain text, because the brand gradient is for the logo only. */
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: var(--lc-space-sm);
-  min-width: 0;
-}
-
-/**
- * The brand's own lockup, drawn rather than set.
- *
- * The mark is inside it, which is why nothing sits beside it any more — a
- * separate logomark next to a lockup that already contains one put the mark on
- * screen twice, once at forty pixels and once at eight.
- *
- * Monochrome and filled with `currentColor`, so the one asset is legible on the
- * dark page and on the light one. The aspect ratio is fixed by the symbol's
- * viewBox; only the height is set here.
- */
-.sidebar-wordmark {
-  height: 17px;
-  width: calc(17px * (1200 / 251));
-  flex: 0 0 auto;
-  stroke: none;
-  color: var(--lc-text-primary);
-  letter-spacing: -0.01em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .sidebar-collapse {
   flex: 0 0 auto;
 }
@@ -272,16 +238,13 @@
  * stops are far below the point where they would compete with the label.
  */
 .nav-item.is-active {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--lc-brand-magenta) 16%, transparent),
-    color-mix(in srgb, var(--lc-brand-violet) 12%, transparent)
-  );
+  /* The selected row is what `--lc-accent-soft` is named for. */
+  background: var(--lc-accent-soft);
   color: var(--lc-text-primary);
   font-weight: var(--lc-weight-medium);
   /* An edge as well as a wash. In their rail the chosen row is a card; with the
      wash alone it was a tint that could be mistaken for a hover. */
-  border-color: color-mix(in srgb, var(--lc-brand-violet) 35%, transparent);
+  border-color: color-mix(in srgb, var(--lc-accent) 35%, transparent);
 }
 
 /* The icon takes the brand colour with it, which is what stops the row reading
@@ -597,9 +560,22 @@
 /* The build's badge: a muted chip rather than a bare version string. The
    number itself moved to the element's title, so it is still there for anybody
    who needs it without reading as a control. */
+/**
+ * The badge, which is a button.
+ *
+ * It looked like a label and now does something, so it takes the resets a
+ * button needs to stop looking like one, and the smallest rung on the control
+ * scale. A pill sized by a caption's line height comes out at 23px, which
+ * clears neither the scale nor the target floor.
+ */
 .sidebar-tools .version {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--lc-control-xs);
   flex: 0 0 auto;
   margin: 0 auto 0 0;
+  font-family: inherit;
+  cursor: pointer;
   padding: 0 var(--lc-space-sm);
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-pill);
@@ -611,6 +587,11 @@
   line-height: var(--lc-leading-normal);
 }
 
+.sidebar-tools .version:hover {
+  border-color: var(--lc-rule-strong);
+  color: var(--lc-text-secondary);
+}
+
 /* --- Collapsed --------------------------------------------------------------- */
 
 /* A different layout rather than the same one narrower. Everything with words
@@ -620,7 +601,6 @@
   width: 3.5rem;
 }
 
-.sidebar.is-collapsed .sidebar-wordmark,
 .sidebar.is-collapsed .sidebar-rooms-title,
 .sidebar.is-collapsed .sidebar-group-title,
 .sidebar.is-collapsed .sidebar-empty,

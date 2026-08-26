@@ -405,6 +405,11 @@
 
          Everything in it opts out of the drag region; a strip you cannot grab
          between the controls would be worse than no controls. -->
+    <!-- First focusable thing in the document, which is the only place a
+         bypass is any use. It lives in this partial because this is the first
+         one the build writes into the body. -->
+    <a class="skip-link" href="#content">Skip to content</a>
+
     <header class="titlebar" id="titlebar">
       <span class="titlebar-brand">
         <svg class="titlebar-wordmark" role="img" aria-label="Lightchain">
@@ -1433,7 +1438,10 @@
           <!-- Version, theme and settings: the two controls people look for in
                exactly this corner, and the build number under them. -->
           <div class="sidebar-tools">
-            <p class="version" id="version"></p>
+            <!-- A button, not a label. It already said BETA and answered
+                 support's first question; now it is also the way back to what
+                 that means and where to report. -->
+            <button class="version" type="button" id="version" data-kit-focus></button>
             <button
               class="icon-button"
               type="button"
@@ -1456,7 +1464,7 @@
         </div>
       </nav>
 
-      <section class="content">
+      <section class="content" id="content" tabindex="-1">
         <!-- Standing until the words are written down — but it can rest.
 
              Deferring the backup has to be a real option or people photograph
@@ -1470,6 +1478,37 @@
              becomes a thing people learn to look past; this one comes back at
              the next launch, because the twelve words are still the only way
              back in. -->
+        <!-- Said once per version, then put away for good.
+
+             The application already says BETA in the corner, which is the
+             right amount of noise for something permanent — but a badge is not
+             a request, and what this needs is for people to report what breaks.
+             So this is loud exactly once per release and then never again, and
+             the badge becomes the way back to it.
+
+             Above the backup reminder because it frames the whole application
+             rather than one account, and because the backup reminder is the
+             one with an action that cannot wait. -->
+        <div class="beta-banner" id="beta-banner" role="status" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-info" /></svg>
+          <p class="beta-banner-text">
+            This wallet is a BETA release. Report any problem you encounter, and
+            do not hold more in it than you are prepared to lose.
+          </p>
+          <button class="button button-sm" type="button" id="beta-banner-report" hidden>
+            Report on Discord
+          </button>
+          <button
+            class="icon-button beta-banner-dismiss"
+            type="button"
+            id="beta-banner-dismiss"
+            title="I have read this"
+            aria-label="Dismiss the BETA notice for this version"
+          >
+            <svg class="icon" aria-hidden="true"><use href="#i-close" /></svg>
+          </button>
+        </div>
+
         <div class="backup-banner" id="backup-banner" role="status" hidden>
           <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
           <p class="backup-banner-text">
@@ -2454,6 +2493,11 @@
                    that got you here; the address is the thing that is actually
                    worth knowing before you read a balance. -->
               <header class="account-bar">
+                <!-- Named for a screen reader only. The visible title was
+                     dropped on purpose (see above) — but a surface with no
+                     title at all is a surface a reader cannot announce, and
+                     Account was the one page of six that had none. -->
+                <h1 class="page-title visually-hidden">Account</h1>
                 <button class="account-pill" type="button" id="wallet-account-pill">
                   <span class="account-pill-mark" id="wallet-account-mark" aria-hidden="true"></span>
                   <span class="account-pill-text">
@@ -3007,9 +3051,41 @@
          because a line reading "ETH — the network's own coin" explains what
          the select above it already said. The options themselves are built by
          `fillTokenPicker` in lib/assets.js. -->
-    <dialog class="dialog" id="receive-dialog">
+    <!-- What BETA means here, reachable from the badge for as long as the
+         badge says BETA. The banner says it once; this is where somebody who
+         dismissed it, or who arrived later, can still find it. -->
+    <dialog aria-labelledby="beta-title" class="dialog" id="beta-dialog">
       <div class="dialog-form">
-        <h2 class="dialog-title">Receive</h2>
+        <h2 id="beta-title" class="dialog-title">This is a BETA release</h2>
+
+        <p class="dialog-note">
+          Lightchain Chat is not finished software. It holds real keys and moves real money, and it
+          has not been through a release that should be treated as final. Hold only what you are
+          prepared to lose, and record the twelve words: they are the only way back into this
+          wallet.
+        </p>
+
+        <p class="dialog-note">
+          If something goes wrong, a short report is the most useful thing we can receive. What you
+          were doing, what you expected, and what happened is enough. The version below answers the
+          rest.
+        </p>
+
+        <p class="dialog-note beta-version" id="beta-version"></p>
+
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close="beta-dialog">Close</button>
+          <button class="button button-primary" type="button" id="beta-report" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            Report on Discord
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog aria-labelledby="receive-title" class="dialog" id="receive-dialog">
+      <div class="dialog-form">
+        <h2 id="receive-title" class="dialog-title">Receive</h2>
 
         <label class="field">
           <span class="field-label">Network</span>
@@ -3060,9 +3136,9 @@
          there a button that signs. A single-step form would mean the figures on
          screen were the ones the form guessed rather than the ones about to be
          signed, and those are not always the same thing. -->
-    <dialog class="dialog" id="send-dialog">
+    <dialog aria-labelledby="send-title" class="dialog" id="send-dialog">
       <form method="dialog" class="dialog-form" id="send-form">
-        <h2 class="dialog-title">Send</h2>
+        <h2 id="send-title" class="dialog-title">Send</h2>
 
         <label class="field">
           <span class="field-label">Asset</span>
@@ -3142,9 +3218,9 @@
          reintroduce a `bridge-` id, or the page and this dialog's ghost would
          answer to the same name. -->
 
-    <dialog class="dialog" id="join-dialog">
+    <dialog aria-labelledby="join-title" class="dialog" id="join-dialog">
       <form method="dialog" class="dialog-form" id="join-form">
-        <h2 class="dialog-title">Join a room</h2>
+        <h2 id="join-title" class="dialog-title">Join a room</h2>
         <p class="dialog-body">
           Paste the invite you were sent. You will arrive able to write, and nothing else is needed
           from either side.
@@ -3191,9 +3267,9 @@
       </form>
     </dialog>
 
-    <dialog class="dialog dialog-wide" id="invite-dialog">
+    <dialog aria-labelledby="invite-title" class="dialog dialog-wide" id="invite-dialog">
       <div class="dialog-form">
-        <h2 class="dialog-title">Invite someone</h2>
+        <h2 id="invite-title" class="dialog-title">Invite someone</h2>
         <p class="dialog-body">
           Send them this. It carries no room key, so it cannot be used to read the room — it is
           spent once, when they join, and they arrive able to write.
@@ -3249,9 +3325,9 @@
       </div>
     </dialog>
 
-    <dialog class="dialog" id="pay-dialog">
+    <dialog aria-labelledby="pay-title" class="dialog" id="pay-dialog">
       <form method="dialog" class="dialog-form" id="pay-form">
-        <h2 class="dialog-title">Send LCAI</h2>
+        <h2 id="pay-title" class="dialog-title">Send LCAI</h2>
         <p class="dialog-body">
           Straight from your wallet to theirs, on chain. Nothing about this goes through the room —
           it is a transfer, and it is irreversible.
@@ -3280,9 +3356,9 @@
       </form>
     </dialog>
 
-    <dialog class="dialog" id="rename-dialog">
+    <dialog aria-labelledby="rename-title" class="dialog" id="rename-dialog">
       <form method="dialog" class="dialog-form" id="rename-form">
-        <h2 class="dialog-title">Name this room</h2>
+        <h2 id="rename-title" class="dialog-title">Name this room</h2>
         <p class="dialog-body">
           Everyone in the room sees the same name, and any writer can change it. It is written into
           the room's history, so it survives every member going offline.
@@ -3317,10 +3393,10 @@
          that buys the wrong token. The route strip under the title says the
          direction in marks rather than words: ether in, LCAI out, Uniswap
          doing the trade. -->
-    <dialog class="dialog" id="swap-dialog">
+    <dialog aria-labelledby="swap-title" class="dialog" id="swap-dialog">
       <form method="dialog" class="dialog-form" id="swap-form">
         <div class="dialog-head">
-          <h2 class="dialog-title">Swap into LCAI</h2>
+          <h2 id="swap-title" class="dialog-title">Swap into LCAI</h2>
           <button
             class="dialog-close"
             type="button"
@@ -3463,10 +3539,10 @@
          from the transaction it is about to sign; the window is only the
          frame. A second request arriving while one is open queues rather than
          clobbering it — see lib/confirm.js. -->
-    <dialog class="dialog" id="confirm-dialog">
+    <dialog aria-labelledby="confirm-title" class="dialog" id="confirm-dialog">
       <div class="dialog-form">
         <div class="dialog-head">
-          <h2 class="dialog-title">Confirm this transfer</h2>
+          <h2 id="confirm-title" class="dialog-title">Confirm this transfer</h2>
           <button
             class="dialog-close"
             type="button"
@@ -3552,230 +3628,151 @@
           word of it.
         </p>
 
-        <section class="kit-card secure-layer">
-          <header class="secure-layer-head">
-            <svg class="icon" aria-hidden="true"><use href="#i-storage" /></svg>
-            <h3 class="secure-layer-title">Where it sits on this disk</h3>
-            <span class="chip">XSalsa20</span>
-          </header>
-          <dl class="secure-terms">
-            <dt>Protects</dt>
-            <dd>
-              Everything ever said in this room, in the folder on this machine. Copying that folder
-              — or being the blind peer that holds it — gets you ciphertext.
-            </dd>
-            <dt>Mechanism</dt>
-            <dd>
-              Hypercore's default block encryption. Every block goes through libsodium's
-              <code>crypto_stream_xor</code>, which is XSalsa20, under a block key that BLAKE2b
-              derives from this room's encryption key and the core's public key. The eight bytes of
-              padding in front of each block are blinded under a second key derived from the first.
-            </dd>
-          </dl>
+        <section class="secure-layer">
+          <h3 class="secure-layer-title">Where it sits on this disk <span class="secure-algo">XSalsa20</span></h3>
+
+          <p>
+            Everything ever said in this room, in the folder on this machine. Copying that folder —
+            or being the blind peer that holds it — gets you ciphertext.
+          </p>
+
+          <p>
+            Hypercore's default block encryption. Every block goes through libsodium's
+            crypto_stream_xor, which is XSalsa20, under a block key that BLAKE2b derives from this
+            room's encryption key and the core's public key. The eight bytes of padding in front of
+            each block are blinded under a second key derived from the first.
+          </p>
+
           <p class="secure-caveat">
             No authentication tag. A stream cipher conceals a block; it cannot tell you a byte
             changed. Detection belongs to the layer above it — a BLAKE2b Merkle tree over the log,
             with an Ed25519 signature over the root.
           </p>
-          <div class="secure-refs">
-            <span class="secure-refs-label">Specifications</span>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://doc.libsodium.org/advanced/stream_ciphers/xsalsa20"
-            >
-              libsodium — XSalsa20
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+
+          <p class="secure-refs">
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://doc.libsodium.org/advanced/stream_ciphers/xsalsa20">
+              libsodium — XSalsa20<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://www.blake2.net/"
-            >
-              BLAKE2
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://www.blake2.net/">
+              BLAKE2<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://ed25519.cr.yp.to/"
-            >
-              Ed25519
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://ed25519.cr.yp.to/">
+              Ed25519<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-          </div>
+          </p>
         </section>
 
-        <section class="kit-card secure-layer">
-          <header class="secure-layer-head">
-            <svg class="icon" aria-hidden="true"><use href="#i-routing" /></svg>
-            <h3 class="secure-layer-title">On the way to another peer</h3>
-            <span class="chip">Noise XX</span>
-          </header>
-          <dl class="secure-terms">
-            <dt>Protects</dt>
-            <dd>
-              Every byte that leaves this machine, including the replication traffic carrying the
-              room. A relay, a node on the DHT, or anything sitting between two peers, sees
-              ciphertext.
-            </dd>
-            <dt>Mechanism</dt>
-            <dd>
-              <code>@hyperswarm/secret-stream</code>. A connection opens with a Noise XX handshake
-              — ChaCha20-Poly1305 for the handshake messages, BLAKE2b for the hashing, Ed25519
-              static keys through <code>noise-curve-ed</code>. The session that follows runs on
-              XChaCha20-Poly1305 through libsodium's secretstream. It is a separate layer from the
-              one above: the room's own encryption is still underneath it.
-            </dd>
-          </dl>
+        <section class="secure-layer">
+          <h3 class="secure-layer-title">On the way to another peer <span class="secure-algo">Noise XX</span></h3>
+
+          <p>
+            Every byte that leaves this machine, including the replication traffic carrying the
+            room. A relay, a node on the DHT, or anything sitting between two peers, sees
+            ciphertext.
+          </p>
+
+          <p>
+            @hyperswarm/secret-stream. A connection opens with a Noise XX handshake —
+            ChaCha20-Poly1305 for the handshake messages, BLAKE2b for the hashing, Ed25519 static
+            keys through noise-curve-ed. The session that follows runs on XChaCha20-Poly1305 through
+            libsodium's secretstream. It is a separate layer from the one above: the room's own
+            encryption is still underneath it.
+          </p>
+
           <p class="secure-caveat">
             A handshake proves the far end holds a particular key. It does not say who is holding
             it. Which people belong in a room is settled by the invite that let them in, not by the
             transport.
           </p>
-          <div class="secure-refs">
-            <span class="secure-refs-label">Specifications</span>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://noiseprotocol.org/noise.html"
-            >
-              The Noise Protocol Framework
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+
+          <p class="secure-refs">
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://noiseprotocol.org/noise.html">
+              The Noise Protocol Framework<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://doc.libsodium.org/secret-key_cryptography/secretstream"
-            >
-              libsodium — secretstream
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://doc.libsodium.org/secret-key_cryptography/secretstream">
+              libsodium — secretstream<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://www.rfc-editor.org/rfc/rfc8439"
-            >
-              RFC 8439 — ChaCha20-Poly1305
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://www.rfc-editor.org/rfc/rfc8439">
+              RFC 8439 — ChaCha20-Poly1305<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-          </div>
+          </p>
         </section>
 
-        <section class="kit-card secure-layer">
-          <header class="secure-layer-head">
-            <svg class="icon" aria-hidden="true"><use href="#i-wallet" /></svg>
-            <h3 class="secure-layer-title">The wallet on this machine</h3>
-            <span class="chip">scrypt + AES-256-GCM</span>
-          </header>
-          <dl class="secure-terms">
-            <dt>Protects</dt>
-            <dd>
-              The recovery phrase this machine signs with — not the room. A stolen vault file is an
-              offline guessing problem, not a readable conversation.
-            </dd>
-            <dt>Mechanism</dt>
-            <dd>
-              scrypt stretches the password into a 32-byte key at N = 262,144, r = 8, p = 1, and
-              AES-256-GCM encrypts the phrase under it. Those parameters are written into the vault
-              rather than assumed, so they can be raised later without orphaning wallets that
-              already exist.
-            </dd>
-          </dl>
+        <section class="secure-layer">
+          <h3 class="secure-layer-title">The wallet on this machine <span class="secure-algo">scrypt + AES-256-GCM</span></h3>
+
+          <p>
+            The recovery phrase this machine signs with — not the room. A stolen vault file is an
+            offline guessing problem, not a readable conversation.
+          </p>
+
+          <p>
+            scrypt stretches the password into a 32-byte key at N = 262,144, r = 8, p = 1, and
+            AES-256-GCM encrypts the phrase under it. Those parameters are written into the vault
+            rather than assumed, so they can be raised later without orphaning wallets that already
+            exist.
+          </p>
+
           <p class="secure-caveat">
             The password is the weak part, not the cipher. Nobody is going to break AES-256-GCM;
-            somebody holding the file will guess passwords offline, and all scrypt does is make
-            each guess cost memory.
+            somebody holding the file will guess passwords offline, and all scrypt does is make each
+            guess cost memory.
           </p>
-          <div class="secure-refs">
-            <span class="secure-refs-label">Specifications</span>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://www.rfc-editor.org/rfc/rfc7914"
-            >
-              RFC 7914 — scrypt
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+
+          <p class="secure-refs">
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://www.rfc-editor.org/rfc/rfc7914">
+              RFC 7914 — scrypt<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf"
-            >
-              NIST SP 800-38D — GCM
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf">
+              NIST SP 800-38D — GCM<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-          </div>
+          </p>
         </section>
 
-        <section class="kit-card secure-layer">
-          <header class="secure-layer-head">
-            <svg class="icon" aria-hidden="true"><use href="#i-shield" /></svg>
-            <h3 class="secure-layer-title">Who wrote what</h3>
-            <span class="chip">EIP-191</span>
-          </header>
-          <dl class="secure-terms">
-            <dt>Protects</dt>
-            <dd>
-              The name on a message. Encryption keeps strangers out of the room; it says nothing
-              about which member wrote a given line inside it.
-            </dd>
-            <dt>Mechanism</dt>
-            <dd>
-              An EIP-191 signature from the author's wallet, over a preimage naming this room's
-              key, the message id, the writer, the clock and a hash of the whole entry. This
-              machine recovers an address from that signature and compares it with the one the
-              message claims. Naming the room key is what stops a signature being lifted out of
-              this conversation and replayed into another.
-            </dd>
-          </dl>
+        <section class="secure-layer">
+          <h3 class="secure-layer-title">Who wrote what <span class="secure-algo">EIP-191</span></h3>
+
+          <p>
+            The name on a message. Encryption keeps strangers out of the room; it says nothing about
+            which member wrote a given line inside it.
+          </p>
+
+          <p>
+            An EIP-191 signature from the author's wallet, over a preimage naming this room's key,
+            the message id, the writer, the clock and a hash of the whole entry. This machine
+            recovers an address from that signature and compares it with the one the message claims.
+            Naming the room key is what stops a signature being lifted out of this conversation and
+            replayed into another.
+          </p>
+
+          <!-- Filled live from this room: how many signatures this machine has
+               actually checked. `rooms/controls.js` writes it by id. -->
           <p class="secure-live" id="secure-signatures"></p>
+
           <p class="secure-caveat">
             A message with no signature is not a forgery. It predates signing, or came from a peer
             with no wallet, so it is shown unattributed rather than thrown away.
           </p>
-          <div class="secure-refs">
-            <span class="secure-refs-label">Specifications</span>
-            <button
-              class="secure-ref"
-              type="button"
-              data-kit-focus
-              data-spec="https://eips.ethereum.org/EIPS/eip-191"
-            >
-              EIP-191 — signed data standard
-              <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+
+          <p class="secure-refs">
+            <button class="secure-ref" type="button" data-kit-focus data-spec="https://eips.ethereum.org/EIPS/eip-191">
+              EIP-191 — signed data standard<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
-          </div>
+          </p>
         </section>
 
-        <!--
-          Last, and at the same weight as the four above it. A protection page
-          listing only what is covered tells you nothing about the decision you
-          are actually making.
-        -->
-        <section class="kit-card secure-layer secure-exposed">
-          <header class="secure-layer-head">
-            <svg class="icon" aria-hidden="true"><use href="#i-eye" /></svg>
-            <h3 class="secure-layer-title">What none of this hides</h3>
-          </header>
-          <p class="secure-exposed-lede">
-            Encryption protects what was said. It does not protect the shape of the conversation
-            around it, and the four things below are visible without decrypting anything.
-          </p>
+        <section class="secure-layer secure-exposed">
+          <h3 class="secure-layer-title">What none of this hides</h3>
+
+          <p>Encryption protects what was said. It does not protect the shape of the conversation
+          around it, and the four things below are visible without decrypting anything.</p>
+
           <ul class="secure-exposures">
             <li>
-              <strong>That this room exists.</strong> Peers find each other by announcing the
-              room's discovery key — a BLAKE2b hash of the room key — on a public DHT. The hash
-              does not give up the key, but anyone watching that topic learns a room is there and
-              that somebody is looking for it.
+              <strong>That this room exists.</strong> Peers find each other by announcing the room's
+              discovery key — a BLAKE2b hash of the room key — on a public DHT. The hash does not
+              give up the key, but anyone watching that topic learns a room is there and that
+              somebody is looking for it.
             </li>
             <li>
               <strong>Who is connected to it.</strong> Connections are direct wherever they can be,
@@ -3819,10 +3816,10 @@
          so switching looks exactly like the application having forgotten
          everything — and switching back brings all of it home. Somebody has to
          be told that before they switch, not after. -->
-    <dialog class="dialog" id="accounts-dialog">
+    <dialog aria-labelledby="accounts-title" class="dialog" id="accounts-dialog">
       <div class="dialog-form">
         <div class="dialog-head">
-          <h2 class="dialog-title">Accounts</h2>
+          <h2 id="accounts-title" class="dialog-title">Accounts</h2>
           <button
             class="dialog-close"
             type="button"
@@ -3892,7 +3889,7 @@
 
     <!-- One dialog for both directions. Two forms that differ by which endpoint
          they call is two places to fix the amount parsing. -->
-    <dialog class="dialog" id="move-dialog">
+    <dialog aria-labelledby="move-title" class="dialog" id="move-dialog">
       <form method="dialog" class="dialog-form" id="move-form">
         <h2 class="dialog-title" id="move-title">Deposit</h2>
         <p class="dialog-body" id="move-body"></p>

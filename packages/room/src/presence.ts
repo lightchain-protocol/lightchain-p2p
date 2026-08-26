@@ -311,7 +311,7 @@ export class Presence {
    */
   attach(socket: unknown): void {
     try {
-      const mux = Protomux.from(socket as never)
+      const mux = Protomux.from(socket)
       mux.pair({ protocol: PROTOCOL, id: this.#topic }, () => this.#open(mux))
       this.#muxes.add(mux)
       this.#open(mux)

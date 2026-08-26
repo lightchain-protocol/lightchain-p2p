@@ -16,6 +16,19 @@
     "sourceMap": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "verbatimModuleSyntax": true
+    // `exactOptionalPropertyTypes` is deliberately absent. It separates a field
+    // that is missing from one that is present and undefined, and the twenty-odd
+    // places it fires here are all the same shape: a literal assigning a
+    // possibly-undefined value to a `foo?: T`. Satisfying it means either
+    // widening the target to `foo?: T | undefined`, which states what already
+    // happens and buys nothing, or spreading the key in conditionally, which
+    // reads worse than the code it replaces. Turn it on the day something
+    // depends on the difference — an `in` check or a key count — not before.
   }
 }

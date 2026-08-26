@@ -42,8 +42,15 @@ declare module 'hyperswarm' {
      */
     readonly dht: { defaultKeyPair: { publicKey: Buffer; secretKey: Buffer } }
     readonly keyPair: { publicKey: Buffer; secretKey: Buffer }
+    readonly connections: Iterable<unknown>
     on(event: 'connection', fn: (socket: unknown, info: unknown) => void): this
-    join(topic: Buffer, opts?: { server?: boolean; client?: boolean }): { flushed(): Promise<void> }
+    join(
+      topic: Buffer,
+      opts?: { server?: boolean; client?: boolean }
+    ): {
+      flushed(): Promise<void>
+      refresh(opts?: { client?: boolean; server?: boolean }): Promise<void>
+    }
     leave(topic: Buffer): Promise<void>
     flush(): Promise<void>
     destroy(): Promise<void>

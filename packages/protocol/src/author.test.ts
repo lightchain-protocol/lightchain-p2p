@@ -85,7 +85,7 @@ describe('verifying an author', () => {
     const preimage = authorPreimage(ROOM, entry, hashText)
     const address = await recoverMessageAddress({
       message: preimage,
-      signature: entry.sig as `0x${string}`
+      signature: entry.sig
     })
     expect(address).toBe(account.address)
 
@@ -126,7 +126,7 @@ describe('verifying an author', () => {
     const elsewhere = 'd'.repeat(64)
     const recovered = await recoverMessageAddress({
       message: authorPreimage(elsewhere, entry, hashText),
-      signature: entry.sig as `0x${string}`
+      signature: entry.sig
     })
     expect(recovered).not.toBe(account.address)
   })
@@ -136,7 +136,7 @@ describe('verifying an author', () => {
     const edited = { ...entry, text: 'something else entirely' }
     const recovered = await recoverMessageAddress({
       message: authorPreimage(ROOM, edited, hashText),
-      signature: edited.sig as `0x${string}`
+      signature: edited.sig
     })
     expect(recovered).not.toBe(account.address)
   })

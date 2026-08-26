@@ -20,11 +20,43 @@ import createTestnet from '@hyperswarm/testnet'
  * in this codebase, so `peer.goOffline()` is the point of the whole harness.
  */
 
+/**
+ * The swarm, as this package promises it.
+ *
+ * Written out here rather than re-exported as `Hyperswarm`, because the class
+ * comes from an ambient declaration local to this package. Naming it in the
+ * public type put `import Hyperswarm from 'hyperswarm'` into the emitted
+ * `.d.ts`, and every package consuming the harness then had a `swarm` whose
+ * type could not be resolved — so anything read off it was unchecked, silently.
+ */
+export interface TestSwarm {
+  /**
+   * Note `dht.defaultKeyPair` is NOT the same as `swarm.keyPair`: outbound
+   * `dht.connect` calls without an explicit keyPair present the former, so that
+   * is the identity a remote sees as `remotePublicKey`.
+   */
+  readonly dht: { defaultKeyPair: { publicKey: Buffer; secretKey: Buffer } }
+  readonly keyPair: { publicKey: Buffer; secretKey: Buffer }
+  /** Live connections. `@lcai-p2p/room` requires this off anything swarm-like. */
+  readonly connections: Iterable<unknown>
+  on(event: 'connection', fn: (socket: unknown, info: unknown) => void): this
+  join(
+    topic: Buffer,
+    opts?: { server?: boolean; client?: boolean }
+  ): {
+    flushed(): Promise<void>
+    refresh(opts?: { client?: boolean; server?: boolean }): Promise<void>
+  }
+  leave(topic: Buffer): Promise<void>
+  flush(): Promise<void>
+  destroy(): Promise<void>
+}
+
 export interface Peer {
   /** Human name, used in assertion messages. */
   readonly name: string
   readonly store: Corestore
-  readonly swarm: Hyperswarm
+  readonly swarm: TestSwarm
   /** Temporary storage directory. Removed on network teardown. */
   readonly dir: string
   /** Whether this peer is currently reachable. */
