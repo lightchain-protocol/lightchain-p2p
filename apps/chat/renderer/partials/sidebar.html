@@ -18,6 +18,11 @@
         <!-- The brand lives in the top bar now, which spans the window rather
              than heading one column of it. What is left here is the fold-away
              control, kept where the hand already looks for it. -->
+        <!-- The head is one row: the fold-away control, and the two facts worth
+             stating before anything else — whether this machine is talking to
+             anybody, and whether the wallet is open. They were three stacked
+             rows and cost 58px of empty sidebar before the first conversation.
+             The lock only appears when it applies. -->
         <div class="sidebar-head">
           <button
             class="icon-button sidebar-collapse"
@@ -29,19 +34,14 @@
           >
             <svg class="icon" aria-hidden="true"><use href="#i-collapse" /></svg>
           </button>
-        </div>
 
-        <!-- Two facts, at the top, only when they are not the ordinary case.
-             Whether this machine is talking to anybody, and whether the wallet
-             is open. Both were somewhere else entirely: connection rode on the
-             account row as a dot, and the lock state was a notice on a panel
-             most people never opened. -->
-        <div class="sidebar-state">
-          <span class="sidebar-status" id="status" role="status" data-state="busy">starting</span>
-          <button class="sidebar-locked" type="button" id="sidebar-locked" hidden>
-            <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
-            <span>Wallet locked</span>
-          </button>
+          <div class="sidebar-state">
+            <span class="sidebar-status" id="status" role="status" data-state="busy">starting</span>
+            <button class="sidebar-locked" type="button" id="sidebar-locked" hidden>
+              <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+              <span>Wallet locked</span>
+            </button>
+          </div>
         </div>
 
         <!-- The list, its header, and the two ways to add to it. The actions
@@ -144,7 +144,10 @@
           <!-- Version, theme and settings: the two controls people look for in
                exactly this corner, and the build number under them. -->
           <div class="sidebar-tools">
-            <p class="version" id="version"></p>
+            <!-- A button, not a label. It already said BETA and answered
+                 support's first question; now it is also the way back to what
+                 that means and where to report. -->
+            <button class="version" type="button" id="version" data-kit-focus></button>
             <button
               class="icon-button"
               type="button"

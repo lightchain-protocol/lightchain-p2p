@@ -45,7 +45,16 @@
   align-items: center;
   gap: var(--lc-space-md);
   height: var(--lc-titlebar-height);
-  padding: 0 var(--lc-space-xl);
+  /**
+   * The lockup starts where the content does, not where the window does.
+   *
+   * It used to sit at a flat 78px — enough to clear the macOS traffic lights
+   * and nothing more — which put "Lightchain Chat" across the divider that runs
+   * down the window between the rail and the content. Aligned to the far side
+   * of the rail it lines up with every panel heading below it, and 260px clears
+   * the traffic lights by more than the old rule did.
+   */
+  padding: 0 var(--lc-space-xl) 0 calc(var(--lc-sidebar-width) + var(--lc-space-xxl));
   border-bottom: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
   background: var(--lc-bg-elevated);
   /* Lets the window be dragged by its titlebar, which users expect. */
@@ -164,9 +173,9 @@
 
 /* macOS puts the traffic lights at the left, so our content starts clear of
    them. Anything else and the wordmark sits underneath the close button. */
-:root[data-platform='darwin'] .titlebar {
-  padding-left: 78px;
-}
+/* No darwin-specific inset any more: the content alignment above is already
+   well clear of the traffic lights, and one rule for every platform means the
+   lockup sits in the same place wherever the app runs. */
 
 /**
  * Windows and Linux draw their controls over the right of the bar.

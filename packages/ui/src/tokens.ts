@@ -439,6 +439,19 @@ export const MONO =
  * Everything with a height follows: fields take the same scale as the buttons
  * that sit beside them, which is the reason to keep this in one place.
  */
+/**
+ * The navigation rail's width.
+ *
+ * A layout constant rather than a design token, and here for one reason: two
+ * stylesheets have to agree on it. The rail sets it, and the title bar aligns
+ * its lockup to the far side of it — written twice, they drift, and the drift
+ * shows up as a wordmark straddling the divider that runs down the window.
+ *
+ * 236px, as the wallet's rail is. Seventeen rem was a hair wider and the two
+ * applications side by side looked like a mistake rather than a family.
+ */
+export const SIDEBAR_WIDTH = 236
+
 export const CONTROL = {
   /**
    * The floor any pointer target has to clear.
@@ -601,6 +614,7 @@ export function cssVariables(theme: Theme): string {
     ...Object.entries(TYPE.role).map(([k, v]) => `--lc-type-${kebab(k)}: ${v}px;`),
     ...Object.entries(TYPE.weight).map(([k, v]) => `--lc-weight-${k}: ${v};`),
     ...Object.entries(TYPE.lineHeight).map(([k, v]) => `--lc-leading-${k}: ${v};`),
+    `--lc-sidebar-width: ${SIDEBAR_WIDTH}px;`,
     ...Object.entries(CONTROL).map(([k, v]) => `--lc-control-${k}: ${v}px;`),
     `--lc-motion-fast: ${MOTION.fast}ms;`,
     `--lc-motion-base: ${MOTION.base}ms;`,

@@ -12,9 +12,9 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  /* 236px, as the wallet's rail is. Seventeen rem was a hair wider and the two
-     applications side by side looked like a mistake rather than a family. */
-  width: 14.75rem;
+  /* The title bar aligns its lockup to the far side of this, so the number
+     lives in `packages/ui` where both can read it. */
+  width: var(--lc-sidebar-width);
   flex: 0 0 auto;
   /* A shade under the page rather than a shade over it. The wallet sinks its
      rail; lifting it made the sidebar read as the content and the content as
@@ -31,7 +31,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--lc-space-sm);
-  padding: var(--lc-space-md) var(--lc-space-md) var(--lc-space-sm);
+  padding: var(--lc-space-sm) var(--lc-space-md);
   flex: 0 0 auto;
 }
 
@@ -47,12 +47,23 @@
 
 /* Only on screen when there is something to say. An "everything is fine" banner
    is a banner people stop reading, which is exactly when it needs to work. */
+/**
+ * The two facts, on the head row rather than under it.
+ *
+ * They were a column of their own below the fold-away control, which made the
+ * top of the sidebar three stacked rows — a 38px button on a 58px row, then the
+ * connection, then the list header — before a single conversation. A row costs
+ * one of those instead of three. Wrapping, because the lock only appears when
+ * it applies and "connected · Wallet locked" is wider than a folded sidebar.
+ */
 .sidebar-state {
   display: flex;
-  flex-direction: column;
-  gap: var(--lc-space-xs);
-  padding: 0 var(--lc-space-md);
-  flex: 0 0 auto;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--lc-space-xs) var(--lc-space-sm);
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .sidebar-status {

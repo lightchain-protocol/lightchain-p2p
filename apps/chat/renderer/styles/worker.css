@@ -600,10 +600,14 @@
   overflow-wrap: anywhere;
 }
 
+/* Under the address it encodes, not centred in the panel.
+   Centred, it floated three hundred pixels from the only thing it relates to,
+   with the address left-aligned above it — two objects that belong together,
+   reading as two things that happened to land on the same page. */
 .worker-qr {
   display: flex;
-  justify-content: center;
-  margin: var(--lc-space-sm) 0 0;
+  justify-content: flex-start;
+  margin: var(--lc-space-md) 0 0;
 }
 
 /* --- The log -------------------------------------------------------------- */
