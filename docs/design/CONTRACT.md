@@ -133,9 +133,13 @@ they predate the kit and are equally shared.
 ### Page archetypes
 
 - `.page` — a reading page: prose, centred, 74ch measure.
-- `.console` / `.console-body` / `.console-body-split` — a console page: fills
-  its width, its panes scroll (the page does not), optional two-column body that
-  collapses below 1100px.
+- `.console` / `.console-body` — a console page: fills its width, and its panes
+  scroll rather than the page. Below 1100px the page scrolls again.
+
+  There was a `.console-body-split` here, a two-column body collapsing to one.
+  No surface ever adopted it, so `check-css` was right to call it unworn: a
+  component nothing has used is an intention, not part of the kit. Reinstate it
+  the day a second surface wants two columns, not before.
 
 ### Page head
 
@@ -207,15 +211,21 @@ Navigation order is fixed (plan §1). The room list is the sidebar body;
    `Join with an invite` (`#join-btn`) pinned under the list header.
 3. **"Elsewhere" group, in this exact order:**
 
-   | Label   | `data-section` | Icon id     |
-   | ------- | -------------- | ----------- |
-   | Models  | `models`       | `#i-models` |
-   | Account | `wallet`       | `#i-wallet` |
-   | Bridge  | `bridge`       | `#i-bridge` |
-   | Earn    | `worker`       | `#i-worker` |
+   | Label          | `data-section` | Icon id     |
+   | -------------- | -------------- | ----------- |
+   | Models         | `models`       | `#i-models` |
+   | Account        | `wallet`       | `#i-wallet` |
+   | Bridge         | `bridge`       | `#i-bridge` |
+   | For Workers    | `worker`       | `#i-worker` |
+   | For Validators | `validator`    | `#i-shield` |
 
-   (A `chat` nav row exists in the current markup as a transition artefact; it
-   is not part of the target IA — no destination appears twice.)
+   The `chat` nav row is gone — no destination appears twice.
+
+   This table said four rows ending in **Earn** for some time after the app had
+   five ending in **For Validators**, and `surfaces-check` asserted the same
+   stale four. Both were corrected together. The two labels were reworded to say
+   who the row is for rather than what it earns, which is the distinction
+   somebody scanning the rail is actually making.
 
    The Bridge row arrived with the bridge's promotion to a page (`0aacdf8`):
    moving LCAI between chains is an irreversible, externally-relayed transfer
@@ -283,6 +293,8 @@ here **before** the markup that uses it; A2 wires `dom.js`/`main.js`.
 | `bridge-status` / `bridge-status-title` / `bridge-status-note`                                                                            | A4    | The post-send card: what was sent and where to watch it.                                                                                                                                                                                                  | `0aacdf8`     |
 | `bridge-status-check` / `bridge-status-explorer`                                                                                          | A4    | Check arrival by the destination balance; view the transaction.                                                                                                                                                                                           | `0aacdf8`     |
 | `receive-title`, `send-title`, `join-title`, `invite-title`, `pay-title`, `rename-title`, `swap-title`, `confirm-title`, `accounts-title` | —     | Each dialog's heading, so the dialog can point `aria-labelledby` at it. Eleven of twelve modals had no accessible name; a screen reader announced "dialog" and nothing else, `#confirm-dialog` — the one in front of an irreversible transfer — included. | (this change) |
+| `beta-banner` / `beta-banner-report` / `beta-banner-dismiss`                                                                              | —     | The once-per-version BETA notice, its report button and its dismissal. Dismissal writes `betaNotice` in settings as the version it was read against, so an upgrade brings it back.                                                                        | (this change) |
+| `beta-dialog` / `beta-title` / `beta-version` / `beta-report`                                                                             | —     | What BETA means, reachable from the version badge. `#version` is a button now rather than a label.                                                                                                                                                        | (this change) |
 | `content`                                                                                                                                 | —     | The `section.content` wrapper, made the skip link's target. `tabindex="-1"` so focus can land there.                                                                                                                                                      | (this change) |
 | `set-receipts`                                                                                                                            | A3    | Settings → General privacy toggle: publish read receipts or not. Off keeps every tick on your own messages single.                                                                                                                                        | `865d8f6`     |
 

@@ -243,6 +243,36 @@ describe('the stake confirmation', () => {
     expect(mockHost.runAsync).not.toHaveBeenCalled()
   })
 
+  it('refuses a key short of the stake before asking, not after', async () => {
+    // The panel disables Register while the key is short, but the panel is not
+    // the boundary. A renderer calling this over IPC with an unfunded key was
+    // still asked to confirm a stake the key cannot cover, and approving it
+    // would have launched a container whose transaction could only fail.
+    const { ctx, guard } = ctxWith({ state: stateWith({ balance: 10n * 10n ** 18n }) })
+    const handlers = workerHandlers(ctx)
+
+    await expect(handlers['worker.register']({ t: 'worker.register' })).rejects.toThrow(
+      /short .* of the stake and its gas/
+    )
+
+    expect(guard.allow).not.toHaveBeenCalled()
+    expect(mockHost.runAsync).not.toHaveBeenCalled()
+  })
+
+  it('still asks when the key covers the stake and its gas', async () => {
+    // The boundary either side of the rule: one wei over the minimum plus a
+    // token of gas is funded, and the dialog is the right answer there.
+    const { ctx, guard } = ctxWith({
+      state: stateWith({ balance: MINIMUM + 10n ** 18n + 1n })
+    })
+    const handlers = workerHandlers(ctx)
+    mockHost.runAsync.mockResolvedValue({ ok: true, status: 0, stdout: '', stderr: '' })
+
+    await handlers['worker.register']({ t: 'worker.register' })
+
+    expect(guard.allow).toHaveBeenCalled()
+  })
+
   it('asks nothing when the key is already registered — no stake moves', async () => {
     const { ctx, guard } = ctxWith({ state: stateWith({ registered: true }) })
     mockHost.runAsync.mockResolvedValue({

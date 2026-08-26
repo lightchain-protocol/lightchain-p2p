@@ -12,7 +12,7 @@ import { WORKER_REGISTRY_ADDRESS, decodeBool, encodeCall, fromQuantity } from '@
 import { readableAmount } from '../../guard.mjs'
 import { recordTransaction } from '../../ledger.mjs'
 
-import { WORKER_REGISTERED_TOPIC, stakeProbe } from './support.mjs'
+import { GAS_HEADROOM, WORKER_REGISTERED_TOPIC, stakeProbe } from './support.mjs'
 
 export function createRegistration(ctx) {
   const { guard, rpc } = ctx
@@ -51,6 +51,26 @@ export function createRegistration(ctx) {
     if (probe.problem !== null || probe.minimum === undefined) {
       throw new Error(
         `registering is not attempted without knowing what it stakes, and the ${resolved.network} chain could not be read: ${probe.problem ?? 'no answer'}`
+      )
+    }
+
+    /**
+     * Refused before the dialog, not after it.
+     *
+     * The panel disables Register while the key is short, but the panel is not
+     * the boundary: a renderer calling `worker.register` over IPC with an
+     * unfunded key was still *asked* to confirm a stake the key cannot cover,
+     * and approving it would launch a container whose stake transaction can
+     * only fail. Bounded — a key at zero cannot pay gas either — but a
+     * confirmation for something that cannot happen teaches people that
+     * confirmations do not mean anything. Same rule as the panel's, so the two
+     * cannot disagree about what "funded" means.
+     */
+    if (probe.balance !== undefined && probe.balance < probe.minimum + GAS_HEADROOM) {
+      const short = probe.minimum + GAS_HEADROOM - probe.balance
+      throw new Error(
+        `this key is short ${readableAmount(short, NETWORKS[resolved.network]?.symbol ?? 'LCAI')} ` +
+          'of the stake and its gas — fund it first, step 4 of the panel says how much'
       )
     }
 
