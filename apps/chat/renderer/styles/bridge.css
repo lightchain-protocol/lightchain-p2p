@@ -138,8 +138,10 @@
 
 /* The well takes the focus ring, because the field inside it has no edge of
    its own — without this, typing into it looks like typing into nothing. */
+/* The ring is the accent. CONTRACT §1.4: focus colour is the accent, and the
+   mark's own violet is not it. */
 .bridge-amount-well:focus-within {
-  border-color: var(--lc-brand-violet);
+  border-color: var(--lc-accent);
 }
 
 .bridge-amount {

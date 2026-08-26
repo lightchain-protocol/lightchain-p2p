@@ -58,18 +58,10 @@
   min-height: 0;
 }
 
-.console-body-split {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: start;
-}
-
-/* One column below this, and the page scrolls again. An honest fallback beats
-   a two-column grid squeezed until neither column works. */
+/* Below this width a console page scrolls again, rather than squeezing what is
+   on it. An honest fallback beats a layout held together at a size nobody can
+   use. */
 @media (max-width: 1100px) {
-  .console-body-split {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .console {
     overflow-y: auto;
   }

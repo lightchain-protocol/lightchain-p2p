@@ -1438,7 +1438,10 @@
           <!-- Version, theme and settings: the two controls people look for in
                exactly this corner, and the build number under them. -->
           <div class="sidebar-tools">
-            <p class="version" id="version"></p>
+            <!-- A button, not a label. It already said BETA and answered
+                 support's first question; now it is also the way back to what
+                 that means and where to report. -->
+            <button class="version" type="button" id="version" data-kit-focus></button>
             <button
               class="icon-button"
               type="button"
@@ -1475,6 +1478,37 @@
              becomes a thing people learn to look past; this one comes back at
              the next launch, because the twelve words are still the only way
              back in. -->
+        <!-- Said once per version, then put away for good.
+
+             The application already says BETA in the corner, which is the
+             right amount of noise for something permanent — but a badge is not
+             a request, and what this needs is for people to report what breaks.
+             So this is loud exactly once per release and then never again, and
+             the badge becomes the way back to it.
+
+             Above the backup reminder because it frames the whole application
+             rather than one account, and because the backup reminder is the
+             one with an action that cannot wait. -->
+        <div class="beta-banner" id="beta-banner" role="status" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-info" /></svg>
+          <p class="beta-banner-text">
+            This wallet is a BETA release. Report any problem you encounter, and
+            do not hold more in it than you are prepared to lose.
+          </p>
+          <button class="button button-sm" type="button" id="beta-banner-report" hidden>
+            Report on Discord
+          </button>
+          <button
+            class="icon-button beta-banner-dismiss"
+            type="button"
+            id="beta-banner-dismiss"
+            title="I have read this"
+            aria-label="Dismiss the BETA notice for this version"
+          >
+            <svg class="icon" aria-hidden="true"><use href="#i-close" /></svg>
+          </button>
+        </div>
+
         <div class="backup-banner" id="backup-banner" role="status" hidden>
           <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
           <p class="backup-banner-text">
@@ -3017,6 +3051,38 @@
          because a line reading "ETH — the network's own coin" explains what
          the select above it already said. The options themselves are built by
          `fillTokenPicker` in lib/assets.js. -->
+    <!-- What BETA means here, reachable from the badge for as long as the
+         badge says BETA. The banner says it once; this is where somebody who
+         dismissed it, or who arrived later, can still find it. -->
+    <dialog aria-labelledby="beta-title" class="dialog" id="beta-dialog">
+      <div class="dialog-form">
+        <h2 id="beta-title" class="dialog-title">This is a BETA release</h2>
+
+        <p class="dialog-note">
+          Lightchain Chat is not finished software. It holds real keys and moves real money, and it
+          has not been through a release that should be treated as final. Hold only what you are
+          prepared to lose, and record the twelve words: they are the only way back into this
+          wallet.
+        </p>
+
+        <p class="dialog-note">
+          If something goes wrong, a short report is the most useful thing we can receive. What you
+          were doing, what you expected, and what happened is enough. The version below answers the
+          rest.
+        </p>
+
+        <p class="dialog-note beta-version" id="beta-version"></p>
+
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close="beta-dialog">Close</button>
+          <button class="button button-primary" type="button" id="beta-report" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+            Report on Discord
+          </button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog aria-labelledby="receive-title" class="dialog" id="receive-dialog">
       <div class="dialog-form">
         <h2 id="receive-title" class="dialog-title">Receive</h2>
