@@ -146,6 +146,14 @@ export async function stakeProbe(rpc, config) {
  * {@link SealedStore}. One store, one document: there is exactly one secret
  * here, and it is the password that opens the key holding the stake.
  */
+/**
+ * What a key needs on top of the stake to pay for staking it.
+ *
+ * One token. The same figure the Earn panel uses to decide whether Register is
+ * offered — worth keeping in step, since the two now refuse on the same rule.
+ */
+export const GAS_HEADROOM = 10n ** 18n
+
 export const WORKER_PASSWORD_DOC = 'keystore-password'
 
 /**

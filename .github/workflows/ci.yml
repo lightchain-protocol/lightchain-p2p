@@ -247,6 +247,28 @@ jobs:
             node scripts/review.mjs 9222 /tmp/ci-shots
           '
 
+      # `surfaces-check` asks whether what is on screen agrees with what the
+      # worker says. It stays out of the blocking list above because it reads
+      # balances and model fees from a live chain — but leaving it unrun is how
+      # it came to assert four nav rows and five step headings the panel had not
+      # used for some time, with nobody finding out. Non-blocking, same bargain
+      # as the chain surveys: a red run means "go and look".
+      - name: Surfaces agree with the worker
+        continue-on-error: true
+        working-directory: apps/chat
+        run: |
+          xvfb-run --auto-servernum bash -e -c '
+            rm -rf /tmp/ci-surfaces
+            pnpm exec electron . --no-updates --remote-debugging-port=9223 --storage /tmp/ci-surfaces &
+            APP_PID=$!
+            trap "kill $APP_PID 2>/dev/null || true" EXIT
+            for i in $(seq 1 40); do
+              if curl -sf http://127.0.0.1:9223/json/list > /dev/null; then break; fi
+              sleep 3
+            done
+            node scripts/surfaces-check.mjs 9223
+          '
+
       # A picture of every surface in both themes, which is the only way to see
       # a layout regression in a pull request.
       - name: Keep the screenshots

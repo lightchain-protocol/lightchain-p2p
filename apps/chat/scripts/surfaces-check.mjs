@@ -363,10 +363,11 @@ report(
 report(
   'and the Elsewhere rows still show their icons',
   folded.missing !== true &&
-    // Four now: Models, Account, Bridge, Earn — the bridge joined the group
-    // when it became a page, and the count is what keeps a row that lost its
-    // icon from passing as "the others are fine".
-    folded.elsewhere.length === 4 &&
+    // Five now: Models, Account, Bridge, For Workers, For Validators. The
+    // bridge joined when it became a page and validators followed; the count is
+    // what keeps a row that lost its icon from passing as "the others are
+    // fine", so it has to track the group rather than a remembered number.
+    folded.elsewhere.length === 5 &&
     folded.elsewhere.every((i) => i.href !== null && i.visible && i.sized),
   folded.elsewhere?.map((i) => `${i.section}:${i.href ?? 'no icon'}`).join(', ') ?? 'missing'
 )
@@ -661,7 +662,7 @@ await evaluate(`(async () => {
 
 const flow = JSON.parse(
   await evaluate(`(() => {
-    const steps = ['host', 'key', 'stake', 'register', 'run'].map((name) => {
+    const steps = ['host', 'models', 'key', 'stake', 'register', 'run'].map((name) => {
       const title = document.getElementById('worker-step-' + name + '-title')
       return { name, says: (title?.textContent ?? '').trim() }
     })
@@ -680,12 +681,22 @@ const flow = JSON.parse(
   })()`)
 )
 
+/**
+ * The headings as the panel actually says them.
+ *
+ * These drifted: the flow was reworded to instructions — "Check this machine"
+ * rather than "Host ready" — and a sixth step was added, and this list said
+ * neither. Four assertions failed against a panel that was perfectly correct,
+ * which is worse than no assertion: a harness that cries wolf gets read as
+ * broken rather than as a finding. If the copy changes, change it here too.
+ */
 const STEP_WORDS = {
-  host: 'Host ready',
-  key: 'Worker key',
-  stake: 'Stake',
-  register: 'Register',
-  run: 'Run'
+  host: 'Check this machine',
+  models: 'Choose what to answer',
+  key: 'Make a key to be paid to',
+  stake: 'Fund the key',
+  register: 'Register the worker',
+  run: 'Start earning'
 }
 for (const step of flow.steps) {
   report(
