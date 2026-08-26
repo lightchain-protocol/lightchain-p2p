@@ -1,4 +1,4 @@
-import { el2, toast } from './dom.js'
+import { el2, sentence, toast } from './dom.js'
 import { bridge, request } from './ipc.js'
 import { formatUnits, plainUnits, toBaseUnits } from './amounts.js'
 import { refreshAssets } from './assets.js'
@@ -56,7 +56,7 @@ const chosenAsset = () => {
 }
 
 function failed(message) {
-  error.querySelector('[data-slot="detail"]').textContent = message
+  error.querySelector('[data-slot="detail"]').textContent = sentence(message)
   error.hidden = false
   review.hidden = true
   confirmBtn.hidden = true

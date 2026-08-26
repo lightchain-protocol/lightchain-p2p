@@ -1,4 +1,4 @@
-import { el2, short, shortAddress, svg } from './dom.js'
+import { el2, sentence, short, shortAddress, svg } from './dom.js'
 
 /**
  * Who is in a room, and the one thing you get to say about yourself in it.
@@ -602,7 +602,7 @@ function confirmRemoval(row, onRemove) {
       await onRemove(row.writerKey)
       ui.dialog.close()
     } catch (err) {
-      ui.error.textContent = err.message
+      ui.error.textContent = sentence(err.message)
       ui.error.hidden = false
     } finally {
       ui.confirm.disabled = false
@@ -697,7 +697,7 @@ export function nameSelfControl({ current, onSubmit } = {}) {
     try {
       await onSubmit(input.value)
     } catch (err) {
-      error.textContent = err.message
+      error.textContent = sentence(err.message)
       error.hidden = false
     } finally {
       submit.disabled = false

@@ -1,4 +1,4 @@
-import { copy, formatLcai, toast } from './dom.js'
+import { copy, formatLcai, sentence, toast } from './dom.js'
 import { bridge, request } from './ipc.js'
 import { setDepositSound } from './sound.js'
 import { markBackedUp, showBackupBanner } from './backup.js'
@@ -184,7 +184,7 @@ document.getElementById('blind-form').addEventListener('submit', async (evt) => 
     toast('Saved. Restart the app before this takes effect.')
     void openSettings()
   } catch (err) {
-    error.textContent = err.message
+    error.textContent = sentence(err.message)
     error.hidden = false
   }
 })
@@ -289,7 +289,7 @@ document.getElementById('worker-settings-form').addEventListener('submit', async
     toast('Saved')
     void openSettings()
   } catch (err) {
-    error.textContent = err.message
+    error.textContent = sentence(err.message)
     error.hidden = false
   }
 })
@@ -320,7 +320,7 @@ document.getElementById('reveal-form').addEventListener('submit', async (evt) =>
     await showBackupBanner()
   } catch (err) {
     list.hidden = true
-    error.textContent = err.message
+    error.textContent = sentence(err.message)
     error.hidden = false
   } finally {
     input.value = ''
@@ -352,7 +352,7 @@ document.getElementById('password-form').addEventListener('submit', async (evt) 
     await request('wallet.changePassword', { current: current.value, next: next.value })
     toast('Password changed')
   } catch (err) {
-    error.textContent = err.message
+    error.textContent = sentence(err.message)
     error.hidden = false
   } finally {
     for (const field of [current, next, confirm]) field.value = ''
@@ -373,7 +373,7 @@ document.getElementById('remove-form').addEventListener('submit', async (evt) =>
     // Back to first run, because there is no identity any more.
     await startOnboarding()
   } catch (err) {
-    error.textContent = err.message
+    error.textContent = sentence(err.message)
     error.hidden = false
   } finally {
     input.value = ''
@@ -648,7 +648,7 @@ inference.templateForm.addEventListener('submit', async (evt) => {
   } catch (err) {
     // The form keeps what was typed and stays in whichever mode it was in, so
     // a refusal costs a correction rather than the whole template.
-    error.textContent = err.message
+    error.textContent = sentence(err.message)
     error.hidden = false
   } finally {
     inference.templateSave.disabled = false
@@ -808,7 +808,7 @@ inference.limitsForm.addEventListener('submit', async (evt) => {
   try {
     asked = { perJob: amountFrom(caps.perJob), daily: amountFrom(caps.daily) }
   } catch (err) {
-    error.textContent = err.message
+    error.textContent = sentence(err.message)
     error.hidden = false
     return
   }
@@ -840,7 +840,7 @@ inference.limitsForm.addEventListener('submit', async (evt) => {
     if (kept) toast('Limits saved')
     else toast('Not stored; the fields show what is saved', 'error')
   } catch (err) {
-    error.textContent = err.message
+    error.textContent = sentence(err.message)
     error.hidden = false
   } finally {
     inference.limitsSave.disabled = false

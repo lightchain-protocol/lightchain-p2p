@@ -6,7 +6,18 @@
  * four functions that are only correct when all four have run.
  */
 
-import { atBottom, el, el2, short, shortAddress, showSection, svg, time, toast } from '../dom.js'
+import {
+  atBottom,
+  el,
+  el2,
+  sentence,
+  short,
+  shortAddress,
+  showSection,
+  svg,
+  time,
+  toast
+} from '../dom.js'
 import { request } from '../ipc.js'
 import { renderText } from '../format.js'
 
@@ -253,11 +264,11 @@ export function renderRoom() {
     // An answer relayed from a model. Attributed to the model rather than to
     // whoever paid for it, with the room's own verdict on whether it holds.
     if (message.answer) {
-      author.textContent = message.answer.model
+      author.textContent = sentence(message).answer.model
 
       const provenance = document.createElement('span')
       provenance.className = message.answered ? 'message-proof' : 'message-warning'
-      provenance.textContent = message.answered ? 'signed by the worker' : 'unproven'
+      provenance.textContent = sentence(message).answered ? 'signed by the worker' : 'unproven'
       provenance.title = message.answered
         ? `Worker ${message.answer.worker} signed this text for job ${message.answer.jobId}.`
         : 'The evidence attached to this answer does not check out. Read it as ordinary text from whoever posted it.'

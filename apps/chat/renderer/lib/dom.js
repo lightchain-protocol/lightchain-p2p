@@ -87,6 +87,12 @@ export const el = {
   copyInviteBtn: document.getElementById('copy-invite-btn'),
   backupBanner: document.getElementById('backup-banner'),
   backupBannerDismiss: document.getElementById('backup-banner-dismiss'),
+  betaBanner: document.getElementById('beta-banner'),
+  betaBannerReport: document.getElementById('beta-banner-report'),
+  betaBannerDismiss: document.getElementById('beta-banner-dismiss'),
+  betaDialog: document.getElementById('beta-dialog'),
+  betaVersion: document.getElementById('beta-version'),
+  betaReport: document.getElementById('beta-report'),
   toast: document.getElementById('toast')
 }
 
@@ -219,6 +225,32 @@ function readable(value) {
 }
 
 /**
+ * The same text, starting like a sentence.
+ *
+ * Messages are written lowercase where they are thrown — `packages/wallet` and
+ * the worker both do it, deliberately, because those strings are also logged,
+ * compared and asserted against, and a capital at the source would be a capital
+ * in all three. On screen it reads as unfinished, which is what this fixes: the
+ * capital belongs to the presentation, so it is applied here and nowhere else.
+ *
+ * An opening word carrying a dot, an underscore or a slash is left alone. Those
+ * are names — `eth_call`, `room.create`, a path — and changing their case
+ * changes what they refer to.
+ */
+export function sentence(value) {
+  const text = readable(value)
+  if (!text) return text
+
+  const first = text[0]
+  if (first < 'a' || first > 'z') return text
+
+  const opening = text.slice(0, text.search(/[\s:,]|$/))
+  if (/[._/]/.test(opening)) return text
+
+  return first.toUpperCase() + text.slice(1)
+}
+
+/**
  * States that are not failures, listed rather than inferred.
  *
  * Anything unrecognised is still treated as trouble — that part was right, and
@@ -330,14 +362,14 @@ toastClose.addEventListener('click', dismissToast)
  */
 function dockToast() {
   let top = document.getElementById('titlebar')?.getBoundingClientRect().bottom ?? 0
-  if (el.backupBanner && !el.backupBanner.hidden) {
-    top = Math.max(top, el.backupBanner.getBoundingClientRect().bottom)
+  for (const banner of [el.backupBanner, el.betaBanner]) {
+    if (banner && !banner.hidden) top = Math.max(top, banner.getBoundingClientRect().bottom)
   }
   el.toast.style.top = `${Math.round(top) + 12}px`
 }
 
 export function toast(text, tone) {
-  toastText.textContent = readable(text)
+  toastText.textContent = tone === 'error' ? sentence(text) : readable(text)
   el.toast.dataset.tone = tone ?? 'info'
   dockToast()
   el.toast.hidden = false

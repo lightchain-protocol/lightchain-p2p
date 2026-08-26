@@ -1,4 +1,4 @@
-import { el2, short, svg, toast } from './dom.js'
+import { el2, sentence, short, svg, toast } from './dom.js'
 import { bridge, request } from './ipc.js'
 import { exactUnits, formatUnits } from './amounts.js'
 
@@ -165,7 +165,7 @@ async function loadChart() {
   try {
     series = await request('prices.history', { symbol: asset.pricedAs ?? asset.symbol, range })
   } catch (err) {
-    note.textContent = err.message
+    note.textContent = sentence(err.message)
     note.hidden = false
     return
   }
@@ -207,7 +207,7 @@ async function loadHistory(asset) {
     })
   } catch (err) {
     covers.textContent = ''
-    document.getElementById('asset-history-blind-note').textContent = err.message
+    document.getElementById('asset-history-blind-note').textContent = sentence(err.message)
     blind.hidden = false
     return
   }

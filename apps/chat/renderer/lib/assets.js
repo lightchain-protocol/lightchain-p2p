@@ -1,4 +1,4 @@
-import { copy, el2, skeleton, svg, toast } from './dom.js'
+import { copy, el2, sentence, skeleton, svg, toast } from './dom.js'
 import { bridge, request } from './ipc.js'
 import { receivingBlocked } from './backup.js'
 import { clearQr, drawQr } from './qr.js'
@@ -262,7 +262,7 @@ async function refreshPortfolio() {
     series = await request('assets.portfolio', { range: portfolioRange })
   } catch (err) {
     holder.hidden = true
-    note.textContent = err.message
+    note.textContent = sentence(err.message)
     return
   }
 
@@ -353,7 +353,7 @@ export async function refreshAssets({ refresh = false } = {}) {
   } catch (err) {
     // Said out loud rather than left as an empty list. An empty holdings list
     // and an unreachable worker look identical, and only one of them is fine.
-    partialNote.textContent = err.message
+    partialNote.textContent = sentence(err.message)
     partial.hidden = false
     total.textContent = 'Not available'
     return
@@ -592,7 +592,7 @@ const chosenAsset = () => {
 }
 
 function sendFailed(message) {
-  sendError.querySelector('[data-slot="detail"]').textContent = message
+  sendError.querySelector('[data-slot="detail"]').textContent = sentence(message)
   sendError.hidden = false
   review.hidden = true
   confirmBtn.hidden = true

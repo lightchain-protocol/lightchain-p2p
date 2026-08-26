@@ -1,4 +1,4 @@
-import { el2, showSection, toast } from './dom.js'
+import { el2, sentence, showSection, toast } from './dom.js'
 import { bridge as pear, request } from './ipc.js'
 import { toBaseUnits } from './amounts.js'
 import { refreshAssets } from './assets.js'
@@ -55,7 +55,7 @@ let quoted = null
 let pending = null
 
 function failed(message) {
-  error.querySelector('[data-slot="detail"]').textContent = message
+  error.querySelector('[data-slot="detail"]').textContent = sentence(message)
   error.hidden = false
   review.hidden = true
   approveBtn.hidden = true

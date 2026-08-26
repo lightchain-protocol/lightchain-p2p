@@ -1,4 +1,4 @@
-import { copy, toast } from './dom.js'
+import { copy, sentence, toast } from './dom.js'
 import { forgetBackupState, markBackedUp, showBackupBanner } from './backup.js'
 import { request } from './ipc.js'
 import { refreshTitlebarBalance, showWallet } from './wallet.js'
@@ -99,7 +99,7 @@ export function showStepForTesting(id) {
 
 function fail(id, message) {
   const error = el(id)
-  error.textContent = message
+  error.textContent = sentence(message)
   error.hidden = false
 }
 

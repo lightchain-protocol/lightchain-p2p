@@ -1,4 +1,4 @@
-import { copy, el, el2, formatLcai, shortAddress, showSection, toast } from './dom.js'
+import { copy, el, el2, formatLcai, sentence, shortAddress, showSection, toast } from './dom.js'
 import { avatar } from './members.js'
 import { backedUp } from './backup.js'
 import { request } from './ipc.js'
@@ -710,7 +710,7 @@ pay.form.addEventListener('submit', async (evt) => {
     amount = toWei(pay.amount.value)
     if (amount === 0n) throw new Error('Sending nothing would just cost you the gas')
   } catch (err) {
-    pay.error.textContent = err.message
+    pay.error.textContent = sentence(err.message)
     pay.error.hidden = false
     return
   }
@@ -725,7 +725,7 @@ pay.form.addEventListener('submit', async (evt) => {
     void refreshTitlebarBalance()
     void refreshActivity()
   } catch (err) {
-    pay.error.textContent = err.message
+    pay.error.textContent = sentence(err.message)
     pay.error.hidden = false
   } finally {
     pay.submit.disabled = false
@@ -807,7 +807,7 @@ move.form.addEventListener('submit', async (evt) => {
     amount = toWei(move.amount.value)
     if (amount === 0n) throw new Error(`A ${spec.verb.toLowerCase()} of nothing would be refused`)
   } catch (err) {
-    move.error.textContent = err.message
+    move.error.textContent = sentence(err.message)
     move.error.hidden = false
     return
   }
@@ -825,7 +825,7 @@ move.form.addEventListener('submit', async (evt) => {
     void refreshActivity()
     void refreshModels()
   } catch (err) {
-    move.error.textContent = err.message
+    move.error.textContent = sentence(err.message)
     move.error.hidden = false
   } finally {
     move.submit.disabled = false

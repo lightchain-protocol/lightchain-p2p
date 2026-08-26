@@ -20,7 +20,7 @@
  * asked for there — once somebody has chosen where they are going, beside the
  * account they are going to, rather than as a toll on the door.
  */
-import { el2, shortAddress, toast } from './dom.js'
+import { el2, sentence, shortAddress, toast } from './dom.js'
 import { avatar } from './members.js'
 import { request } from './ipc.js'
 import { showWallet } from './wallet.js'
@@ -43,7 +43,7 @@ let current = null
 let chosen = null
 
 function fail(message) {
-  error.textContent = message
+  error.textContent = sentence(message)
   error.hidden = false
 }
 
