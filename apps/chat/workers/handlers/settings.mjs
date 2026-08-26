@@ -23,6 +23,11 @@ const WRITABLE = new Set([
   // Appearance, written by the window itself
   'theme',
   'sidebar',
+  // Which version's BETA notice has been read. A version string rather than a
+  // flag, so the notice comes back after an upgrade — the warning is about this
+  // build, and somebody who dismissed it six releases ago has not been told
+  // anything about this one.
+  'betaNotice',
   // Two settings are deliberately absent from this list, and both decide
   // what it costs to move money.
   //

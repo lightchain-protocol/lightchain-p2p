@@ -13,6 +13,37 @@
              becomes a thing people learn to look past; this one comes back at
              the next launch, because the twelve words are still the only way
              back in. -->
+        <!-- Said once per version, then put away for good.
+
+             The application already says BETA in the corner, which is the
+             right amount of noise for something permanent — but a badge is not
+             a request, and what this needs is for people to report what breaks.
+             So this is loud exactly once per release and then never again, and
+             the badge becomes the way back to it.
+
+             Above the backup reminder because it frames the whole application
+             rather than one account, and because the backup reminder is the
+             one with an action that cannot wait. -->
+        <div class="beta-banner" id="beta-banner" role="status" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-info" /></svg>
+          <p class="beta-banner-text">
+            This wallet is a BETA release. Report any problem you encounter, and
+            do not hold more in it than you are prepared to lose.
+          </p>
+          <button class="button button-sm" type="button" id="beta-banner-report" hidden>
+            Report on Discord
+          </button>
+          <button
+            class="icon-button beta-banner-dismiss"
+            type="button"
+            id="beta-banner-dismiss"
+            title="I have read this"
+            aria-label="Dismiss the BETA notice for this version"
+          >
+            <svg class="icon" aria-hidden="true"><use href="#i-close" /></svg>
+          </button>
+        </div>
+
         <div class="backup-banner" id="backup-banner" role="status" hidden>
           <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
           <p class="backup-banner-text">

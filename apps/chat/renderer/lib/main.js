@@ -3,6 +3,7 @@ import { openAccounts } from './accounts.js'
 import { bridge, onPush, request, startWorker } from './ipc.js'
 import { adopt, openInvite, openMessage, receivePresence, receiveRoom } from './rooms.js'
 import { receiveAiProgress } from './answering.js'
+import { restoreBetaNotice, wireBeta } from './beta.js'
 import { bindSearchShortcut } from './search.js'
 import { onAiProgress, onCommitment, openTranscript, refreshModels } from './models.js'
 import { appendWorkerOutput, refreshWorker, setWorkerBusy } from './worker.js'
@@ -44,7 +45,11 @@ document.documentElement.dataset.platform = bridge.platform()
 // finished thing). The number is the same one Settings reports, read from the
 // same package.
 el.version.textContent = `${bridge.pkg().version} BETA`
-el.version.title = `Lightchain Chat v${bridge.pkg().version}`
+el.version.title = 'What BETA means here, and where to report a problem'
+
+// The badge and the dialog behind it. The banner itself waits on the worker —
+// see the boot chain below.
+wireBeta()
 
 // Searching belongs to the window rather than to the room panel: it looks
 // across every room, and it has to be reachable from wherever somebody is.
@@ -412,6 +417,7 @@ startWorker()
   .then(() => request('room.list'))
   .then(adopt)
   .then(restorePreferences)
+  .then(restoreBetaNotice)
   .then(startOnboarding)
   // Who this window is signed in as, which nothing else established.
   //
