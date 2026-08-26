@@ -229,11 +229,16 @@ describe('identicon ink', () => {
   // belong to no product in particular. Everything here is a colour the design
   // system already owns, so a wall of them still looks like Lightchain.
   it('draws only on colours the product already owns', () => {
-    const owned = new Set<string>([
-      ...Object.values(BRAND),
-      ...Object.values(LIGHT),
-      ...Object.values(DARK)
-    ])
+    // `Object.values` on these falls to its `any[]` overload — none of them has
+    // an index signature — so the strings are picked out rather than spread in
+    // blind. This is the same set as before: the nested `neutral` ramp came
+    // through as an object and could never have matched a colour lookup.
+    const coloursIn = (source: object): string[] =>
+      (Object.values(source) as unknown[]).filter(
+        (value): value is string => typeof value === 'string'
+      )
+
+    const owned = new Set<string>([...coloursIn(BRAND), ...coloursIn(LIGHT), ...coloursIn(DARK)])
     for (const ink of IDENTICON_INK) expect(owned.has(ink), ink).toBe(true)
   })
 

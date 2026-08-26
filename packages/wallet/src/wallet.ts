@@ -379,7 +379,7 @@ export class Wallet {
   addresses(count: number): { index: number; address: string }[] {
     if (!this.#accountsKey) throw new WalletError('the wallet is locked')
 
-    return Array.from({ length: count }, (unused, index) => ({
+    return Array.from({ length: count }, (_unused, index) => ({
       index,
       address: addressFromAccountsKey(this.#accountsKey as string, index)
     }))

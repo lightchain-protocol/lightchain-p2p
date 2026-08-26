@@ -254,7 +254,7 @@ describe('a client that fails over on reads and never on broadcast', () => {
   function watchingFetch(answers: Record<string, 'ok' | 'down'>, result: unknown = '0x1') {
     const seen: [string, string][] = []
     const fetcher = vi.fn(async (url: string, init: { body: string }) => {
-      const { method } = JSON.parse(init.body)
+      const { method } = JSON.parse(init.body) as { method: string }
       seen.push([String(url), method])
       if (answers[String(url)] === 'down') throw new Error('connect ECONNREFUSED')
       return { ok: true, status: 200, json: async () => ({ jsonrpc: '2.0', id: 1, result }) }

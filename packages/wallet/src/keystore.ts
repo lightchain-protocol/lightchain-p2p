@@ -208,18 +208,39 @@ export function addressOf(keystore: unknown): string | null {
   return typeof address === 'string' && address.length > 0 ? `0x${address}` : null
 }
 
+/**
+ * The same shape, with nothing about it believed yet.
+ *
+ * `validate` used to open with `value as KeystoreV3`, which told the compiler
+ * the file was already what this function exists to find out. The messages
+ * still printed the right thing at runtime — an assertion is erased — but every
+ * rejection branch narrowed to `never`, so the checker could not see that
+ * `${k.version}` was reporting a value it had just been told was impossible.
+ * Describing the input as unproven is what lets it help.
+ */
+interface UnvalidatedKeystore {
+  version?: unknown
+  crypto?: {
+    cipher?: unknown
+    kdf?: unknown
+    kdfparams?: { dklen?: unknown; n?: unknown; p?: unknown; r?: unknown }
+  }
+}
+
 function validate(value: unknown): KeystoreV3 {
-  const k = value as KeystoreV3
+  const k = value as UnvalidatedKeystore
   if (!k || typeof k !== 'object') throw new KeystoreError('keystore must be an object')
-  if (k.version !== 3) throw new KeystoreError(`unsupported keystore version: ${k.version}`)
+  if (k.version !== 3) throw new KeystoreError(`unsupported keystore version: ${String(k.version)}`)
 
   const c = k.crypto
   if (!c || typeof c !== 'object') throw new KeystoreError('keystore has no crypto section')
-  if (c.cipher !== 'aes-128-ctr') throw new KeystoreError(`unsupported cipher: ${c.cipher}`)
+  if (c.cipher !== 'aes-128-ctr') {
+    throw new KeystoreError(`unsupported cipher: ${String(c.cipher)}`)
+  }
   if (c.kdf !== 'scrypt') {
     // pbkdf2 keystores exist and are readable; supporting them without a
     // reason to is more code paths handling secrets.
-    throw new KeystoreError(`unsupported kdf: ${c.kdf}. Only scrypt is read.`)
+    throw new KeystoreError(`unsupported kdf: ${String(c.kdf)}. Only scrypt is read.`)
   }
 
   const p = c.kdfparams
@@ -229,9 +250,10 @@ function validate(value: unknown): KeystoreV3 {
   // A file claiming N=2 would decrypt instantly and offer no protection; a
   // hostile one claiming N=2^30 would exhaust memory on open.
   if (p.n < 1024 || p.n > 1 << 22) throw new KeystoreError(`scrypt N out of range: ${p.n}`)
-  if (p.dklen !== 32) throw new KeystoreError(`unsupported dklen: ${p.dklen}`)
+  if (p.dklen !== 32) throw new KeystoreError(`unsupported dklen: ${String(p.dklen)}`)
 
-  return k
+  // Earned now, rather than assumed at the top.
+  return value as KeystoreV3
 }
 
 function publicKeyOf(privateKey: string): Uint8Array {

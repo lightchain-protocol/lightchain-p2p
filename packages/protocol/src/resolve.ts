@@ -161,8 +161,11 @@ export function resolveRoom(
     if (reacted) {
       if (byId.has(reacted.target)) {
         const who = actorOf(message, proven.get(message.id) ?? null)
-        const forTarget = reactions.get(reacted.target) ?? new Map()
-        const forEmoji = forTarget.get(reacted.emoji) ?? new Map()
+        // The type arguments are load-bearing: `?? new Map()` on its own infers
+        // `Map<any, any>`, and every read out of it after that is unchecked.
+        const forTarget =
+          reactions.get(reacted.target) ?? new Map<string, Map<string, ChatMessage>>()
+        const forEmoji = forTarget.get(reacted.emoji) ?? new Map<string, ChatMessage>()
         if (supersedes(message, forEmoji.get(who))) forEmoji.set(who, message)
         forTarget.set(reacted.emoji, forEmoji)
         reactions.set(reacted.target, forTarget)

@@ -225,7 +225,9 @@ describe('two peers doing the same thing at once', () => {
     for (const outcome of outcomes) {
       if (outcome.status === 'rejected') {
         expect(outcome.reason).toBeInstanceOf(RoomError)
-        expect(String(outcome.reason.message)).toMatch(/lost write access|could not be written/)
+        expect(String((outcome.reason as Error).message)).toMatch(
+          /lost write access|could not be written/
+        )
       }
     }
 

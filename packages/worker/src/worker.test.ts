@@ -321,11 +321,12 @@ describe('registry address resolution', () => {
         throw new Error('connection refused')
       }
     }
-    const err = await resolveContractAddresses(partial, failing).catch((e) => e)
+    const err = await resolveContractAddresses(partial, failing).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(WorkerConfigError)
-    expect(err.message).toContain('testnet')
-    expect(err.message).toContain(WORKER_REGISTRY_ADDRESS)
-    expect(err.cause).toBeInstanceOf(Error)
+    const failure = err as WorkerConfigError
+    expect(failure.message).toContain('testnet')
+    expect(failure.message).toContain(WORKER_REGISTRY_ADDRESS)
+    expect(failure.cause).toBeInstanceOf(Error)
   })
 })
 

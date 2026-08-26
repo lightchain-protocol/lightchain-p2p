@@ -140,7 +140,7 @@ export class Room {
         // The view needs its own encoding. It defaults to binary, and appending
         // an object to a binary core throws from inside apply, which surfaces
         // as the room failing to open rather than as an encoding mistake.
-        return store.get({ name: 'view', valueEncoding: 'json' }) as View
+        return store.get({ name: 'view', valueEncoding: 'json' })
       },
       async apply(nodes, view, host) {
         for (const node of nodes) {

@@ -313,7 +313,11 @@ describe('reading a log back', () => {
     await first.said('c1', 'llama3-8b', 'you', 'hello')
     await first.said('c1', 'llama3-8b', 'model', 'hi')
 
-    const second = new History({ append: log.append, read: log.read })
+    // Bound, because `History` calls them detached from `log`.
+    const second = new History({
+      append: (record) => log.append(record),
+      read: () => log.read()
+    })
     expect(await second.transcripts()).toEqual(await first.transcripts())
   })
 })

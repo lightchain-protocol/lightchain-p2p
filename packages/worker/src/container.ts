@@ -61,8 +61,11 @@ export function parseContainerState(raw: string | null): ContainerState {
     }
   }
 
+  // `Array.isArray` narrows to `any[]`, so indexing it hands back `any` and
+  // everything read off the entry afterwards is unchecked. Saying what the
+  // array holds is what keeps the rest of this function honest.
   const entry: InspectShape | undefined = Array.isArray(parsed)
-    ? parsed[0]
+    ? (parsed as InspectShape[])[0]
     : (parsed as InspectShape)
   if (!entry?.State) {
     return {
