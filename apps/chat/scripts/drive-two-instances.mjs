@@ -12,8 +12,8 @@
  * anything on the renderer-to-worker path.
  *
  *     # two terminals, separate storage, debugging enabled
- *     pnpm exec electron . --no-updates --remote-debugging-port=9301 --storage /tmp/chat-a
- *     pnpm exec electron . --no-updates --remote-debugging-port=9302 --storage /tmp/chat-b
+ *     pnpm exec electron . --no-updates --no-room-gate --remote-debugging-port=9301 --storage /tmp/chat-a
+ *     pnpm exec electron . --no-updates --no-room-gate --remote-debugging-port=9302 --storage /tmp/chat-b
  *
  *     # a third
  *     node scripts/drive-two-instances.mjs
@@ -147,6 +147,13 @@ async function setUpWallet(r) {
       document.getElementById('onboard-password-confirm').value = ${JSON.stringify(PASSWORD)}
       document.getElementById('onboard-password-form').requestSubmit()
     `)
+    // A good password reaches the backup choice, not the phrase — the phrase is
+    // only shown to somebody who says they want to write it down now. This run
+    // needs the words, so it takes that branch; onboarding-check owns the
+    // "later" one.
+    await r.until(`!document.getElementById('step-secure').hidden`, 'the backup choice')
+    await r.eval(`document.getElementById('secure-now').click()`)
+
     await r.until(`!document.getElementById('step-phrase').hidden`, 'the recovery phrase')
 
     // The words are covered until somebody asks for them, so that a phrase is
@@ -186,8 +193,11 @@ if (heldByA !== 0 || heldByB !== 0) {
 }
 
 await a.eval(`document.getElementById('create-btn').click()`)
+// What is shown is elided to first-and-last — a 64-character key across a
+// header is noise, not information. The whole thing stays in data-full, which
+// is what the copy button reads and so what this should read too.
 const roomKey = await a.until(
-  `(() => { const k = document.getElementById('room-key').textContent; return /^[0-9a-f]{64}$/.test(k) ? k : null })()`,
+  `(() => { const k = document.getElementById('room-key')?.dataset.full ?? ''; return /^[0-9a-f]{64}$/.test(k) ? k : null })()`,
   'A to create a room'
 )
 step(3, `A created room ${roomKey.slice(0, 12)}…`)
@@ -209,14 +219,19 @@ await b.eval(`
   document.getElementById('join-form').requestSubmit()
 `)
 await b.until(
-  `document.getElementById('room-key').textContent === ${JSON.stringify(roomKey)}`,
+  `document.getElementById('room-key')?.dataset.full === ${JSON.stringify(roomKey)}`,
   'B to pair into the room',
   90_000
 )
 
 // Straight to writer: nothing had to be sent back the other way.
-const role = await b.eval(`return document.getElementById('room-role').textContent`)
-if (role !== 'writer') throw new Error(`B should arrive able to write, got "${role}"`)
+//
+// The badge only appears when there is a constraint worth naming, and the one
+// thing it ever says is "read only" — a "writer" chip on every room a person
+// can write in means nothing. So writable is the badge being hidden, not the
+// badge saying so.
+const readOnly = await b.eval(`return !document.getElementById('room-role').hidden`)
+if (readOnly) throw new Error('B should arrive able to write, but arrived read only')
 step(5, 'B joined with that one string and arrived as a writer')
 
 async function say(from, to, text) {
@@ -333,7 +348,7 @@ step(15, `A produced ${link.slice(0, 24)}… and a QR code of ${squares} runs`)
 // `bridge` comes through contextBridge and is read-only, so nothing in the
 // window can see what was passed to `notify`. That rule is unit tested instead,
 // in test/notify-body.test.js.
-const roomKeyForB = await b.eval(`return document.getElementById('room-key').textContent`)
+const roomKeyForB = await b.eval(`return document.getElementById('room-key')?.dataset.full ?? ''`)
 await b.eval(`
   const ask = ${ASK}
   const attached = await ask('room.attach', {

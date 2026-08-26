@@ -77,7 +77,21 @@ const unlock = async () => {
   const status = await ask('wallet.status')
   if (status?.unlocked) return status
   await ask('wallet.unlock', { password })
-  return await ask('wallet.status')
+  const opened = await ask('wallet.status')
+  // Without this, a wrong password does not stop the run — it produces a locked
+  // wallet, an empty room list, and six assertion failures that read exactly
+  // like a persistence bug. Say the true thing loudly instead. The harnesses
+  // rotate this vault's password between suites, so a stale one is the likely
+  // cause rather than an exotic one.
+  if (!opened?.unlocked) {
+    console.error(
+      `could not unlock the wallet with the password given, so nothing below\n` +
+        `would mean anything. The suites rotate it; try the others in\n` +
+        `HARNESS_PASSWORDS in scripts/harness.mjs.`
+    )
+    process.exit(1)
+  }
+  return opened
 }
 
 /** Everything that has to look the same on the far side of a restart. */

@@ -53,7 +53,14 @@ async function start(name, port, { fresh = false } = {}) {
 
   const child = spawn(
     ELECTRON,
-    ['.', '--no-updates', `--remote-debugging-port=${port}`, '--storage', storage],
+    [
+      '.',
+      '--no-updates',
+      '--no-room-gate',
+      `--remote-debugging-port=${port}`,
+      '--storage',
+      storage
+    ],
     { cwd: process.cwd(), detached: false, stdio: 'ignore', shell: false }
   )
   running.set(name, child)
