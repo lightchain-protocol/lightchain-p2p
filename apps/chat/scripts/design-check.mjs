@@ -71,7 +71,10 @@ await page.evaluate(
   'new Promise((r) => document.readyState === "complete" ? r() : addEventListener("load", r))'
 )
 await settle(1500)
-page.viewport(1440, 960)
+// Awaited, unlike the floating call this replaced: an override that lands
+// after the first measurement makes the first assertion read a different
+// window from the rest.
+await page.viewport(1440, 960)
 
 const gated = await page.run(`return !document.getElementById('unlock-form')?.closest('[hidden]')`)
 if (gated) {
@@ -340,5 +343,11 @@ note(
 
 const failed = findings.filter((f) => !f.ok)
 console.log(`\n${findings.length - failed.length} passed, ${failed.length} failed`)
+
+// The override outlives this process — closing the socket does not revert it —
+// so leaving it set means the window the user goes back to renders at 1440 wide
+// inside whatever it actually is, clipped down its right edge. It reads exactly
+// like a broken layout, and has twice been reported as one.
+await page.clearViewport()
 page.close()
 process.exit(failed.length ? 1 : 0)

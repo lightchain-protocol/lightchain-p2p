@@ -77,6 +77,11 @@ if (page.exceptions.length) {
   console.log('done, no renderer exceptions')
 }
 
+// Set at the top and not reverted by closing the socket. A window left under an
+// override renders wider than it is and is clipped down its right edge, which
+// reads as a layout bug rather than as this script's litter.
+await page.clearViewport()
+
 // The DevTools socket keeps the event loop alive on its own, so without this
 // the script prints its last line and then hangs forever.
 page.close()
