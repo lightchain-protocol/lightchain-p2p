@@ -32,6 +32,9 @@ const mainWorkerSpecifier = '/workers/main.mjs'
 
 const workers = new Map()
 
+/** specifier -> a promise that settles when that worker's process has exited. */
+const workerExits = new Map()
+
 const appName = productName ?? name
 
 const cmd = command(
@@ -300,6 +303,12 @@ function getWorker(specifier) {
   function onBeforeQuit() {
     pipe.destroy()
   }
+
+  // Resolved when this worker's process has actually exited. Destroying the
+  // pipe above only closes the conversation; the process keeps its Corestore
+  // open for a moment after, and anything that starts a second instance before
+  // then gets a store it cannot use. See `app:afterUpdate`.
+  workerExits.set(specifier, new Promise((resolve) => worker.once('exit', resolve)))
   ipcMain.handle('pear:worker:writeIPC:' + specifier, (evt, data) => {
     if (!writableByRenderer(data)) return false
     return pipe.write(data)
@@ -317,6 +326,7 @@ function getWorker(specifier) {
     worker.stderr.removeListener('data', sendWorkerStderr)
     sendToAll('pear:worker:exit:' + specifier, code)
     workers.delete(specifier)
+    workerExits.delete(specifier)
   })
   app.on('before-quit', onBeforeQuit)
   return pipe
@@ -600,7 +610,39 @@ ipcMain.handle('app:notify', (evt, { title, body } = {}) => {
   return true
 })
 
-ipcMain.handle('app:afterUpdate', () => {
+/**
+ * How long to wait for the worker to let go of storage before relaunching.
+ *
+ * Generous, because the cost of being wrong in each direction is not the same:
+ * a second of delay after an update nobody is watching, against an application
+ * that reopens looking empty.
+ */
+const WORKER_EXIT_TIMEOUT_MS = 8_000
+
+ipcMain.handle('app:afterUpdate', async () => {
+  // Everywhere except Windows this relaunches, and the new process opens the
+  // same Corestore the old one is still holding. `pipe.destroy()` on
+  // `before-quit` closes the conversation, not the store, so the replacement
+  // used to come up on a store it could not read: no rooms, no wallet, and
+  // "Corestore is closed" from anything that tried. Nothing was lost — the
+  // files are all on disk and the next ordinary launch reads them — but the
+  // window somebody sees straight after an update is an empty account, which
+  // is indistinguishable from having lost one and invites the recovery-phrase
+  // reflex that could genuinely cost them something.
+  //
+  // So the old worker is asked to leave and waited for, before anything starts
+  // in its place. Bounded, because a worker that will not exit must not leave
+  // the application unable to restart at all.
+  for (const pipe of workers.values()) pipe.destroy()
+
+  const exits = [...workerExits.values()]
+  if (exits.length > 0) {
+    await Promise.race([
+      Promise.all(exits),
+      new Promise((resolve) => setTimeout(resolve, WORKER_EXIT_TIMEOUT_MS))
+    ])
+  }
+
   if (isLinux && process.env.APPIMAGE) {
     app.relaunch({
       execPath: process.env.APPIMAGE,

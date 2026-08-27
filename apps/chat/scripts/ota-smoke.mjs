@@ -409,27 +409,101 @@ report(
   healthy?.address
 )
 
+// --- Phase 5b: something to lose ------------------------------------------------
+//
+// An update that boots healthy into an empty account is not a successful
+// update, and "the wallet is still there" does not cover the rooms, their
+// history, the write access to them, or the identity other peers know this
+// install by. All of that lives under the storage directory rather than in the
+// bundle the swap replaces, so it should survive — but "should" is what a test
+// is for, and Phase 8 was only asking about the wallet.
+//
+// Written here rather than assumed: an empty account passes every comparison
+// below for the wrong reason.
+const beforeRooms = (await first.ask('room.list')) ?? []
+let kept = beforeRooms
+if (kept.length === 0) {
+  const made = await first.ask('room.create')
+  if (made?.key) {
+    await first.ask('room.rename', { room: made.key, name: 'survives the update' })
+    await first.ask('room.send', { room: made.key, text: 'written before the update' })
+    kept = (await first.ask('room.list')) ?? []
+  }
+}
+
+const identity = await first.ask('net.status')
+const before = {
+  address: healthy?.address ?? null,
+  dht: identity?.dhtKey ?? null,
+  rooms: kept.map((r) => ({
+    key: r.key,
+    name: r.name ?? null,
+    writable: r.writable === true,
+    messages: Array.isArray(r.messages) ? r.messages.length : 0
+  }))
+}
+
+report(
+  'there is something for the update to lose',
+  before.rooms.length > 0 && before.address !== null,
+  `${before.rooms.length} room(s) for ${before.address}`
+)
+
 // --- Phase 6: the restart hook fires --------------------------------------------
 //
 // app:afterUpdate is the exact handler the update flow calls after a confirmed
-// apply (renderer/lib/ipc.js). On Windows it quits rather than relaunching —
-// the update swap is MSIX and the shell restarts the app — so this proves the
-// hook fires, then relaunches the instance itself and proves the boot.
+// apply (renderer/lib/ipc.js), and what it does is platform-split: on Windows
+// it only quits, because the MSIX swap is what restarts the app, while
+// everywhere else it calls `app.relaunch()` first and comes straight back.
+//
+// This used to wait for the port to go dead, which is only the Windows half.
+// On macOS and Linux the relaunched process answers on the same port, so the
+// wait timed out and the run failed at a working restart — and then Phase 8
+// spawned a second instance over storage the first one still held, which this
+// codebase warns deadlocks Corestore rather than failing.
+//
+// So the question is not "did it die" but "was it replaced". The browser's own
+// debugger URL carries a fresh id per process, which answers that on every
+// platform: gone, or back under a new identity, both mean the hook fired.
+
+const identityOf = async () => {
+  try {
+    const r = await fetch(`http://127.0.0.1:${port}/json/version`, {
+      signal: AbortSignal.timeout(1500)
+    })
+    return r.ok ? ((await r.json())?.webSocketDebuggerUrl ?? null) : null
+  } catch {
+    return null
+  }
+}
+
+const wasRunningAs = await identityOf()
 
 phase.quitting = true
 await first.evaluate('(window.bridge.appAfterUpdate(), true)').catch(() => {})
 
-let gone = false
-for (let i = 0; i < 60 && !gone; i++) {
+let restarted = false
+let cameBackBy = ''
+for (let i = 0; i < 60 && !restarted; i++) {
   await wait(500)
-  gone = !(await alive())
+  if (!(await alive())) {
+    restarted = true
+    cameBackBy = 'process exited'
+    break
+  }
+  const now = await identityOf()
+  if (now !== null && wasRunningAs !== null && now !== wasRunningAs) {
+    restarted = true
+    cameBackBy = 'relaunched under a new process'
+  }
 }
+
 report(
-  "the update flow's restart hook quits the app",
-  gone,
-  gone ? 'process exited' : 'still alive after 30s'
+  "the update flow's restart hook restarts the app",
+  restarted,
+  restarted ? cameBackBy : 'still the same process after 30s'
 )
-if (!gone) throw new Error('the app did not quit; cannot test the restart')
+if (!restarted) throw new Error('the app neither quit nor relaunched; cannot test the restart')
 
 // --- Phase 7: a staged update is detected and signalled, live --------------------
 //
@@ -450,11 +524,15 @@ const packagedExe = path.join(appRoot, 'out', 'LightchainChat-win32-x64', 'Light
 if (newerStaged && fs.existsSync(packagedExe)) {
   const packagedStorage = storageDir + '-packaged'
   const packagedLog = path.join(packagedStorage, 'logs', 'lightchain.log')
-  spawn(packagedExe, [`--remote-debugging-port=${port}`, '--storage', packagedStorage], {
-    cwd: path.dirname(packagedExe),
-    detached: true,
-    stdio: 'ignore'
-  }).unref()
+  spawn(
+    packagedExe,
+    [`--remote-debugging-port=${port}`, '--no-room-gate', '--storage', packagedStorage],
+    {
+      cwd: path.dirname(packagedExe),
+      detached: true,
+      stdio: 'ignore'
+    }
+  ).unref()
 
   let up = false
   for (let i = 0; i < 60 && !up; i++) {
@@ -551,17 +629,28 @@ if (newerStaged && fs.existsSync(packagedExe)) {
 // steady-state again.
 phase.quitting = false
 
-const electron = require('electron')
-spawn(electron, ['.', `--remote-debugging-port=${port}`, '--storage', storageDir], {
-  cwd: appRoot,
-  detached: true,
-  stdio: 'ignore'
-}).unref()
+// Only when the hook did not already bring it back. Everywhere except Windows
+// it did, and starting a second one here would put two processes on one
+// Corestore — which deadlocks rather than failing, so the run would hang here
+// with no explanation.
+let back = await alive()
 
-let back = false
-for (let i = 0; i < 60 && !back; i++) {
-  await wait(500)
-  back = await alive()
+if (!back) {
+  const electron = require('electron')
+  spawn(
+    electron,
+    ['.', `--remote-debugging-port=${port}`, '--no-room-gate', '--storage', storageDir],
+    {
+      cwd: appRoot,
+      detached: true,
+      stdio: 'ignore'
+    }
+  ).unref()
+
+  for (let i = 0; i < 60 && !back; i++) {
+    await wait(500)
+    back = await alive()
+  }
 }
 if (!back) throw new Error(`the app did not come back on ${port} within 30s`)
 
@@ -582,6 +671,84 @@ report(
 report(
   'and the update channel is reconstructed on boot',
   fs.existsSync(updaterStore) && reportedAgain?.upgrade === reported.upgrade
+)
+
+// --- Phase 8b: and it came back to the same account -----------------------------
+//
+// The storage directory is named for the application, not for the bundle
+// (`storageDir` in electron/main.js), so a swap cannot move it. These are the
+// assertions that would notice if that ever stopped being true — and the ones
+// that would have caught a rename of `productName`, which silently points every
+// install at a fresh empty directory that looks exactly like a wiped wallet.
+
+const afterIdentity = await second.ask('net.status')
+
+// Rooms are sealed under a key derived from the wallet, and unlocking opens
+// that registry in the background — `useWalletInRooms` in
+// workers/services/wallet-binding.mjs fires it and does not await it. So an
+// empty list straight after unlocking means "not open yet", not "gone", and
+// reading once here reported a restart as total data loss.
+//
+// Bounded, and it stops the moment everything expected is back: a room that
+// really did not survive still fails, it just takes the full wait to say so.
+const afterRooms = await (async () => {
+  let listed = []
+  for (let i = 0; i < 60; i++) {
+    listed = (await second.ask('room.list')) ?? []
+    if (before.rooms.every((r) => listed.some((back) => back.key === r.key))) return listed
+    await wait(500)
+  }
+  return listed
+})()
+
+const found = new Map(afterRooms.map((r) => [r.key, r]))
+
+report(
+  'the same wallet came back, not a new one',
+  status.address === before.address,
+  `${before.address} then ${status.address}`
+)
+
+report(
+  'other peers still know this install by the same identity',
+  afterIdentity?.dhtKey === before.dht,
+  afterIdentity?.dhtKey === before.dht ? 'unchanged' : `${before.dht} then ${afterIdentity?.dhtKey}`
+)
+
+const missing = before.rooms.filter((r) => !found.has(r.key))
+report(
+  'every room is still there',
+  missing.length === 0,
+  missing.length === 0
+    ? `${before.rooms.length} room(s)`
+    : `lost ${missing.map((r) => r.key.slice(0, 8)).join(', ')}`
+)
+
+// Read-only is the shape this fails in when a writer key is lost rather than a
+// room: the room lists, opens, and refuses everything the person tries to do.
+const demoted = before.rooms.filter((r) => r.writable && found.get(r.key)?.writable !== true)
+report(
+  'and still writable by this install',
+  demoted.length === 0,
+  demoted.length === 0
+    ? 'intact'
+    : `read-only now: ${demoted.map((r) => r.key.slice(0, 8)).join(', ')}`
+)
+
+const truncated = before.rooms.filter((r) => (found.get(r.key)?.messages?.length ?? 0) < r.messages)
+report(
+  'with their history, not an empty room of the same name',
+  truncated.length === 0,
+  truncated.length === 0 ? 'intact' : `${truncated.length} room(s) lost messages`
+)
+
+const renamed = before.rooms.filter(
+  (r) => r.name !== null && (found.get(r.key)?.name ?? null) !== r.name
+)
+report(
+  'and the names they were given',
+  renamed.length === 0,
+  renamed.length === 0 ? 'intact' : 'a name changed'
 )
 
 // Steady-state exceptions fail the run. Rejections that arrived after a quit
