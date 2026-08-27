@@ -77,8 +77,6 @@
   align-items: baseline;
   gap: var(--lc-space-md);
   min-width: 0;
-  /* Clear of the platform's own window controls on macOS. */
-  padding-left: 72px;
 }
 
 .titlebar-wordmark {
