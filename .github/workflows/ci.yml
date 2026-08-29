@@ -47,6 +47,13 @@ jobs:
       - name: Deep link scheme
         run: node apps/chat/scripts/check-scheme.mjs
 
+      # productName is the name every install's data is filed under, not a label.
+      # Renaming it points existing installs at an empty directory with their
+      # wallet and rooms stranded beside it, silently, and an OTA update delivers
+      # that to people who never asked for it.
+      - name: Storage keeps its name
+        run: node apps/chat/scripts/check-storage-identity.mjs
+
       # A misspelled design token is not a CSS error. The declaration is dropped
       # and the element keeps whatever it had, so a control silently loses its
       # background or its focus ring while every other check stays green. Five
