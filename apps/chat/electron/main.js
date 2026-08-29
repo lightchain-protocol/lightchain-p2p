@@ -8,6 +8,7 @@ const {
   ipcMain,
   shell
 } = require('electron')
+const { relaunchPlan, restartAfterUpdate } = require('./update-restart.js')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
@@ -619,43 +620,24 @@ ipcMain.handle('app:notify', (evt, { title, body } = {}) => {
  */
 const WORKER_EXIT_TIMEOUT_MS = 8_000
 
-ipcMain.handle('app:afterUpdate', async () => {
-  // Everywhere except Windows this relaunches, and the new process opens the
-  // same Corestore the old one is still holding. `pipe.destroy()` on
-  // `before-quit` closes the conversation, not the store, so the replacement
-  // used to come up on a store it could not read: no rooms, no wallet, and
-  // "Corestore is closed" from anything that tried. Nothing was lost — the
-  // files are all on disk and the next ordinary launch reads them — but the
-  // window somebody sees straight after an update is an empty account, which
-  // is indistinguishable from having lost one and invites the recovery-phrase
-  // reflex that could genuinely cost them something.
-  //
-  // So the old worker is asked to leave and waited for, before anything starts
-  // in its place. Bounded, because a worker that will not exit must not leave
-  // the application unable to restart at all.
-  for (const pipe of workers.values()) pipe.destroy()
-
-  const exits = [...workerExits.values()]
-  if (exits.length > 0) {
-    await Promise.race([
-      Promise.all(exits),
-      new Promise((resolve) => setTimeout(resolve, WORKER_EXIT_TIMEOUT_MS))
-    ])
-  }
-
-  if (isLinux && process.env.APPIMAGE) {
-    app.relaunch({
-      execPath: process.env.APPIMAGE,
-      args: [
-        '--appimage-extract-and-run',
-        ...process.argv.slice(1).filter((arg) => arg !== '--appimage-extract-and-run')
-      ]
-    })
-  } else if (!isWindows) {
-    app.relaunch()
-  }
-  app.quit()
-})
+// Both halves live in electron/update-restart.js, where they can be tested
+// without an Electron app object — which is the only way the Windows branch
+// gets checked at all from a machine that is not Windows.
+ipcMain.handle('app:afterUpdate', () =>
+  restartAfterUpdate({
+    pipes: [...workers.values()],
+    exits: [...workerExits.values()],
+    plan: relaunchPlan({
+      platform: process.platform,
+      appImage: process.env.APPIMAGE,
+      argv: process.argv
+    }),
+    relaunch: (plan) => (plan.execPath ? app.relaunch(plan) : app.relaunch()),
+    quit: () => app.quit(),
+    timeoutMs: WORKER_EXIT_TIMEOUT_MS,
+    delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+  })
+)
 
 /**
  * Hands a `lightchain://` link to the window, raising it first.
