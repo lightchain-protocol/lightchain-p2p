@@ -21,7 +21,9 @@ import {
   resolveConfig,
   resolveContractAddresses,
   runWorker,
-  stopWorker
+  stopWorker,
+  nearestOfferedModel,
+  unwhitelistedModels
 } from './index.js'
 
 const PASSWORD = 'correct-horse-battery-staple'
@@ -56,11 +58,23 @@ describe('configuration', () => {
     expect(() => resolveConfig({ ...base, keystorePassword: '' })).toThrow(/cannot be unlocked/)
   })
 
-  it('rejects a tagged model name', () => {
-    // The worker matches jobs on keccak256 of this exact string, so a tag
-    // suffix stops every job resolving and reports as a model hash mismatch.
-    expect(() => resolveConfig({ ...base, supportedModels: ['llama3-8b:latest'] })).toThrow(
-      /keccak256/
+  it('accepts the colon-bearing names the network actually publishes', () => {
+    // The regression this exists for. A rule that rejected any colon was
+    // written when mainnet published only llama3-8b and llama3-70b; the
+    // upgrade added four names that carry one, and every one of them became
+    // unconfigurable. These are the live mainnet names, and keccak256 of each
+    // — colon included — is the whitelisted id on chain.
+    const models = ['gemma4:e2b', 'gpt-oss:20b', 'qwen3-vl:8b', 'gpt-oss:120b']
+    expect(resolveConfig({ ...base, supportedModels: models }).supportedModels).toEqual(models)
+  })
+
+  it('rejects a name with whitespace, which would hash to nothing on chain', () => {
+    expect(() => resolveConfig({ ...base, supportedModels: ['llama3 8b'] })).toThrow(/whitespace/)
+  })
+
+  it('rejects the same model twice', () => {
+    expect(() => resolveConfig({ ...base, supportedModels: ['llama3-8b', 'llama3-8b'] })).toThrow(
+      /listed twice/
     )
   })
 
@@ -208,7 +222,7 @@ describe('per-field config inspection', () => {
       keysDir: '/k',
       keystorePassword: '',
       aiConfigAddress: '0x123',
-      supportedModels: ['llama3-8b:latest']
+      supportedModels: ['llama3 8b']
     })
     expect(config).toBeNull()
     expect(problems.map((p) => p.field)).toEqual([
@@ -544,5 +558,42 @@ describe('container state', () => {
   it('survives malformed output instead of throwing', () => {
     expect(parseContainerState('not json').health).toBe('absent')
     expect(parseContainerState('{}').health).toBe('absent')
+  })
+})
+
+describe('choosing from what the network offers', () => {
+  // The live mainnet whitelist at the time of writing. Four of the seven
+  // carry a colon, which is the whole point.
+  const OFFERED = [
+    'llama3-8b',
+    'llama3-70b',
+    'gemma4:e2b',
+    'gpt-oss:20b',
+    'qwen3-vl:8b',
+    'qwen3-coder-next',
+    'gpt-oss:120b'
+  ]
+
+  it('accepts every name the network publishes', () => {
+    expect(unwhitelistedModels(OFFERED, OFFERED)).toEqual([])
+  })
+
+  it('catches a registry reference typed where the network name belongs', () => {
+    // The mistake the old colon rule was reaching for, caught correctly —
+    // llama3:8b is Ollama's spelling, llama3-8b is the network's.
+    expect(unwhitelistedModels(['llama3:8b'], OFFERED)).toEqual(['llama3:8b'])
+  })
+
+  it('points at the name that was meant', () => {
+    expect(nearestOfferedModel('llama3:8b', OFFERED)).toBe('llama3-8b')
+    expect(nearestOfferedModel('gpt-oss-20b', OFFERED)).toBe('gpt-oss:20b')
+  })
+
+  it('suggests nothing when the guess would be ambiguous or absent', () => {
+    expect(nearestOfferedModel('mistral', OFFERED)).toBeNull()
+  })
+
+  it('matches exactly, because the worker hashes the exact string', () => {
+    expect(unwhitelistedModels(['GPT-OSS:20B'], OFFERED)).toEqual(['GPT-OSS:20B'])
   })
 })
