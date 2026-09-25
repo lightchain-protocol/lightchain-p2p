@@ -15,10 +15,13 @@
  * machine with no Ollama installed at all. `probes.ts` runs them.
  *
  * Deliberately no table of model names. Which models exist is the network's
- * answer, not this package's — mainnet whitelists one and devnet whitelists ten
- * — and a list compiled here would be wrong the first time governance changed
- * one. What is encoded is the *convention* those names follow, which is a much
- * smaller and much longer-lived thing to know.
+ * answer, not this package's — mainnet has gone from two to seven without this
+ * file changing — and a list compiled here would be wrong the first time
+ * governance changed one. What is encoded is the *convention* those names
+ * follow, which is a much smaller and much longer-lived thing to know.
+ *
+ * That convention includes the colon: `gpt-oss:20b` and `gemma4:e2b` are the
+ * network's own spelling, hashed as written, and are passed through whole.
  */
 
 /** A command as argv, never as a shell string. */

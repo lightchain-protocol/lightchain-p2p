@@ -12,9 +12,15 @@ import {
   startDocker,
   startOllama
 } from '@lcai-p2p/host'
-import { DEFAULT_REQUIREMENTS, runChecks, summarize } from '@lcai-p2p/preflight'
+import {
+  DEFAULT_REQUIREMENTS,
+  requirementsForModels,
+  runChecks,
+  summarize
+} from '@lcai-p2p/preflight'
 import { inspectWorker, isHealthy, logsWorker, parseContainerState } from '@lcai-p2p/worker'
 
+import { footprintsFor } from '../../services/model-footprints.mjs'
 import {
   checkKeystorePassword,
   hostingAvailable,
@@ -37,17 +43,24 @@ export function workerStatusHandlers(ctx) {
         config ? stakeProbe(rpc(), config) : Promise.resolve(undefined)
       ])
 
-      // Against the models this worker is configured to serve, rather than
-      // against the package default. The two are the same out of the box; they
-      // stop being the same the moment somebody adds llama3-70b, and a
-      // checklist that passes while the configured model is absent is worse
-      // than no checklist.
-      const results = runChecks(
-        { ...probes, stake },
-        config
-          ? { ...DEFAULT_REQUIREMENTS, requiredModels: config.supportedModels }
-          : DEFAULT_REQUIREMENTS
-      )
+      // Against the models this worker is configured to serve, and against
+      // what those models actually weigh — not against the package default.
+      //
+      // Overriding only `requiredModels` checked that the chosen model was
+      // present while still measuring the machine against a flat 8 GB of VRAM
+      // and 50 GB of disk. Those numbers describe "can this host run a worker
+      // at all"; they say nothing about `gpt-oss:120b`, whose weights alone
+      // are 60.9 GB. The checklist passed, the download did not fit, and the
+      // operator found out as a failed job.
+      const footprints = config ? await footprintsFor(config.supportedModels) : new Map()
+      const requirements = config
+        ? requirementsForModels(
+            { ...DEFAULT_REQUIREMENTS, requiredModels: config.supportedModels },
+            [...footprints.values()]
+          )
+        : DEFAULT_REQUIREMENTS
+
+      const results = runChecks({ ...probes, stake }, requirements)
 
       // Prove the configured password actually opens the keystore, so a wrong
       // one is reported here rather than by a container exiting at start.

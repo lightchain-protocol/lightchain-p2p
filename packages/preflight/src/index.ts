@@ -12,3 +12,12 @@ export {
 } from './checks.js'
 
 export { DEFAULT_REQUIREMENTS, GIB, formatBytes, type Requirements } from './requirements.js'
+
+export {
+  estimateFootprint,
+  fetchFootprint,
+  fits,
+  requirementsForModels,
+  type FetchLike,
+  type ModelFootprint
+} from './sizing.js'

@@ -17,6 +17,12 @@
     "lint": "eslint .",
     "test": "vitest run"
   },
+  "imports": {
+    "#fetch": {
+      "bare": "./runtime/fetch-bare.mjs",
+      "default": "./runtime/fetch-node.mjs"
+    }
+  },
   "dependencies": {
     "@lcai-p2p/blind": "workspace:*",
     "@lcai-p2p/chain": "workspace:*",

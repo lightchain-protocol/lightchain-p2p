@@ -133,25 +133,55 @@ export function inspectConfig(input: WorkerConfigInput): ConfigInspection {
   // Empty by default, and deliberately.
   //
   // A worker serves the models its operator chose from what the network
-  // whitelists, and that list is the network's answer: mainnet publishes one
-  // model, devnet ten, and governance changes both without telling this build.
-  // Defaulting to a name compiled in here was a guess that happened to be right
-  // on one network — it declared a model the operator had never chosen, and on
-  // any other network it declared one that may not be whitelisted at all.
+  // whitelists, and that list is the network's answer: it has grown from two
+  // models to seven on mainnet alone, and governance changes it again without
+  // telling this build. Defaulting to a name compiled in here was a guess that
+  // happened to be right on one network — it declared a model the operator had
+  // never chosen, and on any other network it declared one that may not be
+  // whitelisted at all.
   //
   // Nothing is broken by the empty case: `SUPPORTED_MODELS` goes out empty, the
   // preflight check says which models the network offers and that none are
   // chosen, and the panel asks before there is anything to run.
   const supportedModels = input.supportedModels ?? []
+
+  // What is checked here is only what can be checked without a network: that
+  // each name is a plausible, distinct, whitespace-free string. Whether a name
+  // is one this network actually pays for is a question for the chain, and
+  // `unwhitelistedModels()` answers it where an RPC is in hand.
+  //
+  // Deliberately NOT rejected: a colon. The worker matches jobs on
+  // `keccak256` of the network's exact name, and several of those names carry
+  // one — `gpt-oss:20b`, `gemma4:e2b`, `qwen3-vl:8b`, `gpt-oss:120b` are all
+  // whitelisted on mainnet with the colon in the preimage. A rule that
+  // stripped it produced a hash nothing on chain matches, so the worker
+  // registered, took jobs and resolved none of them. The name is the
+  // network's to spell.
+  const seen = new Set<string>()
   for (const model of supportedModels) {
-    if (model.includes(':')) {
-      // The worker hashes this string and matches jobs on the hash, so a tag
-      // suffix silently stops every job resolving.
+    if (model.trim() === '') {
       problems.push({
         field: 'supportedModels',
-        message: `supported model "${model}" must not carry a tag. The worker matches jobs on keccak256 of this exact string, and the on-chain name has no tag. Use "${model.split(':')[0]}".`
+        message:
+          'a supported model name is empty. Remove it, or name a model this network whitelists.'
       })
+      continue
     }
+    if (model !== model.trim() || /\s/.test(model)) {
+      problems.push({
+        field: 'supportedModels',
+        message: `supported model "${model}" contains whitespace. The worker hashes this exact string, so a stray space stops every job resolving. Use the name exactly as the network publishes it.`
+      })
+      continue
+    }
+    if (seen.has(model)) {
+      problems.push({
+        field: 'supportedModels',
+        message: `supported model "${model}" is listed twice.`
+      })
+      continue
+    }
+    seen.add(model)
   }
 
   if (problems.length > 0) return { network, config: null, problems }
@@ -245,4 +275,46 @@ export async function resolveContractAddresses(
     aiConfigAddress: config.aiConfigAddress ?? addresses.aiConfig,
     jobRegistryAddress: config.jobRegistryAddress ?? addresses.jobRegistry
   }
+}
+
+/**
+ * Which of `chosen` this network does not whitelist.
+ *
+ * The check `resolveConfig` cannot make: whether a name is one the network
+ * actually pays for is the chain's answer, and `resolveConfig` is synchronous
+ * and offline. Callers that have already asked `/api/models` — the Earn panel
+ * has, to render the list at all — pass the offered names here and get back
+ * the chosen ones that are not among them.
+ *
+ * This is the check the old colon rule was reaching for. The real mistake it
+ * meant to catch is an operator typing Ollama's reference (`llama3:8b`)
+ * where the network's name (`llama3-8b`) belongs — and that shows up here as
+ * a name the network does not offer, correctly, without also rejecting the
+ * colon-bearing names the network genuinely publishes.
+ *
+ * Comparison is exact: the worker matches jobs on `keccak256` of this precise
+ * string, so a case-folded or trimmed match would pass a name that then
+ * resolves nothing.
+ */
+export function unwhitelistedModels(
+  chosen: readonly string[],
+  offered: readonly string[]
+): readonly string[] {
+  const available = new Set(offered)
+  return chosen.filter((model) => !available.has(model))
+}
+
+/**
+ * The nearest offered name to one this network does not know, or null.
+ *
+ * Only ever a suggestion, and only when it is unambiguous: an operator who
+ * typed `llama3:8b` is told `llama3-8b` exists, rather than being left to
+ * diff two lists by eye. Matching ignores case and the `-`/`:` distinction,
+ * which is exactly the confusion this exists for.
+ */
+export function nearestOfferedModel(name: string, offered: readonly string[]): string | null {
+  const flatten = (s: string) => s.toLowerCase().replace(/[-:]/g, '')
+  const target = flatten(name)
+  const hits = offered.filter((candidate) => flatten(candidate) === target)
+  return hits.length === 1 ? (hits[0] ?? null) : null
 }
