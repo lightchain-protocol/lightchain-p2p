@@ -37,21 +37,82 @@ and the owner can change it. It is global rather than per-model.
 | Mainnet | 50,000 LCAI   | ~50,005 LCAI          |
 | Testnet | 5,000 LCAI    | ~5,005 LCAI           |
 
+## The hardware, second
+
+Staking buys the right to answer. Whether this machine _can_ answer is a
+separate question, and it is asked per model rather than once.
+
+The flat minimums below are the floor for running a worker at all — a
+container runtime, the host beside it, and the smallest model anyone
+whitelists:
+
+|               | Minimum                                          |
+| ------------- | ------------------------------------------------ |
+| GPU           | 8 GB VRAM (unified memory counts, and is shared) |
+| System memory | 16 GB                                            |
+| Free disk     | 50 GB                                            |
+
+They are a floor, not an answer. What a given model needs is what its weights
+weigh, and the whitelist spans two orders of magnitude:
+
+| Model            | Weights | Needs resident |
+| ---------------- | ------- | -------------- |
+| llama3-8b        | 4.3 GB  | ~6 GB          |
+| qwen3-vl:8b      | 5.7 GB  | ~8 GB          |
+| gemma4:e2b       | 6.7 GB  | ~9 GB          |
+| gpt-oss:20b      | 12.8 GB | ~16 GB         |
+| llama3-70b       | 37.2 GB | ~46 GB         |
+| qwen3-coder-next | 48.2 GB | ~59 GB         |
+| gpt-oss:120b     | 60.9 GB | ~74 GB         |
+
+Those figures are measured, not tabled: the Worker section reads each model's
+manifest from the registry when it draws the list, so a model whitelisted
+after this page was written is sized correctly and this table is the one
+thing here that can go stale. Every row in the app shows its own size, and a
+model larger than the machine is marked before it can be chosen.
+
+Two consequences people meet the hard way:
+
+**Unified memory is shared, not additional.** A 16 GB Mac has 16 GB for the
+model _and_ everything else. It runs `llama3-8b` comfortably and cannot run
+`gpt-oss:20b` at all.
+
+**Choosing several models sums the disk, not the VRAM.** They load one at a
+time, so VRAM is whatever the largest one needs — but every chosen model is
+downloaded and kept, so all seven is ~186 GB on disk.
+
+A model that does not fit is not refused. The operator may be about to add a
+GPU, and the network's list is not this application's to edit. It is marked,
+with the reason, and the checklist fails rather than the job.
+
 ## The order of operations
 
 Funding sits between two software steps and is the only one nothing automates:
 
 1. **Pull the image** — Worker section, or `lcai-supervisor pull`.
-2. **Import a key** — `cat key.txt | lcai-supervisor import-key`. Stdin only, so
+2. **Choose the models** — Worker section, or `SUPPORTED_MODELS`. The list is
+   the network's, read live, and each row says what the model pays, what it
+   weighs and whether this machine can serve it. Nothing is chosen by default:
+   a worker that declares a model it cannot run takes those jobs and fails
+   them. The models download from here too, under the network's own name.
+3. **Import a key** — `cat key.txt | lcai-supervisor import-key`. Stdin only, so
    the key never reaches argv, an environment variable or a log. This creates
    the keystore, and its filename is the address you must fund.
-3. **Fund that address.** Nothing does this for you and nothing did it before
+4. **Fund that address.** Nothing does this for you and nothing did it before
    you asked. The Worker section now checks it and says how short you are.
-4. **Register** — `lcai-supervisor register`. Reads the minimum from `AIConfig`
+5. **Register** — `lcai-supervisor register`. Reads the minimum from `AIConfig`
    and stakes exactly that.
-5. **Start** — Worker section, or `lcai-supervisor start`.
+6. **Start** — Worker section, or `lcai-supervisor start`.
 
-Step 3 is where people fall out. The supervisor shells the registration into the
+**The name is the network's, exactly as it spells it.** The worker matches jobs
+on `keccak256` of that string, so `gpt-oss:20b` is the model and `gpt-oss` is
+nothing — a worker configured with the second registers, takes no jobs, and
+logs nothing that says why. Ollama's own reference for the same weights is
+often spelled differently again (`llama3:8b` against the network's
+`llama3-8b`); the app pulls under whichever the registry publishes and then
+copies it to the network's name, which is the half that matters.
+
+Step 4 is where people fall out. The supervisor shells the registration into the
 image's Go binary and never inspects a balance, so an underfunded address
 produces a failed transaction rather than a sentence about money. The readiness
 check exists so the requirement is visible before that happens, and it names the

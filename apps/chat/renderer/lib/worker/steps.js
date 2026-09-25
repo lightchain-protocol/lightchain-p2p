@@ -32,6 +32,7 @@ import {
   GAS_HEADROOM,
   STATUS_WORD,
   alertNode,
+  bytes,
   clearChip,
   plural,
   setChip,
@@ -170,16 +171,30 @@ export function renderChecks(doctor, network = null) {
  *
  * The list is the network's and arrives with every refresh. Nothing here names
  * a model, keeps a table of them, or remembers one between refreshes: mainnet
- * whitelists a single model and devnet ten, governance changes both, and a list
- * baked into this build would quietly invite somebody to serve a model the
- * network no longer pays for.
+ * has gone from two models to seven without this build changing, governance
+ * will move it again, and a list baked in here would quietly invite somebody
+ * to serve a model the network no longer pays for.
+ *
+ * Each row carries what the model weighs and whether this machine can serve
+ * it, so the answer arrives before the tick rather than after the download.
  */
 export function renderModels(payload) {
   modelsList.replaceChildren()
   stepAlert('worker-models-alert', null)
   modelsFetch.hidden = true
 
-  if (!payload?.configured) {
+  // An unresolvable configuration is shown as a problem above the list, not
+  // instead of it. The list is also the only way to change the choice, so
+  // replacing it with "Not configured" left anyone whose choice caused the
+  // problem with no way to undo it.
+  if (!payload?.configured && payload?.problem) {
+    stepAlert(
+      'worker-models-alert',
+      alertNode('warn', 'This worker is not configured yet', payload.problem)
+    )
+  }
+
+  if (!payload || (!payload.configured && !payload.models)) {
     setChip(modelsState, 'warn', 'Not configured')
     const note = document.createElement('p')
     note.className = 'worker-hint'
@@ -231,14 +246,42 @@ export function renderModels(payload) {
     // Read back by chooseModels, so the names never live in a variable here.
     row.dataset.model = model.name
 
+    // Three facts, in the order somebody weighs them: what it pays, what it
+    // costs this machine to hold, and what it needs resident to serve. The
+    // size is the half that used to be missing — `gpt-oss:120b` pays the most
+    // and needs 74 GB, and until it said so the only way to find out was to
+    // download 61 GB and watch the job fail.
     const facts = document.createElement('span')
     facts.className = 'worker-model-facts'
-    facts.textContent = model.fee === null ? 'fee unknown' : `${lcai(model.fee)} LCAI a job`
+    const size = bytes(model.weightsBytes)
+    const vram = bytes(model.minVramBytes)
+    facts.textContent = [
+      model.fee === null ? 'fee unknown' : `${lcai(model.fee)} LCAI a job`,
+      size === null ? null : `${size} download`,
+      vram === null ? null : `needs ${vram}`
+    ]
+      .filter((part) => part !== null)
+      .join(' · ')
 
     const state = document.createElement('span')
     state.className = 'chip'
-    state.dataset.tone = model.installed ? 'ok' : 'warn'
-    state.textContent = model.installed ? 'Downloaded' : 'Not downloaded'
+
+    // A model this machine cannot serve is still offered — the operator may be
+    // about to add a GPU, and refusing to render it would be this build
+    // overruling the network's list. It is marked, and the reason travels with
+    // it, so the choice is informed rather than blocked.
+    if (model.fits === false) {
+      row.dataset.fits = 'no'
+      state.dataset.tone = 'danger'
+      state.textContent = 'Too big for this machine'
+      state.title = model.fitsNote ?? ''
+    } else if (model.sizeKnown === false) {
+      state.dataset.tone = 'warn'
+      state.textContent = model.installed ? 'Downloaded' : 'Size unknown'
+    } else {
+      state.dataset.tone = model.installed ? 'ok' : 'warn'
+      state.textContent = model.installed ? 'Downloaded' : 'Not downloaded'
+    }
 
     row.append(box, name, facts, state)
     modelsList.append(row)
@@ -262,7 +305,23 @@ export function renderModels(payload) {
     )
   }
 
+  // Chosen and too big for this host. Said here as well as on the row,
+  // because a row scrolls out of view and this is the reason the worker will
+  // accept a job and then fail it.
+  const oversized = chosen.filter((model) => model.fits === false)
+  if (oversized.length > 0 && stale.length === 0) {
+    stepAlert(
+      'worker-models-alert',
+      alertNode(
+        'warn',
+        `${plural(oversized.length, 'model')} larger than this machine can serve`,
+        `${oversized.map((model) => model.name).join(', ')} ${oversized.length === 1 ? 'needs' : 'need'} more memory than this machine has. The worker would take those jobs and fail them after the fee is escrowed — untick ${oversized.length === 1 ? 'it' : 'them'}, or run them on a bigger host.`
+      )
+    )
+  }
+
   if (chosen.length === 0) setChip(modelsState, 'danger', 'None chosen')
+  else if (oversized.length > 0) setChip(modelsState, 'danger', `${oversized.length} too big`)
   else if (missing.length > 0) setChip(modelsState, 'warn', `${missing.length} to download`)
   else setChip(modelsState, 'ok', plural(chosen.length, 'model'))
 
@@ -291,6 +350,25 @@ export async function chooseModels() {
   const names = [...modelsList.querySelectorAll('.worker-model')]
     .filter((row) => row.querySelector('.worker-model-box').checked)
     .map((row) => row.dataset.model)
+
+  // Only names this list rendered can be written, and it renders only what the
+  // network offered. The setting is also editable by hand, so this is the
+  // point where a name that would not resolve is caught — before it reaches
+  // `supportedModels` and takes the panel down with it.
+  const invalid = names.filter(
+    (name) => typeof name !== 'string' || name.trim() !== name || name === ''
+  )
+  if (invalid.length > 0) {
+    stepAlert(
+      'worker-models-alert',
+      alertNode(
+        'error',
+        'That choice was not saved',
+        `The network's name for a model is what the worker hashes to match jobs, and ${invalid.join(', ')} is not one this list offered.`
+      )
+    )
+    return
+  }
 
   try {
     await request('settings.write', { values: { supportedModels: names.join(',') } })

@@ -128,3 +128,17 @@ export function when(stamp) {
 
 /** Within this of the bottom counts as watching the tail. */
 export const AT_TAIL = 24
+
+/**
+ * Bytes as a person reads them, for model weights.
+ *
+ * Mirrors `formatBytes` in @lcai-p2p/preflight rather than importing it: the
+ * renderer takes no dependency on a worker-side package, and one decimal on a
+ * gigabyte is the whole of the logic.
+ */
+export function bytes(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null
+  const gib = 1024 ** 3
+  if (value >= gib) return `${(value / gib).toFixed(1)} GB`
+  return `${Math.round(value / 1024 ** 2)} MB`
+}

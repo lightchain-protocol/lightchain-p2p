@@ -1,10 +1,16 @@
 /**
- * What a worker host must provide.
+ * What a worker host must provide, before any particular model is chosen.
  *
- * These numbers are published in the worker toolkit's hardware table but are not
- * enforced anywhere in it. An operator below them discovers it as a container
- * that starts, takes a job, and fails at inference — which is a much worse place
- * to find out than before installation.
+ * Published in docs/running-a-worker.md and, until this package existed,
+ * enforced nowhere: an operator below them discovered it as a container that
+ * starts, takes a job, and fails at inference — a much worse place to find out
+ * than before installation.
+ *
+ * These are a floor and not an answer. They describe running a worker at all;
+ * what a *given* model needs is what its weights weigh, and the whitelist
+ * spans 4 GB to 61 GB. `requirementsForModels` in ./sizing.ts raises these to
+ * the chosen set, and nothing should check against the bare defaults once a
+ * choice has been made.
  */
 
 export const GIB = 1024 ** 3

@@ -255,17 +255,42 @@ function checkOllama(probe: OllamaProbe | undefined, req: Requirements): CheckRe
   return results
 }
 
-function checkGpu(probe: GpuProbe | undefined, req: Requirements): CheckResult {
+function checkGpu(
+  probe: GpuProbe | undefined,
+  req: Requirements,
+  memory?: { readonly totalBytes: number }
+): CheckResult {
   const id = 'gpu'
   const title = 'GPU'
 
   if (!probe) return warn(id, title, 'not probed', 'Run the check again on the worker host.')
 
   if (probe.unifiedMemory) {
+    // Shared memory is still finite, and saying only "shared with system RAM"
+    // passed every machine regardless of size — a 16 GB laptop was told its
+    // GPU was fine for a 60 GB model. The pool is the system's, so that is
+    // what the requirement is measured against.
+    const pool = probe.vramBytes ?? memory?.totalBytes
+    if (pool === undefined) {
+      return warn(
+        id,
+        title,
+        `${probe.name ?? 'Apple GPU'} with unified memory; the size of the shared pool could not be read`,
+        `Confirm manually that this machine has at least ${formatBytes(req.minVramBytes)} of memory.`
+      )
+    }
+    if (pool < req.minVramBytes) {
+      return fail(
+        id,
+        title,
+        `${probe.name ?? 'Apple GPU'} shares ${formatBytes(pool)} with the system`,
+        `The chosen models need ${formatBytes(req.minVramBytes)} resident. Unified memory is shared, not additional — choose a smaller model, or the job will be accepted and then fail.`
+      )
+    }
     return pass(
       id,
       title,
-      `${probe.name ?? 'Apple GPU'} with unified memory; VRAM is shared with system RAM`
+      `${probe.name ?? 'Apple GPU'} with ${formatBytes(pool)} unified memory, shared with the system`
     )
   }
 
@@ -409,7 +434,7 @@ export function runChecks(
   return [
     checkDocker(probes.docker),
     ...checkOllama(probes.ollama, requirements),
-    checkGpu(probes.gpu, requirements),
+    checkGpu(probes.gpu, requirements, probes.memory),
     checkMemory(probes.memory, requirements),
     checkDisk(probes.disk, requirements),
     checkCast(probes.cast),
