@@ -14,6 +14,7 @@
     "start": "npm run build && electron-forge start -- --no-updates",
     "package": "node scripts/forge.mjs package",
     "make": "node scripts/forge.mjs make",
+    "make:windows": "node scripts/make-windows.mjs",
     "lint": "eslint .",
     "test": "vitest run"
   },

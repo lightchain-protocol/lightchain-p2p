@@ -1,0 +1,20 @@
+{
+  "appId": "ai.lightchain.chat",
+  "productName": "LightchainChat",
+  "extraMetadata": { "author": "Lightchain" },
+  "win": {
+    "target": [{ "target": "nsis", "arch": ["x64"] }],
+    "icon": "build/icon.ico"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "Lightchain Chat",
+    "installerIcon": "build/icon.ico",
+    "uninstallerIcon": "build/icon.ico",
+    "artifactName": "LightchainChat-Setup-${version}.${ext}"
+  }
+}

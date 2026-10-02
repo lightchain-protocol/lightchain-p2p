@@ -120,7 +120,22 @@ module.exports = {
     {
       name: '@electron-forge/maker-dmg',
       platforms: ['darwin'],
-      config: {}
+      // The install window, branded: the site's dark page with the mark, one
+      // line of instruction and the gradient arrow (scripts/
+      // build-dmg-background.py). The icons sit at the arrow's two ends.
+      config: {
+        title: 'Lightchain Chat',
+        background: path.join(__dirname, 'build', 'dmg-background.png'),
+        icon: path.join(__dirname, 'build', 'icon.icns'),
+        iconSize: 112,
+        contents: (opts) => [
+          { x: 170, y: 250, type: 'file', path: opts.appPath },
+          { x: 490, y: 250, type: 'link', path: '/Applications' }
+        ],
+        additionalDMGOptions: {
+          window: { size: { width: 660, height: 420 } }
+        }
+      }
     },
     {
       name: '@electron-forge/maker-msix',

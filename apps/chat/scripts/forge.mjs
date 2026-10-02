@@ -128,6 +128,9 @@ if (step === 'make') {
   forgeArgs.push('--targets', targets.join(','))
 }
 
+// Anything after the step goes straight to Forge - `--platform win32 --arch
+// x64` packages the Windows app from a Mac (see scripts/make-windows.mjs).
+forgeArgs.push(...process.argv.slice(3))
 run('npx', forgeArgs, stagingDir)
 
 // Back to where the workflow uploads from, and where `out/` has always been.

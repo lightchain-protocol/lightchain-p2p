@@ -317,14 +317,30 @@ per platform is in [docs/install.md](docs/install.md) and
 
 ### Building the downloadable installers
 
-Each installer has to be built on its own operating system: a Mac builds the
-`.dmg`, a Windows PC builds the `.exe`. There are two ways to get them.
+A Mac builds both installers. On a Mac, from `apps/chat`:
 
-**On your own Windows PC (no GitHub needed).** This is the direct way to make
-the `.exe`. Any Windows 10 or 11 machine works; on a Mac, a Windows virtual
+```bash
+pnpm make            # macOS: out/make/LightchainChat-<version>-arm64.dmg
+pnpm make:windows    # Windows: out/make/windows/LightchainChat-Setup-<version>.exe
+```
+
+`pnpm make:windows` needs no Windows machine and nothing paid. Forge packages
+the app for Windows x64 - every native module in it ships a ready-made Windows
+binary - and electron-builder wraps it in an NSIS installer: a setup wizard,
+per-user install without administrator rights, Start-menu and desktop
+shortcuts, and an uninstaller in Apps & features. It writes a portable `.zip`
+beside it. On an Apple Silicon Mac, NSIS's compiler is an Intel program, so
+install Rosetta 2 once first:
+
+```bash
+softwareupdate --install-rosetta --agree-to-license
+```
+
+A Windows PC can build the Windows installers too:
+
+**On your own Windows PC.** Any Windows 10 or 11 machine works; on a Mac, a Windows virtual
 machine does too (Parallels Desktop, VMware Fusion or UTM, with Windows 11 for
-ARM). The `.exe` cannot be built on macOS itself: the build compiles the app's
-native modules for Windows, which only works on Windows.
+ARM).
 
 Install [Node.js 20+](https://nodejs.org) and
 [Git](https://git-scm.com), then in PowerShell:
@@ -347,7 +363,7 @@ The installers land in `apps\chat\out\make\`:
 | `zip\win32\x64\LightchainChat-win32-x64-*.zip`  | A portable copy that runs without installing.                                                                                      |
 | `msix\...\*.msix`                               | The MSIX package. Needs PowerShell 7 (`pwsh`) on PATH to build, and developer mode to install while unsigned.                      |
 
-**Or from GitHub (when no Windows machine is at hand).** Push a version tag that matches
+**Or from GitHub.** Push a version tag that matches
 `apps/chat/package.json`'s version:
 
 ```bash
