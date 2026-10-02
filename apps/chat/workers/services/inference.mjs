@@ -82,6 +82,7 @@ export function createInference({ wallet, chatStore, network }) {
 
     const next = new Api({
       url: NETWORKS[network()].consumerApiUrl,
+      signInDomains: NETWORKS[network()].consumerSignInDomains ?? [],
       chainId: BigInt(NETWORKS[network()].chainId)
     })
     await next.signIn(account.address, (message) => account.signMessage(message))

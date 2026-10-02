@@ -37,6 +37,12 @@ export interface NetworkProfile {
    * produces authentication failures that look like a bad token.
    */
   readonly consumerApiUrl: string
+  /**
+   * Other domains the consumer API may name in its sign-in challenge, beyond
+   * its own host. An allowlist, not a relaxation: anything not named here is
+   * still refused unsigned.
+   */
+  readonly consumerSignInDomains?: readonly string[]
   /** Where answers stream back from. Absent where there is no relay, as on devnet. */
   readonly relayUrl?: string
   /**
@@ -76,6 +82,9 @@ export const NETWORKS: Readonly<Record<NetworkName, NetworkProfile>> = {
     workerGatewayUrl: 'https://worker-gateway.mainnet.lightchain.ai',
     image: 'us-central1-docker.pkg.dev/lightchain/lightchain-mainnet-public-docker/worker:latest',
     consumerApiUrl: 'https://chat-api.mainnet.lightchain.ai',
+    // The mainnet API composes its challenge for Lightchain's chat front end
+    // (seen live on 2026-10-02: domain and URI `chat-v2.lightchain.ai`).
+    consumerSignInDomains: ['chat-v2.lightchain.ai'],
     relayUrl: 'wss://relay.mainnet.lightchain.ai/ws',
     // Proxy addresses, per
     // https://docs.lightchain.ai/docs/getting-started/mainnet/contracts —

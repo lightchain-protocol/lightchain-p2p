@@ -26,6 +26,8 @@ export class ApiError extends Error {
 
 export interface ApiOptions {
   readonly url: string
+  /** Further domains the service signs in as; see `SiweExpectation.domains`. */
+  readonly signInDomains?: readonly string[]
   /**
    * Sortition takes twenty to forty-five seconds, because it is drawing from
    * workers that are actually online. A timeout tuned to an ordinary request
@@ -93,6 +95,7 @@ export class Api {
   readonly #url: string
   readonly #timeout: number
   readonly #chainId: bigint | undefined
+  readonly #signInDomains: readonly string[]
   #token: string | null = null
   #flavour: Flavour | null = null
 
@@ -103,6 +106,7 @@ export class Api {
     this.#url = options.url.replace(/\/$/, '')
     this.#timeout = options.timeout ?? 90_000
     this.#chainId = options.chainId
+    this.#signInDomains = options.signInDomains ?? []
   }
 
   get authenticated(): boolean {
@@ -191,6 +195,7 @@ export class Api {
     const message = checkSiweChallenge(challenge.message, {
       address,
       url: this.#url,
+      domains: this.#signInDomains,
       chainId: this.#chainId
     }).raw
 

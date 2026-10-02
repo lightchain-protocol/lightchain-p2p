@@ -207,6 +207,36 @@ describe('signing in', () => {
     expect(seen.some((call) => call.path === '/api/auth/verify')).toBe(false)
   })
 
+  it('signs a challenge for a domain the network names as its own', async () => {
+    routes = happy({
+      'GET /api/auth/challenge': () => ({
+        message: siweMessage({
+          domain: 'chat-v2.lightchain.ai',
+          uri: 'https://chat-v2.lightchain.ai'
+        })
+      })
+    })
+    seen = []
+
+    const api = new Api({ url, signInDomains: ['chat-v2.lightchain.ai'] })
+    await api.signIn(ADDRESS, sign)
+    expect(api.authenticated).toBe(true)
+  })
+
+  it('still refuses any domain the network does not name', async () => {
+    routes = happy({
+      'GET /api/auth/challenge': () => ({
+        message: siweMessage({ domain: 'evil.example', uri: 'https://evil.example' })
+      })
+    })
+    seen = []
+
+    await expect(
+      new Api({ url, signInDomains: ['chat-v2.lightchain.ai'] }).signIn(ADDRESS, sign)
+    ).rejects.toThrow(/for "evil\.example", but this service is/)
+    expect(seen.some((call) => call.path === '/api/auth/verify')).toBe(false)
+  })
+
   it('refuses a challenge addressed to a different account', async () => {
     const other = `0x${'33'.repeat(20)}`
     routes = happy({

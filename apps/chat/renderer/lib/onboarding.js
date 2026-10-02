@@ -465,7 +465,11 @@ el('unlock-form').addEventListener('submit', async (evt) => {
     showWallet(await request('wallet.unlock', { password: input.value }))
     finishOnboarding()
   } catch (err) {
-    fail('unlock-error', err.message)
+    // One plain line, as the Account page's lock says it.
+    fail(
+      'unlock-error',
+      /wrong password/i.test(err.message) ? 'Wrong password. Try again.' : err.message
+    )
   } finally {
     input.value = ''
     button.disabled = false

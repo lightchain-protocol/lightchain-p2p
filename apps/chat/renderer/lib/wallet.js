@@ -187,9 +187,7 @@ export async function refreshWallet() {
     const status = await request('wallet.status')
     showWallet(status)
     if (status.unlocked) {
-      void refreshBalances()
-      void refreshHistory()
-      void refreshBackupCard()
+      await Promise.allSettled([refreshBalances(), refreshHistory(), refreshBackupCard()])
     }
   } catch (err) {
     toast(err.message, 'error')
@@ -570,7 +568,12 @@ el.walletUnlockForm.addEventListener('submit', async (evt) => {
     // can be read at all.
     void refreshHistory()
   } catch (err) {
-    fail(el.walletUnlockError, err.message)
+    // One plain line. The worker's sentence also covers a vault altered on
+    // disk, which is not what anybody who mistyped needs to read first.
+    fail(
+      el.walletUnlockError,
+      /wrong password/i.test(err.message) ? 'Wrong password. Try again.' : err.message
+    )
   } finally {
     el.walletUnlockPassword.value = ''
     el.walletUnlockBtn.disabled = false

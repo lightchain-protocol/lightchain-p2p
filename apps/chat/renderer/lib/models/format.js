@@ -20,6 +20,33 @@ export function lcai(wei) {
  * else for an error to end up. Everything written here arrives from a chain, a
  * worker or another peer, so all of it goes in through `textContent`.
  */
+/**
+ * What failed, said briefly; why, kept one press away.
+ *
+ * The worker's own sentences are precise and long - a signing refusal names
+ * both domains and what signing would have proved - and set in full they
+ * outweighed the heading they explain. A short one shows as it is; a long one
+ * folds under "Details", where it is still there to copy into a report.
+ */
+const SHORT = 90
+
+function showDetail(slot, text) {
+  slot.replaceChildren()
+  const value = String(text ?? '')
+  if (value.length <= SHORT) {
+    slot.textContent = value
+    return
+  }
+  const more = document.createElement('details')
+  more.className = 'alert-more'
+  const summary = document.createElement('summary')
+  summary.textContent = 'Details'
+  const body = document.createElement('span')
+  body.textContent = value
+  more.append(summary, body)
+  slot.append(more)
+}
+
 export function alertSlot(id) {
   const root = document.getElementById(id)
   const symbol = root.querySelector('use')
@@ -41,7 +68,7 @@ export function alertSlot(id) {
       root.dataset.tone = notice.tone
       symbol.setAttribute('href', notice.tone === 'info' ? '#i-info' : '#i-alert')
       heading.textContent = notice.heading
-      detail.textContent = notice.detail
+      showDetail(detail, notice.detail)
       again = notice.retry ?? null
       if (actions) actions.hidden = again === null
       root.hidden = false

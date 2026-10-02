@@ -2468,6 +2468,9 @@
             <!-- Exists, locked -->
             <section class="wallet-gate" id="wallet-locked" hidden>
               <div class="kit-card wallet-gate-card">
+                <span class="wallet-gate-icon" aria-hidden="true">
+                  <svg class="icon"><use href="#i-lock" /></svg>
+                </span>
                 <h1 class="page-title">Locked</h1>
                 <!-- Which key this is, as a fact rather than a heading. Somebody
                      who runs two of these needs to see it before they type. -->
@@ -2490,13 +2493,9 @@
                     />
                   </label>
 
-                  <div class="alert" data-tone="error" role="alert" id="wallet-unlock-error" hidden>
-                    <svg class="icon" aria-hidden="true"><use href="#i-alert" /></svg>
-                    <div class="alert-body">
-                      <strong class="alert-title">The wallet did not unlock</strong>
-                      <span data-slot="detail"></span>
-                    </div>
-                  </div>
+                  <p class="dialog-error" role="alert" id="wallet-unlock-error" hidden>
+                    <span data-slot="detail"></span>
+                  </p>
 
                   <button class="button button-primary" type="submit" id="wallet-unlock-btn">
                     Unlock
@@ -2507,6 +2506,12 @@
 
             <!-- Unlocked -->
             <section class="console wallet" id="wallet-open" hidden>
+              <!-- Up until the first full read lands, so the page appears whole
+                   rather than one card at a time. -->
+              <div class="loading wallet-loading" role="status">
+                <svg class="icon loading-mark" aria-hidden="true"><use href="#i-loader" /></svg>
+                <p class="loading-text">Loading your account…</p>
+              </div>
               <!-- The account, as the wallet heads its own portfolio: whose
                    money this is on the left, and what acts on the page on the
                    right, over a rule. A page called "Account" with a sentence

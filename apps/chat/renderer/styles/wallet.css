@@ -1527,6 +1527,8 @@
      itself up to the card's height, and only the margin is clipped. */
   transform: scale(1.3);
   transform-origin: right center;
+  /* Barely there: a texture behind the figures, not a picture beside them. */
+  opacity: 0.18;
   pointer-events: none;
   user-select: none;
 }
@@ -1539,4 +1541,32 @@
   .pv-card > .pv-art {
     display: none;
   }
+}
+
+/* The site's nav card icon (`header/_nav.scss`): a 36px disc in a wash of the
+   heading colour, here carrying the lock. */
+.wallet-gate-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: var(--lc-space-md);
+  border-radius: var(--lc-radius-pill);
+  background: rgba(204, 206, 239, 0.1);
+  color: var(--lc-accent);
+}
+
+/* The page's loader: shown only while the first read is outstanding, and the
+   only thing on the page while it is. */
+#wallet-open > .wallet-loading {
+  display: none;
+}
+
+#wallet-open.is-loading > .wallet-loading {
+  display: grid;
+  min-height: 60vh;
+}
+
+#wallet-open.is-loading > :not(.wallet-loading) {
+  display: none;
 }

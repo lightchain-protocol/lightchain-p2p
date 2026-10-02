@@ -48,6 +48,12 @@ export interface SiweExpectation {
    */
   readonly url: string
   /**
+   * Further domains this service is known to sign in as, beside its own host -
+   * a front end on another Lightchain domain, say. Named one by one; a
+   * challenge for any domain not listed is still refused.
+   */
+  readonly domains?: readonly string[]
+  /**
    * The chain the caller believes the service anchors to. Optional only
    * because not every caller knows it; pass it wherever a network profile is
    * in hand, for the same reason `sendTransaction` takes one.
@@ -129,7 +135,8 @@ export function checkSiweChallenge(message: string, expectation: SiweExpectation
   const challenge = parseSiweChallenge(message)
 
   const host = new URL(expectation.url).host
-  if (challenge.domain !== host) {
+  const allowed = [host, ...(expectation.domains ?? [])]
+  if (!allowed.includes(challenge.domain)) {
     throw new SiweError(
       `the challenge is for ${JSON.stringify(challenge.domain)}, but this service is ${JSON.stringify(host)}. Signing it would prove control of the address to a different service. Nothing was signed.`
     )

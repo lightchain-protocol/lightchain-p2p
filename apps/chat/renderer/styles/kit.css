@@ -390,6 +390,21 @@
   min-width: 0;
 }
 
+/* A long reason, folded: the summary reads as a quiet link under the
+   heading. */
+.alert-more summary {
+  color: var(--lc-text-tertiary);
+  cursor: pointer;
+}
+
+.alert-more summary:hover {
+  color: var(--lc-text-primary);
+}
+
+.alert-more[open] summary {
+  margin-bottom: var(--lc-space-xs);
+}
+
 .alert-title {
   display: block;
   margin-bottom: 2px;

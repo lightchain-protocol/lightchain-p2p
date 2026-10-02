@@ -111,11 +111,12 @@
   color: var(--lc-text-secondary);
 }
 
-/* The figure itself, in the size a figure this consequential deserves. */
+/* The figure itself, in the size a figure this consequential deserves: the
+   dashboard's converted balance, 24 / 600. */
 .wizard-stats dd {
   margin: var(--lc-space-sm) 0 0;
-  font-size: var(--lc-text-lg);
-  font-weight: var(--lc-weight-medium);
+  font-size: var(--lc-text-xxl);
+  font-weight: var(--lc-weight-semibold);
   line-height: var(--lc-leading-tight);
   font-variant-numeric: tabular-nums;
   color: var(--lc-text-strong);
@@ -276,6 +277,23 @@
   flex-direction: column;
   gap: var(--lc-space-md);
   margin-top: var(--lc-space-sm);
+  /* The step's content in the same near-black card as every other panel
+     (the ecosystem card: Neutral-900, the .2 edge, square corners). */
+  padding: 24px;
+  border: 1px solid var(--lc-panel-rule);
+  background: var(--lc-surface-2);
+}
+
+/* What a step builds into the card stacks with the card's own rhythm: a
+   form, its button and the note under it are three things, not one. */
+.wizard-body > div:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lc-space-md);
+}
+
+.wizard-body > div:empty {
+  display: none;
 }
 
 .wizard-actions {

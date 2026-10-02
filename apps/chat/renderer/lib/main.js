@@ -274,10 +274,16 @@ for (const button of el.sections) {
     if (button.dataset.section === 'worker') void refreshWorker()
     if (button.dataset.section === 'validator') void refreshValidator()
     if (button.dataset.section === 'wallet') {
-      void refreshWallet()
-      // Started alongside rather than after. Reading six chains takes longer
-      // than reading one, and the address and lock state should not wait on it.
-      void refreshAssets()
+      // The first visit waits behind one loader for the page's reads, so it
+      // appears whole; after that the figures refresh in place.
+      const page = document.getElementById('wallet-open')
+      const first = page && !page.dataset.loaded
+      if (first) page.classList.add('is-loading')
+      void Promise.allSettled([refreshWallet(), refreshAssets()]).then(() => {
+        if (!page) return
+        page.classList.remove('is-loading')
+        page.dataset.loaded = 'true'
+      })
       void refreshActivity()
     }
     if (button.dataset.section === 'models') void refreshModels()
