@@ -427,7 +427,29 @@ describe('secret handling', () => {
       generateEncryptionKey(config)
     ]) {
       expect(cmd.display).not.toContain(PASSWORD)
-      expect(cmd.display).toContain('<redacted>')
+    }
+  })
+
+  it('keeps the keystore password off the command line', () => {
+    // A command line is readable by every local user through `ps` and
+    // /proc/<pid>/cmdline. The variable is named in argv with no value, and
+    // Docker copies it from the CLI's own environment.
+    for (const cmd of [
+      runWorker(config, '/data/ks'),
+      register(config, '/data/ks'),
+      generateEncryptionKey(config)
+    ]) {
+      expect(cmd.argv.join(' ')).not.toContain(PASSWORD)
+      const at = cmd.argv.indexOf('WORKER_KEYSTORE_PASSWORD')
+      expect(at).toBeGreaterThan(0)
+      expect(cmd.argv[at - 1]).toBe('-e')
+      expect(cmd.env).toEqual({ WORKER_KEYSTORE_PASSWORD: PASSWORD })
+    }
+  })
+
+  it('gives commands that need no secret no environment', () => {
+    for (const cmd of [pullImage(config), stopWorker(config), inspectWorker(config)]) {
+      expect(cmd.env).toBeUndefined()
     }
   })
 
@@ -451,10 +473,6 @@ describe('secret handling', () => {
       expect(cmd.argv.join(' ')).not.toContain(PRIVKEY)
       expect(cmd.display).not.toContain(PRIVKEY)
     }
-  })
-
-  it('still passes the real secrets in argv, since only display is redacted', () => {
-    expect(runWorker(config, '/data/ks').argv.join(' ')).toContain(PASSWORD)
   })
 })
 

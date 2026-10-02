@@ -18,6 +18,14 @@ export interface DockerCommand {
   readonly argv: readonly string[]
   /** Safe to print or log. Secrets are replaced. */
   readonly display: string
+  /**
+   * Variables to add to the `docker` CLI's own environment, for the secrets
+   * argv names but does not carry. `-e NAME` with no value tells Docker to
+   * copy NAME from its environment, so the value never reaches the command
+   * line — which any local user can read through `ps` or `/proc/<pid>/cmdline`,
+   * where a process's environment is readable only by its owner.
+   */
+  readonly env?: Readonly<Record<string, string>>
 }
 
 const REDACTED = '<redacted>'
@@ -38,7 +46,11 @@ function requireImage(config: WorkerConfig): string {
   return config.image
 }
 
-function build(argv: readonly string[], secrets: readonly string[]): DockerCommand {
+function build(
+  argv: readonly string[],
+  secrets: readonly string[],
+  env?: Readonly<Record<string, string>>
+): DockerCommand {
   const display = argv
     .map((arg) => {
       let shown = arg
@@ -49,7 +61,7 @@ function build(argv: readonly string[], secrets: readonly string[]): DockerComma
     })
     .join(' ')
 
-  return { argv, display: `docker ${display}` }
+  return env ? { argv, display: `docker ${display}`, env } : { argv, display: `docker ${display}` }
 }
 
 export function pullImage(config: WorkerConfig): DockerCommand {
@@ -74,7 +86,8 @@ export function pullImage(config: WorkerConfig): DockerCommand {
  * The keystore *password* still reaches the running container as an environment
  * variable, because `WORKER_KEYSTORE_PASSWORD` is the only way the image will
  * accept one and environment is in `docker inspect` whatever we do. That needs
- * a change upstream, not here.
+ * a change upstream, not here. What is ours to close is the `docker` CLI's own
+ * command line: argv names the variable and `env` carries the value.
  */
 
 /** Generates the ECDH key the worker uses for encrypted payloads. */
@@ -91,7 +104,8 @@ export function generateEncryptionKey(config: WorkerConfig): DockerCommand {
       requireImage(config),
       'keygen'
     ],
-    [config.keystorePassword]
+    [config.keystorePassword],
+    secretEnvironment(config)
   )
 }
 
@@ -116,7 +130,8 @@ export function register(config: WorkerConfig, keystoreFile: string): DockerComm
       requireImage(config),
       'register'
     ],
-    [config.keystorePassword]
+    [config.keystorePassword],
+    secretEnvironment(config)
   )
 }
 
@@ -124,7 +139,7 @@ export function runWorker(config: WorkerConfig, keystoreFile: string): DockerCom
   const image = requireImage(config)
   if (!isRunnable(config)) {
     throw new WorkerConfigError(
-      `aiConfigAddress and jobRegistryAddress must be resolved before the worker can run. The ${config.network} profile pins none — read them from the WorkerRegistry with resolveContractAddresses(config, rpc) first.`
+      `aiConfigAddress and jobRegistryAddress must be resolved before the worker can run. The ${config.network} profile pins none - read them from the WorkerRegistry with resolveContractAddresses(config, rpc) first.`
     )
   }
 
@@ -146,7 +161,8 @@ export function runWorker(config: WorkerConfig, keystoreFile: string): DockerCom
       ...environment(config, keystoreFile),
       image
     ],
-    [config.keystorePassword]
+    [config.keystorePassword],
+    secretEnvironment(config)
   )
 }
 
@@ -165,7 +181,6 @@ export function logsWorker(config: WorkerConfig, { tail = 200 } = {}): DockerCom
 function environment(config: WorkerConfig, keystoreFile?: string): string[] {
   const env: [string, string][] = [
     ['WORKER_KEYSTORE_PATH', keystoreFile ?? config.keystorePath],
-    ['WORKER_KEYSTORE_PASSWORD', config.keystorePassword],
     ['ENCRYPTION_KEYSTORE_PATH', '/data/worker-encryption.key'],
     ['RPC_URL', config.rpcUrl],
     ['CHAIN_ID', String(config.chainId)],
@@ -187,5 +202,13 @@ function environment(config: WorkerConfig, keystoreFile?: string): string[] {
     env.push(['LOG_FORMAT', 'text'])
   }
 
-  return env.flatMap(([key, value]) => ['-e', `${key}=${value}`])
+  return [
+    ...env.flatMap(([key, value]) => ['-e', `${key}=${value}`]),
+    // Name only: Docker copies the value from its own environment. See `env`.
+    ...Object.keys(secretEnvironment(config)).flatMap((key) => ['-e', key])
+  ]
+}
+
+function secretEnvironment(config: WorkerConfig): Record<string, string> {
+  return { WORKER_KEYSTORE_PASSWORD: config.keystorePassword }
 }

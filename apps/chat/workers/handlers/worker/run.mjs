@@ -65,6 +65,7 @@ export function createRun(ctx, kit) {
     let streamed = false
     const res = await runAsync('docker', command.argv, {
       timeout: 0,
+      env: command.env,
       onOutput: (chunk) => {
         streamed = true
         send({ t: 'worker.output', text: chunk })
@@ -158,7 +159,7 @@ export function createRun(ctx, kit) {
         const more = index < candidates.length - 1
         send({
           t: 'worker.output',
-          text: `\nNothing is published as ${reference}${more ? ' — trying the next name' : ''}.\n`
+          text: `\nNothing is published as ${reference}${more ? ' - trying the next name' : ''}.\n`
         })
         continue
       }

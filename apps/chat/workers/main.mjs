@@ -99,6 +99,8 @@ import { createDispatch } from './dispatch.mjs'
  *     { t: 'room',  room: state }        pushed whenever a room changes
  *     { t: 'wallet.confirm', id, amount, to, from, network, fee }
  *                                      pushed when a transfer needs a person's answer
+ *     { t: 'wallet.confirm.retract', id }
+ *                                      pushed when the guard stops waiting on one
  *     { t: 'wallet.deposit', chainId, chainName, symbol, amountWei, amountText, address }
  *                                      pushed when a watched balance goes up
  *

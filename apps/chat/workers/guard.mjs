@@ -164,7 +164,14 @@ export function createGuard({ wallet, send, settings, onAutoLock, randomId = ran
       })
 
       send({ t: 'wallet.confirm', id, ...details })
-      return answered
+      const approved = await answered
+
+      // However it ended — the dialog's answer, the timeout, a lock — the
+      // window is told the question is closed. Otherwise a dialog the guard
+      // stopped waiting on stays up, a Confirm on it settles nothing, and the
+      // next real question queues behind it while this one is on screen.
+      send({ t: 'wallet.confirm.retract', id })
+      return approved
     },
 
     /**

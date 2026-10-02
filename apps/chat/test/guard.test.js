@@ -76,7 +76,7 @@ describe('small amounts', () => {
 })
 
 describe('mid-size amounts', () => {
-  it('go through without asking anything — the password tier was removed', async () => {
+  it('go through without asking anything - the password tier was removed', async () => {
     // There is no dialog that could collect a password, so demanding one was
     // a refusal wearing a prompt's clothes. What remains proportionate is the
     // confirmation dialog, and only for the largest moves.
@@ -200,6 +200,55 @@ describe('amounts past the dialog threshold', () => {
     await vi.waitFor(() => expect(pushed).toHaveLength(1))
     guard.stop()
     await expect(allowed).rejects.toThrow(/not confirmed/)
+  })
+})
+
+describe('closing a dialog the guard no longer waits on', () => {
+  // A dialog left up after the guard gave up on it is a Confirm that settles
+  // nothing, with the next real question queued out of sight behind it.
+  const big = DEFAULT_CONFIRM_ABOVE
+  const retracted = (pushed, id) =>
+    pushed.some((msg) => msg.t === 'wallet.confirm.retract' && msg.id === id)
+
+  it('retracts the question once it is answered', async () => {
+    const { guard, pushed, answer } = guardWith()
+    const allowed = guard.allow({ value: big, details })
+    await vi.waitFor(() => expect(pushed).toHaveLength(1))
+    const { id } = pushed[0]
+
+    answer(false)
+    await expect(allowed).rejects.toThrow(/not confirmed/)
+    expect(retracted(pushed, id)).toBe(true)
+  })
+
+  it('retracts the question when it times out', async () => {
+    vi.useFakeTimers()
+    try {
+      const { guard, pushed } = guardWith()
+      const allowed = guard.allow({ value: big, details })
+      const settled = expect(allowed).rejects.toThrow(/not confirmed/)
+      await vi.waitFor(() => expect(pushed).toHaveLength(1))
+      const { id } = pushed[0]
+
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 1)
+      await settled
+      expect(retracted(pushed, id)).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('retracts every question outstanding when the worker shuts down', async () => {
+    const { guard, pushed } = guardWith()
+    const first = guard.allow({ value: big, details })
+    const second = guard.allow({ value: big, details })
+    await vi.waitFor(() => expect(pushed).toHaveLength(2))
+    const ids = pushed.map((msg) => msg.id)
+
+    guard.stop()
+    await expect(first).rejects.toThrow(/not confirmed/)
+    await expect(second).rejects.toThrow(/not confirmed/)
+    for (const id of ids) expect(retracted(pushed, id)).toBe(true)
   })
 })
 

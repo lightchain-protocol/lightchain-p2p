@@ -82,6 +82,17 @@ onPush('wallet.confirm', (msg) => {
   showNext()
 })
 
+// The guard is no longer waiting on this question: answered here, timed out,
+// or ended by a lock. Drop it, so what is on screen is always something a
+// Confirm would still act on.
+onPush('wallet.confirm.retract', ({ id }) => {
+  const queued = queue.findIndex((msg) => msg.id === id)
+  if (queued !== -1) queue.splice(queued, 1)
+  if (current?.id !== id) return
+  current = null
+  dialog.close()
+})
+
 approveBtn.addEventListener('click', () => answer(true))
 cancelBtn.addEventListener('click', () => answer(false))
 closeBtn.addEventListener('click', () => answer(false))

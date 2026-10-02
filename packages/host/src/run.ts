@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from 'child_process'
+import os from 'os'
 
 /**
  * Running host commands.
@@ -27,6 +28,36 @@ export interface RunOptions {
    * one that is stuck.
    */
   readonly onOutput?: (chunk: string, stream: 'stdout' | 'stderr') => void
+  /**
+   * Variables added to the child's environment, over this process's own.
+   *
+   * For secrets: a command line is readable by every local user, an
+   * environment only by the process's owner.
+   */
+  readonly env?: Readonly<Record<string, string>>
+}
+
+/**
+ * This process's environment plus `extra`, or undefined to inherit unchanged.
+ *
+ * Passing `env` to spawn replaces the environment rather than adding to it, and
+ * a `docker` without PATH or DOCKER_HOST cannot find its daemon. Node has
+ * `process.env`; Bare may have no `process` global, and exposes the same
+ * through `bare-os`, which is what `os` resolves to there.
+ */
+function childEnv(extra: RunOptions['env']): Record<string, string> | undefined {
+  if (!extra) return undefined
+  const own: Record<string, string> = {}
+  const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
+  if (proc?.env) {
+    for (const [key, value] of Object.entries(proc.env)) {
+      if (value !== undefined) own[key] = value
+    }
+  } else {
+    const bare = os as unknown as { getEnvKeys?: () => string[]; getEnv?: (key: string) => string }
+    for (const key of bare.getEnvKeys?.() ?? []) own[key] = bare.getEnv!(key)
+  }
+  return { ...own, ...extra }
 }
 
 /**
@@ -41,6 +72,7 @@ export function run(file: string, args: readonly string[], opts: RunOptions = {}
     const limit = opts.timeout ?? 10_000
     const res = spawnSync(file, [...args], {
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: childEnv(opts.env),
       // Passed as undefined rather than 0, because a runtime that reads 0 as
       // "expire immediately" would kill every long command on contact.
       timeout: limit > 0 ? limit : undefined
@@ -83,7 +115,7 @@ export function runAsync(
   return new Promise((resolve) => {
     let child
     try {
-      child = spawn(file, [...args], { stdio: ['ignore', 'pipe', 'pipe'] })
+      child = spawn(file, [...args], { stdio: ['ignore', 'pipe', 'pipe'], env: childEnv(opts.env) })
     } catch (err) {
       resolve({ ok: false, status: null, stdout: '', stderr: (err as Error).message })
       return

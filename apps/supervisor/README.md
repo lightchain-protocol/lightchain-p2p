@@ -95,7 +95,10 @@ and this is worth less there.
 **The password still reaches the container as an environment variable.**
 `WORKER_KEYSTORE_PASSWORD` is the only form the image accepts, so it is visible
 in `docker inspect` for as long as the container exists. Closing that needs a
-change to the image, not to the supervisor.
+change to the image, not to the supervisor. It no longer appears on the
+`docker` command line, though: the argument is `-e WORKER_KEYSTORE_PASSWORD`
+with no value, and Docker copies the value from its own environment, which
+other local users cannot read the way they can read a command line.
 
 ## Things it gets right that are easy to get wrong
 

@@ -29,16 +29,15 @@ export { withResolvedAddresses }
 /**
  * Executes the docker commands that @lcai-p2p/worker builds.
  *
- * Only `display` is ever printed. The argv carries the keystore password and,
- * during import, the private key, so anything that logs the raw command hands
- * an operator's key to whoever reads the output.
+ * Only `display` is ever printed. The keystore password travels in `env`, not
+ * argv, so it stays off the command line other local users can read.
  */
 
 function execute(command, { quiet = false } = {}) {
   if (!quiet) console.log(`$ ${command.display}`)
 
   // Docker pulls and container starts outrun the default timeout.
-  return run('docker', command.argv, { timeout: 0 })
+  return run('docker', command.argv, { timeout: 0, env: command.env })
 }
 
 /** Where the keys live, needed before a full config can be built. */
@@ -72,7 +71,7 @@ export function setPassword(keysDir, password) {
 
   console.log(`Password stored: ${passwordPath(keysDir)}`)
   if (process.env.WORKER_PASSWORD) {
-    console.log('\nWORKER_PASSWORD is still set and is now ignored. Unset it — while it')
+    console.log('\nWORKER_PASSWORD is still set and is now ignored. Unset it - while it')
     console.log('remains in the environment it is readable by every child process.')
   }
   return true
@@ -113,7 +112,7 @@ export function status(config) {
   console.log(`Models    : ${config.supportedModels.join(', ')}`)
   console.log(`Ollama    : ${config.ollamaUrl}`)
   console.log('')
-  console.log(`State     : ${state.health} — ${state.detail}`)
+  console.log(`State     : ${state.health} - ${state.detail}`)
   if (state.startedAt) console.log(`Started   : ${state.startedAt}`)
   if (state.remedy) console.log(`\n${state.remedy}`)
   console.log('')
