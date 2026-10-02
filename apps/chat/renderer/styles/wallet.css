@@ -1507,21 +1507,24 @@
   padding: 0;
 }
 
-/* The site's own LCAI coin (`public/images/lcai-coin-3d.png`), standing in
-   the card's empty middle the way the ecosystem cards carry their art: behind
-   everything, clear of the actions and the ranges on the right, with the
-   glow the site gives its token mark (`drop-shadow(0 0 10px
-   rgba(238,17,251,.35))`, `_lcai-token-section.scss`). Stood down once there
-   is a real chart, so it never sits under the line. */
+/* The site's Faucet illustration (`home/ecosystem/figma/faucet.png`): LCAI
+   falling into a coin, in the stippled black of every ecosystem card. Large,
+   as the site sets its art (`.ecosystem-section__card-image`), standing in the
+   card's empty middle behind everything and clear of the actions and ranges
+   on the right. Stood down once there is a real chart, so it never sits under
+   the line. */
 .pv-card > .pv-art {
   position: absolute;
-  top: 50%;
+  /* As tall as the card, less a margin, so it is never cut at either edge. */
+  top: var(--lc-space-md);
+  bottom: var(--lc-space-md);
   right: 32%;
   z-index: 0;
-  height: 180px;
+  height: calc(100% - 2 * var(--lc-space-md));
   width: auto;
-  transform: translateY(-50%);
-  filter: drop-shadow(0 0 10px rgba(238, 17, 251, 0.35));
+  /* The file carries a wide transparent margin; this brings the drawing
+     itself up to the card's height, and only the margin is clipped. */
+  transform: scale(1.3);
   pointer-events: none;
   user-select: none;
 }
