@@ -35,8 +35,23 @@ function getWindowsKitVersion() {
   }
 }
 
+/**
+ * The icon, named exactly. `build/icon` is also a directory (the Linux sizes),
+ * so the extension-less form the packager accepts resolved to that folder and
+ * every bundle quietly kept Electron's own icon.
+ */
+const ICON = path.join(
+  __dirname,
+  'build',
+  process.platform === 'darwin'
+    ? 'icon.icns'
+    : process.platform === 'win32'
+      ? 'icon.ico'
+      : 'icon.png'
+)
+
 let packagerConfig = {
-  icon: 'build/icon',
+  icon: ICON,
   protocols: [{ name: appName, schemes: [protocol] }],
   derefSymlinks: true
 }
@@ -123,6 +138,26 @@ module.exports = {
       }
     },
     {
+      // The ordinary Windows installer: a Setup.exe that installs per user
+      // without administrator rights, adds Start-menu and desktop shortcuts
+      // and an uninstaller in Apps & features - what people expect from a
+      // download. Per-user install keeps the app directory writable, which
+      // the peer-to-peer updater needs. Unsigned until a certificate exists,
+      // so SmartScreen asks once ("More info" -> "Run anyway").
+      name: '@electron-forge/maker-squirrel',
+      platforms: ['win32'],
+      config: {
+        name: 'LightchainChat',
+        authors: 'Lightchain',
+        description: 'Lightchain AI universal peer-to-peer hub',
+        setupExe: 'LightchainChat-Setup.exe',
+        setupIcon: path.join(__dirname, 'build', 'icon.ico'),
+        iconUrl:
+          'https://raw.githubusercontent.com/lightchain-protocol/lightchain-p2p/main/apps/chat/build/icon.ico',
+        noMsi: true
+      }
+    },
+    {
       // The Windows fallback a beta actually needs: an MSIX signed by a
       // build-minted development certificate installs only after the machine
       // trusts that certificate, which is real friction for a tester. The zip
@@ -153,7 +188,7 @@ module.exports = {
       platforms: ['linux'],
       config: {
         appId: 'ai.lightchain.Hub',
-        icon: `${packagerConfig.icon}.png`,
+        icon: path.join(__dirname, 'build', 'icon.png'),
         comment: pkg.description,
         categories: ['Network', 'Chat']
       }
@@ -162,7 +197,7 @@ module.exports = {
       name: 'pear-electron-forge-maker-snap',
       platforms: ['linux'],
       config: {
-        icon: `${packagerConfig.icon}.png`,
+        icon: path.join(__dirname, 'build', 'icon.png'),
         snapcraft: {
           summary: pkg.description,
           description:
@@ -213,6 +248,23 @@ module.exports = {
       }
 
       return packageJson
+    },
+    /**
+     * Without an Apple certificate the app still has to carry a valid
+     * signature. The packaged bundle keeps Electron's own ad-hoc signature,
+     * which no longer matches once the app is inside it, and a downloaded copy
+     * then reads as "damaged" with no way past it. Re-signed ad hoc, macOS
+     * instead asks once whether to open an app from an unidentified developer.
+     */
+    postPackage: async (forgeConfig, { platform, outputPaths }) => {
+      if (platform !== 'darwin' || process.env.MAC_CODESIGN_IDENTITY) return
+      const { execFileSync } = require('child_process')
+      for (const dir of outputPaths) {
+        for (const entry of fs.readdirSync(dir)) {
+          if (!entry.endsWith('.app')) continue
+          execFileSync('codesign', ['--force', '--deep', '--sign', '-', path.join(dir, entry)])
+        }
+      }
     },
     preMake: async () => {
       fs.rmSync(path.join(__dirname, 'out', 'make'), { recursive: true, force: true })

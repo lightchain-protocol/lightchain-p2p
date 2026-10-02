@@ -66,7 +66,11 @@ const run = (command, args, cwd) => {
 // configured maker fails before anything is built.
 const MAKE_TARGETS = {
   darwin: ['@electron-forge/maker-dmg'],
-  win32: ['@electron-forge/maker-msix', '@electron-forge/maker-zip'],
+  win32: [
+    '@electron-forge/maker-squirrel',
+    '@electron-forge/maker-msix',
+    '@electron-forge/maker-zip'
+  ],
   linux: ['pear-electron-forge-maker-appimage']
 }
 
@@ -135,6 +139,9 @@ if (!existsSync(produced)) {
 
 const destination = join(appDir, 'out')
 rmSync(destination, { recursive: true, force: true })
-cpSync(produced, destination, { recursive: true })
+// `verbatimSymlinks`: a macOS framework is built of relative symlinks, and
+// copied without it they became absolute paths into the staging directory -
+// a bundle whose signature no longer verifies once that directory is gone.
+cpSync(produced, destination, { recursive: true, verbatimSymlinks: true })
 
 console.log(`\n${step} complete: ${destination}`)

@@ -22,6 +22,39 @@ const windowState = require('./window-state')
 const { safeFileName } = require('./safe-file-name')
 const pkg = require('../package.json')
 
+/**
+ * The Windows installer's own events.
+ *
+ * Squirrel (the Setup.exe) runs the app once with one of these flags as it
+ * installs, updates or removes it, and expects shortcuts made or removed and
+ * the process gone - not a window. Handled before anything else starts, the
+ * way electron-squirrel-startup does it, without the dependency.
+ */
+if (process.platform === 'win32') {
+  const event = process.argv[1]
+  if (event && event.startsWith('--squirrel-')) {
+    const { spawn } = require('child_process')
+    const updateExe = path.resolve(path.dirname(process.execPath), '..', 'Update.exe')
+    const exeName = path.basename(process.execPath)
+    const run = (args) => {
+      try {
+        spawn(updateExe, args, { detached: true }).on('close', () => app.quit())
+      } catch {
+        app.quit()
+      }
+    }
+    if (event === '--squirrel-install' || event === '--squirrel-updated') {
+      run(['--createShortcut', exeName])
+    } else if (event === '--squirrel-uninstall') {
+      run(['--removeShortcut', exeName])
+    } else {
+      app.quit()
+    }
+    // Nothing below may run during an installer event.
+    return
+  }
+}
+
 /** The app icon (scripts/build-app-icon.py), where it ships beside the code. */
 const APP_ICON = [path.join(__dirname, '..', 'build', 'icon.png')].find((file) =>
   fs.existsSync(file)
