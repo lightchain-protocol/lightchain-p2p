@@ -21,6 +21,11 @@ const { command, flag, sloppy } = require('paparam')
 const windowState = require('./window-state')
 const { safeFileName } = require('./safe-file-name')
 const pkg = require('../package.json')
+
+/** The app icon (scripts/build-app-icon.py), where it ships beside the code. */
+const APP_ICON = [path.join(__dirname, '..', 'build', 'icon.png')].find((file) =>
+  fs.existsSync(file)
+)
 const { name, productName, version, upgrade } = pkg
 
 // Deep link scheme, e.g. lightchain://room/<key>. Declared explicitly rather
@@ -432,6 +437,9 @@ async function createWindow() {
 
   const win = new BrowserWindow({
     ...bounds,
+    // The window's own icon on Windows and Linux when run from source; a
+    // packaged build carries it in the executable anyway.
+    ...(APP_ICON ? { icon: APP_ICON } : {}),
     // Not a floor picked to stop the layout breaking: `scripts/shoot.mjs`
     // reviews every section at exactly 720px wide, so half a screen is a
     // supported size rather than one the app merely survives.
@@ -817,6 +825,10 @@ if (!lock) {
     process.argv.find((arg) => arg.toLowerCase().startsWith(protocol + '://')) ?? pendingLink
 
   app.whenReady().then(() => {
+    // Run from source, the process is the stock Electron binary and the dock
+    // shows Electron's logo. Packaged, the bundle's own icon is already there.
+    if (isMac && APP_ICON && !app.isPackaged) app.dock?.setIcon(APP_ICON)
+
     createWindow()
       .then(flushDeepLink)
       .catch((err) => {
