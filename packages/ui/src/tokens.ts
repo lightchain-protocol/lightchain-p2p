@@ -202,7 +202,9 @@ export const BRAND = {
  */
 const DARK_NEUTRALS: Neutrals = [
   '#070710',
-  '#0f1021',
+  // Neutral-900, the ecosystem card's fill: one near-black for every card,
+  // menu and dialog, in place of `--color-blackest`'s blue cast.
+  '#0f0f14',
   '#13131e',
   '#14152c',
   '#22232a',
@@ -217,7 +219,7 @@ const DARK_NEUTRALS: Neutrals = [
 export const DARK: Palette = {
   neutral: DARK_NEUTRALS,
 
-  // Page `--color-dark`; cards, menus and dialogs `--color-blackest`; the
+  // Page `--color-dark`; cards, menus and dialogs Neutral-900; the
   // raised step `--color-darker-two`; a hovered row `--color-dark-primary-2`.
   surface1: DARK_NEUTRALS[0],
   surface2: DARK_NEUTRALS[1],
@@ -499,6 +501,8 @@ export const SITE = {
   /** The dashboard card and table, `dashboard/_dashboard.scss:2423, 2694`. */
   card: 'rgba(204, 206, 239, 0.06)',
   cardRule: 'rgba(204, 206, 239, 0.12)',
+  /** Every card's edge: the ecosystem card's, `_ecosystem-section.scss:106`. */
+  panelRule: 'rgba(204, 206, 239, 0.2)',
   /** A tab group's well, `dashboard/_dashboard.scss:2368`. */
   well: 'rgba(204, 206, 239, 0.04)',
   /** The active tab, `dashboard/_dashboard.scss:2402`. */

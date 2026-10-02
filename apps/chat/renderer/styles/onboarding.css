@@ -549,7 +549,7 @@
   padding: 16px;
   border: 0;
   border-radius: var(--lc-radius-group);
-  background: var(--lc-surface-3);
+  background: var(--lc-inset);
   color: var(--lc-text-secondary);
   font-size: var(--lc-text-sm);
   font-weight: 400;

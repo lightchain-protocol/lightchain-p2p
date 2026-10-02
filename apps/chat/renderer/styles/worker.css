@@ -97,9 +97,9 @@
   margin: 0;
   /* The dashboard card (`dashboard/_dashboard.scss:2423`). */
   padding: 24px;
-  border: 1px solid var(--lc-card-rule);
-  border-radius: var(--lc-radius-lg);
-  background: var(--lc-card);
+  border: 1px solid var(--lc-panel-rule);
+  border-radius: 0;
+  background: var(--lc-surface-2);
 }
 
 /* The site's network-metrics card label and figure, as Studio sets them

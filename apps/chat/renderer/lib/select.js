@@ -175,6 +175,25 @@ function enhance(select) {
   new MutationObserver(paint).observe(select, { childList: true, subtree: true })
   select.addEventListener('change', paint)
 
+  // Setting `.value` or `.selectedIndex` from code fires no event and changes
+  // no markup, so neither of the above sees it - and the face went on showing
+  // the first option. Settings opened with "Lock after: 1 minute" over a wallet
+  // set to an hour, and a network other than the first read as the first.
+  // Both setters are wrapped on this element so every assignment repaints.
+  for (const key of ['value', 'selectedIndex']) {
+    const native = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, key)
+    Object.defineProperty(select, key, {
+      configurable: true,
+      get() {
+        return native.get.call(this)
+      },
+      set(next) {
+        native.set.call(this, next)
+        paint()
+      }
+    })
+  }
+
   enhanced.add(close)
   paint()
 }

@@ -146,9 +146,9 @@
   gap: var(--lc-space-lg);
   /* The dashboard card (`dashboard/_dashboard.scss:2423`). */
   padding: 24px;
-  border: 1px solid var(--lc-card-rule);
-  border-radius: var(--lc-radius-lg);
-  background: var(--lc-card);
+  border: 1px solid var(--lc-panel-rule);
+  border-radius: 0;
+  background: var(--lc-surface-2);
 }
 
 /* The kit's `.form` holds a field stack to 44ch, which is right for prose-length
@@ -198,7 +198,7 @@
   padding: 16px;
   border: 0;
   border-radius: var(--lc-radius-group);
-  background: var(--lc-surface-3);
+  background: var(--lc-inset);
   color: var(--lc-text-secondary);
   font-size: var(--lc-text-sm);
   font-weight: 400;

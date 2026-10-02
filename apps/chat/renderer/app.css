@@ -558,7 +558,7 @@ select.input option {
  */
 .dialog {
   width: min(52ch, 90vw);
-  border: 1px solid var(--lc-rule);
+  border: 1px solid var(--lc-panel-rule);
   border-radius: var(--lc-radius-md);
   padding: 0;
   color: var(--lc-text-primary);
@@ -895,7 +895,7 @@ select.input option {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: var(--lc-surface-3);
+  background: var(--lc-inset);
   border-bottom: 1px solid var(--lc-rule);
   color: var(--lc-warning);
   flex: 0 0 auto;
