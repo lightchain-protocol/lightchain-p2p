@@ -1,18 +1,17 @@
 # Bash tooling must keep LF endings or it fails under WSL with
 # "syntax error near unexpected token $'do\r'".
 * text=auto eol=lf
-
 *.sh      text eol=lf
 *.bash    text eol=lf
 Makefile  text eol=lf
-
 # Git hooks are run by sh and must be LF even on Windows checkouts.
 .githooks/* text eol=lf
-
 *.ps1     text eol=crlf
 *.cmd     text eol=crlf
 *.bat     text eol=crlf
-
 *.png     binary
 *.gguf    binary
 *.bundle  binary
+builds/**/*.dmg filter=lfs diff=lfs merge=lfs -text
+builds/**/*.exe filter=lfs diff=lfs merge=lfs -text
+builds/**/*.zip filter=lfs diff=lfs merge=lfs -text

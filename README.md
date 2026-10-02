@@ -284,7 +284,8 @@ pnpm package        # an unpacked executable for this platform
 pnpm make           # the installer artifacts
 ```
 
-The makers are DMG on macOS, MSIX on Windows, AppImage on Linux, with Flatpak
+The makers are DMG on macOS, a `Setup.exe` (plus MSIX and a zip) on Windows,
+AppImage on Linux, with Flatpak
 and Snap configured but undecided — both are read-only mounts, and an app
 installed from either **cannot receive peer-to-peer updates**, which is most of
 the point of building on this stack. AppImage is the primary Linux artifact for
@@ -313,6 +314,71 @@ per platform is in [docs/install.md](docs/install.md) and
 [docs/signing-procurement.md](docs/signing-procurement.md).
 
 ---
+
+### Building the downloadable installers
+
+Each installer has to be built on its own operating system: a Mac builds the
+`.dmg`, a Windows PC builds the `.exe`. There are two ways to get them.
+
+**On your own Windows PC (no GitHub needed).** This is the direct way to make
+the `.exe`. Any Windows 10 or 11 machine works; on a Mac, a Windows virtual
+machine does too (Parallels Desktop, VMware Fusion or UTM, with Windows 11 for
+ARM). The `.exe` cannot be built on macOS itself: the build compiles the app's
+native modules for Windows, which only works on Windows.
+
+Install [Node.js 20+](https://nodejs.org) and
+[Git](https://git-scm.com), then in PowerShell:
+
+```powershell
+git clone https://github.com/lightchain-protocol/lightchain-p2p
+cd lightchain-p2p
+corepack enable
+pnpm install
+pnpm build
+cd apps\chat
+pnpm make
+```
+
+The installers land in `apps\chat\out\make\`:
+
+| File                                            | What it is                                                                                                                         |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `squirrel.windows\x64\LightchainChat-Setup.exe` | The installer to put on the website. Installs per user, no admin rights, adds Start-menu and desktop shortcuts and an uninstaller. |
+| `zip\win32\x64\LightchainChat-win32-x64-*.zip`  | A portable copy that runs without installing.                                                                                      |
+| `msix\...\*.msix`                               | The MSIX package. Needs PowerShell 7 (`pwsh`) on PATH to build, and developer mode to install while unsigned.                      |
+
+**Or from GitHub (when no Windows machine is at hand).** Push a version tag that matches
+`apps/chat/package.json`'s version:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The tag starts `build-matrix.yml`, which builds on GitHub's own Windows, macOS
+and Linux machines (about 15-20 minutes). When it finishes:
+
+1. Open the repository on GitHub, then **Actions**, then the **build-matrix**
+   run for the tag.
+2. Under **Artifacts**, download `desktop-win32-x64` (the Windows files) and
+   `desktop-darwin-arm64` (the Mac files), and unzip them.
+3. Open **Releases**, then **Draft a new release**, choose the tag, and drag
+   in `LightchainChat-Setup.exe`, the Windows `.zip` and the `.dmg`. Tick
+   **Set as a pre-release** while the builds are unsigned, then **Publish**.
+
+The same tag also starts `release.yml`, which stops at its signing check until
+certificates exist. That red run is expected; the installers come from
+`build-matrix.yml`.
+
+On a Mac, the same `pnpm make` from `apps/chat` produces
+`out/make/LightchainChat-<version>-arm64.dmg` (Apple Silicon). People open it
+and drag the app into Applications once; after that it launches like any app.
+
+**What people see while the builds are unsigned.** Windows SmartScreen says
+"Windows protected your PC": **More info**, then **Run anyway**. macOS says the
+app cannot be opened: **System Settings**, then **Privacy & Security**, then
+**Open Anyway**. Both happen once. Signing certificates
+([docs/signing-procurement.md](docs/signing-procurement.md)) remove them.
 
 ## Driving the app: the harnesses
 
