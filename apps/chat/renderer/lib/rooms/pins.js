@@ -94,7 +94,7 @@ export function renderPinned(room, byId) {
     typeof latest.text === 'string' && latest.text.trim() !== ''
       ? latest.text.slice(0, 140)
       : bodyFor(latest)
-  jump.title = 'Pinned in this room — jump to it'
+  jump.title = 'Pinned in this room - jump to it'
   jump.addEventListener('click', () => revealMessage(latest.id))
 
   bar.append(mark, jump)

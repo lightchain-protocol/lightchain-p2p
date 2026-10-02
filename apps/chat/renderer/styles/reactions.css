@@ -1,12 +1,10 @@
 /**
  * Reactions on a message, and the picker that adds one.
  *
- * Every value comes from a token, the same rule the rest of the stylesheet
- * keeps: a hex code here is a value that drifts away from the design system the
- * first time anybody changes it. The pills borrow the control heights, radii
- * and hover treatment from `.button` and `.badge` in `app.css` rather than
- * inventing quieter versions of them, so a room with reactions in it looks like
- * the room without.
+ * Every value is a token or a literal the website or Lightchain Studio ships,
+ * cited where it appears (docs/design/website-match.md). The pills are the
+ * site's bordered badge, the same one the kit's `.chip` is, so a room with
+ * reactions in it looks like the room without.
  *
  * The bar under a message is scoped under `#panel-chat`, like the rest of the
  * conversation. The picker is not: it is appended to `document.body` — a list
@@ -26,38 +24,32 @@
   list-style: none;
 }
 
-/* Lighter than the bubble it sits on rather than darker, the way `.chip` sits
-   on the hero: a pill in the same tone as the surface behind it disappears on
-   an own message, where the bubble is already the elevated colour. */
+/* The site's bordered badge (`.lightchain-badge-border`, `_button.scss:576-609`,
+   the kit's `.chip`): 52px corners, a primary-tinted hairline, the blackest
+   surface. Its edge turns primary under the pointer, as the site's controls'
+   do, with the buttons' `0.3s all ease-in-out`. */
 #panel-chat .reaction {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: var(--lc-control-sm);
-  padding: 0 var(--lc-space-sm);
+  gap: var(--lc-space-xs);
+  min-height: var(--lc-control-target);
+  padding: 4px 10px;
   appearance: none;
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-pill);
+  border: 1px solid rgba(91, 75, 255, 0.15);
+  border-radius: 52px;
   font: inherit;
   font-size: var(--lc-text-xs);
+  font-weight: var(--lc-weight-medium);
   line-height: 1;
-  color: var(--lc-text-secondary);
-  background: var(--lc-surface-1);
-  cursor: default;
-  transition:
-    background-color var(--lc-motion-fast) var(--lc-easing),
-    border-color var(--lc-motion-fast) var(--lc-easing),
-    color var(--lc-motion-fast) var(--lc-easing);
+  color: var(--lc-text-primary);
+  background: var(--lc-surface-2);
+  cursor: pointer;
+  transition: all var(--lc-motion-base) ease-in-out;
 }
 
 #panel-chat .reaction:hover:not(:disabled) {
   border-color: var(--lc-accent);
-  color: var(--lc-text-primary);
-  background: var(--lc-accent-soft);
-}
-
-#panel-chat .reaction:active:not(:disabled) {
-  background: color-mix(in srgb, var(--lc-accent) 22%, var(--lc-surface-3));
+  color: var(--lc-text-strong);
 }
 
 #panel-chat .reaction:focus-visible {
@@ -67,7 +59,8 @@
 
 /* A read-only member can see what a room thinks and cannot add to it. */
 #panel-chat .reaction:disabled {
-  opacity: 0.45;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* One this peer is behind. It carries the accent fill and an accent border
@@ -75,13 +68,9 @@
    is a difference some people cannot see and the border is a difference in
    shape. */
 #panel-chat .reaction.is-mine {
-  border-color: color-mix(in srgb, var(--lc-accent) 60%, transparent);
-  color: var(--lc-accent);
+  border-color: var(--lc-accent);
+  color: var(--lc-text-strong);
   background: var(--lc-accent-soft);
-}
-
-#panel-chat .reaction.is-mine:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--lc-accent) 26%, transparent);
 }
 
 /* Bounded rather than trusted. A reaction is other people's text, and the
@@ -134,17 +123,22 @@
   max-height: min(22rem, 60vh);
   padding: var(--lc-space-sm);
   overflow: hidden;
+  /* The site's dropdown surface and hairline (`style.scss:560-580`), at the
+     12px corners Studio gives its larger menu (`aiView.ts`, `.lc-model__menu`). */
   border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-lg);
+  border-radius: var(--lc-radius-group);
   color: var(--lc-text-primary);
-  background: var(--lc-surface-3);
-  box-shadow: var(--lc-shadow-3);
+  background: var(--lc-surface-2);
+  box-shadow: var(--lc-shadow-2);
 }
 
 /* The field is `.input`, which is monospaced for the keys and addresses that
    fill every other one in the app. A shortcode is nearer prose than data, and
    the placeholder is a sentence. */
 .emoji-search {
+  /* Held at its height: the panel is a capped column, and without this the
+     field gave way to the grid and its text was clipped. */
+  flex: 0 0 auto;
   height: var(--lc-control-sm);
   font-family: inherit;
   font-size: var(--lc-text-sm);
@@ -168,14 +162,17 @@
   overflow-y: auto;
 }
 
+/* The sidebar's group heading (sidebar.css `.sidebar-group-title`): 12 / 600,
+   uppercase, half a pixel of tracking, heading ink at half opacity. */
 .emoji-group-title {
   margin: 0 0 var(--lc-space-xs);
   padding: 0 var(--lc-space-xs);
-  font-size: var(--lc-text-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 12px;
+  font-weight: var(--lc-weight-semibold);
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: var(--lc-text-tertiary);
+  color: var(--lc-text-primary);
+  opacity: 0.5;
 }
 
 /* Eight across, and `COLUMNS` in `lib/reactions.js` has to say eight as well:
@@ -192,14 +189,15 @@
   place-items: center;
   aspect-ratio: 1;
   min-height: var(--lc-control-sm);
-  border-radius: var(--lc-radius-md);
+  border-radius: var(--lc-radius-sm);
   font-size: var(--lc-text-lg);
   line-height: 1;
-  cursor: default;
+  cursor: pointer;
 }
 
+/* `.dropdown-menu li:hover` (`style.scss:563`): `--color-darker`. */
 .emoji-option:hover {
-  background: var(--lc-surface-2);
+  background: rgba(6, 6, 6, 0.7);
 }
 
 /* The selection, which is the keyboard's and the pointer's alike. Focus stays
@@ -207,7 +205,7 @@
    saying what Enter would choose — the same treatment the `@model` list uses
    for the same reason. */
 .emoji-option.is-active {
-  background: var(--lc-accent-soft);
+  background: rgba(6, 6, 6, 0.7);
 }
 
 .emoji-hint {

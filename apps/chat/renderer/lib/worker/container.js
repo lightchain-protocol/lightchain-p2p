@@ -115,7 +115,7 @@ export function renderVerdict(host, models, stake, status) {
       setVerdict(
         'warn',
         'Download the models you chose',
-        `${missing.map((model) => model.name).join(', ')} — several gigabytes, once.`
+        `${missing.map((model) => model.name).join(', ')} - several gigabytes, once.`
       )
       ui.offers[1] = { label: 'Download', run: () => modelsFetch.click() }
       return
@@ -142,7 +142,7 @@ export function renderVerdict(host, models, stake, status) {
     if (running) {
       setVerdict('ok', 'The worker is running', 'It answers jobs and earns to its own key.')
     } else {
-      setVerdict('ok', 'Registered — start the worker', 'The stake is posted.')
+      setVerdict('ok', 'Registered - start the worker', 'The stake is posted.')
       ui.offers[5] = { label: 'Start', run: () => document.getElementById('worker-start').click() }
     }
     return

@@ -108,7 +108,7 @@ export function renderRoom() {
     // The composer is the action, so the sentence points at it — except in a
     // room this peer can only read, where it would point at a disabled box.
     empty.textContent = room.writable
-      ? 'No messages yet — the first one is yours to write below.'
+      ? 'No messages yet - the first one is yours to write below.'
       : 'No messages yet.'
     el.messages.append(empty)
   }

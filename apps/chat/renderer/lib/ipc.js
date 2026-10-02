@@ -78,7 +78,7 @@ export function request(t, fields = {}, { timeout = VERB_TIMEOUTS[t] ?? DEFAULT_
       const seconds = Math.round(timeout / 1000)
       reject(
         new Error(
-          `${t}: no reply from the worker within ${seconds}s — the request may have been lost`
+          `${t}: no reply from the worker within ${seconds}s - the request may have been lost`
         )
       )
     }, timeout)

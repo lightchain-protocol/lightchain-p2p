@@ -530,7 +530,7 @@ export function localHandlers(ctx) {
       const text = typeof req.text === 'string' ? req.text : ''
       if (text.length > DRAFT_LENGTH) {
         throw new Error(
-          `a draft may not exceed ${DRAFT_LENGTH} characters — the longest message a room will carry — and this one is ${text.length}`
+          `a draft may not exceed ${DRAFT_LENGTH} characters - the longest message a room will carry - and this one is ${text.length}`
         )
       }
 

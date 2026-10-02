@@ -18,12 +18,19 @@
         <!-- The brand lives in the top bar now, which spans the window rather
              than heading one column of it. What is left here is the fold-away
              control, kept where the hand already looks for it. -->
-        <!-- The head is one row: the fold-away control, and the two facts worth
-             stating before anything else — whether this machine is talking to
-             anybody, and whether the wallet is open. They were three stacked
-             rows and cost 58px of empty sidebar before the first conversation.
-             The lock only appears when it applies. -->
+        <!-- The head is one row: the logo, as the site's header carries it,
+             and the fold-away control. The connection and the wallet lock
+             moved to the top bar beside the network they describe. Folded,
+             the wordmark gives way to the mark alone. -->
         <div class="sidebar-head">
+          <span class="sidebar-brand">
+            <svg class="sidebar-wordmark" role="img" aria-label="Lightchain">
+              <use href="#i-wordmark" />
+            </svg>
+            <svg class="sidebar-mark" aria-hidden="true"><use href="#i-logo" /></svg>
+            <span class="sidebar-suffix">Chat</span>
+          </span>
+
           <button
             class="icon-button sidebar-collapse"
             type="button"
@@ -34,14 +41,6 @@
           >
             <svg class="icon" aria-hidden="true"><use href="#i-collapse" /></svg>
           </button>
-
-          <div class="sidebar-state">
-            <span class="sidebar-status" id="status" role="status" data-state="busy">starting</span>
-            <button class="sidebar-locked" type="button" id="sidebar-locked" hidden>
-              <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
-              <span>Wallet locked</span>
-            </button>
-          </div>
         </div>
 
         <!-- The list, its header, and the two ways to add to it. The actions
@@ -64,7 +63,7 @@
           </div>
           <div class="sidebar-body" id="chat-context">
             <ul class="room-list" id="room-list" aria-label="Your conversations"></ul>
-            <p class="sidebar-empty" id="sidebar-empty">No conversations yet — start one.</p>
+            <p class="sidebar-empty" id="sidebar-empty">No conversations yet - start one.</p>
           </div>
         </div>
 
@@ -148,15 +147,6 @@
                  support's first question; now it is also the way back to what
                  that means and where to report. -->
             <button class="version" type="button" id="version" data-kit-focus></button>
-            <button
-              class="icon-button"
-              type="button"
-              id="theme-btn"
-              title="Switch theme"
-              aria-label="Switch theme"
-            >
-              <svg class="icon" aria-hidden="true"><use href="#i-sun" /></svg>
-            </button>
             <button
               class="icon-button"
               type="button"

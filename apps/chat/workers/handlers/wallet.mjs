@@ -151,7 +151,7 @@ function requireUnlocked(wallet) {
  * identically to the person who has to act on them.
  */
 const cannotCover = (symbol) =>
-  `this wallet cannot cover that — the amount plus the network fee is more than it holds. Lower the amount, or receive some ${symbol} first.`
+  `this wallet cannot cover that - the amount plus the network fee is more than it holds. Lower the amount, or receive some ${symbol} first.`
 
 /**
  * Records an outgoing transaction in this wallet's ledger, on the connected
@@ -260,7 +260,7 @@ export function walletHandlers(ctx) {
 
     if (!entry) {
       throw new Error(
-        `there is no record of ${hash}, so there is nothing to ${verb}. Only transactions this application sent, from this account, on this machine, can be replaced — everything else is missing the nonce and the exact contents a replacement has to repeat.`
+        `there is no record of ${hash}, so there is nothing to ${verb}. Only transactions this application sent, from this account, on this machine, can be replaced - everything else is missing the nonce and the exact contents a replacement has to repeat.`
       )
     }
 

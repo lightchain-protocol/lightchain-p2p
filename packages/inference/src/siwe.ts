@@ -151,7 +151,7 @@ export function checkSiweChallenge(message: string, expectation: SiweExpectation
   }
   if (uri.host !== challenge.domain) {
     throw new SiweError(
-      `the challenge's URI is on ${JSON.stringify(uri.host)} but its domain is ${JSON.stringify(challenge.domain)} — the two name different services. Nothing was signed.`
+      `the challenge's URI is on ${JSON.stringify(uri.host)} but its domain is ${JSON.stringify(challenge.domain)} - the two name different services. Nothing was signed.`
     )
   }
 

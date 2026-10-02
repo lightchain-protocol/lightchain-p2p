@@ -118,7 +118,7 @@ describe('showing a price', () => {
   })
 
   it('says nothing rather than zero when there is no price', () => {
-    expect(formatUsd(null)).toBe('—')
+    expect(formatUsd(null)).toBe('-')
   })
 
   it('shows an exact zero as a price, not as an absence', () => {

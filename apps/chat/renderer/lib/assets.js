@@ -1,4 +1,4 @@
-import { copy, el2, sentence, skeleton, svg, toast } from './dom.js'
+import { copy, el2, loading, loadingInline, sentence, svg, toast } from './dom.js'
 import { bridge, request } from './ipc.js'
 import { receivingBlocked } from './backup.js'
 import { clearQr, drawQr } from './qr.js'
@@ -148,15 +148,15 @@ function assetRow(asset) {
   const price = el2(
     'span',
     'holding-num holding-dim',
-    asset.priceUsd === null ? '—' : asset.priceText
+    asset.priceUsd === null ? '-' : asset.priceText
   )
 
-  const change = el2('span', 'holding-num holding-change', asset.changeText ?? '—')
+  const change = el2('span', 'holding-num holding-change', asset.changeText ?? '-')
   if (asset.changeBps !== null && asset.changeBps !== undefined) {
     change.dataset.way = asset.changeBps >= 0 ? 'up' : 'down'
   }
 
-  const value = el2('span', 'holding-num holding-value', asset.usd === null ? '—' : asset.usdText)
+  const value = el2('span', 'holding-num holding-value', asset.usd === null ? '-' : asset.usdText)
   if (asset.indicative) {
     value.dataset.state = 'indicative'
     value.title = 'Priced from a single thin pool, so treat it as indicative.'
@@ -225,7 +225,7 @@ function renderNetworks(held) {
  * Change either and change both. Better still, have the worker send the text.
  */
 function formatUsd(value) {
-  if (value === null) return '—'
+  if (value === null) return '-'
 
   const whole = value / 10_000n
   const rest = value % 10_000n
@@ -255,7 +255,10 @@ async function refreshPortfolio() {
   const change = document.getElementById('portfolio-change')
   if (!holder) return
 
-  holder.replaceChildren()
+  // Said while it is read, rather than a chart-sized empty box: the history is
+  // several reads against the chain and takes seconds.
+  holder.hidden = false
+  holder.replaceChildren(loading('Reading price history…'))
 
   let series
   try {
@@ -266,7 +269,9 @@ async function refreshPortfolio() {
     return
   }
 
-  change.textContent = series.changeText ?? ''
+  // Nothing at all when there is no figure: the table's "-" for an unknown
+  // change reads, beside a balance, as a minus sign.
+  change.textContent = series.changeBps == null ? '' : (series.changeText ?? '')
   change.dataset.way = (series.changeBps ?? 0) >= 0 ? 'up' : 'down'
 
   const points = series.points ?? []
@@ -345,7 +350,7 @@ export async function refreshAssets({ refresh = false } = {}) {
   // a wallet holding nothing rather than one still counting. A block the width
   // of the figure that is coming, rather than a word of a different width that
   // shoves the line sideways the moment it is replaced.
-  total.replaceChildren(skeleton('8ch', '0.8em'))
+  total.replaceChildren(loadingInline())
 
   let held
   try {
@@ -620,7 +625,7 @@ function fillAssetPicker() {
     ...holdings.map((asset, at) => {
       const node = document.createElement('option')
       node.value = String(at)
-      node.textContent = `${asset.symbol} on ${asset.chainName} — ${formatUnits(asset.balance, asset.decimals)}`
+      node.textContent = `${asset.symbol} on ${asset.chainName} - ${formatUnits(asset.balance, asset.decimals)}`
       return node
     })
   )

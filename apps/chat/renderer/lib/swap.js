@@ -185,7 +185,7 @@ async function quote() {
             el2(
               'p',
               'send-warning',
-              `The router needs your permission to spend this ${answer.symbol} first — a separate transaction, approving exactly this amount.`
+              `The router needs your permission to spend this ${answer.symbol} first - a separate transaction, approving exactly this amount.`
             )
           ]
         : [])
@@ -260,7 +260,7 @@ export async function openSwap() {
     ...state.assets.map((asset, at) => {
       const node = document.createElement('option')
       node.value = String(at)
-      node.textContent = `${asset.symbol} — ${formatUnits(asset.balance, asset.decimals)}`
+      node.textContent = `${asset.symbol} - ${formatUnits(asset.balance, asset.decimals)}`
       return node
     })
   )

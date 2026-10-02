@@ -28,11 +28,22 @@ import { ASK, HARNESS_PASSWORD, unlockForHarness } from './harness.mjs'
 
 const port = Number(process.argv[2] ?? 9301)
 
-/** SPACE, RADIUS, CONTROL and TYPE, from packages/ui/src/tokens.ts. */
+/**
+ * SPACE, RADIUS, CONTROL and TYPE, from packages/ui/src/tokens.ts — which takes
+ * them from the website and Lightchain Studio (docs/design/website-match.md).
+ *
+ * The radius and type lists also carry the handful of literal values the
+ * site's own components use beside the token scale: 2 (checkbox), 4 (inline
+ * code, menu item), 9 (the dashboard's eye button), 20 (the notice,
+ * `vesting-claim__alert`), 50 and 52 (status pill,
+ * badge); 12, 13 and 18 (badge text, code, the balance card's title); controls
+ * 30 (`.lightchain-badge`) and 34 (the dashboard's chart buttons). They are the
+ * site's, so they are on the scale.
+ */
 const SPACE = [0, 4, 8, 12, 16, 24, 32]
-const RADIUS = [0, 6, 10, 16, 999]
-const CONTROL = [32, 38, 44, 50]
-const TYPE = [14, 15, 16, 19, 23, 30, 40]
+const RADIUS = [0, 2, 4, 6, 8, 9, 10, 12, 16, 20, 50, 52, 999]
+const CONTROL = [26, 30, 32, 34, 40, 50]
+const TYPE = [12, 13, 14, 15, 16, 18, 20, 24, 36, 48]
 
 /**
  * Values that are deliberately not on a scale, with the reason.
@@ -42,7 +53,14 @@ const TYPE = [14, 15, 16, 19, 23, 30, 40]
  */
 const DELIBERATE = {
   padding: [
-    20, // .kit-card's inset, older than the space scale and used everywhere
+    // The site's own component paddings, which are not on a 4px rhythm:
+    9, // chart button (`_dashboard.scss:2617-2659`)
+    10, // status pill, badge, note (`_dashboard.scss`, Studio `.lc-note`)
+    14, // list row, own message (Studio `.lc-row`, `.lc-msg`)
+    15, // field (`default/_forms.scss`)
+    18, // tab (`.network-tab`)
+    20, // small button (`.btn-small`)
+    28, // button (`.btn-default`)
     44, // a control's own height used as its horizontal padding
     72 // clearance for a button riding inside a field: 3 × space-xl
   ]
@@ -221,6 +239,9 @@ const MEASURE = `(() => {
     if (
       el.scrollWidth - el.clientWidth > 2 &&
       cs.overflowX !== 'visible' &&
+      // overflow: clip cannot scroll. It is how the balance card holds its glow inside
+      // its corners, and the glow is wider than the card by design.
+      cs.overflowX !== 'clip' &&
       !truncatesOnPurpose &&
       !offScreenForReaders
     ) {
@@ -330,7 +351,10 @@ for (const id of dialogs) {
     `Dialog · ${id}`,
     `#${id}`,
     `#${id} .dialog-form`,
-    `const d = document.getElementById('${id}'); if (!d.open) d.showModal(); return true`
+    // Entrance animations finished before measuring: an occluded window does
+    // not advance them, and a dialog frozen on its first frame (scaled to 0.95)
+    // measures every control a few pixels short.
+    `const d = document.getElementById('${id}'); if (!d.open) d.showModal(); document.getAnimations().forEach((a) => { try { a.finish() } catch {} }); return true`
   )
   await page.run(`document.getElementById('${id}').close(); return true`)
 }

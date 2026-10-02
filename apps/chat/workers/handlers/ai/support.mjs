@@ -53,7 +53,7 @@ export function relayUrlFor(network) {
   const url = NETWORKS[network]?.relayUrl
   if (url) return url
   throw new Error(
-    `model conversations are not available on ${network} yet — that network has no relay for answers to stream back through. Checking a balance and funding work there; asking a question does not.`
+    `model conversations are not available on ${network} yet - that network has no relay for answers to stream back through. Checking a balance and funding work there; asking a question does not.`
   )
 }
 
@@ -120,7 +120,7 @@ export async function readJob(rpc, jobRegistry, jobId) {
   const bytes = toBytes(raw)
   if (bytes.length < 18 * 32) {
     throw new Error(
-      `the registry's answer for job ${jobId} was ${bytes.length} bytes, not the ${18 * 32} a job record is — check the network in Settings`
+      `the registry's answer for job ${jobId} was ${bytes.length} bytes, not the ${18 * 32} a job record is - check the network in Settings`
     )
   }
   const word = (index) => toHex(bytes.slice(index * 32, index * 32 + 32))

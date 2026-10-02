@@ -206,7 +206,7 @@ describe('the fee floor on ai.ask', () => {
     const { handlers, conversation } = harness({ fee: 10n, balance: 5n })
 
     await expect(handlers['ai.ask']({ prompt: 'hi' })).rejects.toThrow(
-      /short of this job's fee of 10 wei — add funds in Wallet/
+      /short of this job's fee of 10 wei - add funds in Wallet/
     )
     expect(conversation.ask).not.toHaveBeenCalled()
   })
@@ -284,7 +284,7 @@ describe('amounts on ai.fund and ai.withdraw', () => {
     chain.sendError = new Error('insufficient funds for gas * price + value: balance 0')
 
     await expect(handlers['ai.withdraw']({ amount: '7' })).rejects.toThrow(
-      /this wallet has nothing for gas — receive some LCAI first/
+      /this wallet has nothing for gas - receive some LCAI first/
     )
   })
 })

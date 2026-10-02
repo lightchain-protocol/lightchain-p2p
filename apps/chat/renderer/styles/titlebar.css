@@ -19,9 +19,10 @@
  * appears exactly once, where it anchors the identity column rather than
  * spending the drag strip.
  *
- * The fill has to stay --lc-bg-elevated: electron/main.js paints the Windows
- * and Linux caption buttons to match it, so any other colour here leaves the OS
- * controls sitting on a strip of their own.
+ * Drawn as the website's header (`scss/header/_headerdefault`): the page fill
+ * and a one-pixel `--color-border` rule under it. renderer/lib/main.js paints
+ * the Windows and Linux caption buttons from `--lc-surface-1`, so the OS
+ * controls sit on the same fill.
  */
 /**
  * How tall the bar is, in the one place that decides it.
@@ -55,8 +56,8 @@
    * the traffic lights by more than the old rule did.
    */
   padding: 0 var(--lc-space-xl) 0 calc(var(--lc-sidebar-width) + var(--lc-space-xxl));
-  border-bottom: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
-  background: var(--lc-bg-elevated);
+  border-bottom: 1px solid var(--lc-rule);
+  background: var(--lc-surface-1);
   /* Lets the window be dragged by its titlebar, which users expect. */
   -webkit-app-region: drag;
   flex: 0 0 auto;
@@ -68,72 +69,206 @@
    between its controls is worse than a bar with none. */
 .titlebar .button,
 .titlebar .icon-button,
-.titlebar .network-pill {
+.titlebar .network-pill,
+.titlebar .titlebar-locked {
   -webkit-app-region: no-drag;
-}
-
-.titlebar-brand {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--lc-space-md);
-  min-width: 0;
-}
-
-.titlebar-wordmark {
-  height: 15px;
-  width: calc(15px * (1200 / 251));
-  flex: 0 0 auto;
-  stroke: none;
-  color: var(--lc-text-primary);
-  align-self: center;
-}
-
-/* What this application is, beside whose it is. Quiet: the lockup is the
-   name, and this is the room it is in. */
-.titlebar-suffix {
-  font-size: var(--lc-text-md);
-  color: var(--lc-text-tertiary);
-  letter-spacing: 0.01em;
 }
 
 .titlebar-spacer {
   flex: 1 1 auto;
 }
 
+/* --- The two facts beside the network --------------------------------------- */
+
+/* Whether this machine is talking to anybody, and whether the wallet is open.
+   They sat at the head of the sidebar until the logo took that place; here
+   they read with the network pill they describe. */
+.titlebar-state {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.titlebar-status {
+  font-size: var(--lc-type-caption);
+  color: var(--lc-text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-xs);
+  min-height: var(--lc-space-lg);
+}
+
+/* Studio's status dot, `lc-dot` (aiView.ts:272). */
+.titlebar-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: var(--lc-radius-pill);
+  background: currentcolor;
+  flex: 0 0 auto;
+}
+
+.titlebar-status[data-state='ok'] {
+  color: var(--lc-success);
+}
+
+.titlebar-status[data-state='busy'] {
+  color: var(--lc-text-tertiary);
+}
+
+.titlebar-status[data-state='busy']::before {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+/* The pulse is a real duration, not a motion token, so it cannot zero itself
+   out at the source the way the tokens do. For a reader who asked for no
+   motion the dot simply holds still — lit, which is the fact the pulse was
+   repeating. */
+@media (prefers-reduced-motion: reduce) {
+  .titlebar-status[data-state='busy']::before {
+    animation: none;
+  }
+}
+
+.titlebar-status[data-state='bad'] {
+  color: var(--lc-danger);
+}
+
+/* A locked wallet is a fact about the whole application, so it is here rather
+   than on a panel somebody has to have opened. It is a button because the only
+   useful response is to go and unlock it. Drawn as the dashboard's warning
+   status pill (`scss/dashboard/_dashboard:2844-2887`: 50px corners, 4px 10px,
+   600, -0.14px). */
+.titlebar-locked {
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-spacer {
+  flex: 1 1 auto;
+}
+
+/* --- The two facts beside the network --------------------------------------- */
+
+/* Whether this machine is talking to anybody, and whether the wallet is open.
+   They sat at the head of the sidebar until the logo took that place; here
+   they read with the network pill they describe. */
+.titlebar-state {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.titlebar-status {
+  font-size: var(--lc-type-caption);
+  color: var(--lc-text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-xs);
+  min-height: var(--lc-space-lg);
+}
+
+/* Studio's status dot, `lc-dot` (aiView.ts:272). */
+.titlebar-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: var(--lc-radius-pill);
+  background: currentcolor;
+  flex: 0 0 auto;
+}
+
+.titlebar-status[data-state='ok'] {
+  color: var(--lc-success);
+}
+
+.titlebar-status[data-state='busy'] {
+  color: var(--lc-text-tertiary);
+}
+
+.titlebar-status[data-state='busy']::before {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+/* The pulse is a real duration, not a motion token, so it cannot zero itself
+   out at the source the way the tokens do. For a reader who asked for no
+   motion the dot simply holds still — lit, which is the fact the pulse was
+   repeating. */
+@media (prefers-reduced-motion: reduce) {
+  .titlebar-status[data-state='busy']::before {
+    animation: none;
+  }
+}
+
+.titlebar-status[data-state='bad'] {
+  color: var(--lc-danger);
+}
+
+/* A locked wallet is a fact about the whole application, so it is here rather
+   than on a panel somebody has to have opened. It is a button because the only
+   useful response is to go and unlock it. Drawn as the dashboard's warning
+   status pill (`scss/dashboard/_dashboard:2873-2887`: 14 / 600, -0.14px), at
+   the sidebar item's 6px corners because it spans the column. */
+.titlebar-locked {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-xs);
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 50px;
+  background: var(--lc-warning-soft);
+  color: var(--lc-warning-ink);
+  font-size: var(--lc-type-caption);
+  font-weight: var(--lc-weight-semibold);
+  letter-spacing: -0.14px;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--lc-motion-base) ease-in-out;
+}
+
+.titlebar-locked:hover {
+  border-color: var(--lc-warning);
+}
+
+.titlebar-locked .icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
 /**
- * The network, as a pill with a live dot.
+ * The network, as the site's bordered badge with a live dot.
  *
- * Which chain the numbers on screen belong to is the one piece of context that
- * changes what every other figure means, and it was a small word in the corner
- * of the sidebar. The dot pulses because a network is a thing that is either
- * reachable or not.
+ * `lightchain-badge lightchain-badge-border` (`scss/elements/_button:576-609`):
+ * 52px corners, a faint primary edge, the card fill, 12px uppercase with half a
+ * pixel of tracking, padded 8px 10px. It is a button, so it takes the site
+ * button's hover — the edge goes to the primary — and its 0.3s ease-in-out.
  */
 .network-pill {
   display: inline-flex;
   align-items: center;
   gap: var(--lc-space-sm);
-  height: var(--lc-control-sm);
-  padding: 0 var(--lc-space-md);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-pill);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--lc-fg) 5%, transparent),
-    color-mix(in srgb, var(--lc-fg) 2%, transparent)
-  );
+  padding: 8px 10px;
+  border: 1px solid rgba(91, 75, 255, 0.15);
+  border-radius: 52px;
+  background: var(--lc-surface-2);
   color: var(--lc-text-primary);
   font: inherit;
-  font-size: var(--lc-text-xs);
-  font-weight: var(--lc-weight-semibold);
+  font-size: 12px;
+  font-weight: var(--lc-weight-medium);
+  letter-spacing: 0.5px;
+  line-height: 1;
+  text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
-  transition:
-    border-color var(--lc-motion-fast) var(--lc-easing),
-    background var(--lc-motion-fast) var(--lc-easing);
+  transition: all var(--lc-motion-base) ease-in-out;
 }
 
 .network-pill:hover {
-  border-color: color-mix(in srgb, var(--lc-brand) 60%, var(--lc-rule));
+  border-color: var(--lc-accent);
 }
 
 .network-pill .icon {
@@ -142,9 +277,10 @@
   color: var(--lc-text-tertiary);
 }
 
+/* Studio's status dot, `lc-dot` (aiView.ts:272): six pixels, round. */
 .network-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   flex: 0 0 auto;
   border-radius: var(--lc-radius-pill);
   background: var(--lc-success);
@@ -161,13 +297,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The lock sits beside the network pill, and warns on hover: it ends the
-   session, which is not something to discover by pressing. */
-.titlebar-lock:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--lc-danger) 50%, transparent);
-  background: color-mix(in srgb, var(--lc-danger) 12%, transparent);
-  color: var(--lc-danger);
-}
+/* The lock is a plain `.icon-button` (kit.css), the dashboard's eye button.
+   It used to turn red on hover; the site has no such state, and the title
+   already says what pressing it does. */
 
 /* macOS puts the traffic lights at the left, so our content starts clear of
    them. Anything else and the wordmark sits underneath the close button. */

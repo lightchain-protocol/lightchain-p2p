@@ -41,14 +41,10 @@
              underneath. An empty step reads as a step with nothing in it. This
              is the shape of the step that is coming, so the page has a size
              before it has an answer. -->
-        <section class="wizard-step wizard-waiting" id="validator-waiting" hidden aria-hidden="true">
-          <span class="skeleton" data-skeleton="kicker"></span>
-          <span class="skeleton" data-skeleton="title"></span>
-          <span class="skeleton" data-skeleton="lede"></span>
-          <div class="wizard-waiting-rows">
-            <span class="skeleton skeleton-text"></span>
-            <span class="skeleton skeleton-text"></span>
-            <span class="skeleton skeleton-text"></span>
+        <section class="wizard-step wizard-waiting" id="validator-waiting" hidden>
+          <div class="loading" role="status">
+            <svg class="icon loading-mark" aria-hidden="true"><use href="#i-loader" /></svg>
+            <p class="loading-text">Reading this validator…</p>
           </div>
         </section>
         <section class="wizard-step" data-step="1" id="validator-step-keys" hidden>

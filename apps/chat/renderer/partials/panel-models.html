@@ -163,5 +163,34 @@
                 </form>
               </div>
             </section>
+
+            <!-- Nothing here can be paid for yet. Said before anybody picks a
+                 model, over the whole panel, with the way to fix it — rather
+                 than as a refusal after a draw that was never going to work.
+                 lib/models/gate.js fills it in. -->
+            <div class="ai-gate" id="ai-gate" hidden>
+              <section class="ai-gate-card" role="alertdialog" aria-labelledby="ai-gate-title" aria-describedby="ai-gate-body">
+                <span class="ai-gate-icon" aria-hidden="true">
+                  <svg class="icon"><use href="#i-wallet" /></svg>
+                </span>
+                <h2 class="ai-gate-title" id="ai-gate-title"></h2>
+                <p class="ai-gate-body" id="ai-gate-body"></p>
+                <ol class="ai-gate-steps">
+                  <li class="ai-gate-step" id="ai-gate-step-wallet">
+                    <span class="ai-gate-step-mark" aria-hidden="true">1</span>
+                    <span>Receive LCAI into this wallet</span>
+                  </li>
+                  <li class="ai-gate-step" id="ai-gate-step-credit">
+                    <span class="ai-gate-step-mark" aria-hidden="true">2</span>
+                    <span>Top up your AI credit - every answer is paid from it</span>
+                  </li>
+                </ol>
+                <div class="ai-gate-actions">
+                  <button class="button button-primary" type="button" id="ai-gate-primary"></button>
+                  <button class="button" type="button" id="ai-gate-secondary"></button>
+                </div>
+                <p class="ai-gate-note" id="ai-gate-note"></p>
+              </section>
+            </div>
           </div>
         </div>

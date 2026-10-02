@@ -170,7 +170,7 @@ export const DISCLOSURE = [
   'This bridge is run by Lightchain, not by the Hyperlane network. They deployed their own copy of it.',
   'One key can deliver any transfer on either side by itself. The validator, the relayer and the deployer are all the same address, so there is no second party checking the first.',
   'Nothing on chain obliges anyone to deliver your transfer. There is no fee paid for delivery, and so no contract anybody has broken if it does not arrive.',
-  'If a transfer stalls, the tokens sit in the bridge contract on the side you sent from. There is no button here or anywhere else that retrieves them — it needs whoever runs the bridge.',
+  'If a transfer stalls, the tokens sit in the bridge contract on the side you sent from. There is no button here or anywhere else that retrieves them - it needs whoever runs the bridge.',
   'No explorer indexes this bridge, so a transfer cannot be looked up. This wallet infers that it arrived by watching your balance on the other side.'
 ]
 
@@ -357,7 +357,7 @@ export function bridgeHandlers(ctx) {
       const held = await pool.use((rpc) => balanceOf(rpc, route.token, address))
       if (quote.token > held) {
         throw new Error(
-          `that is more than this address holds — the balance is ${readableAmount(held, 'LCAI')}`
+          `that is more than this address holds - the balance is ${readableAmount(held, 'LCAI')}`
         )
       }
 
@@ -452,7 +452,7 @@ export function bridgeHandlers(ctx) {
       // finding that out on chain costs the gas of a reverted transferRemote.
       if (route.token && (allowed === null || allowed < quote.token)) {
         throw new Error(
-          `approve the router to spend ${readableAmount(quote.token, 'LCAI')} first — the allowance it would pull against is not there`
+          `approve the router to spend ${readableAmount(quote.token, 'LCAI')} first - the allowance it would pull against is not there`
         )
       }
 

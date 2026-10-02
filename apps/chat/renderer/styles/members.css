@@ -4,8 +4,7 @@
    The renderer's policy is `default-src 'self'; style-src 'self'`, which covers
    the inline `style` attribute as well as `<style>` blocks, so this file is the
    only place any of it can live. Values come from `tokens.css` rather than as
-   hex, so a member row follows a theme switch along with everything else. The
-   one exception is the ink an identicon is painted in, which is a `fill`
+   hex. The one exception is the ink an identicon is painted in, which is a `fill`
    presentation attribute set in JavaScript and has to be theme-invariant — see
    the note above `IDENTICON_INK` for why it cannot be a token.
 
@@ -42,6 +41,17 @@
   margin: 0;
 }
 
+/* The site's eyebrow, `.lc-sm-title` (16 / 500, paragraph ink, uppercase), as
+   the kit's card titles wear it. */
+#panel-chat .members-title {
+  font-size: var(--lc-text-md);
+  font-weight: var(--lc-weight-medium);
+  line-height: var(--lc-leading-tight);
+  letter-spacing: -0.096px;
+  text-transform: uppercase;
+  color: var(--lc-text-secondary);
+}
+
 #panel-chat .members-count {
   font-size: var(--lc-text-xs);
   font-variant-numeric: tabular-nums;
@@ -52,7 +62,7 @@
   flex: 1 1 auto;
   overflow-y: auto;
   margin: 0;
-  padding: 0 var(--lc-space-sm) var(--lc-space-sm);
+  padding: 0;
   list-style: none;
 }
 
@@ -77,20 +87,27 @@
 
 /* --- A row ---------------------------------------------------------------- */
 
+/* Studio's list row (`startPage.ts`, `.lc-row`): 14 by 16 inside, 14 between,
+   a faint rule between rows and a fainter lift under the pointer. */
 #panel-chat .member {
   display: flex;
   align-items: flex-start;
-  gap: var(--lc-space-sm);
+  gap: 14px;
   min-width: 0;
-  padding: var(--lc-space-sm) var(--lc-space-md);
-  border-radius: var(--lc-radius-md);
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background-color 0.15s;
+}
+
+#panel-chat .member:first-child {
+  border-top: 0;
 }
 
 /* The actions only appear on approach. A column with a Pay and a Remove button
    printed on every line reads as a list of things to do to people. */
 #panel-chat .member:hover,
 #panel-chat .member:focus-within {
-  background: var(--lc-surface-3);
+  background: var(--lc-well);
 }
 
 #panel-chat .member-main {
@@ -109,9 +126,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--lc-text-sm);
+  font-size: var(--lc-text-md);
+  font-weight: var(--lc-weight-medium);
   line-height: var(--lc-leading-tight);
-  color: var(--lc-text-primary);
+  color: var(--lc-text-strong);
 }
 
 /* `.key` already handles the monospace and the selectability. This only has to
@@ -128,21 +146,37 @@
   margin-top: 2px;
 }
 
-/* Tones `.tag` does not already own, scoped to a row so that adding them here
-   cannot change what a tag means anywhere else in the application. */
-#panel-chat .member .tag[data-tone='you'] {
-  color: var(--lc-text-secondary);
-  background: var(--lc-surface-3);
+/* The dashboard's status pill (`_dashboard.scss:2873-2887`): 50px corners,
+   4 by 10 inside, 14 / 600. Scoped to a row so that it cannot change what a
+   tag means anywhere else in the application. */
+#panel-chat .member .tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 50px;
+  font-size: var(--lc-text-xs);
+  font-weight: var(--lc-weight-semibold);
+  line-height: 1;
+  letter-spacing: -0.14px;
+  white-space: nowrap;
+  color: var(--lc-text-primary);
+  background: var(--lc-card);
 }
 
+#panel-chat .member .tag[data-tone='you'] {
+  color: var(--lc-text-primary);
+  background: var(--lc-card);
+}
+
+/* The brand's subtle surface under the heading ink. */
 #panel-chat .member .tag[data-tone='writer'] {
-  color: var(--lc-accent);
+  color: var(--lc-text-primary);
   background: var(--lc-accent-soft);
 }
 
 #panel-chat .member .tag[data-tone='reader'] {
   color: var(--lc-text-tertiary);
-  background: color-mix(in srgb, var(--lc-text-tertiary) 14%, transparent);
+  background: var(--lc-card);
 }
 
 /* Amber rather than red. Nothing has gone wrong and nobody is accused of
@@ -151,8 +185,8 @@
    loudest thing in the row, because a row that looks proven until you read it
    closely is the failure the panel exists to prevent. */
 #panel-chat .member .tag[data-tone='unproven'] {
-  color: var(--lc-warning);
-  background: color-mix(in srgb, var(--lc-warning) 18%, transparent);
+  color: var(--lc-warning-ink);
+  background: var(--lc-warning-soft);
 }
 
 /* The word is the detail and the dot beside it is what gets read at a glance,
@@ -167,12 +201,14 @@
   color: var(--lc-text-tertiary);
 }
 
+/* Studio's status dot (`aiView.ts`, `.lc-dot`): 6px, round; off is the
+   site's `--color-text-off`. */
 #panel-chat .member-presence::before {
   content: '';
   width: 6px;
   height: 6px;
   border-radius: var(--lc-radius-pill);
-  background: var(--lc-text-tertiary);
+  background: var(--lc-neutral-7);
 }
 
 #panel-chat .member-presence[data-state='on']::before {
@@ -211,14 +247,15 @@
    have — the confirmation says what it does instead. */
 #panel-chat .member-remove:hover:not(:disabled) {
   border-color: var(--lc-warning);
-  background: color-mix(in srgb, var(--lc-warning) 14%, var(--lc-surface-3));
+  background: var(--lc-warning-soft);
+  color: var(--lc-warning-ink);
 }
 
 /* --- Avatars -------------------------------------------------------------- */
 
 /* Painted straight onto whatever surface the row sits on, with no tile behind
-   it: the three inks are chosen to hold up against every surface token in both
-   themes, and a plate under them would only introduce a fourth.
+   it: the three inks are chosen to hold up against every surface token, and a
+   plate under them would only introduce a fourth.
 
    Global on purpose — see the note at the top of the file. */
 .identicon {
@@ -281,5 +318,5 @@
 #panel-chat .name-self-error {
   margin: 0;
   font-size: var(--lc-text-xs);
-  color: var(--lc-danger);
+  color: var(--lc-danger-ink);
 }

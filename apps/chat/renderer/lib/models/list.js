@@ -92,7 +92,8 @@ export function renderModels() {
     }
 
     button.append(name, line)
-    button.disabled = refuses !== null
+    // Locked while nothing could pay for it; the gate over the panel says why.
+    button.disabled = refuses !== null || ui.gate !== null
     button.addEventListener('click', () => void startConversation(model))
 
     item.append(button)

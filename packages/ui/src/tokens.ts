@@ -153,183 +153,120 @@ export interface Palette {
  * chrome around it does not.
  */
 export const BRAND = {
+  /** `--color-primary`, LCAIPresale `public/scss/default/_variables.scss:5`. */
   violet: '#5b4bff',
+  /** The brand page's Secondary, `components/BrandPage/ColorPalate.tsx`. */
   magenta: '#dd00ac',
+  /** `--Primary-600`, `_variables.scss:164`. */
   primary: '#693ee0',
+  /** `--Primary-400`, `_variables.scss:162`. */
   primaryStrong: '#8c71f6',
-  border: '#8c52ff',
+  /** `--Primary-500`, the site's `--border-brand`. */
+  border: '#7d52f4',
+  /** `--Primary-200`. */
   faint: '#cac0ff',
+  /** The logomark, `public/images/logo/logo.svg`. */
   logoFrom: '#3005fa',
   logoTo: '#ff12fb',
   /**
-   * The gradient the brand actually signs things with.
+   * The site's primary button, verbatim: `.btn-default` in
+   * `public/scss/elements/_button.scss:28`, which Lightchain Studio patches onto
+   * its own buttons too (`fork-tools/apply-source-patches.py:86-96`).
    *
-   * Lifted from the website's `.btn-default` and the wallet that ports it, so
-   * a primary control here is the same object people press on the site. It is
-   * a fill and never a text colour: every one of its stops fails contrast
-   * against this page, which is why the label on top of it is `onBrand`.
-   *
-   * The magenta stop is two shades off the site's `#df04ae`. White on that
-   * original measured 4.41:1 — under WCAG 2.2 AA's 4.5, on the one control
-   * every screen has. The other two stops were already clear at 6.6 and 6.9,
-   * so only the first moved, by about three percent. The mark itself is
-   * untouched: `logoFrom`/`logoTo` are a different pair and the logomark draws
-   * from those. `the label clears AA on every stop of the brand gradient`
-   * holds this so it cannot drift back.
+   * White on the `#df04ae` end measures 4.41:1, a hair under AA. The site ships
+   * it that way and this follows the site — chosen deliberately, and recorded
+   * where the contrast test allows for it.
    */
-  gradient: 'linear-gradient(135deg, #d803a8 0%, #8a1cd4 50%, #412ffd 100%)',
+  gradient: 'linear-gradient(90deg, #df04ae 0%, #412ffd 100%)',
   /**
-   * The third identicon ink, and the reason it is here rather than borrowed.
-   *
-   * An avatar needs a non-violet mid-tone that stays visible on all six
-   * surfaces across both themes. That used to be `LIGHT.success`, taken for its
-   * value rather than its meaning — and the moment that green was darkened by
-   * a step to meet contrast on a hovered light row, every avatar using it
-   * dropped below three to one on the dark page. A status colour answers to
-   * legibility on one theme's surfaces; an avatar ink answers to both. They are
-   * different jobs and they cannot share a value.
+   * The third identicon ink. `#ffba71` is the site's aurora orange
+   * (`elements/_card.scss:183`), the one brand colour far enough from violet and
+   * magenta that three avatars side by side read as three.
    */
-  avatar: '#1c8f5a'
+  avatar: '#ffba71'
 } as const
 
 /**
- * The dark ramp, taken from the Lightchain wallet's theme.
+ * The dark ramp, taken from the website rather than approximated.
  *
- * These are the product's own colours rather than a generic neutral scale: the
- * ground, card and raised surfaces are `#0e0c15`, `#0f1021` and `#14152c`
- * exactly as the wallet and the website use them, and the top of the ramp is
- * their `#ccceef` heading and `#b1b3d0` body. Two applications from one company
- * that are near-black in different directions look like two companies.
+ * Every step is a value LCAIPresale ships (`public/scss/default/_variables.scss`):
+ * the page is `--color-dark`, cards and dialogs are `--color-blackest`, the
+ * raised and hovered planes are `--color-dark-primary-2` and `--color-darker-two`,
+ * the middle is the site's Neutral scale and the top is its body, paragraph and
+ * heading text. Lightchain Studio's theme measures the same values off the same
+ * site (`fork-tools/theme/build-lightchain-theme.py:33-66`), which is why the
+ * two products and this one now agree.
  *
- * One value is not theirs. The wallet's body colour, `#7376aa`, makes 4.53 on
- * the page and 3.86 on a hovered row, and the tertiary role here has to be
- * readable on all four surfaces — so it is lightened to `#8286ba`, the nearest
- * value that holds AA everywhere. Timestamps and captions are text, and text
- * that is only legible when nothing is under the pointer is not legible.
+ * Tertiary text is the site's `--color-body`, `#7376aa`, unadjusted. It makes
+ * 4.68 on the page and 4.39 on a card — under AA there, as it is on the site.
  */
 const DARK_NEUTRALS: Neutrals = [
-  '#0e0c15',
+  '#070710',
   '#0f1021',
+  '#13131e',
   '#14152c',
-  '#1b1c38',
-  '#232445',
-  '#2e2f56',
-  '#3d3f6b',
+  '#22232a',
+  '#373842',
+  '#4e4e5c',
   '#565e78',
-  '#8286ba',
+  '#7376aa',
   '#b1b3d0',
   '#ccceef'
-]
-
-const LIGHT_NEUTRALS: Neutrals = [
-  '#ffffff',
-  '#f4f5f8',
-  '#e9ebf1',
-  '#dfe2ea',
-  '#d2d6e0',
-  '#b9bec9',
-  '#9aa0ad',
-  '#7b8190',
-  '#5f6170',
-  '#4d4f5c',
-  '#101014'
 ]
 
 export const DARK: Palette = {
   neutral: DARK_NEUTRALS,
 
+  // Page `--color-dark`; cards, menus and dialogs `--color-blackest`; the
+  // raised step `--color-darker-two`; a hovered row `--color-dark-primary-2`.
   surface1: DARK_NEUTRALS[0],
   surface2: DARK_NEUTRALS[1],
-  surface3: DARK_NEUTRALS[2],
-  surfaceHover: DARK_NEUTRALS[3],
+  surface3: DARK_NEUTRALS[3],
+  surfaceHover: DARK_NEUTRALS[2],
 
+  // `--color-heading`, the paragraph `--Neutral-200`, and `--color-body`.
   textPrimary: DARK_NEUTRALS[10],
   textSecondary: DARK_NEUTRALS[9],
   textTertiary: DARK_NEUTRALS[8],
 
-  // The wallet's `--brand-300`, not its `--primary`. `#5b4bff` is the brand
-  // violet and it makes 3.1 against this page — fine behind a gradient, not
-  // fine as the colour of a link. The lighter step is what that theme itself
-  // uses wherever the brand has to be read rather than looked at.
-  accent: '#a897ff',
-  accentContrast: '#0e0c15',
-  accentSoft: 'rgba(91, 75, 255, 0.18)',
+  // `--color-primary`, used by the site for every focus, active and hover
+  // state. It is 3.7:1 on the page: the site uses it for states and borders,
+  // not running text, and so should a stylesheet here.
+  accent: BRAND.violet,
+  accentContrast: '#ffffff',
+  // `--surface-base-brand_subtle`, `_variables.scss:309`.
+  accentSoft: 'rgba(125, 82, 244, 0.2)',
   onBrand: '#ffffff',
 
-  // The wallet's `--border` and `--border-strong`, to the hundredth.
-  rule: 'rgba(255, 255, 255, 0.10)',
-  ruleStrong: 'rgba(255, 255, 255, 0.18)',
-  scrim: 'rgba(0, 0, 0, 0.62)',
+  // `--color-border`, and the glass button's border (`_button.scss:385-395`).
+  rule: 'rgba(255, 255, 255, 0.1)',
+  ruleStrong: 'rgba(255, 255, 255, 0.2)',
+  // The dashboard overlay and mobile menu, `rgba(0,0,0,0.8)`.
+  scrim: 'rgba(0, 0, 0, 0.8)',
 
-  // The wallet's status trio.
+  // `--color-success`, `--color-warning`, `--color-content-error-strong`.
   success: '#3eb75e',
   warning: '#ff8f3c',
-  danger: '#ff5468',
-  successSoft: 'rgba(62, 183, 94, 0.14)',
-  warningSoft: 'rgba(255, 143, 60, 0.14)',
-  dangerSoft: 'rgba(255, 84, 104, 0.14)',
+  danger: '#ff2a27',
+  // The dashboard's status pills, `dashboard/_dashboard.scss:2873-2887`.
+  successSoft: 'rgba(29, 175, 97, 0.15)',
+  warningSoft: 'rgba(220, 104, 3, 0.15)',
+  dangerSoft: 'rgba(233, 53, 68, 0.2)',
 
-  // Larger and softer than a light theme's, because there is no overhead light
-  // here: against a near-black page a tight shadow reads as a smudge, and what
-  // separates a surface is mostly the neutral step underneath it.
-  shadow1: '0 1px 2px rgba(0, 0, 0, 0.4)',
-  shadow2: '0 4px 12px rgba(0, 0, 0, 0.45)',
-  shadow3: '0 16px 40px rgba(0, 0, 0, 0.55)',
+  // `--shadow-light`, the megamenu's, and the wallet modal's.
+  shadow1: '1px 1px 6px rgba(0, 0, 0, 0.25)',
+  shadow2: '0 20px 20px 8px rgba(0, 0, 0, 0.09)',
+  shadow3: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
 
   bg: DARK_NEUTRALS[0],
   bgElevated: DARK_NEUTRALS[1],
-  bgElevated2: DARK_NEUTRALS[2],
-  bgSidebar: DARK_NEUTRALS[1],
+  bgElevated2: DARK_NEUTRALS[3],
+  bgSidebar: DARK_NEUTRALS[0],
   fg: DARK_NEUTRALS[10],
   fgMuted: DARK_NEUTRALS[9],
   fgDim: DARK_NEUTRALS[8],
-  brand: '#a897ff',
-  brandInk: '#ccceef'
-}
-
-export const LIGHT: Palette = {
-  neutral: LIGHT_NEUTRALS,
-
-  surface1: LIGHT_NEUTRALS[0],
-  surface2: LIGHT_NEUTRALS[1],
-  surface3: LIGHT_NEUTRALS[2],
-  surfaceHover: LIGHT_NEUTRALS[3],
-
-  textPrimary: LIGHT_NEUTRALS[10],
-  textSecondary: LIGHT_NEUTRALS[9],
-  textTertiary: LIGHT_NEUTRALS[8],
-
-  accent: '#5b34c4',
-  accentContrast: '#ffffff',
-  accentSoft: 'rgba(91, 52, 196, 0.10)',
-  onBrand: '#ffffff',
-
-  rule: 'rgba(16, 16, 20, 0.10)',
-  ruleStrong: 'rgba(16, 16, 20, 0.16)',
-  scrim: 'rgba(16, 16, 20, 0.45)',
-
-  // Darkened from the document palette: the original fails AA against white at
-  // the sizes a chat interface uses, and green is the worst offender.
-  success: '#0f6b42',
-  warning: '#8a5300',
-  danger: '#b3212f',
-  successSoft: 'rgba(15, 107, 66, 0.10)',
-  warningSoft: 'rgba(138, 83, 0, 0.10)',
-  dangerSoft: 'rgba(179, 33, 47, 0.10)',
-
-  shadow1: '0 1px 2px rgba(16, 16, 20, 0.06)',
-  shadow2: '0 4px 12px rgba(16, 16, 20, 0.10)',
-  shadow3: '0 16px 40px rgba(16, 16, 20, 0.16)',
-
-  bg: LIGHT_NEUTRALS[0],
-  bgElevated: LIGHT_NEUTRALS[1],
-  bgElevated2: LIGHT_NEUTRALS[2],
-  bgSidebar: LIGHT_NEUTRALS[1],
-  fg: LIGHT_NEUTRALS[10],
-  fgMuted: LIGHT_NEUTRALS[9],
-  fgDim: LIGHT_NEUTRALS[8],
-  brand: '#5b34c4',
-  brandInk: '#4526a8'
+  brand: BRAND.violet,
+  brandInk: DARK_NEUTRALS[10]
 }
 
 /** Spacing scale in pixels. A 4px base keeps everything on a common rhythm. */
@@ -343,15 +280,17 @@ export const SPACE = {
 } as const
 
 export const RADIUS = {
+  // `--radius-small`, `--radius`, `--radius-big`, `--radio-full`
+  // (`_variables.scss:104-108`), plus the two the site's components use
+  // between them: 8 for every button, 12 for a tab group or menu.
   sm: 6,
+  button: 8,
   md: 10,
+  group: 12,
   lg: 16,
   pill: 999,
-  /**
-   * Message bubbles, which are the one shape in the application people read as
-   * a shape rather than as a container.
-   */
-  bubble: 16
+  /** Studio's AI panel draws a message at the site's `--radius`. */
+  bubble: 10
 } as const
 
 export const TYPE = {
@@ -365,13 +304,19 @@ export const TYPE = {
    * Timestamps and captions are held to it too — they carry real information,
    * and shrinking them is how they become decoration.
    */
+  // At Studio's density. Lightchain Studio sets the site inside an app by
+  // scaling it by 0.8125 (`aiView.ts`, `interact.ts`: "the site's 16px base
+  // into the IDE's 13px"), and this app is Studio's case, not the site's. Each
+  // rung is a size the site itself sets, picked where the scaled value lands:
+  // 13 (Studio's base), `.b3` 14, the dashboard's 15, `.b2` 16, a card title
+  // 20, `h4` 24, the dashboard title 36.
   scale: {
-    xs: 14,
-    sm: 15,
-    md: 16,
-    lg: 19,
-    xl: 23,
-    xxl: 30,
+    xs: 13,
+    sm: 14,
+    md: 15,
+    lg: 16,
+    xl: 20,
+    xxl: 24,
     /**
      * One number, once per screen.
      *
@@ -380,17 +325,17 @@ export const TYPE = {
      * instead of settling the question. Reserved for that: if a surface needs
      * two of these, one of them is not what the surface is about.
      */
-    display: 40
+    display: 36
   },
   /** The same sizes by the job they do, which is how a stylesheet should ask. */
   role: {
-    caption: 14,
-    body: 15,
-    bodyStrong: 16,
-    title3: 19,
-    title2: 23,
-    title1: 30,
-    display: 40
+    caption: 13,
+    body: 14,
+    bodyStrong: 15,
+    title3: 16,
+    title2: 20,
+    title1: 24,
+    display: 36
   },
   weight: {
     regular: 400,
@@ -400,8 +345,9 @@ export const TYPE = {
   },
   /** Unitless, multiplied by font size. */
   lineHeight: {
-    tight: 1.25,
-    normal: 1.5,
+    // Titles 1.2, `.b3` 1.6, body 1.7 (`default/_typography.scss`).
+    tight: 1.2,
+    normal: 1.6,
     relaxed: 1.7
   }
 } as const
@@ -415,8 +361,14 @@ export const TYPE = {
  * prose — monospace used decoratively is what makes an interface look like a
  * terminal, which this one is trying to stop looking like.
  */
-export const MONO =
-  "ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, Consolas, monospace"
+export const MONO = 'Menlo, Monaco, "Courier New", monospace'
+
+/**
+ * Inter, bundled, as the site and Studio both set it (`--font-primary`;
+ * `apply-source-patches.py:71-85`). The platform face follows it only as a
+ * fallback.
+ */
+export const FONT = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif'
 
 /**
  * Heights for interactive controls, in pixels.
@@ -474,15 +426,18 @@ export const CONTROL = {
    * scale had no rung for a control that must not out-weigh the thing
    * containing it, so every author invented one.
    */
-  xs: 32,
+  // At Studio's density (see TYPE): Studio's `.lc-btn` 26 and model trigger
+  // 32; the site's `.btn-small` 40, which is also Studio's field; the site's
+  // `.btn-default` 50 for the one thing a screen asks for.
+  xs: 26,
   /** Toolbar and inline actions. */
-  sm: 38,
+  sm: 32,
   /** The default: form fields and their buttons. */
-  md: 44,
+  md: 40,
   /** The one thing a screen is asking for. */
   lg: 50,
   /** Icons, sized with the text rather than independently of it. */
-  icon: 18
+  icon: 16
 } as const
 
 /**
@@ -498,11 +453,11 @@ export const CONTROL = {
  * rule written once honours it without knowing it exists.
  */
 export const MOTION = {
-  fast: 120,
-  base: 180,
-  slow: 280,
-  /** One curve. Ease-out: quick to start, settling rather than arriving. */
-  easing: 'cubic-bezier(0.2, 0, 0, 1)'
+  // The site's `all 0.2s ease`, `--transition: 0.3s`, and its 0.4s.
+  fast: 200,
+  base: 300,
+  slow: 400,
+  easing: 'ease'
 } as const
 
 /**
@@ -528,15 +483,58 @@ export const FOCUS = {
   ring: '2px solid var(--lc-accent)'
 } as const
 
+/**
+ * The site's component values that are not a plane or a text colour, kept
+ * verbatim so a component here is drawn with exactly what the site draws its
+ * own with. Each cites where it comes from in LCAIPresale `public/scss/`.
+ */
+export const SITE = {
+  /** `--color-content-neutral-strong`, the strongest text and active labels. */
+  textStrong: '#f5f6ff',
+  /** `--color-dark-primary-alt`, inset wells: code, inputs in Studio, notes. */
+  inset: '#020203',
+  /** `.btn-border-white-blur`, `elements/_button.scss:385-395`. */
+  glass: 'rgba(255, 255, 255, 0.14)',
+  glassBlur: 'blur(6px)',
+  /** The dashboard card and table, `dashboard/_dashboard.scss:2423, 2694`. */
+  card: 'rgba(204, 206, 239, 0.06)',
+  cardRule: 'rgba(204, 206, 239, 0.12)',
+  /** A tab group's well, `dashboard/_dashboard.scss:2368`. */
+  well: 'rgba(204, 206, 239, 0.04)',
+  /** The active tab, `dashboard/_dashboard.scss:2402`. */
+  tabGradient: 'linear-gradient(270deg, #7064e9 0%, #dd00ac 100%)',
+  /** The eyebrow's bar and every "active" edge, `.lc-sm-title.border-left`. */
+  accentBar: '#dd00ac',
+  /** `.bg-solid-primary:hover` and `.btn-default:hover`. */
+  glow: '0 0 20px 5px rgba(112, 100, 233, 0.1)',
+  /**
+   * The text of the site's notice in each tone: `--content-brand-light`
+   * (Primary-400), `--content-warning-light` (Warning-500) and
+   * `--content-error-light` (Error-600), `default/_variables.scss:265-337`.
+   */
+  infoLight: '#8c71f6',
+  warningLight: '#f79009',
+  dangerLight: '#e93544',
+  /** The status pills' text, `dashboard/_dashboard.scss:2873-2887`. */
+  successInk: '#d0fbe9',
+  warningInk: '#f79009',
+  dangerInk: '#ffc0c5'
+} as const
+
 /** `bodyStrong` to `body-strong`, `title1` to `title-1`. */
 function kebab(name: string): string {
   return name.replace(/([a-z])([A-Z0-9])/g, '$1-$2').toLowerCase()
 }
 
-export type Theme = 'dark' | 'light'
+/**
+ * Dark only. The website has a light mode; Lightchain Studio does not, and this
+ * application follows Studio there — one theme to match exactly rather than two
+ * to match approximately.
+ */
+export type Theme = 'dark'
 
-export function palette(theme: Theme): Palette {
-  return theme === 'light' ? LIGHT : DARK
+export function palette(theme: Theme = 'dark'): Palette {
+  return { dark: DARK }[theme]
 }
 
 /**
@@ -545,7 +543,7 @@ export function palette(theme: Theme): Palette {
  * A renderer sets these once on `:root` and every rule reads from them, so a
  * theme change is one attribute rather than a stylesheet swap.
  */
-export function cssVariables(theme: Theme): string {
+export function cssVariables(theme: Theme = 'dark'): string {
   const p = palette(theme)
   const lines = [
     ...p.neutral.map((value, step) => `--lc-neutral-${step}: ${value};`),
@@ -596,6 +594,8 @@ export function cssVariables(theme: Theme): string {
     `--lc-logo-to: ${BRAND.logoTo};`,
     `--lc-grad-brand: ${BRAND.gradient};`,
     `--lc-on-brand: ${p.onBrand};`,
+
+    ...Object.entries(SITE).map(([k, v]) => `--lc-${kebab(k)}: ${v};`),
 
     `--lc-mono: ${MONO};`,
     `--lc-focus-width: ${FOCUS.width}px;`,

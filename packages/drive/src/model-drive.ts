@@ -94,7 +94,7 @@ export class ModelDrive {
     const files = await collectFiles(drive, opts.roles ?? {})
     if (files.length === 0) {
       throw new ModelDriveError(
-        `no files found under "${opts.source}" — refusing to publish an empty model`
+        `no files found under "${opts.source}" - refusing to publish an empty model`
       )
     }
 
@@ -178,7 +178,7 @@ export class ModelDrive {
     const raw = await this.#snapshot.get(MANIFEST_PATH)
     if (!raw) {
       throw new ModelDriveError(
-        `no manifest at ${MANIFEST_PATH} in ${this.#ref.key}@${this.#ref.version} — not a model drive`
+        `no manifest at ${MANIFEST_PATH} in ${this.#ref.key}@${this.#ref.version} - not a model drive`
       )
     }
     this.#manifest = parseManifest(raw)

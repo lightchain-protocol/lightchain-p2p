@@ -203,7 +203,7 @@ export function historyHandlers(ctx) {
             source: 'none',
             entries: [],
             covers: null,
-            blindTo: `The Lightchain explorer could not be reached (${err.message}). Nothing is missing from your balance — only this list.`
+            blindTo: `The Lightchain explorer could not be reached (${err.message}). Nothing is missing from your balance - only this list.`
           }
         }
       }
@@ -218,7 +218,7 @@ export function historyHandlers(ctx) {
           // The sentence that keeps this honest. Native transfers emit no
           // event, so no amount of log scanning finds them, and somebody who
           // was paid in the native coin would otherwise think they were not.
-          blindTo: `Transfers of ${chain.symbol} itself do not appear here. Moving a network's own coin runs no contract and leaves no event to find, so only an indexer can list them — and there is no keyless one for ${chain.name}. Your balance already includes them.`
+          blindTo: `Transfers of ${chain.symbol} itself do not appear here. Moving a network's own coin runs no contract and leaves no event to find, so only an indexer can list them - and there is no keyless one for ${chain.name}. Your balance already includes them.`
         }
       } catch (err) {
         return {

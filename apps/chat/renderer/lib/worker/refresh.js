@@ -35,18 +35,23 @@ export async function refreshWorker({ logs = true } = {}) {
     // When it cannot host, the page is one sentence rather than five steps that
     // would each fail in their own way, and the sentence is the worker's own —
     // it names what is missing on that network instead of assuming devnet.
+    // The loading state goes up first: even this question takes a moment, and
+    // until it is answered the stage was an empty band between two hairlines.
+    paintWaiting()
     const status = await request('worker.status').catch(() => ({}))
     const cannotHost = status?.configured === true && status?.available === false
     devnetNotice.hidden = !cannotHost
     workerBody.hidden = cannotHost
 
     if (cannotHost) {
+      const waiting = document.getElementById('worker-waiting')
+      if (waiting) waiting.hidden = true
+      document.getElementById('worker-body')?.classList.remove('is-loading')
       if (status.problem) devnetNotice.querySelector('p').textContent = status.problem
       return
     }
 
     setVerdict(null, 'Checking the host…')
-    paintWaiting()
 
     // In parallel, because the host probes are the slow part and nothing else
     // should queue behind them.
@@ -91,6 +96,7 @@ export async function refreshWorker({ logs = true } = {}) {
   } finally {
     const waiting = document.getElementById('worker-waiting')
     if (waiting) waiting.hidden = true
+    document.getElementById('worker-body')?.classList.remove('is-loading')
     ui.refreshing = false
     el.workerRefresh.disabled = false
   }

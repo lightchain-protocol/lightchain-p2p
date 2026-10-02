@@ -120,7 +120,7 @@ export function createHolding({ rpc, wallet, network, enforced = true, now = Dat
     if (verdict.ok) return verdict
 
     if (verdict.reason === 'locked') {
-      throw new Error('unlock the wallet before making a room — the gate reads its balance')
+      throw new Error('unlock the wallet before making a room - the gate reads its balance')
     }
 
     throw new Error(

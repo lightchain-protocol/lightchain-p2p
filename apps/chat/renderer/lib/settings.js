@@ -87,7 +87,7 @@ export async function openSettings(page = settingsPage) {
   // exists rather than what it is.
   const password = document.getElementById('set-worker-password')
   password.value = ''
-  password.placeholder = state.workerPasswordSet ? 'Set — type to replace' : 'Not set'
+  password.placeholder = state.workerPasswordSet ? 'Set - type to replace' : 'Not set'
 
   document.getElementById('set-keys-dir').value = state.values.keysDir ?? ''
   document.getElementById('set-keys-dir').placeholder = state.effective.keysDir ?? ''
@@ -231,8 +231,8 @@ document.getElementById('set-receipts').addEventListener('change', async (evt) =
     await request('settings.write', { values: { receipts: on ? 'true' : null } })
     toast(
       on
-        ? 'Read receipts on — rooms can see when you have read them'
-        : 'Read receipts off — rooms are told nothing about what you have read'
+        ? 'Read receipts on - rooms can see when you have read them'
+        : 'Read receipts off - rooms are told nothing about what you have read'
     )
   } catch (err) {
     // The box said yes and the worker said no: put the box back to the truth.
@@ -254,7 +254,7 @@ document.getElementById('set-deposit-sound').addEventListener('change', async (e
   try {
     await request('settings.write', { values: { depositSound: on ? null : 'false' } })
     setDepositSound(on)
-    toast(on ? 'Deposit sound on' : 'Deposit sound off — you will still see what arrives')
+    toast(on ? 'Deposit sound on' : 'Deposit sound off - you will still see what arrives')
   } catch (err) {
     evt.target.checked = !on
     toast(err.message, 'error')
@@ -747,7 +747,7 @@ function describe(cap) {
   } catch {
     // Not a number yet. The refusal belongs on the submit, where it is a
     // sentence, rather than here where it would flicker as somebody types "0.".
-    cap.hint.textContent = '—'
+    cap.hint.textContent = '-'
   }
 }
 

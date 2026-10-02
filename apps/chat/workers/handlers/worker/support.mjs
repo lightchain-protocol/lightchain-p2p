@@ -55,7 +55,7 @@ export function hostingAvailable(config) {
 
 /** The one sentence every Earn surface on such a network says. */
 export function hostingUnavailable(network) {
-  return `worker hosting is not available on ${network} yet — that network publishes no worker image, gateway or relay, so there is nothing to register or run. Asking a model works there; earning does not.`
+  return `worker hosting is not available on ${network} yet - that network publishes no worker image, gateway or relay, so there is nothing to register or run. Asking a model works there; earning does not.`
 }
 
 /**

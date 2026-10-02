@@ -224,7 +224,7 @@ export function validatorHandlers(ctx) {
       // deposit the chain will ignore, and the money does not come back.
       if (!forkVersion || activation === null) {
         throw new Error(
-          `the ${network()} beacon chain could not be read, and a deposit signed against a guessed fork version is one this chain would ignore — with the stake already spent`
+          `the ${network()} beacon chain could not be read, and a deposit signed against a guessed fork version is one this chain would ignore - with the stake already spent`
         )
       }
 

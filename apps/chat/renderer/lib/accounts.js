@@ -140,7 +140,7 @@ async function move(event) {
     working(confirm, false, 'Switch')
     fail(
       /password/i.test(err.message)
-        ? 'That is not this wallet’s password — it is the same one you unlocked with.'
+        ? 'That is not this wallet’s password - it is the same one you unlocked with.'
         : err.message
     )
     password.focus()

@@ -545,7 +545,7 @@ export class RoomHost {
       // sender. Having reached someone rules that half out.
       throw new RoomError(
         this.connections === 0
-          ? 'nobody answered that invite, and this machine has not connected to any peer at all. Either the sender is offline, or something here is blocking connections — a firewall that was never allowed is the usual cause, and gives no other sign.'
+          ? 'nobody answered that invite, and this machine has not connected to any peer at all. Either the sender is offline, or something here is blocking connections - a firewall that was never allowed is the usual cause, and gives no other sign.'
           : 'nobody answered that invite. It may have been used already, or the person who sent it may be offline.'
       )
     }

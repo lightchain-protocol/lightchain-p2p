@@ -55,39 +55,7 @@ wireBeta()
 // across every room, and it has to be reachable from wherever somebody is.
 bindSearchShortcut({ onOpenResult: openMessage, onOpenTranscript: openTranscript })
 
-// --- Theme -----------------------------------------------------------------
-
-/**
- * Dark or light, remembered across restarts.
- *
- * Kept in the worker's settings rather than in `localStorage`, which is not
- * available: the renderer is loaded from a `file://` URL and so has no origin
- * to store anything against. Dark stays the default, so the first paint is
- * never wrong for the overwhelming case and a stored light theme arrives with
- * the settings a moment later.
- */
-let theme = 'dark'
-
-function applyTheme(next) {
-  theme = next === 'light' ? 'light' : 'dark'
-
-  const root = document.documentElement
-  root.classList.add('is-theming')
-  root.dataset.theme = theme
-  // Reading a layout property forces the new colours to be applied while
-  // transitions are still off, so nothing is left mid-animation when they come
-  // back on the next frame.
-  void root.offsetHeight
-  requestAnimationFrame(() => root.classList.remove('is-theming'))
-
-  const icon = theme === 'dark' ? '#i-sun' : '#i-moon'
-  el.themeBtn.querySelector('use').setAttribute('href', icon)
-  const label = theme === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme'
-  el.themeBtn.title = label
-  el.themeBtn.setAttribute('aria-label', label)
-
-  paintWindowControls()
-}
+// --- Window controls -------------------------------------------------------
 
 /**
  * Tells the platform what colour to draw its own caption buttons.
@@ -98,17 +66,15 @@ function applyTheme(next) {
  *
  * The values are read back out of the stylesheet rather than written here, so
  * the buttons cannot drift from the bar they sit against, and the main process
- * does not need a second copy of the palette. Read after the theme attribute is
- * set and the layout flushed above, which is why this is the last thing
- * `applyTheme` does.
+ * does not need a second copy of the palette.
  */
 function paintWindowControls() {
   if (!bridge.setTitleBarColours) return
 
   const style = getComputedStyle(document.documentElement)
   const colours = {
-    color: hexOf(style.getPropertyValue('--lc-bg-elevated')),
-    symbolColor: hexOf(style.getPropertyValue('--lc-fg-muted'))
+    color: hexOf(style.getPropertyValue('--lc-surface-1')),
+    symbolColor: hexOf(style.getPropertyValue('--lc-text-primary'))
   }
 
   if (!colours.color || !colours.symbolColor) return
@@ -121,12 +87,8 @@ function hexOf(value) {
   return /^#[0-9a-f]{6}$/i.test(text) ? text : null
 }
 
-el.themeBtn.addEventListener('click', () => {
-  applyTheme(theme === 'dark' ? 'light' : 'dark')
-  // Not awaited: the theme is already applied, and a failed write costs the
-  // preference at the next launch rather than anything happening now.
-  void request('settings.write', { values: { theme } }).catch(() => {})
-})
+// One theme, the website's. Painted once the stylesheet has resolved.
+paintWindowControls()
 
 // --- Sidebar ---------------------------------------------------------------
 
@@ -259,7 +221,7 @@ function badgeNetwork() {
   else delete el.accountRole.dataset.network
 
   if (!networkPill) return
-  networkPillName.textContent = el.accountRole.textContent.trim() || '—'
+  networkPillName.textContent = el.accountRole.textContent.trim() || '-'
   if (KNOWN_NETWORKS.has(name)) networkPill.dataset.network = name
   else delete networkPill.dataset.network
 }
@@ -392,7 +354,6 @@ for (const name of ['pointerdown', 'keydown']) {
  */
 async function restorePreferences() {
   const { values } = await request('settings.read').catch(() => ({ values: {} }))
-  applyTheme(values?.theme)
   applyCollapsed(values?.sidebar === 'collapsed')
   // Absent is on: the chime is the default, and the stored word "false" is how
   // it is switched off. The settings panel applies the same rule.

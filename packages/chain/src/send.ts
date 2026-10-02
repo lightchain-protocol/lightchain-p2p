@@ -175,7 +175,7 @@ function checkFees(maxFeePerGas: bigint | undefined, maxPriorityFeePerGas: bigin
     if (fee < 0n) throw new RpcError(`${name} cannot be negative, got ${fee}`)
     if (fee > FEE_PER_GAS_CEILING) {
       throw new RpcError(
-        `${name} of ${fee} wei per gas is above the ceiling of ${FEE_PER_GAS_CEILING} (10,000 gwei). Nothing on this network needs anything like it — check whether a figure meant as gwei has been given as wei.`
+        `${name} of ${fee} wei per gas is above the ceiling of ${FEE_PER_GAS_CEILING} (10,000 gwei). Nothing on this network needs anything like it - check whether a figure meant as gwei has been given as wei.`
       )
     }
   }

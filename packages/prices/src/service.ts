@@ -161,7 +161,7 @@ function readLcai(slot0: Call3Result | undefined, eth: Price | null, now: number
 
 /** A price as a string, for a screen. Never for arithmetic. */
 export function formatUsd(price: bigint | null): string {
-  if (price === null) return '—'
+  if (price === null) return '-'
 
   const scale = 10n ** BigInt(PRICE_DECIMALS)
   const whole = price / scale

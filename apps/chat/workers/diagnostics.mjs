@@ -378,7 +378,7 @@ export async function exportDiagnostics(ctx, io = null) {
   const release = typeof os.release === 'function' ? ` ${os.release()}` : ''
 
   const report = [
-    `${productName} diagnostics — ${new Date().toISOString()}`,
+    `${productName} diagnostics - ${new Date().toISOString()}`,
     ``,
     `version:  ${version}`,
     `platform: ${os.platform()} ${os.arch()}${release}`,
@@ -387,10 +387,10 @@ export async function exportDiagnostics(ctx, io = null) {
     ``,
     `logs included (${logs.length}):`,
     ...(logs.length === 0
-      ? ['  (none — the log directory is absent or empty)']
+      ? ['  (none - the log directory is absent or empty)']
       : logs.map(({ name, file }) => `  logs/${name} (${sizeOfFor(fs, file)} bytes)`)),
     ``,
-    `crash dumps on disk (${dumps.length}) — names and sizes only; contents are`,
+    `crash dumps on disk (${dumps.length}) - names and sizes only; contents are`,
     `memory images and are never included:`,
     ...(dumps.length === 0 ? ['  (none)'] : dumps.map((d) => `  ${d.name} (${d.size} bytes)`)),
     ``,

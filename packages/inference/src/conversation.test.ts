@@ -387,7 +387,7 @@ describe('the job lifecycle', () => {
     expect(conversation.jobs().map((entry) => entry.jobId)).toEqual(['7'])
   })
 
-  it('marks a job timed-out — visibly refundable — when the wait expires', async () => {
+  it('marks a job timed-out - visibly refundable - when the wait expires', async () => {
     const { api } = makeApi()
     const conversation = makeConversation(api)
     await conversation.start()

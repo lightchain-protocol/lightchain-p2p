@@ -72,6 +72,8 @@ export function paintWaiting() {
   // lists below are inside steps that are hidden until their turn.
   const waiting = document.getElementById('worker-waiting')
   if (waiting) waiting.hidden = false
+  // The whole page waits, not one box among empty ones.
+  document.getElementById('worker-body')?.classList.add('is-loading')
 
   el.workerChecks.replaceChildren(
     ...rows(2, () => {

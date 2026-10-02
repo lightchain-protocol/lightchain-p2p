@@ -20,7 +20,7 @@
             <h3 class="settings-heading">Network</h3>
             <p class="settings-note">
               Which chain balances are read from and transactions are signed for. Changing it does
-              not move anything — a wallet has the same address on every network. Devnet is for
+              not move anything - a wallet has the same address on every network. Devnet is for
               trying things out: asking models works, but it has no explorer and no worker hosting
               yet.
             </p>
@@ -51,7 +51,7 @@
                 <option value="15">15 minutes</option>
                 <option value="60">1 hour</option>
                 <option value="480">8 hours</option>
-                <option value="0">Never — only on a machine nobody else uses</option>
+                <option value="0">Never - only on a machine nobody else uses</option>
               </select>
                 <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
               </span>
@@ -59,12 +59,12 @@
 
             <h3 class="settings-heading">Privacy</h3>
             <p class="settings-note">
-              A read receipt tells the other people in a room when you have seen what they wrote —
+              A read receipt tells the other people in a room when you have seen what they wrote -
               it is what turns the tick on their messages into two. That is a fact about you, not
               about the conversation, so it is off unless you switch it on. Receipts travel over the
               presence channel and are written nowhere: nothing about what you have read ever
               enters a room's history. Off, the rooms you are in are told nothing, and other
-              people's switches decide what their ticks tell you — never the other way round.
+              people's switches decide what their ticks tell you - never the other way round.
             </p>
             <label class="settings-check">
               <input type="checkbox" id="set-receipts" />
@@ -73,8 +73,8 @@
 
             <h3 class="settings-heading">Notifications</h3>
             <p class="settings-note">
-              When one of the balances this wallet watches grows — a deposit landing, on any of
-              the six networks — a message says what arrived and on which chain. The message shows
+              When one of the balances this wallet watches grows - a deposit landing, on any of
+              the six networks - a message says what arrived and on which chain. The message shows
               either way; this switch is only about the sound that comes with it. On by default,
               because money arriving is news worth noticing.
             </p>
@@ -108,7 +108,7 @@
             <h3 class="settings-heading">Change your password</h3>
             <p class="settings-note">
               Reseals the wallet on this machine. Your recovery phrase, your address and your saved
-              conversations are unaffected — the phrase is what your wallet is, and the password
+              conversations are unaffected - the phrase is what your wallet is, and the password
               only guards the copy kept here.
             </p>
             <form class="form" id="password-form">
@@ -257,7 +257,7 @@
 
             <h3 class="settings-heading">Prompt templates</h3>
             <p class="settings-note">
-              A template is a block of text put in front of a prompt — the standing instructions you
+              A template is a block of text put in front of a prompt - the standing instructions you
               would otherwise retype every time. Templates are sealed under your wallet and kept on
               this machine only: no peer, no worker and no contract is ever told that this list
               exists.
@@ -294,23 +294,23 @@
             <h3 class="settings-heading">Network trust</h3>
             <p class="settings-note">
               Who runs what. The workers that answer questions are run by anyone, and this
-              app does not choose them. The parts in between — the dispatcher that routes a
+              app does not choose them. The parts in between - the dispatcher that routes a
               question to a worker, the relay that carries the answer back, the disputer that
-              settles challenges, and the service that puts the question's data on chain —
+              settles challenges, and the service that puts the question's data on chain -
               are all run by the Lightchain foundation, one operator.
             </p>
             <p class="settings-note">
               What is checked. Every answer carries the worker's signature, and this app
               verifies it before showing anything, so an answer cannot be swapped for another
               on the way. A worker that tells you one thing while recording something else on
-              chain has equivocated, and that can be disputed — it costs the worker its stake.
+              chain has equivocated, and that can be disputed - it costs the worker its stake.
               What no check can catch is an answer that is wrong but reads as right: a model
               that is simply mistaken looks exactly like one that is not, so judge answers
               accordingly.
             </p>
             <p class="settings-note">
-              What the prepaid balance means. Funding it also authorises the delegate — the
-              service that submits jobs for you — to spend it, and that authorisation stands
+              What the prepaid balance means. Funding it also authorises the delegate - the
+              service that submits jobs for you - to spend it, and that authorisation stands
               until you revoke it on chain. Withdrawing what is left does not revoke it, so a
               later deposit is spendable again without asking. The delegate can reach the
               prepaid balance and nothing else; the rest of the wallet is never part of the
@@ -319,14 +319,14 @@
             <p class="settings-note">
               And one thing about this window. The dialog that asks you to confirm a transfer
               is drawn by this application, not by the operating system. It vouches for what
-              this app is about to sign and nothing wider — it cannot see, and says nothing
+              this app is about to sign and nothing wider - it cannot see, and says nothing
               about, anything else running on this machine.
             </p>
 
             <h3 class="settings-heading">Availability</h3>
             <p class="settings-note">
               Blind peers are always-on machines that hold your rooms without being able to read
-              them. Without one, a room only replicates while someone who has it is online — so two
+              them. Without one, a room only replicates while someone who has it is online - so two
               people who are never online together never see each other's messages. There is no
               public fleet; these are machines you or someone you trust runs.
             </p>
@@ -342,7 +342,7 @@
 
             <p class="settings-note">
               Give this key to whoever runs the blind peer. It must be on their trusted list, or
-              they will hold your rooms and never advertise them — which looks like it is working
+              they will hold your rooms and never advertise them - which looks like it is working
               until the last person closes the app.
             </p>
             <div class="key-row">
@@ -360,7 +360,7 @@
             <h3 class="settings-heading">Diagnostics</h3>
             <p class="settings-note">
               One ZIP to hand to whoever is helping with a broken machine: the recent logs, the
-              version and the host-readiness probe summary — never keys, seed words or messages,
+              version and the host-readiness probe summary - never keys, seed words or messages,
               which are left out by never being read at all.
             </p>
             <button class="button" type="button" id="export-diagnostics">Export diagnostics</button>

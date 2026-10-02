@@ -35,7 +35,7 @@
         <strong class="alert-title">No worker hosting on this network</strong>
         <p>
           Worker hosting isn't available here. Asking models, the wallet and conversations all work
-          &mdash; switch the network in Settings to run a worker.
+          - switch the network in Settings to run a worker.
         </p>
       </div>
     </div>
@@ -55,14 +55,10 @@
              underneath. An empty step reads as a step with nothing in it. This
              is the shape of the step that is coming, so the page has a size
              before it has an answer. -->
-        <section class="wizard-step wizard-waiting" id="worker-waiting" hidden aria-hidden="true">
-          <span class="skeleton" data-skeleton="kicker"></span>
-          <span class="skeleton" data-skeleton="title"></span>
-          <span class="skeleton" data-skeleton="lede"></span>
-          <div class="wizard-waiting-rows">
-            <span class="skeleton skeleton-text"></span>
-            <span class="skeleton skeleton-text"></span>
-            <span class="skeleton skeleton-text"></span>
+        <section class="wizard-step wizard-waiting" id="worker-waiting" hidden>
+          <div class="loading" role="status">
+            <svg class="icon loading-mark" aria-hidden="true"><use href="#i-loader" /></svg>
+            <p class="loading-text">Checking this machine…</p>
           </div>
         </section>
         <!-- 1 &middot; Host -->

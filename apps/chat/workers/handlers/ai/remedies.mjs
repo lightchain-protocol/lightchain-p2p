@@ -91,7 +91,7 @@ export function remedyHandlers(ctx, kit) {
       if (record.state === 'submitted' || record.state === 'acknowledged') {
         if (now <= record.deadline) {
           throw new Error(
-            `job ${jobId} has not timed out yet — the worker has ${record.deadline - now} more seconds to answer. Nothing was sent.`
+            `job ${jobId} has not timed out yet - the worker has ${record.deadline - now} more seconds to answer. Nothing was sent.`
           )
         }
       } else if (record.state === 'disputed') {
@@ -104,7 +104,7 @@ export function remedyHandlers(ctx, kit) {
         }
       } else {
         throw new Error(
-          `job ${jobId} is ${record.state} — a fee can only be claimed back while a job is unanswered or stuck in a dispute. Nothing was sent.`
+          `job ${jobId} is ${record.state} - a fee can only be claimed back while a job is unanswered or stuck in a dispute. Nothing was sent.`
         )
       }
 
@@ -113,7 +113,7 @@ export function remedyHandlers(ctx, kit) {
         to: `the job registry at ${jobRegistry}`,
         from: account.address,
         network: network(),
-        fee: 'this claims back the fee for an unanswered question — the escrowed fee is refunded to you and the worker that did not answer is slashed'
+        fee: 'this claims back the fee for an unanswered question - the escrowed fee is refunded to you and the worker that did not answer is slashed'
       })
 
       try {
@@ -141,7 +141,7 @@ export function remedyHandlers(ctx, kit) {
         // too, and an empty wallet learns that as a raw RPC string otherwise.
         if (/insufficient funds/.test(err?.message ?? '')) {
           throw new Error(
-            'claiming sends a transaction on chain, and this wallet has nothing for gas — receive some LCAI first',
+            'claiming sends a transaction on chain, and this wallet has nothing for gas - receive some LCAI first',
             { cause: err }
           )
         }
@@ -170,7 +170,7 @@ export function remedyHandlers(ctx, kit) {
       )
       if (pending === 0n) {
         throw new Error(
-          'no refund is waiting for this wallet — a refund appears here after a timeout claim or a dispute resolved in your favour, and is collected from here'
+          'no refund is waiting for this wallet - a refund appears here after a timeout claim or a dispute resolved in your favour, and is collected from here'
         )
       }
 
@@ -184,7 +184,7 @@ export function remedyHandlers(ctx, kit) {
         to: account.address,
         from: `the job registry at ${jobRegistry}`,
         network: network(),
-        fee: 'this collects a refund the registry is holding for you — the fee for a question that went unanswered or a dispute resolved in your favour'
+        fee: 'this collects a refund the registry is holding for you - the fee for a question that went unanswered or a dispute resolved in your favour'
       })
 
       try {
@@ -206,7 +206,7 @@ export function remedyHandlers(ctx, kit) {
       } catch (err) {
         if (/insufficient funds/.test(err?.message ?? '')) {
           throw new Error(
-            'claiming sends a transaction on chain, and this wallet has nothing for gas — receive some LCAI first',
+            'claiming sends a transaction on chain, and this wallet has nothing for gas - receive some LCAI first',
             { cause: err }
           )
         }
@@ -232,7 +232,7 @@ export function remedyHandlers(ctx, kit) {
 
       if (record.state !== 'completed') {
         throw new Error(
-          `job ${jobId} is ${record.state} — a quality dispute can only be filed on a completed answer. For a question that was never answered, claim the timeout instead.`
+          `job ${jobId} is ${record.state} - a quality dispute can only be filed on a completed answer. For a question that was never answered, claim the timeout instead.`
         )
       }
 
@@ -253,7 +253,7 @@ export function remedyHandlers(ctx, kit) {
       const multiplier = await configUint(rpc(), aiConfig, 'getDisputeBondMultiplier()')
       if (multiplier === null) {
         throw new Error(
-          'the dispute bond could not be read from the chain, and filing blind risks sending the wrong amount. Nothing was submitted — check the network in Settings and try again.'
+          'the dispute bond could not be read from the chain, and filing blind risks sending the wrong amount. Nothing was submitted - check the network in Settings and try again.'
         )
       }
       const bond = (record.escrowedFee * multiplier) / 10_000n
@@ -289,7 +289,7 @@ export function remedyHandlers(ctx, kit) {
       } catch (err) {
         if (/insufficient funds/.test(err?.message ?? '')) {
           throw new Error(
-            'filing a dispute sends the bond on chain, and this wallet cannot cover the bond and gas — receive some LCAI first',
+            'filing a dispute sends the bond on chain, and this wallet cannot cover the bond and gas - receive some LCAI first',
             { cause: err }
           )
         }

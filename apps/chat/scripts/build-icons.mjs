@@ -87,6 +87,8 @@ const ICONS = {
   'i-copy': 'copy',
   'i-external': 'external-link',
   'i-refresh': 'refresh-cw',
+  // The site's loading mark: lucide-react's Loader2, spun (`animate-spin`).
+  'i-loader': 'loader-circle',
   'i-close': 'x',
   'i-more': 'ellipsis',
 

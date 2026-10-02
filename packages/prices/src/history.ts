@@ -209,7 +209,7 @@ export function seriesFrom(
 
 /** A change in basis points as something to read. */
 export function formatChange(changeBps: number | null): string {
-  if (changeBps === null) return '—'
+  if (changeBps === null) return '-'
   const sign = changeBps > 0 ? '+' : ''
   return `${sign}${(changeBps / 100).toFixed(2)}%`
 }

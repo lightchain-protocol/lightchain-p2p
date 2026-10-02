@@ -150,7 +150,7 @@ const holdingDialog = document.getElementById('holding-dialog')
 
 function showHolding(verdict) {
   const amount = (base) =>
-    base === null ? '—' : `${formatUnits(base, verdict.decimals)} ${verdict.symbol}`
+    base === null ? '-' : `${formatUnits(base, verdict.decimals)} ${verdict.symbol}`
 
   document.getElementById('holding-minimum').textContent = amount(verdict.minimum)
   document.getElementById('holding-balance').textContent = amount(verdict.balance)

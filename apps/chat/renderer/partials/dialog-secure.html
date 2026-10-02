@@ -43,8 +43,8 @@
           <h3 class="secure-layer-title">Where it sits on this disk <span class="secure-algo">XSalsa20</span></h3>
 
           <p>
-            Everything ever said in this room, in the folder on this machine. Copying that folder —
-            or being the blind peer that holds it — gets you ciphertext.
+            Everything ever said in this room, in the folder on this machine. Copying that folder -
+            or being the blind peer that holds it - gets you ciphertext.
           </p>
 
           <p>
@@ -56,13 +56,13 @@
 
           <p class="secure-caveat">
             No authentication tag. A stream cipher conceals a block; it cannot tell you a byte
-            changed. Detection belongs to the layer above it — a BLAKE2b Merkle tree over the log,
+            changed. Detection belongs to the layer above it - a BLAKE2b Merkle tree over the log,
             with an Ed25519 signature over the root.
           </p>
 
           <p class="secure-refs">
             <button class="secure-ref" type="button" data-kit-focus data-spec="https://doc.libsodium.org/advanced/stream_ciphers/xsalsa20">
-              libsodium — XSalsa20<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+              libsodium - XSalsa20<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
             <button class="secure-ref" type="button" data-kit-focus data-spec="https://www.blake2.net/">
               BLAKE2<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
@@ -83,7 +83,7 @@
           </p>
 
           <p>
-            @hyperswarm/secret-stream. A connection opens with a Noise XX handshake —
+            @hyperswarm/secret-stream. A connection opens with a Noise XX handshake -
             ChaCha20-Poly1305 for the handshake messages, BLAKE2b for the hashing, Ed25519 static
             keys through noise-curve-ed. The session that follows runs on XChaCha20-Poly1305 through
             libsodium's secretstream. It is a separate layer from the one above: the room's own
@@ -101,10 +101,10 @@
               The Noise Protocol Framework<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
             <button class="secure-ref" type="button" data-kit-focus data-spec="https://doc.libsodium.org/secret-key_cryptography/secretstream">
-              libsodium — secretstream<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+              libsodium - secretstream<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
             <button class="secure-ref" type="button" data-kit-focus data-spec="https://www.rfc-editor.org/rfc/rfc8439">
-              RFC 8439 — ChaCha20-Poly1305<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+              RFC 8439 - ChaCha20-Poly1305<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
           </p>
         </section>
@@ -113,7 +113,7 @@
           <h3 class="secure-layer-title">The wallet on this machine <span class="secure-algo">scrypt + AES-256-GCM</span></h3>
 
           <p>
-            The recovery phrase this machine signs with — not the room. A stolen vault file is an
+            The recovery phrase this machine signs with - not the room. A stolen vault file is an
             offline guessing problem, not a readable conversation.
           </p>
 
@@ -132,10 +132,10 @@
 
           <p class="secure-refs">
             <button class="secure-ref" type="button" data-kit-focus data-spec="https://www.rfc-editor.org/rfc/rfc7914">
-              RFC 7914 — scrypt<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+              RFC 7914 - scrypt<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
             <button class="secure-ref" type="button" data-kit-focus data-spec="https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf">
-              NIST SP 800-38D — GCM<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+              NIST SP 800-38D - GCM<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
           </p>
         </section>
@@ -167,7 +167,7 @@
 
           <p class="secure-refs">
             <button class="secure-ref" type="button" data-kit-focus data-spec="https://eips.ethereum.org/EIPS/eip-191">
-              EIP-191 — signed data standard<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
+              EIP-191 - signed data standard<svg class="icon" aria-hidden="true"><use href="#i-external" /></svg>
             </button>
           </p>
         </section>
@@ -181,7 +181,7 @@
           <ul class="secure-exposures">
             <li>
               <strong>That this room exists.</strong> Peers find each other by announcing the room's
-              discovery key — a BLAKE2b hash of the room key — on a public DHT. The hash does not
+              discovery key - a BLAKE2b hash of the room key - on a public DHT. The hash does not
               give up the key, but anyone watching that topic learns a room is there and that
               somebody is looking for it.
             </li>

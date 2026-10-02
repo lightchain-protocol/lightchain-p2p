@@ -81,7 +81,7 @@ export function renderChecks(doctor, network = null) {
     summary.className = 'worker-hint'
     summary.textContent =
       failing.length === 0
-        ? `Everything this machine needs is here — ${plural(host.length, 'check')} passed.`
+        ? `Everything this machine needs is here - ${plural(host.length, 'check')} passed.`
         : `${plural(failing.length, 'check')} of ${host.length} need attention.`
     el.workerChecks.append(summary)
   }
@@ -215,7 +215,7 @@ export function renderModels(payload) {
       alertNode(
         'warn',
         'The network could not be asked which models it wants',
-        'Refresh once it is reachable. Nothing is shown from memory here on purpose — a remembered list is an invitation to serve a model this network may have stopped paying for.'
+        'Refresh once it is reachable. Nothing is shown from memory here on purpose - a remembered list is an invitation to serve a model this network may have stopped paying for.'
       )
     )
     return
@@ -300,7 +300,7 @@ export function renderModels(payload) {
       alertNode(
         'warn',
         `Not offered on ${payload.network} any more`,
-        `This worker still declares ${stale.join(', ')}. ${plural(stale.length, 'model')} nothing will send it a job for — untick and retick the list to drop it.`
+        `This worker still declares ${stale.join(', ')}. ${plural(stale.length, 'model')} nothing will send it a job for - untick and retick the list to drop it.`
       )
     )
   }
@@ -315,7 +315,7 @@ export function renderModels(payload) {
       alertNode(
         'warn',
         `${plural(oversized.length, 'model')} larger than this machine can serve`,
-        `${oversized.map((model) => model.name).join(', ')} ${oversized.length === 1 ? 'needs' : 'need'} more memory than this machine has. The worker would take those jobs and fail them after the fee is escrowed — untick ${oversized.length === 1 ? 'it' : 'them'}, or run them on a bigger host.`
+        `${oversized.map((model) => model.name).join(', ')} ${oversized.length === 1 ? 'needs' : 'need'} more memory than this machine has. The worker would take those jobs and fail them after the fee is escrowed - untick ${oversized.length === 1 ? 'it' : 'them'}, or run them on a bigger host.`
       )
     )
   }
@@ -446,7 +446,7 @@ export function renderStake(stake) {
     const waiting = document.createElement('p')
     waiting.className = 'worker-hint'
     waiting.textContent =
-      'Waiting on step 3 — once the worker has a key, this step says what registering will stake and whether the key can cover it.'
+      'Waiting on step 3 - once the worker has a key, this step says what registering will stake and whether the key can cover it.'
     stakeBody.append(waiting)
     return
   }
@@ -467,7 +467,7 @@ export function renderStake(stake) {
       alertNode(
         'warn',
         'The chain could not be read',
-        'The stake requirement is unknown right now. Check the network setting and that the RPC is reachable, then refresh — registering without enough to stake fails at the transaction, and the fee is still spent.'
+        'The stake requirement is unknown right now. Check the network setting and that the RPC is reachable, then refresh - registering without enough to stake fails at the transaction, and the fee is still spent.'
       )
     )
     return
@@ -599,14 +599,14 @@ export function renderRegister(stake) {
     setSummary('worker-register-summary', 'done')
     button.disabled = true
     registerHint.textContent =
-      'This key is registered — the stake is posted. Step 6 runs the worker.'
+      'This key is registered - the stake is posted. Step 6 runs the worker.'
     return
   }
 
   if (!stake?.configured || stake.address === null) {
     setChip(registerState, 'warn', 'Waiting')
     button.disabled = true
-    registerHint.textContent = 'Registering needs a worker key — step 3.'
+    registerHint.textContent = 'Registering needs a worker key - step 3.'
     return
   }
 
@@ -614,7 +614,7 @@ export function renderRegister(stake) {
     setChip(registerState, 'warn', 'Waiting')
     button.disabled = true
     registerHint.textContent =
-      'The chain could not be read, so whether this key can cover the stake is unknown — step 4.'
+      'The chain could not be read, so whether this key can cover the stake is unknown - step 4.'
     return
   }
 
@@ -623,11 +623,11 @@ export function renderRegister(stake) {
     setChip(registerState, 'warn', 'Waiting')
     button.disabled = true
     registerHint.textContent =
-      'Fund the worker key first — step 4 says exactly how much is missing.'
+      'Fund the worker key first - step 4 says exactly how much is missing.'
     return
   }
 
   clearChip(registerState)
   button.disabled = false
-  registerHint.textContent = `Registering stakes ${lcai(stake.minimum)} LCAI — the live minimum — plus gas from ${truncate(stake.address, 6, 4)}. Before anything leaves the key you will be asked to confirm that exact amount and the worker registry it goes to.`
+  registerHint.textContent = `Registering stakes ${lcai(stake.minimum)} LCAI - the live minimum - plus gas from ${truncate(stake.address, 6, 4)}. Before anything leaves the key you will be asked to confirm that exact amount and the worker registry it goes to.`
 }

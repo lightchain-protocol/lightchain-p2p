@@ -264,13 +264,13 @@ export async function openAsset(asset) {
 
   document.getElementById('about-chain').textContent = `${asset.chainName} (chain ${asset.chainId})`
   document.getElementById('about-contract').textContent =
-    asset.address ?? `None — ${asset.symbol} is ${asset.chainName}'s own coin`
+    asset.address ?? `None - ${asset.symbol} is ${asset.chainName}'s own coin`
   document.getElementById('about-decimals').textContent = String(asset.decimals)
   document.getElementById('about-priced').textContent = asset.indicative
     ? 'A single Uniswap pool, which is the only market for it'
     : asset.pricedAs
       ? `A Chainlink ${asset.pricedAs}/USD feed, read from Ethereum`
-      : 'Nothing — there is no feed or pool for this one'
+      : 'Nothing - there is no feed or pool for this one'
 
   document.getElementById('about-note').textContent = asset.indicative
     ? 'That pool holds a few hundred thousand dollars, so the price can be moved cheaply. Treat it as indicative.'

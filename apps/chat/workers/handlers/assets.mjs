@@ -593,7 +593,7 @@ export function assetHandlers(ctx) {
 
       if (plan.toIsContract) {
         warnings.push(
-          `${plan.to} is a contract, not somebody's wallet. Tokens sent to a contract that was not written to receive them cannot be recovered — unlike a mistyped address, nothing catches this.`
+          `${plan.to} is a contract, not somebody's wallet. Tokens sent to a contract that was not written to receive them cannot be recovered - unlike a mistyped address, nothing catches this.`
         )
       }
 
@@ -644,8 +644,8 @@ export function assetHandlers(ctx) {
         // balance sends somebody topping up the wrong one.
         throw new Error(
           plan.isNative || plan.balance < plan.amount
-            ? `there is not enough ${plan.symbol} on ${plan.chainName} for this — the balance is ${readableAmount(plan.balance, plan.symbol, plan.decimals)}`
-            : `there is not enough ${plan.nativeSymbol} on ${plan.chainName} to pay the network fee — the balance is ${readableAmount(plan.nativeBalance, plan.nativeSymbol, 18)}, and the fee alone is up to ${readableAmount(plan.maxFee, plan.nativeSymbol, 18)}`
+            ? `there is not enough ${plan.symbol} on ${plan.chainName} for this - the balance is ${readableAmount(plan.balance, plan.symbol, plan.decimals)}`
+            : `there is not enough ${plan.nativeSymbol} on ${plan.chainName} to pay the network fee - the balance is ${readableAmount(plan.nativeBalance, plan.nativeSymbol, 18)}, and the fee alone is up to ${readableAmount(plan.maxFee, plan.nativeSymbol, 18)}`
         )
       }
 

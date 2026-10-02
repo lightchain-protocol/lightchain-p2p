@@ -24,7 +24,6 @@ export const el = {
   chatContext: document.getElementById('chat-context'),
   sidebar: document.getElementById('sidebar'),
   collapseBtn: document.getElementById('collapse-btn'),
-  themeBtn: document.getElementById('theme-btn'),
   accountBtn: document.getElementById('account-btn'),
   accountMark: document.getElementById('account-mark'),
   accountName: document.getElementById('account-name'),
@@ -160,6 +159,32 @@ export function skeleton(width, height = '1em') {
   return node
 }
 
+/**
+ * The kit's `.loading` state, built in script: the site's spinner and a line
+ * saying what is being waited on.
+ */
+export function loading(text) {
+  const box = el2('div', 'loading')
+  box.setAttribute('role', 'status')
+  const mark = svg('svg', { class: 'icon loading-mark', 'aria-hidden': 'true' })
+  const use = svg('use', { href: '#i-loader' })
+  mark.append(use)
+  const line = el2('p', 'loading-text')
+  line.textContent = text
+  box.append(mark, line)
+  return box
+}
+
+/**
+ * The same spinner, inline, where a figure is about to arrive: the site's
+ * `Loader2` at 16px beside the words it stands in for (`PresaleForm.tsx`).
+ */
+export function loadingInline() {
+  const mark = svg('svg', { class: 'icon loading-inline', 'aria-hidden': 'true' })
+  mark.append(svg('use', { href: '#i-loader' }))
+  return mark
+}
+
 export function short(key) {
   return truncate(key, 6, 4)
 }
@@ -219,7 +244,7 @@ function readable(value) {
   if (typeof value === 'object') {
     // Named rather than stringified. A dump of somebody's wallet state in a
     // toast is worse than a short admission that something is wrong.
-    return `unexpected ${Array.isArray(value) ? 'list' : 'value'} — see the console`
+    return `unexpected ${Array.isArray(value) ? 'list' : 'value'} - see the console`
   }
   return String(value)
 }

@@ -184,7 +184,7 @@ export function fits(
   machine: { availableVramBytes?: number; freeDiskBytes?: number }
 ): { ok: boolean; reason: string | null } {
   if (footprint.source === 'unknown') {
-    return { ok: true, reason: 'size unknown — this machine may or may not hold it' }
+    return { ok: true, reason: 'size unknown - this machine may or may not hold it' }
   }
   if (
     machine.availableVramBytes !== undefined &&

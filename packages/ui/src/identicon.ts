@@ -54,12 +54,9 @@ export const IDENTICON_SIZE = 5
  * at a 32px square, and a fourth colour nobody can tell from the first is not a
  * fourth colour.
  *
- * The green is `BRAND.avatar` and it used to be `LIGHT.success`, borrowed for
- * its value rather than its meaning. That coupling broke the first time the
- * status green was darkened to meet contrast on a hovered light row: every
- * avatar drawn in it fell below three to one on the dark page. A status colour
- * is tuned against one theme's surfaces and an avatar ink against both, so they
- * are now separate values that are free to move independently.
+ * The third is `BRAND.avatar`, the website's aurora orange: the one colour the
+ * brand owns that is far enough from both violet and magenta to read as a third
+ * colour at 32px.
  */
 export const IDENTICON_INK: readonly string[] = [BRAND.violet, BRAND.magenta, BRAND.avatar]
 

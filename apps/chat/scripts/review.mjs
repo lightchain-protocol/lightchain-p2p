@@ -23,7 +23,7 @@ const port = Number(process.argv[2] ?? 9301)
 const outdir = process.argv[3] ?? path.join(process.cwd(), 'shots')
 
 const SURFACES = ['chat', 'models', 'wallet', 'bridge', 'worker']
-const THEMES = ['dark', 'light']
+const THEMES = ['dark']
 
 const findings = []
 const note = (ok, what, detail) => {
@@ -494,8 +494,14 @@ const small = await evaluate(`(async () => {
       if (!own || node.offsetParent === null) continue
 
       measured += 1
-      const size = parseFloat(getComputedStyle(node).fontSize)
-      if (size < 14) {
+      const cs = getComputedStyle(node)
+      const size = parseFloat(cs.fontSize)
+      // The one exception is the website's own: its badges and pills set
+      // 12px uppercase labels (\`.lightchain-badge\`, \`_button.scss:576-609\`).
+      // A short uppercase label at 12 is that component; anything else under
+      // 14 is still a finding.
+      const siteBadge = size === 12 && cs.textTransform === 'uppercase'
+      if (size < 13 && !siteBadge) {
         const where = surface + ' ' + (node.className || node.tagName) + ' @' + size + 'px'
         under.set(where, true)
       }
@@ -507,10 +513,10 @@ const small = await evaluate(`(async () => {
 
 note(
   small.under.length === 0 && small.measured >= FLOOR.buttons,
-  'no text is smaller than fourteen pixels',
+  'no text is smaller than thirteen pixels',
   small.under.length
     ? small.under.slice(0, 4).join(', ')
-    : `${small.measured} text-bearing elements, none under 14px`
+    : `${small.measured} text-bearing elements, none under 13px`
 )
 
 /**

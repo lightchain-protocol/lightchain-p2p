@@ -45,7 +45,7 @@ export function createRegistration(ctx) {
     // amount is unknowable, and an unknown amount cannot be confirmed:
     // registering is refused rather than launched blind.
     if (probe.address === null) {
-      throw new Error(probe.problem ?? 'registering needs a worker key — step 3 of the panel')
+      throw new Error(probe.problem ?? 'registering needs a worker key - step 3 of the panel')
     }
     if (probe.registered) return null
     if (probe.problem !== null || probe.minimum === undefined) {
@@ -70,7 +70,7 @@ export function createRegistration(ctx) {
       const short = probe.minimum + GAS_HEADROOM - probe.balance
       throw new Error(
         `this key is short ${readableAmount(short, NETWORKS[resolved.network]?.symbol ?? 'LCAI')} ` +
-          'of the stake and its gas — fund it first, step 4 of the panel says how much'
+          'of the stake and its gas - fund it first, step 4 of the panel says how much'
       )
     }
 

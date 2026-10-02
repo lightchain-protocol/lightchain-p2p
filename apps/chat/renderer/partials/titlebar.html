@@ -18,14 +18,18 @@
     <a class="skip-link" href="#content">Skip to content</a>
 
     <header class="titlebar" id="titlebar">
-      <span class="titlebar-brand">
-        <svg class="titlebar-wordmark" role="img" aria-label="Lightchain">
-          <use href="#i-wordmark" />
-        </svg>
-        <span class="titlebar-suffix">Chat</span>
-      </span>
-
       <span class="titlebar-spacer"></span>
+
+      <!-- Whether this machine is talking to anybody, and whether the wallet
+           is open: facts about the whole application, beside the network
+           they are about. The lock chip only appears when it applies. -->
+      <div class="titlebar-state">
+        <span class="titlebar-status" id="status" role="status" data-state="busy">starting</span>
+        <button class="titlebar-locked" type="button" id="sidebar-locked" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+          <span>Wallet locked</span>
+        </button>
+      </div>
 
       <!-- The only control the bar ever carries by itself, hidden until there
            is something to apply. renderer/lib/ipc.js resolves it by id. -->
@@ -48,7 +52,7 @@
         title="Change the network in Settings"
       >
         <span class="network-dot" aria-hidden="true"></span>
-        <span class="network-pill-name" id="network-pill-name">—</span>
+        <span class="network-pill-name" id="network-pill-name">-</span>
         <svg class="icon" aria-hidden="true"><use href="#i-chevron" /></svg>
       </button>
 

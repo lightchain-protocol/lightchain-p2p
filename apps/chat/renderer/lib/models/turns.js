@@ -163,7 +163,7 @@ export function reportBlock(item, link) {
         { timeout: 5 * 60_000 }
       )
       text.textContent =
-        'Reported. The reviewer’s decision lands on chain — the bond, and the fee, come back if they agree with you.'
+        'Reported. The reviewer’s decision lands on chain - the bond, and the fee, come back if they agree with you.'
       status.remove()
       actions.remove()
       link.remove()
@@ -252,8 +252,8 @@ export function followUpOnJob(item, jobId) {
     if (claimable) {
       say(
         named === 'disputed'
-          ? 'This job’s dispute was never resolved in time, so the fee is recoverable — claim it and it comes back to your prepaid balance.'
-          : 'The deadline for an answer has passed and none came. The fee is recoverable — claim it and it comes back to your prepaid balance.'
+          ? 'This job’s dispute was never resolved in time, so the fee is recoverable - claim it and it comes back to your prepaid balance.'
+          : 'The deadline for an answer has passed and none came. The fee is recoverable - claim it and it comes back to your prepaid balance.'
       )
       actions.append(claimButton())
       return
@@ -281,7 +281,7 @@ export function followUpOnJob(item, jobId) {
     }
 
     if (named === 'resolved' || named === 'released') {
-      say('This job is settled on chain — the claim window has passed.')
+      say('This job is settled on chain - the claim window has passed.')
       return
     }
 

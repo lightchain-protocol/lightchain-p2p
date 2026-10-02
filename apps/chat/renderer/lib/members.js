@@ -558,7 +558,7 @@ function removalDialog() {
       'p',
       'dialog-body',
       'They will still be able to read this room, and everything they have already ' +
-        'written stays exactly where it is. Nothing is erased and nothing is hidden — ' +
+        'written stays exactly where it is. Nothing is erased and nothing is hidden - ' +
         'they did write it.'
     ),
     who,

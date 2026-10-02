@@ -255,7 +255,7 @@ export function swapHandlers(ctx) {
     const found = await pool.use((rpc) => findPool(rpc, input.tokenIn, LCAI_MAINNET))
     if (!found) {
       throw new Error(
-        'no Uniswap pool between that asset and LCAI has any liquidity right now. LCAI trades in one thin pool against WETH — ether or WETH are the inputs it can take.'
+        'no Uniswap pool between that asset and LCAI has any liquidity right now. LCAI trades in one thin pool against WETH - ether or WETH are the inputs it can take.'
       )
     }
 
@@ -351,7 +351,7 @@ export function swapHandlers(ctx) {
     // fee without one, and are left to the balance checks below.
     if (input.tokenIn === UNISWAP.weth && maxFee > input.amount) {
       throw new Error(
-        `this swap is too small to be worth its network fee — swapping ${readableAmount(input.amount, input.symbol, input.decimals)} would pay up to ${readableAmount(maxFee, 'ETH')} in fees alone`
+        `this swap is too small to be worth its network fee - swapping ${readableAmount(input.amount, input.symbol, input.decimals)} would pay up to ${readableAmount(maxFee, 'ETH')} in fees alone`
       )
     }
     const enough = input.isNative
@@ -485,7 +485,7 @@ export function swapHandlers(ctx) {
       const held = await pool.use((rpc) => balanceOf(rpc, input.token.address, input.address))
       if (input.amount > held) {
         throw new Error(
-          `that is more than this address holds — the balance is ${readableAmount(held, input.symbol, input.decimals)}`
+          `that is more than this address holds - the balance is ${readableAmount(held, input.symbol, input.decimals)}`
         )
       }
 
@@ -562,8 +562,8 @@ export function swapHandlers(ctx) {
       if (!plan.enough) {
         throw new Error(
           input.isNative
-            ? `there is not enough ether for this plus its network fee — the balance is ${readableAmount(plan.nativeBalance, 'ETH')}`
-            : `there is not enough ${input.symbol} for this — the balance is ${readableAmount(plan.tokenBalance, input.symbol, input.decimals)}`
+            ? `there is not enough ether for this plus its network fee - the balance is ${readableAmount(plan.nativeBalance, 'ETH')}`
+            : `there is not enough ${input.symbol} for this - the balance is ${readableAmount(plan.tokenBalance, input.symbol, input.decimals)}`
         )
       }
 

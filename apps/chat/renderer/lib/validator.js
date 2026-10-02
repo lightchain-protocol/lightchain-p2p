@@ -210,7 +210,7 @@ function renderNetwork(info) {
       alertNode(
         'warn',
         'The beacon chain could not be read',
-        'Every figure this page needs — what a validator stakes, where the deposit goes, which fork it is signed under — comes from the chain itself. None of it is guessed while it is unreachable, because a deposit signed against a guessed fork version is one this chain ignores, with the stake already spent.'
+        'Every figure this page needs - what a validator stakes, where the deposit goes, which fork it is signed under - comes from the chain itself. None of it is guessed while it is unreachable, because a deposit signed against a guessed fork version is one this chain ignores, with the stake already spent.'
       )
     )
     return
@@ -223,9 +223,9 @@ function renderNetwork(info) {
   // doing it. Head slot and the contract address are for the Details pane, not
   // for the first thing somebody reads.
   for (const [term, value] of [
-    ['To activate', info.activationWei === null ? '—' : `${lcai(info.activationWei)} LCAI`],
-    ['Ejected below', info.ejectionWei === null ? '—' : `${lcai(info.ejectionWei)} LCAI`],
-    ['Validators now', info.validators === null ? '—' : String(info.validators)]
+    ['To activate', info.activationWei === null ? '-' : `${lcai(info.activationWei)} LCAI`],
+    ['Ejected below', info.ejectionWei === null ? '-' : `${lcai(info.ejectionWei)} LCAI`],
+    ['Validators now', info.validators === null ? '-' : String(info.validators)]
   ]) {
     const dt = document.createElement('dt')
     dt.textContent = term
@@ -252,7 +252,7 @@ function renderKeys(info) {
   if (!info || info.reachable === false) {
     setChip(keysState, 'warn', 'Waiting')
     keysBody.append(
-      hint('Waiting on the beacon chain — keys cannot be signed without its fork version.')
+      hint('Waiting on the beacon chain - keys cannot be signed without its fork version.')
     )
     return
   }
@@ -263,7 +263,7 @@ function renderKeys(info) {
     const warn = alertNode(
       'warn',
       'Write this phrase down now',
-      'It is shown once and stored nowhere — not on this machine, not by this app. It is the only way back to these validators, and anyone who has it can sign for them.'
+      'It is shown once and stored nowhere - not on this machine, not by this app. It is the only way back to these validators, and anyone who has it can sign for them.'
     )
     keysBody.append(warn)
 
@@ -337,7 +337,7 @@ function renderKeys(info) {
   if (info.activationWei !== null) {
     keysBody.append(
       hint(
-        `${lcai(info.activationWei)} LCAI each to activate. Making keys costs nothing — step 2 is the irreversible part.`
+        `${lcai(info.activationWei)} LCAI each to activate. Making keys costs nothing - step 2 is the irreversible part.`
       )
     )
   }
@@ -355,7 +355,7 @@ function renderDeposit(info, keys) {
       hint(
         already > 0
           ? `${already === 1 ? 'One deposit has' : `${already} deposits have`} been sent from this machine. Step 4 says what the chain has done with them.`
-          : 'Waiting on step 1 — a deposit needs a key to deposit for.'
+          : 'Waiting on step 1 - a deposit needs a key to deposit for.'
       )
     )
     return
@@ -482,7 +482,7 @@ function renderWatch(keys, info) {
 
     const balance = document.createElement('span')
     balance.className = 'validator-deposit-amount'
-    balance.textContent = entry.balanceWei === null ? '—' : `${lcai(entry.balanceWei)} LCAI`
+    balance.textContent = entry.balanceWei === null ? '-' : `${lcai(entry.balanceWei)} LCAI`
 
     row.append(key, state, balance)
     watchBody.append(row)
@@ -524,7 +524,7 @@ function renderVerdict(info, keys) {
   if (entries.length > 0) {
     setVerdict(
       'warn',
-      'Deposited — waiting for activation',
+      'Deposited - waiting for activation',
       'The chain processes deposits in a queue. Step 3 has to be running by the time it reaches yours.'
     )
     offers[2] = null
@@ -547,7 +547,7 @@ function renderVerdict(info, keys) {
     'Next: create validator keys',
     info.activationWei === null
       ? 'Making keys costs nothing and commits nothing.'
-      : `${info.validators ?? '—'} validators on ${info.network}, ${lcai(info.activationWei)} LCAI each to activate.`
+      : `${info.validators ?? '-'} validators on ${info.network}, ${lcai(info.activationWei)} LCAI each to activate.`
   )
   // Creating keys is a form in the step; there is nothing else to press.
   offers[0] = null
@@ -564,6 +564,9 @@ export async function refreshValidator() {
   // beacon chain is being read rather than a rule with nothing under it.
   const waiting = document.getElementById('validator-waiting')
   if (waiting) waiting.hidden = false
+  // The whole page waits, not one box among empty ones.
+  const body = document.getElementById('validator-body')
+  body?.classList.add('is-loading')
 
   try {
     const [info, keys] = await Promise.all([
@@ -582,6 +585,7 @@ export async function refreshValidator() {
     setVerdict('fail', 'Could not read the beacon chain', err.message)
   } finally {
     if (waiting) waiting.hidden = true
+    body?.classList.remove('is-loading')
     refreshing = false
     refresh.disabled = false
   }

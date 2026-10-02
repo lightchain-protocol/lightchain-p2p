@@ -10,6 +10,7 @@ import { request } from '../ipc.js'
 import { ai, ui } from './elements.js'
 import { fundingNotice, listAlert, renderNotices } from './format.js'
 
+import { gateFor, renderGate } from './gate.js'
 import { renderModels, showWaiting } from './list.js'
 import { refreshHistory, renderConversations } from './history.js'
 
@@ -74,8 +75,10 @@ export async function refreshModels() {
     ai.list.replaceChildren()
     ui.conversations = []
     ui.funding = null
+    ui.gate = null
     renderConversations()
     renderNotices()
+    renderGate(refreshModels)
     listAlert.show({
       tone: 'info',
       heading: 'The wallet is locked',
@@ -110,8 +113,13 @@ export async function refreshModels() {
   }
 
   try {
-    ui.funding = fundingNotice(await request('ai.status'))
+    const funds = await request('ai.status')
+    // The gate says it before anything is picked; the standing notice is for
+    // what the gate does not cover. Never both.
+    ui.gate = gateFor(funds)
+    ui.funding = ui.gate === null ? fundingNotice(funds) : null
   } catch (err) {
+    ui.gate = null
     // Not knowing is its own state. Reporting it as funded would let somebody
     // spend a minute on a draw that the chain was never going to allow.
     ui.funding = {
@@ -120,5 +128,7 @@ export async function refreshModels() {
     }
   }
 
+  renderModels()
   renderNotices()
+  renderGate(refreshModels)
 }

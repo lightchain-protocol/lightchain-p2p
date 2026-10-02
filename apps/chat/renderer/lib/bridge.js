@@ -364,8 +364,8 @@ statusCheck?.addEventListener('click', async () => {
     })
 
     statusNote.textContent = arrival.grew
-      ? `It arrived — your balance on ${arrival.chainName} is now ${arrival.balanceText}. ${arrival.note}`
-      : `Not yet — your balance on ${arrival.chainName} is still ${arrival.balanceText}. ${arrival.note}`
+      ? `It arrived - your balance on ${arrival.chainName} is now ${arrival.balanceText}. ${arrival.note}`
+      : `Not yet - your balance on ${arrival.chainName} is still ${arrival.balanceText}. ${arrival.note}`
 
     if (arrival.grew) {
       // Seen to arrive, so it stops being pending — on the worker's copy too,

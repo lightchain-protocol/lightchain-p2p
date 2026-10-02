@@ -192,7 +192,7 @@ function checkOllama(probe: OllamaProbe | undefined, req: Requirements): CheckRe
             probe.cliPresent === true
               ? `Ollama is installed but nothing answered on port ${req.ollamaPort}`
               : `nothing answered on port ${req.ollamaPort}`,
-            'Start Ollama — the Earn page has a button for it — and it will answer on port 11434.',
+            'Start Ollama - the Earn page has a button for it - and it will answer on port 11434.',
             'start-ollama'
           )
     ]
@@ -246,7 +246,7 @@ function checkOllama(probe: OllamaProbe | undefined, req: Requirements): CheckRe
         `model:${model}`,
         `Model ${model}`,
         `not present. Ollama reports: ${tags.length ? tags.join(', ') : 'no models at all'}`,
-        `The Earn page can fetch it — several gigabytes, once. It pulls the upstream tag and then names a copy ${model}, and that second half is what matters: the name has to match SUPPORTED_MODELS or the worker cannot resolve queued jobs.`,
+        `The Earn page can fetch it - several gigabytes, once. It pulls the upstream tag and then names a copy ${model}, and that second half is what matters: the name has to match SUPPORTED_MODELS or the worker cannot resolve queued jobs.`,
         'fetch-model'
       )
     )
@@ -284,7 +284,7 @@ function checkGpu(
         id,
         title,
         `${probe.name ?? 'Apple GPU'} shares ${formatBytes(pool)} with the system`,
-        `The chosen models need ${formatBytes(req.minVramBytes)} resident. Unified memory is shared, not additional — choose a smaller model, or the job will be accepted and then fail.`
+        `The chosen models need ${formatBytes(req.minVramBytes)} resident. Unified memory is shared, not additional - choose a smaller model, or the job will be accepted and then fail.`
       )
     }
     return pass(

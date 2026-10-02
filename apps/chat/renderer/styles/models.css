@@ -23,6 +23,7 @@
  * the widest model name happens to give it.
  */
 .ai {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(26ch, 34ch) minmax(0, 1fr);
   flex: 1 1 auto;
@@ -45,8 +46,10 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  /* The site's dashboard left panel (`dashboard/_dashboard.scss:5-16`): the
+     page colour with a hairline on its right. */
   border-right: 1px solid var(--lc-rule);
-  background: var(--lc-bg-elevated);
+  background: var(--lc-surface-1);
 }
 
 .ai-models-head {
@@ -80,26 +83,31 @@
   width: 100%;
   padding: var(--lc-space-sm) var(--lc-space-md);
   border: 0;
-  border-radius: var(--lc-radius-md);
+  /* The site's dashboard sidebar item (`dashboard/_dashboard.scss:110-125`):
+     6px corners, `transition: 0.4s`, and hover and current alike drawn as the
+     card colour with the primary on the text. */
+  border-radius: var(--lc-radius-sm);
   background: transparent;
-  color: var(--lc-fg);
+  color: var(--lc-text-primary);
   text-align: left;
   cursor: default;
+  transition: all var(--lc-motion-slow) var(--lc-easing);
 }
 
-.model:hover {
-  background: var(--lc-bg-elevated-2);
-}
-
+.model:hover,
 .model.is-active {
-  background: var(--lc-bg-elevated-2);
-  box-shadow: inset 2px 0 0 var(--lc-brand);
+  background: var(--lc-surface-2);
+}
+
+.model:hover .model-name,
+.model.is-active .model-name {
+  color: var(--lc-accent);
 }
 
 /* Dimmed, but never only dimmed: a model that cannot be asked carries a chip
-   saying which of the two reasons it is. */
+   saying which of the two reasons it is. Half, as the site's disabled controls. */
 .model:disabled {
-  opacity: 0.45;
+  opacity: 0.5;
 }
 
 .model-name {
@@ -107,6 +115,7 @@
   font-size: var(--lc-text-sm);
   font-weight: 500;
   overflow-wrap: anywhere;
+  transition: color var(--lc-motion-slow) var(--lc-easing);
 }
 
 /* Price on the left, availability on the right. Run together as
@@ -123,7 +132,7 @@
   display: block;
   margin-top: 2px;
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -145,7 +154,7 @@
 .model-avail {
   flex: 0 0 auto;
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -161,23 +170,26 @@
 .model-waiting {
   padding: var(--lc-space-sm) var(--lc-space-md);
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
 /* Zero published models is a sentence and an action, not a void: what would be
-   here, and the press that could change it. */
+   here, and the press that could change it. Studio's note (`aiView.ts`,
+   `.lc-note`): the inset well, a hairline, 10px corners. */
 .model-empty {
   margin: var(--lc-space-md) var(--lc-space-sm);
   padding: var(--lc-space-lg) var(--lc-space-md);
-  border: 1px dashed var(--lc-rule);
+  border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
+  background: var(--lc-inset);
   text-align: center;
 }
 
+/* Studio's empty-thread line (`aiView.ts`, `.lc-empty p`): 14px Neutral-200. */
 .model-empty-text {
   margin: 0 0 var(--lc-space-md);
-  font-size: var(--lc-text-sm);
-  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-text-secondary);
   text-wrap: pretty;
 }
 
@@ -284,7 +296,8 @@
 }
 
 /* Not `.empty-title`: the model's name is already a page title directly above,
-   and two headings at that size read as two pages rather than one. */
+   and two headings at that size read as two pages rather than one. The
+   dashboard card title instead: 20 / 600 at -0.2px, the strongest text colour. */
 .ai-phase {
   display: flex;
   align-items: center;
@@ -294,40 +307,26 @@
   font-size: var(--lc-text-lg);
   font-weight: 600;
   line-height: var(--lc-leading-tight);
+  letter-spacing: -0.2px;
+  color: var(--lc-text-strong);
 }
 
 /* Something moving, because a minute of a static sentence is indistinguishable
-   from a minute of a hung window. */
+   from a minute of a hung window. Studio's working spinner (`aiView.ts`,
+   `.lc-spin`), drawn on the box itself at the kit spinner's size: the three
+   dots the markup carries are not a shape either source has. */
 .ai-dots {
-  display: inline-flex;
-  gap: 3px;
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid rgba(204, 206, 239, 0.25);
+  border-top-color: var(--lc-accent-bar);
+  border-radius: var(--lc-radius-pill);
+  animation: lc-spin 0.8s linear infinite;
 }
 
 .ai-dots i {
-  width: 5px;
-  height: 5px;
-  border-radius: var(--lc-radius-pill);
-  background: var(--lc-fg-dim);
-  animation: ai-dot 1.2s ease-in-out infinite;
-}
-
-.ai-dots i:nth-child(2) {
-  animation-delay: 0.15s;
-}
-
-.ai-dots i:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-@keyframes ai-dot {
-  0%,
-  60%,
-  100% {
-    opacity: 0.3;
-  }
-  30% {
-    opacity: 1;
-  }
+  display: none;
 }
 
 /* --- Failures ------------------------------------------------------------- */
@@ -342,7 +341,7 @@
  */
 .ai-alert-text {
   margin: var(--lc-space-xs) 0 0;
-  color: var(--lc-fg-muted);
+  color: inherit;
   overflow-wrap: anywhere;
 }
 
@@ -424,32 +423,23 @@
   flex-direction: row-reverse;
 }
 
-/* The hairline is what makes a bubble a bubble on a light background, where
-   the raised surface is only a couple of steps off the page behind it. */
+/* Studio's AI panel (`aiView.ts`): the reply is bare text in the heading
+   colour, with no box round it. */
 .ai-transcript .message-bubble {
   min-width: 0;
-  padding: 6px var(--lc-space-md) var(--lc-space-sm);
-  border-radius: var(--lc-radius-bubble);
-  background: var(--lc-surface-2);
-  box-shadow: inset 0 0 0 1px var(--lc-rule);
+  padding: 0;
+  color: var(--lc-text-primary);
+  font-size: var(--lc-text-sm);
 }
 
-/* Accent-tinted rather than one more grey: which side a turn is on is the
-   fastest way to read a conversation. */
+/* Studio's user message (`aiView.ts`, `.lc-msg-user`): the card wash, a
+   six-percent hairline, 10px corners, the strongest text. */
 .ai-transcript .message.is-own .message-bubble {
-  background: var(--lc-accent-soft);
-  box-shadow: inset 0 0 0 1px transparent;
-}
-
-/* The corner nearest its speaker is squared off, which is what makes a bubble
-   point at somebody rather than float. */
-.ai-transcript .message .message-bubble {
-  border-bottom-left-radius: var(--lc-radius-sm);
-}
-
-.ai-transcript .message.is-own .message-bubble {
-  border-bottom-left-radius: var(--lc-radius-bubble);
-  border-bottom-right-radius: var(--lc-radius-sm);
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-card);
+  color: var(--lc-text-strong);
 }
 
 .ai-transcript .message-meta {
@@ -460,13 +450,14 @@
   margin-bottom: 2px;
   font-size: var(--lc-text-xs);
   line-height: var(--lc-leading-tight);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
+/* Studio's step label (`aiView.ts`, `.lc-step__label b`): Neutral-200 at 500.
+   In Inter: it is a name ("You", a model), not an address. */
 .ai-transcript .message-author {
-  font-family: var(--lc-mono);
   font-weight: 500;
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
 }
 
 .ai-transcript .message-text {
@@ -503,7 +494,6 @@
   max-width: 56ch;
   margin-top: var(--lc-space-md);
   text-align: center;
-  font-style: italic;
   color: var(--lc-text-secondary);
 }
 
@@ -513,12 +503,13 @@
   line-height: var(--lc-leading-normal);
 }
 
-/* The assistant's turn while tokens are still arriving. */
+/* The assistant's turn while tokens are still arriving: Studio's caret
+   (`aiView.ts`, `.cursor::after`), magenta, on and off each half second. */
 .ai-transcript .message.is-streaming .message-text::after {
-  content: '▋';
+  content: '▍';
   margin-left: 2px;
-  color: var(--lc-fg-dim);
-  animation: blink 1s steps(2, start) infinite;
+  color: var(--lc-accent-bar);
+  animation: ai-caret 1s steps(1) infinite;
 }
 
 /* --- The job behind a turn -------------------------------------------------- */
@@ -546,7 +537,7 @@
   margin: 0;
   font-size: var(--lc-text-xs);
   line-height: var(--lc-leading-normal);
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
 }
 
 /* An empty status paragraph still takes its line-height without this, and the
@@ -563,9 +554,9 @@
   margin-top: var(--lc-space-sm);
 }
 
-@keyframes blink {
-  to {
-    visibility: hidden;
+@keyframes ai-caret {
+  50% {
+    opacity: 0;
   }
 }
 
@@ -573,7 +564,7 @@
    For a reader who asked for no motion they simply hold still — the words
    already say what is happening. */
 @media (prefers-reduced-motion: reduce) {
-  .ai-dots i,
+  .ai-dots,
   .ai-transcript .message.is-streaming .message-text::after {
     animation: none;
   }
@@ -592,7 +583,161 @@
   width: 100%;
 }
 
-.input-sm {
-  min-height: var(--lc-control-sm);
-  font-size: var(--lc-type-caption);
+/* The site's field at the small size Studio sets it (`interact.ts`, `input`):
+   40 high, 14px. */
+.ai-filter .input-sm {
+  height: var(--lc-control-sm);
+  font-size: var(--lc-text-xs);
+}
+
+/* --- Nothing can be paid for yet -------------------------------------------- */
+
+/**
+ * The gate, over the whole panel.
+ *
+ * The site's wallet-modal overlay (`reown/_wallet.scss`: black at 0.7 under a
+ * 4px blur), so the list stays visible behind it — what there is to ask, and
+ * the price of each — while it cannot be picked.
+ */
+.ai-gate {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: var(--lc-space-xl);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  animation: lc-panel-in var(--lc-motion-base) var(--lc-easing);
+}
+
+/* The site's small modal (`dashboard/_modal-box.scss`: 500px, the card colour,
+   10px corners, 40px inside on a small screen) with its primary blur in the
+   top-left corner (`.top-flashlight.light-xl`). */
+.ai-gate-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  justify-items: start;
+  gap: var(--lc-space-md);
+  width: min(500px, 100%);
+  padding: 40px;
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-surface-2);
+  box-shadow: var(--lc-shadow-3);
+}
+
+.ai-gate-card::before {
+  content: '';
+  position: absolute;
+  top: -150px;
+  left: -150px;
+  width: 300px;
+  height: 150px;
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-accent);
+  filter: blur(140px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* The site's nav card icon (`header/_nav.scss`): a 36px disc in a wash of
+   the heading colour. */
+.ai-gate-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--lc-radius-pill);
+  background: rgba(204, 206, 239, 0.1);
+  color: var(--lc-accent);
+}
+
+.ai-gate-icon .icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* The dashboard title and its line (`dashboard/_dashboard.scss:2341-2366`), at
+   the app's density. */
+.ai-gate-title {
+  margin: var(--lc-space-xs) 0 0;
+  font-size: var(--lc-text-xxl);
+  font-weight: 600;
+  line-height: var(--lc-leading-tight);
+  letter-spacing: -0.01em;
+  color: var(--lc-text-primary);
+}
+
+.ai-gate-body {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-text-secondary);
+  text-wrap: pretty;
+}
+
+/* Studio's connect-page steps (`connectPage.ts:46-48`): hairline rows at 10px
+   corners, `12px 15px`; the current one firms its edge and its words, a done
+   one turns the success colour. */
+.ai-gate-steps {
+  display: grid;
+  gap: var(--lc-space-sm);
+  width: 100%;
+  margin: var(--lc-space-xs) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-gate-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 15px;
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-text-tertiary);
+}
+
+.ai-gate-step.is-now {
+  border-color: rgba(204, 206, 239, 0.16);
+  color: var(--lc-text-strong);
+}
+
+.ai-gate-step.is-done {
+  color: var(--lc-success);
+}
+
+.ai-gate-step-mark {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border: 1px solid currentcolor;
+  border-radius: var(--lc-radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ai-gate-step.is-now .ai-gate-step-mark {
+  border-color: transparent;
+  background: var(--lc-tab-gradient);
+  color: var(--lc-on-brand);
+}
+
+.ai-gate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lc-space-sm);
+  margin-top: var(--lc-space-sm);
+}
+
+.ai-gate-note {
+  margin: 0;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-text-tertiary);
 }

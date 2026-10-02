@@ -50,7 +50,7 @@ const AMOUNT = '1000'
 const word = (value) => `0x${value.toString(16).padStart(64, '0')}`
 
 function ctxWith({ allowed = 0n, held = 0n, nativeBalance = 0n } = {}) {
-  /** Every eth_call, as `{ to, data }` — the record of which contract was asked what. */
+  /** Every eth_call, as `{ to, data }` - the record of which contract was asked what. */
   const calls = []
   /** The chain ids the planner pooled, in order. */
   const pooled = []

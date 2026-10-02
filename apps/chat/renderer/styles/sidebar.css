@@ -16,11 +16,11 @@
      lives in `packages/ui` where both can read it. */
   width: var(--lc-sidebar-width);
   flex: 0 0 auto;
-  /* A shade under the page rather than a shade over it. The wallet sinks its
-     rail; lifting it made the sidebar read as the content and the content as
-     the background. */
-  background: var(--lc-bg-sidebar);
-  border-right: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
+  /* The site's dashboard sidebar, `lcai-left-panel`
+     (`scss/dashboard/_dashboard:5-17`): the page fill and a `--color-border`
+     rule down its right edge. */
+  background: var(--lc-surface-1);
+  border-right: 1px solid var(--lc-rule);
   transition: width var(--lc-motion-base) var(--lc-easing);
 }
 
@@ -43,100 +43,39 @@
   transition: transform var(--lc-motion-base) var(--lc-easing);
 }
 
-/* --- The two facts at the top ---------------------------------------------- */
+/* --- The logo --------------------------------------------------------------- */
 
-/* Only on screen when there is something to say. An "everything is fine" banner
-   is a banner people stop reading, which is exactly when it needs to work. */
-/**
- * The two facts, on the head row rather than under it.
- *
- * They were a column of their own below the fold-away control, which made the
- * top of the sidebar three stacked rows — a 38px button on a 58px row, then the
- * connection, then the list header — before a single conversation. A row costs
- * one of those instead of three. Wrapping, because the lock only appears when
- * it applies and "connected · Wallet locked" is wider than a folded sidebar.
- */
-.sidebar-state {
-  display: flex;
+/* The site header's logo (`public/images/logo/logo.svg`: the mark in the logo
+   gradient, the name in #f3f3f3), at the head of the column the way the site
+   sets it at the head of its page — 24px tall here, to sit beside the fold
+   control inside the 236px rail. */
+.sidebar-brand {
+  display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--lc-space-xs) var(--lc-space-sm);
+  gap: var(--lc-space-sm);
   min-width: 0;
-  flex: 1 1 auto;
 }
 
-.sidebar-status {
-  font-size: var(--lc-type-caption);
-  color: var(--lc-text-tertiary);
-  display: flex;
-  align-items: center;
-  gap: var(--lc-space-xs);
-  min-height: var(--lc-space-lg);
-}
-
-.sidebar-status::before {
-  content: '';
-  width: 7px;
-  height: 7px;
-  border-radius: var(--lc-radius-pill);
-  background: currentcolor;
+.sidebar-wordmark {
+  height: 24px;
+  width: calc(24px * (1200 / 251));
   flex: 0 0 auto;
+  stroke: none;
+  color: #f3f3f3;
 }
 
-.sidebar-status[data-state='ok'] {
-  color: var(--lc-success);
-}
-
-.sidebar-status[data-state='busy'] {
-  color: var(--lc-text-tertiary);
-}
-
-.sidebar-status[data-state='busy']::before {
-  animation: pulse 1.6s ease-in-out infinite;
-}
-
-/* The pulse is a real duration, not a motion token, so it cannot zero itself
-   out at the source the way the tokens do. For a reader who asked for no
-   motion the dot simply holds still — lit, which is the fact the pulse was
-   repeating. */
-@media (prefers-reduced-motion: reduce) {
-  .sidebar-status[data-state='busy']::before {
-    animation: none;
-  }
-}
-
-.sidebar-status[data-state='bad'] {
-  color: var(--lc-danger);
-}
-
-/* A locked wallet is a fact about the whole application, so it is here rather
-   than on a panel somebody has to have opened. It is a button because the only
-   useful response is to go and unlock it. */
-.sidebar-locked {
-  display: flex;
-  align-items: center;
-  gap: var(--lc-space-xs);
-  width: 100%;
-  padding: var(--lc-space-xs) var(--lc-space-sm);
-  border: 1px solid transparent;
-  border-radius: var(--lc-radius-sm);
-  background: var(--lc-warning-soft);
-  color: var(--lc-warning);
-  font-size: var(--lc-type-caption);
-  font-weight: var(--lc-weight-medium);
-  text-align: left;
-  cursor: pointer;
-}
-
-.sidebar-locked:hover {
-  border-color: var(--lc-warning);
-}
-
-.sidebar-locked .icon {
-  width: var(--lc-control-icon);
-  height: var(--lc-control-icon);
+.sidebar-mark {
+  display: none;
+  width: 24px;
+  height: 24px;
   flex: 0 0 auto;
+  stroke: none;
+}
+
+/* What this application is, beside whose it is. */
+.sidebar-suffix {
+  font-size: var(--lc-text-md);
+  color: var(--lc-text-tertiary);
 }
 
 /* --- The conversations: header, pinned actions, then the list ---------------- */
@@ -161,16 +100,18 @@
 }
 
 /* A label, not a nav item. "Conversations" names what the list is; the list
-   itself is the destination, and the same word was briefly both, which put
-   one destination on screen twice. */
-/* The same micro-caps as the group title below it. Two labels doing the same
-   job in two voices is how a rail stops looking designed. */
-.sidebar-rooms-title {
-  font-size: var(--lc-text-xs);
+   itself is the destination. Both labels in this column are the site's menu
+   label, `lcai-short-title` (`scss/header/_nav:334-343`), an h3 in the
+   heading colour: 12 / 600, uppercase, half a pixel of tracking, at half
+   opacity. */
+.sidebar-rooms-title,
+.sidebar-group-title {
+  font-size: 12px;
   font-weight: var(--lc-weight-semibold);
-  color: var(--lc-text-tertiary);
-  letter-spacing: 0.13em;
+  color: var(--lc-text-primary);
+  letter-spacing: 0.5px;
   text-transform: uppercase;
+  opacity: 0.5;
 }
 
 .sidebar-actions {
@@ -189,13 +130,28 @@
   padding: 0 var(--lc-space-sm);
 }
 
+/* The site's sidebar list sets `li { margin: 5px 0 }`
+   (`scss/dashboard/_dashboard:85`), five pixels between rows once collapsed. */
 .room-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 5px;
+}
+
+/* The site's narrow-layout button, `btn-default sm_var-one`
+   (`scss/elements/_button:49-56`): 40 high, padded 0 12px, 12px type at the
+   default weight. `btn-small` (40 / 14px / 500, padded 0 20px) still cut
+   "NEW CONVERSATION" and "JOIN WITH AN INVITE" short in this column by 11 to
+   15 pixels; this is the size the site itself drops to where a button has no
+   more room. */
+.sidebar-actions .button {
+  height: var(--lc-control-sm);
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: var(--lc-weight-regular);
 }
 
 .sidebar-empty {
@@ -208,69 +164,52 @@
 /* --- A row ------------------------------------------------------------------ */
 
 /* Shared with the Settings overlay's navigation, which is why it is not scoped
-   to `.sidebar`. Two lists of one-line choices should look like one thing. */
+   to `.sidebar`. Two lists of one-line choices should look like one thing.
+
+   The site's dashboard sidebar link, `lcai-default-sidebar-list li a`
+   (`scss/dashboard/_dashboard:79-125`): padded 10px 12px, 6px corners, 16 /
+   500 on a 26px line, `transition: 0.4s`. Hovered and chosen alike: the card
+   fill and the primary. Text is the heading colour Studio's sidebar uses
+   (`sideBar foreground`, build-lightchain-theme.py:128). */
 .nav-item {
   display: flex;
   align-items: center;
-  /* The wallet sets twelve between a nav icon and its word. At eight the icon
-     crowds the label and the row reads as one glyph-shaped thing. */
-  gap: var(--lc-space-md);
+  /* The site's `i { margin-right: 10px }` beside the label. */
+  gap: 10px;
   width: 100%;
-  min-height: var(--lc-control-md);
-  padding: var(--lc-space-sm) var(--lc-space-md);
-  /* Transparent rather than absent, so a chosen row can firm its edge without
-     the row beneath it shifting by two pixels. */
-  border: 1px solid transparent;
-  border-radius: var(--lc-radius-md);
+  /* The site's sidebar item (`padding: 10px 12px`, 26px line) at Studio's
+     density: 8px 12px and a 20px line, a 36px row. */
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--lc-radius-sm);
   background: transparent;
-  color: var(--lc-text-secondary);
+  color: var(--lc-text-primary);
   font: inherit;
-  font-size: var(--lc-type-body);
+  font-size: var(--lc-text-sm);
+  font-weight: var(--lc-weight-medium);
+  line-height: 20px;
   text-align: left;
   cursor: pointer;
   position: relative;
-  transition:
-    background var(--lc-motion-fast) var(--lc-easing),
-    color var(--lc-motion-fast) var(--lc-easing);
+  transition: all var(--lc-motion-slow);
 }
 
-.nav-item:hover {
-  background: var(--lc-surface-hover);
-  color: var(--lc-text-primary);
-}
-
-/**
- * A chosen row wears the brand's wash: magenta at the left, violet at the
- * right, both at about a seventh.
- *
- * A flat accent tint was tellable from a hover and anonymous — the same
- * selected row any application draws. The gradient runs the same direction as
- * the brand's own navigation and costs nothing in legibility, because both
- * stops are far below the point where they would compete with the label.
- */
+.nav-item:hover,
 .nav-item.is-active {
-  /* The selected row is what `--lc-accent-soft` is named for. */
-  background: var(--lc-accent-soft);
-  color: var(--lc-text-primary);
-  font-weight: var(--lc-weight-medium);
-  /* An edge as well as a wash. In their rail the chosen row is a card; with the
-     wash alone it was a tint that could be mistaken for a hover. */
-  border-color: color-mix(in srgb, var(--lc-accent) 35%, transparent);
+  background: var(--lc-surface-2);
+  color: var(--lc-accent);
 }
 
-/* The icon takes the brand colour with it, which is what stops the row reading
-   as a highlight with a grey glyph sitting on top of it. */
+/* `li a i`: the body colour, the primary with its row. */
+.nav-icon {
+  color: var(--lc-text-tertiary);
+  transition: all var(--lc-motion-slow);
+}
+
+.nav-item:hover .nav-icon,
 .nav-item.is-active .nav-icon {
-  color: var(--lc-brand);
-  opacity: 1;
+  color: var(--lc-accent);
 }
-
-/*
- * No bar. There was one when the chosen row was a flat tint and needed help
- * being told from a hover; with the wash and the edge it is a third marker for
- * one state, and on a two-line room row all three together looked like damage.
- * The wallet's own chosen row is the wash alone.
- */
 
 .nav-label {
   min-width: 0;
@@ -297,7 +236,7 @@
   width: 32px;
   height: 32px;
   flex: 0 0 auto;
-  border-radius: var(--lc-radius-md);
+  border-radius: var(--lc-radius-sm);
   overflow: hidden;
   background: var(--lc-surface-3);
   display: grid;
@@ -313,16 +252,18 @@
   border-radius: 0;
 }
 
+/* Studio's two-line row, `lc-row__text` (startPage.ts:131-133): two pixels
+   between a title and a 14px body-colour line under it. */
 .nav-item-body {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
   flex: 1 1 auto;
 }
 
 .nav-item-name {
-  font-size: var(--lc-type-body);
+  font-size: var(--lc-text-md);
   color: inherit;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -330,7 +271,9 @@
 }
 
 .nav-item-sub {
-  font-size: var(--lc-type-caption);
+  font-size: var(--lc-text-xs);
+  font-weight: var(--lc-weight-regular);
+  line-height: var(--lc-leading-tight);
   color: var(--lc-text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -346,7 +289,7 @@
 .room-item {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--lc-space-xs);
 }
 
 .room-item .nav-item {
@@ -395,22 +338,10 @@
   border-top: 1px solid var(--lc-rule);
 }
 
-/**
- * A group's name, in the brand's micro-caps.
- *
- * Sentence case at caption size put it in the same voice as the rows beneath
- * it, so "Elsewhere" read as a destination rather than as a heading over four
- * of them. Caps and wide tracking are what make a label stop competing with the
- * list it labels.
- */
+/* A group's name: the same `lcai-short-title` as the list's, above. */
 .sidebar-group-title {
   margin: 0;
   padding: var(--lc-space-lg) var(--lc-space-md) var(--lc-space-sm);
-  font-size: var(--lc-text-xs);
-  font-weight: var(--lc-weight-semibold);
-  color: var(--lc-text-tertiary);
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
 }
 
 .sections {
@@ -419,7 +350,7 @@
   padding: 0 var(--lc-space-sm);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 5px;
 }
 
 /* The row's icon inherits the row's text colour. It used to borrow nothing:
@@ -432,6 +363,7 @@
   height: var(--lc-control-icon);
   flex: 0 0 auto;
   fill: none;
+  /* Lucide's stroke 2, the set the site uses. */
   stroke: currentColor;
   stroke-width: 2;
   stroke-linecap: round;
@@ -447,6 +379,8 @@
   position: relative;
 }
 
+/* A sidebar link too (`scss/dashboard/_dashboard:107-125`), so its corners,
+   hover fill and timing; the address keeps its own colour on hover. */
 .account {
   display: flex;
   align-items: center;
@@ -455,16 +389,21 @@
   min-height: var(--lc-control-lg);
   padding: var(--lc-space-xs) var(--lc-space-sm);
   border: 1px solid transparent;
-  border-radius: var(--lc-radius-md);
+  border-radius: var(--lc-radius-sm);
   background: transparent;
   color: var(--lc-text-primary);
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition: all var(--lc-motion-slow);
 }
 
 .account:hover {
-  background: var(--lc-surface-hover);
+  background: var(--lc-surface-2);
+}
+
+.account:hover .account-chevron {
+  color: var(--lc-accent);
 }
 
 /* The identicon, drawn by members.js into this square. An avatar rather than
@@ -511,25 +450,25 @@
 }
 
 /* The network under the address. Mainnet is the ordinary case and stays
-   plain; anything else wears the same warning treatment as the locked strip
-   at the top of the column, because a balance read from testnet or devnet is
-   not the real thing and the difference has to survive a glance, not just a
-   careful read of the word. */
+   plain; anything else is the dashboard's warning status pill
+   (`scss/dashboard/_dashboard:2873-2887`: 50px corners, 14 / 600, -0.14px),
+   because a balance read from testnet or devnet is not the real thing. The
+   pill's 4px of height padding is left out so the row does not grow. */
 .account-role[data-network='testnet'],
 .account-role[data-network='devnet'] {
   align-self: flex-start;
-  padding: 0 var(--lc-space-xs);
-  border-radius: var(--lc-radius-pill);
+  padding: 0 10px;
+  border-radius: 50px;
   background: var(--lc-warning-soft);
-  color: var(--lc-warning);
+  color: var(--lc-warning-ink);
   font-weight: var(--lc-weight-semibold);
-  letter-spacing: 0.04em;
+  letter-spacing: -0.14px;
 }
 
 .account-chevron {
   flex: 0 0 auto;
   color: var(--lc-text-tertiary);
-  transition: transform var(--lc-motion-fast) var(--lc-easing);
+  transition: all var(--lc-motion-slow);
 }
 
 .account[aria-expanded='true'] .account-chevron {
@@ -552,10 +491,12 @@
   font-size: var(--lc-type-caption);
   text-align: left;
   cursor: pointer;
+  transition: all var(--lc-motion-slow);
 }
 
+/* The sidebar link's hover colour. */
 .account-balance:hover {
-  color: var(--lc-text-primary);
+  color: var(--lc-accent);
 }
 
 /* --- The two switches that live in this corner -------------------------------- */
@@ -579,28 +520,33 @@
  * scale. A pill sized by a caption's line height comes out at 23px, which
  * clears neither the scale nor the target floor.
  */
+/* The site's bordered badge, `lightchain-badge lightchain-badge-border`
+   (`scss/elements/_button:576-609`), 30px high as `lightchain-badge` is. It
+   is a button, so it takes the site button's hover edge and timing. */
 .sidebar-tools .version {
   display: inline-flex;
   align-items: center;
-  min-height: var(--lc-control-xs);
+  justify-content: center;
+  height: 30px;
   flex: 0 0 auto;
   margin: 0 auto 0 0;
   font-family: inherit;
   cursor: pointer;
-  padding: 0 var(--lc-space-sm);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-pill);
-  background: var(--lc-surface-3);
-  color: var(--lc-text-tertiary);
-  font-size: var(--lc-type-caption);
-  font-weight: var(--lc-weight-semibold);
-  letter-spacing: 0.08em;
-  line-height: var(--lc-leading-normal);
+  padding: 8px 10px;
+  border: 1px solid rgba(91, 75, 255, 0.15);
+  border-radius: 52px;
+  background: var(--lc-surface-2);
+  color: var(--lc-text-primary);
+  font-size: 12px;
+  font-weight: var(--lc-weight-medium);
+  letter-spacing: 0.5px;
+  line-height: 1;
+  text-transform: uppercase;
+  transition: all var(--lc-motion-base) ease-in-out;
 }
 
 .sidebar-tools .version:hover {
-  border-color: var(--lc-rule-strong);
-  color: var(--lc-text-secondary);
+  border-color: var(--lc-accent);
 }
 
 /* --- Collapsed --------------------------------------------------------------- */
@@ -622,9 +568,13 @@
 .sidebar.is-collapsed .account-text,
 .sidebar.is-collapsed .account-chevron,
 .sidebar.is-collapsed .account-balance,
-.sidebar.is-collapsed .sidebar-locked span,
-.sidebar.is-collapsed .sidebar-status {
+.sidebar.is-collapsed .sidebar-wordmark,
+.sidebar.is-collapsed .sidebar-suffix {
   display: none;
+}
+
+.sidebar.is-collapsed .sidebar-mark {
+  display: block;
 }
 
 .sidebar.is-collapsed .sidebar-head {
@@ -636,7 +586,6 @@
   transform: rotate(180deg);
 }
 
-.sidebar.is-collapsed .sidebar-state,
 .sidebar.is-collapsed .sidebar-actions,
 .sidebar.is-collapsed .sidebar-foot {
   padding-inline: var(--lc-space-xs);
@@ -687,6 +636,23 @@
 
   .sidebar-actions .button {
     height: var(--lc-control-sm);
+  }
+
+  /* The site's nav rows are taller than the ones this query was written for,
+     and at 600px the conversation zone was squeezed below its own header and
+     buttons, which then spilled over the nav beneath. Here it keeps at least
+     those, plus one room row, and the column scrolls instead. */
+  .sidebar {
+    overflow-y: auto;
+  }
+
+  .sidebar-rooms {
+    flex-shrink: 0;
+    min-height: min-content;
+  }
+
+  .sidebar-body {
+    max-height: calc(2 * var(--lc-control-lg));
   }
 
   .sidebar-elsewhere {

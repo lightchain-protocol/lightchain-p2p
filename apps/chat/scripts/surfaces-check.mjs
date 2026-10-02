@@ -212,9 +212,11 @@ report(
 )
 
 report(
-  'and so can Settings and the theme switch',
-  reachable.settings === true && reachable.theme === true,
-  `settings ${reachable.settings}, theme ${reachable.theme}`
+  // Dark only, as Lightchain Studio is: a theme switch that reappears would be
+  // a second palette nobody is matching to the website.
+  'and so can Settings, with no theme switch',
+  reachable.settings === true && reachable.theme === false,
+  `settings ${reachable.settings}, theme switch present: ${reachable.theme}`
 )
 
 for (const destination of ['models', 'wallet', 'bridge', 'worker']) {

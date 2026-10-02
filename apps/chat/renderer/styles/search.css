@@ -5,8 +5,8 @@
    only place any of it can live. It loads after `app.css`, where the dialog,
    the field and the note this is built out of are defined: everything below is
    either new or a deliberate override of one of those, and every value is a
-   token so that a result follows a theme switch along with the rest of the
-   window. */
+   token or a literal the website or Lightchain Studio ships, cited where it
+   appears. */
 
 /* --- The surface ---------------------------------------------------------- */
 
@@ -51,11 +51,11 @@
 .search-status {
   margin: 0;
   font-size: var(--lc-text-sm);
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
 }
 
 .search-status[data-tone='error'] {
-  color: var(--lc-danger);
+  color: var(--lc-danger-ink);
 }
 
 /* --- Results -------------------------------------------------------------- */
@@ -93,12 +93,12 @@
   margin: 0 0 var(--lc-space-xs);
   padding: var(--lc-space-xs) var(--lc-space-sm);
   font-size: var(--lc-text-xs);
-  font-weight: 600;
+  font-weight: var(--lc-weight-semibold);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--lc-fg-dim);
-  background: var(--lc-bg-elevated);
+  color: var(--lc-text-tertiary);
+  background: var(--lc-surface-2);
 }
 
 .search-group-items {
@@ -110,26 +110,30 @@
   list-style: none;
 }
 
+/* Studio's list row on hover (`startPage.ts`, `.lc-row:hover`), in 6px
+   corners. */
 .search-result {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
   padding: var(--lc-space-sm) var(--lc-space-md);
-  border-radius: var(--lc-radius-md);
-  cursor: default;
+  border-radius: var(--lc-radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s;
 }
 
 .search-result:hover {
-  background: var(--lc-bg-elevated-2);
+  background: var(--lc-well);
 }
 
 /* Follows the arrow keys as well as the pointer, and has to be the louder of
    the two: this is the row Enter acts on, and the pointer may be resting
-   somewhere else entirely while somebody types. The same wash the mention
-   picker uses, because it is the same idea. */
+   somewhere else entirely while somebody types. The site's dropdown item
+   under the pointer (`style.scss:563`, `--color-darker`), as the mention
+   picker and the kit's `.select-option` mark the same thing. */
 .search-result.is-active {
-  background: color-mix(in srgb, var(--lc-brand) 20%, transparent);
+  background: rgba(6, 6, 6, 0.7);
 }
 
 /* Two lines. The snippet has already been cut down to the part around the
@@ -141,6 +145,7 @@
   margin: 0;
   font-size: var(--lc-text-sm);
   line-height: var(--lc-leading-normal);
+  color: var(--lc-text-primary);
   overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -148,13 +153,10 @@
   overflow: hidden;
 }
 
-/* A user agent paints `<mark>` as black on yellow, which in a dark window is a
-   hazard stripe through the middle of a sentence. */
+/* The site's `mark` (`default/_reset.scss:72-75`): white on the primary. */
 .search-mark {
-  padding: 0 1px;
-  border-radius: 2px;
-  color: var(--lc-fg);
-  background: color-mix(in srgb, var(--lc-brand) 38%, transparent);
+  color: var(--lc-accent-contrast);
+  background: var(--lc-accent);
 }
 
 .search-result-meta {
@@ -163,7 +165,7 @@
   gap: var(--lc-space-sm);
   min-width: 0;
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
 .search-result-author {

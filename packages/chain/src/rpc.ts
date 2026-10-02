@@ -192,7 +192,7 @@ export class Rpc {
       ])
       clearTimeout(timer)
     } catch (err) {
-      throw new RpcError(`${method}: could not reach ${this.#url} — ${(err as Error).message}`)
+      throw new RpcError(`${method}: could not reach ${this.#url} - ${(err as Error).message}`)
     }
 
     if (!response)

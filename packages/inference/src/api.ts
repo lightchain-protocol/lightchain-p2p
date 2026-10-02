@@ -130,7 +130,7 @@ export class Api {
       ])
       clearTimeout(timer)
     } catch (err) {
-      throw new ApiError(`${path}: could not reach the service — ${(err as Error).message}`, 0)
+      throw new ApiError(`${path}: could not reach the service - ${(err as Error).message}`, 0)
     }
 
     if (!response) {
@@ -201,13 +201,13 @@ export class Api {
       recovered = recoverAddress(hashMessageForSigning(message), signature)
     } catch (err) {
       throw new ApiError(
-        `the signature could not be checked — ${(err as Error).message}. It was not sent.`,
+        `the signature could not be checked - ${(err as Error).message}. It was not sent.`,
         0
       )
     }
     if (recovered.toLowerCase() !== address.toLowerCase()) {
       throw new ApiError(
-        `the signature recovers to ${recovered}, not to ${address} — the wallet answered for a different account. It was not sent.`,
+        `the signature recovers to ${recovered}, not to ${address} - the wallet answered for a different account. It was not sent.`,
         0
       )
     }

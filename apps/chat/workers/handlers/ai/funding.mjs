@@ -68,9 +68,18 @@ export function fundingHandlers(ctx, kit) {
     'ai.status': async () => {
       const api = await inference()
       const balance = await api.balance()
+      // The wallet's own LCAI, beside the prepaid balance: opening a session is
+      // a transaction, so an empty wallet cannot start one whatever the prepaid
+      // balance says. Null when the chain could not be read, which the panel
+      // treats as unknown rather than as empty.
+      const walletBalance = await rpc()
+        .balanceOf(wallet.account().address)
+        .then((wei) => wei.toString())
+        .catch(() => null)
       return {
         network: network(),
         balance: balance.balance.toString(),
+        walletBalance,
         delegate: balance.delegate,
         delegateAuthorized: balance.delegateAuthorized,
         conversation: session.conversation
@@ -112,7 +121,7 @@ export function fundingHandlers(ctx, kit) {
           // the allowance outlives the deposit. Withdrawing the balance does
           // not revoke it, so a later deposit is spendable by the delegate
           // without anyone approving it again.
-          fee: `this also authorises the delegate at ${delegate} to spend the prepaid balance, and that allowance stands until it is revoked — withdrawing does not end it`
+          fee: `this also authorises the delegate at ${delegate} to spend the prepaid balance, and that allowance stands until it is revoked - withdrawing does not end it`
         }
       })
 
@@ -143,7 +152,7 @@ export function fundingHandlers(ctx, kit) {
         // RPC string.
         if (/insufficient funds/.test(err?.message ?? '')) {
           throw new Error(
-            'funding sends a transaction on chain, and this wallet does not have enough LCAI to cover the amount and gas — receive some first, or fund a smaller amount',
+            'funding sends a transaction on chain, and this wallet does not have enough LCAI to cover the amount and gas - receive some first, or fund a smaller amount',
             { cause: err }
           )
         }
@@ -197,7 +206,7 @@ export function fundingHandlers(ctx, kit) {
         // unless it is translated here.
         if (/insufficient funds/.test(err?.message ?? '')) {
           throw new Error(
-            'withdrawing sends a transaction on chain, and this wallet has nothing for gas — receive some LCAI first',
+            'withdrawing sends a transaction on chain, and this wallet has nothing for gas - receive some LCAI first',
             { cause: err }
           )
         }
@@ -262,7 +271,7 @@ export function fundingHandlers(ctx, kit) {
         to: `the job registry at ${jobRegistry}`,
         from: account.address,
         network: network(),
-        fee: `this ends the delegate's ability to spend the prepaid balance — authorisation is switched off and the allowance set to zero, so nothing can be submitted on your behalf until you fund again. No funds move; the balance stays where it is and can still be withdrawn.`
+        fee: `this ends the delegate's ability to spend the prepaid balance - authorisation is switched off and the allowance set to zero, so nothing can be submitted on your behalf until you fund again. No funds move; the balance stays where it is and can still be withdrawn.`
       })
 
       const revoked = await sendTransaction(rpc(), account, {

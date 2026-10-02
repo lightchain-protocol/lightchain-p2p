@@ -287,7 +287,7 @@ describe('ai.claimTimeout', () => {
     chain.job = { state: 'completed', escrowedFee: 10n, completedAt: secondsAgo(10) }
 
     await expect(handlers['ai.claimTimeout']({ jobId: '7' })).rejects.toThrow(
-      /job 7 is completed — a fee can only be claimed back/
+      /job 7 is completed - a fee can only be claimed back/
     )
     expect(chain.sent).toHaveLength(0)
   })
@@ -297,7 +297,7 @@ describe('ai.claimTimeout', () => {
     chain.job = { state: 'submitted', escrowedFee: 10n, deadline: secondsFromNow(120) }
 
     await expect(handlers['ai.claimTimeout']({ jobId: '7' })).rejects.toThrow(
-      /has not timed out yet — the worker has \d+ more seconds/
+      /has not timed out yet - the worker has \d+ more seconds/
     )
     expect(chain.sent).toHaveLength(0)
   })

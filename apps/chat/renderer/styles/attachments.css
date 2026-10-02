@@ -2,7 +2,8 @@
  * Attachments: the control that adds one, the chip holding it before it is
  * sent, and what one looks like once it has arrived.
  *
- * Every value comes from a token, as everywhere else. Nothing here is set from
+ * Every value is a token or a literal the website or Lightchain Studio ships,
+ * cited where it appears (docs/design/website-match.md). Nothing here is set from
  * script either: an image is capped by this file rather than by a measurement
  * taken in the renderer, so a picture from a stranger cannot arrive at a size
  * of its own choosing.
@@ -21,11 +22,6 @@
   width: var(--lc-control-md);
   padding: 0;
   flex: 0 0 auto;
-  color: var(--lc-text-secondary);
-}
-
-#panel-chat .attach-btn:hover:not(:disabled) {
-  color: var(--lc-text-primary);
 }
 
 /* The composer with a file held over it. An outline rather than a border,
@@ -34,23 +30,25 @@
 #panel-chat .attachment-dropping {
   outline: 2px dashed var(--lc-accent);
   outline-offset: -3px;
-  background: color-mix(in srgb, var(--lc-accent) 8%, transparent);
+  background: var(--lc-accent-soft);
 }
 
 /* --- Waiting to be sent --------------------------------------------------- */
 
+/* Studio's note (`aiView.ts`, `.lc-note`): the inset well, a hairline, 10px
+   corners, 13px — the same box as the reply note beside it in the tray. */
 #panel-chat .attachment-chip {
   display: inline-flex;
   align-items: center;
   gap: var(--lc-space-sm);
   max-width: 42ch;
   height: var(--lc-control-sm);
-  padding: 0 var(--lc-space-xs) 0 var(--lc-space-md);
+  padding: 0 var(--lc-space-xs) 0 12px;
   border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-pill);
-  font-size: var(--lc-text-xs);
-  color: var(--lc-text-secondary);
-  background: var(--lc-surface-2);
+  border-radius: var(--lc-radius-md);
+  font-size: 13px;
+  color: var(--lc-text-strong);
+  background: var(--lc-inset);
 }
 
 /* A filename has whatever length its author felt like. One line, and the chip
@@ -70,30 +68,29 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Studio's small inline action (`aiView.ts`, `.lc-btn`): 26 high, 6px
+   corners, paragraph ink lifting to the strongest on a faint fill. */
 #panel-chat .attachment-chip-remove {
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   flex: 0 0 auto;
   padding: 0;
   appearance: none;
   border: 0;
-  border-radius: var(--lc-radius-pill);
+  border-radius: var(--lc-radius-sm);
   font: inherit;
   font-size: var(--lc-text-sm);
   line-height: 1;
-  color: var(--lc-text-tertiary);
+  color: var(--lc-text-secondary);
   background: transparent;
-  cursor: default;
-  transition:
-    background-color var(--lc-motion-fast) var(--lc-easing),
-    color var(--lc-motion-fast) var(--lc-easing);
+  cursor: pointer;
 }
 
 #panel-chat .attachment-chip-remove:hover {
-  color: var(--lc-text-primary);
-  background: var(--lc-surface-3);
+  color: var(--lc-text-strong);
+  background: rgba(204, 206, 239, 0.08);
 }
 
 #panel-chat .attachment-chip-remove:focus-visible {
@@ -111,15 +108,17 @@
 /* Everything that is not an image takes this shape — loading, failed, and an
    ordinary file — so the three read as one thing in three states rather than
    as three unrelated blocks that happen to appear in the same place. */
+/* Studio's note and file-edit block (`aiView.ts`, `.lc-note`, `.lc-edit`): the
+   inset well, a hairline, 10px corners, 10 by 12 inside. */
 #panel-chat .attachment-row {
   display: flex;
   align-items: center;
   gap: var(--lc-space-md);
   min-width: 0;
-  padding: var(--lc-space-sm) var(--lc-space-sm) var(--lc-space-sm) var(--lc-space-md);
+  padding: 10px 12px;
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: var(--lc-surface-1);
+  background: var(--lc-inset);
 }
 
 #panel-chat .attachment-text {
@@ -138,6 +137,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--lc-text-sm);
+  font-weight: var(--lc-weight-medium);
+  color: var(--lc-text-strong);
   user-select: text;
 }
 
@@ -149,7 +150,7 @@
 }
 
 #panel-chat .attachment-meta[data-tone='error'] {
-  color: var(--lc-danger);
+  color: var(--lc-danger-ink);
 }
 
 /* The same slow fade the titlebar uses for a connection in progress, and the
@@ -192,7 +193,7 @@
   width: auto;
   height: auto;
   border-radius: var(--lc-radius-md);
-  background: var(--lc-surface-1);
+  background: var(--lc-inset);
 }
 
 #panel-chat .attachment-caption {

@@ -5,7 +5,6 @@ import {
   DARK,
   IDENTICON_INK,
   IDENTICON_SIZE,
-  LIGHT,
   contrastRatio,
   identicon,
   identiconSvg,
@@ -211,10 +210,7 @@ describe('a crowd of accounts', () => {
 // a non-text graphic, so AA_NON_TEXT is the right threshold — and it has to hold
 // on every surface, because the avatar sits in a message bubble on `bgElevated`,
 // in one of your own on `bgElevated2`, and on the page itself in a member list.
-describe.each([
-  ['dark', DARK],
-  ['light', LIGHT]
-])('%s surfaces', (_name, p: Palette) => {
+describe.each([['dark', DARK]])('%s surfaces', (_name, p: Palette) => {
   it('every ink an identicon can pick stays visible on every surface', () => {
     for (const ink of IDENTICON_INK) {
       for (const bg of [p.bg, p.bgElevated, p.bgElevated2]) {
@@ -238,7 +234,7 @@ describe('identicon ink', () => {
         (value): value is string => typeof value === 'string'
       )
 
-    const owned = new Set<string>([...coloursIn(BRAND), ...coloursIn(LIGHT), ...coloursIn(DARK)])
+    const owned = new Set<string>([...coloursIn(BRAND), ...coloursIn(DARK)])
     for (const ink of IDENTICON_INK) expect(owned.has(ink), ink).toBe(true)
   })
 

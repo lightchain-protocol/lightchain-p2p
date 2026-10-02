@@ -223,7 +223,7 @@ describe('token planning', () => {
     await expect(
       send({ chainId: ETHEREUM, to: TO_RAW, token: USDC, amount: '1000000' })
     ).rejects.toThrow(
-      'there is not enough ETH on Ethereum to pay the network fee — the balance is 0 ETH, and the fee alone is up to'
+      'there is not enough ETH on Ethereum to pay the network fee - the balance is 0 ETH, and the fee alone is up to'
     )
     expect(ctx.guard.allow).not.toHaveBeenCalled()
     expect(sendTransaction).not.toHaveBeenCalled()

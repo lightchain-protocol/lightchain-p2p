@@ -49,7 +49,7 @@ describe('the devnet profile', () => {
     expect(NETWORKS.devnet.workerGatewayUrl).toBe(NETWORKS.devnet.consumerApiUrl)
   })
 
-  it('pins no contract addresses, like testnet — they resolve from the predeploy', () => {
+  it('pins no contract addresses, like testnet - they resolve from the predeploy', () => {
     expect(NETWORKS.devnet.aiConfigAddress).toBeUndefined()
     expect(NETWORKS.devnet.jobRegistryAddress).toBeUndefined()
     expect(NETWORKS.testnet.aiConfigAddress).toBeUndefined()

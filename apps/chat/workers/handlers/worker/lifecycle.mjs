@@ -32,7 +32,7 @@ export function workerLifecycleHandlers(ctx, kit) {
       const command = startDocker(hostPlatform())
       if (command === null) {
         throw new Error(
-          'there is no start command we can run on this platform — start Docker the way you normally would, and this check will pass once its daemon answers'
+          'there is no start command we can run on this platform - start Docker the way you normally would, and this check will pass once its daemon answers'
         )
       }
 
@@ -68,7 +68,7 @@ export function workerLifecycleHandlers(ctx, kit) {
       const command = startOllama(hostPlatform())
       if (command === null) {
         throw new Error(
-          'there is no start command we can run on this platform — open Ollama the way you normally would and it will answer on port 11434'
+          'there is no start command we can run on this platform - open Ollama the way you normally would and it will answer on port 11434'
         )
       }
 

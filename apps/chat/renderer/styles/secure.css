@@ -43,6 +43,14 @@
   min-height: 0;
 }
 
+/* The scrolling body is what the dialog focuses on opening, so the arrow keys
+   scroll the document at once. It is the whole of the dialog, so a ring round
+   it says nothing the open dialog does not; without this rule the user agent
+   drew its own orange one, a colour neither source has. */
+.secure-page:focus {
+  outline: none;
+}
+
 .secure-verdict {
   /* The kit lays a verdict out in one row. At a reading measure the detail is a
      sentence, not a word, so it takes its own line rather than squeezing the
@@ -69,7 +77,7 @@
   border-top: 1px solid var(--lc-rule);
 }
 
-.secure-layer p {
+.secure-layer p:not(.secure-caveat) {
   margin: 0;
   color: var(--lc-text-secondary);
   line-height: var(--lc-leading-relaxed);
@@ -109,19 +117,19 @@
   line-height: var(--lc-leading-tight);
 }
 
-/* What the layer does not do, given a rule of its own so it cannot be read as
-   part of the claim above it. Never colour alone: every one of these opens with
-   the words that say what the limit is. */
-/* What the layer does not do. Marked by a rule down its edge rather than boxed:
-   it is an aside to the passage above it, not a separate object. Never colour
-   alone — every one of these opens with the words that say what the limit is. */
+/* What the layer does not do: the site's notice in its warning tone, like
+   every other warning in the app. Never colour alone — every one of these
+   opens with the words that say what the limit is. */
 .secure-caveat {
   margin: 0;
-  padding-left: var(--lc-space-md);
-  border-left: 2px solid color-mix(in srgb, var(--lc-warning) 55%, transparent);
+  padding: 16px;
+  border: 0;
+  border-radius: var(--lc-radius-group);
+  background: var(--lc-surface-3);
   color: var(--lc-text-secondary);
-  font-size: var(--lc-type-caption);
-  line-height: var(--lc-leading-normal);
+  font-size: var(--lc-text-sm);
+  font-weight: 400;
+  line-height: 1.5;
   text-wrap: pretty;
 }
 
@@ -135,7 +143,7 @@
 }
 
 .secure-live[data-state='warn'] {
-  color: var(--lc-danger);
+  color: var(--lc-danger-ink);
 }
 
 /* --- Where to read more --------------------------------------------------- */
@@ -151,7 +159,9 @@
 }
 
 /**
- * A button, not an anchor.
+ * A button, not an anchor, drawn as the dashboard table's `.link`
+ * (`_dashboard.scss:2814-2828`): the heading colour, the primary on hover,
+ * over 0.2s. No underline — the site's links carry none.
  *
  * An `<a href>` in here would navigate the application window to whatever it
  * pointed at, replacing the app. These ask the main process to open the URL
@@ -168,35 +178,31 @@
   padding: 0;
   border: 0;
   background: none;
-  color: var(--lc-accent);
+  color: var(--lc-text-primary);
   font: inherit;
   font-size: var(--lc-type-caption);
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--lc-accent) 40%, transparent);
-  text-underline-offset: 0.2em;
+  font-weight: var(--lc-weight-semibold);
   cursor: pointer;
-  transition: text-decoration-color var(--lc-motion-fast) var(--lc-easing);
+  transition: all var(--lc-motion-fast) var(--lc-easing);
 }
 
 .secure-ref:hover {
-  text-decoration-color: var(--lc-accent);
+  color: var(--lc-accent);
 }
 
-/* Matching `.chip .icon` in the kit, so the pill beside a title and the pill
-   under it are read at the same scale. */
+/* Matching `.chip .icon` in the kit. It follows the link's colour. */
 .secure-ref .icon {
-  width: 13px;
-  height: 13px;
-  color: var(--lc-text-tertiary);
+  width: 14px;
+  height: 14px;
 }
 
 /* --- What none of this hides ---------------------------------------------- */
 
-/* Marked out from the four layers above it, but not demoted: same card, same
+/* Marked out from the four layers above it, but not demoted: same rule, same
    heading size, at the bottom because it is the last thing to read rather than
-   the least important. */
+   the least important. Its rule takes the warning colour. */
 .secure-exposed {
-  border-color: color-mix(in srgb, var(--lc-warning) 40%, var(--lc-rule));
+  border-color: var(--lc-warning);
 }
 
 .secure-exposures {
@@ -242,21 +248,9 @@
    The shared dialogs' own pieces (dialogs.html)
    ------------------------------------------------------------------------- */
 
-/* An alert inside a dialog takes the soft status tint, not just the coloured
-   border: in a 52ch box the alert is the thing the dialog exists to say, and
-   the border alone was easy to miss next to the card around it. Scoped to
-   `.dialog` so the kit's own rule keeps holding everywhere else. */
-.dialog .alert[data-tone='warn'] {
-  background: var(--lc-warning-soft);
-}
-
-.dialog .alert[data-tone='error'] {
-  background: var(--lc-danger-soft);
-}
-
-.dialog .alert[data-tone='info'] {
-  background: var(--lc-accent-soft);
-}
+/* Alerts inside a dialog are the kit's own, tints included: the kit draws a
+   warning and an error on their soft status fills already, and an information
+   note on Studio's inset well. */
 
 /* What this route is asking somebody to rely on, before it asks for money.
    The worker writes the lines; this is only the measure and the rhythm. */
@@ -275,7 +269,10 @@
 }
 
 /**
- * The consent in front of an irreversible transfer.
+ * The consent in front of an irreversible transfer, as one of Studio's step
+ * rows (`connectPage.ts:46-47`): a white hairline at 10%, 10px corners, 14px on
+ * 1.5 in Neutral-200 — and, once ticked, the step that is now: the heading
+ * colour's edge and the strongest text.
  *
  * This once wore `.field`, a vertical stack of label over control, and a bare
  * checkbox stretches in a column's cross axis — so it rendered as a full-width
@@ -288,19 +285,26 @@
   align-items: flex-start;
   gap: var(--lc-space-sm);
   margin-top: var(--lc-space-xs);
-  padding: var(--lc-space-md);
-  border: 1px solid var(--lc-rule-strong);
+  padding: 12px 15px;
+  border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: var(--lc-surface-2);
+  background: transparent;
   color: var(--lc-text-secondary);
   font-size: var(--lc-type-caption);
-  line-height: var(--lc-leading-normal);
+  line-height: 1.5;
   cursor: pointer;
-  transition: border-color var(--lc-motion-fast) var(--lc-easing);
+  transition: all var(--lc-motion-fast) var(--lc-easing);
 }
 
+/* Studio's field focus edge (`interact.ts:197`). */
 .bridge-accept:hover {
-  border-color: color-mix(in srgb, var(--lc-accent) 55%, var(--lc-rule-strong));
+  border-color: var(--lc-rule-strong);
+}
+
+.bridge-accept:has(input:checked) {
+  /* `.lc-steps li.now`, `connectPage.ts:47`. */
+  border-color: rgba(204, 206, 239, 0.16);
+  color: var(--lc-text-strong);
 }
 
 /*
@@ -320,28 +324,34 @@
 }
 
 /* What the worker actually built, quoted back before anything is signed. A
-   card, because the figures in it come from the transaction rather than from
-   the form above, and the box is what says so. */
+   box, because the figures in it come from the transaction rather than from
+   the form above, and the box is what says so. Studio's note
+   (`aiView.ts:345`): the inset well, a white hairline, 10px corners. */
 .send-review {
-  padding: var(--lc-space-md) var(--lc-space-lg);
+  padding: 10px 12px;
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: var(--lc-surface-2);
+  background: var(--lc-inset);
 }
 
-.send-warnings {
+/* A review's warnings, together in one of the site's notices in its warning
+   tone: read while deciding, so they are the box on the screen, not a line. */
+.send-warnings:not(:empty) {
   display: grid;
   gap: var(--lc-space-xs);
   margin-top: var(--lc-space-md);
+  padding: 16px;
+  border: 0;
+  border-radius: var(--lc-radius-group);
+  background: var(--lc-surface-3);
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-text-sm);
+  font-weight: 400;
+  line-height: 1.5;
 }
 
-/* A warning on a review is read while deciding, so it keeps the warning colour
-   rather than going muted — the one place muted is wrong is the line that
-   might stop the send. */
 .send-warning {
   margin: 0;
-  color: var(--lc-warning);
-  font-size: var(--lc-type-caption);
-  line-height: var(--lc-leading-normal);
+  color: inherit;
   text-wrap: pretty;
 }

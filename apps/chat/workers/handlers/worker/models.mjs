@@ -150,7 +150,7 @@ export function workerModelHandlers(ctx, kit) {
 
       if (models.length === 0) {
         throw new Error(
-          'no models to fetch — choose which of the ones this network whitelists this machine should answer for'
+          'no models to fetch - choose which of the ones this network whitelists this machine should answer for'
         )
       }
 

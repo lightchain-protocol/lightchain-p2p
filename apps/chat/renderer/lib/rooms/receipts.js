@@ -62,8 +62,8 @@ export function paintTick(tick, read) {
   // Said in words as well as drawn, because one check versus two at 14px is a
   // difference colour-vision and a small screen both have opinions about.
   tick.title = read
-    ? 'Read — somebody else in the room has seen up to here.'
-    : 'Sent — in the room, not reported read by anybody yet.'
+    ? 'Read - somebody else in the room has seen up to here.'
+    : 'Sent - in the room, not reported read by anybody yet.'
 }
 
 /**

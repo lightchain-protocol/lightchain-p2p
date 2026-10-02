@@ -88,7 +88,7 @@
   width: 28px;
   height: 28px;
   border-radius: var(--lc-radius-pill);
-  background: var(--lc-bg-elevated-2);
+  background: var(--lc-surface-3);
   /* The plate is what stops a mark with its own transparent ground reading as
      a hole in the row. */
   box-shadow: 0 0 0 1px var(--lc-rule);
@@ -130,10 +130,12 @@
   align-items: center;
   gap: var(--lc-space-md);
   padding: var(--lc-space-lg) 20px;
+  /* The site's field (`default/_forms.scss:35-123`): transparent, a two-pixel
+     edge, 10px corners, the edge turning primary on focus over 0.3s. */
   border: 2px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: color-mix(in srgb, var(--lc-fg) 3%, transparent);
-  transition: border-color var(--lc-motion-fast) ease-out;
+  background: transparent;
+  transition: border-color var(--lc-motion-base) var(--lc-easing);
 }
 
 /* The well takes the focus ring, because the field inside it has no edge of
@@ -151,12 +153,14 @@
   padding: 0;
   background: none;
   color: var(--lc-text-primary);
+  /* The balance card's `.balance` at its medium-screen size
+     (`_dashboard.scss:2509-2523`): 36 / 600, 1.2, -0.01em. */
   font-family: inherit;
-  font-size: 32px;
+  font-size: var(--lc-text-xxl);
   font-weight: var(--lc-weight-semibold);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  letter-spacing: -0.01em;
+  line-height: var(--lc-leading-tight);
   user-select: text;
 }
 
@@ -175,7 +179,6 @@
   font-size: var(--lc-text-md);
   font-weight: var(--lc-weight-semibold);
   color: var(--lc-text-tertiary);
-  letter-spacing: 0.04em;
 }
 
 /* What is available, directly under the well it constrains. */
@@ -200,8 +203,9 @@
 
 .bridge-actions .button {
   width: 100%;
+  /* `.btn-large`, as `.button-lg` draws it. */
   height: var(--lc-control-lg);
-  padding-inline: 28px;
+  padding-inline: 32px;
   font-size: var(--lc-text-md);
 }
 

@@ -361,8 +361,10 @@ function windowChrome() {
       // moment later and repaints these through app:setTitleBarColours; until
       // then the wrong colour here would be a black block in the corner of a
       // light window.
-      color: '#0f0f1d',
-      symbolColor: '#b1b3d0',
+      // The top bar's `--lc-surface-1` and `--lc-text-primary`, so the first
+      // frame already matches; the renderer repaints from the tokens after.
+      color: '#070710',
+      symbolColor: '#ccceef',
       height: TITLEBAR_HEIGHT
     }
   }
@@ -441,7 +443,7 @@ async function createWindow() {
     // renderer has not painted yet — during a resize, before the first frame —
     // shows this, and at `#06060e` that was a black band beside the page rather
     // than a moment nobody notices.
-    backgroundColor: '#0e0c15',
+    backgroundColor: '#070710',
     show: false,
     ...windowChrome(),
     webPreferences: {

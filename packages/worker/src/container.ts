@@ -92,7 +92,7 @@ export function parseContainerState(raw: string | null): ContainerState {
       startedAt,
       detail: `container is running but has restarted ${restartCount} times`,
       remedy:
-        'Read the logs. A restart loop is almost always a bad keystore password, a chain ID that does not match the network, or an unreachable RPC endpoint — the container will keep coming back and never take a job.'
+        'Read the logs. A restart loop is almost always a bad keystore password, a chain ID that does not match the network, or an unreachable RPC endpoint - the container will keep coming back and never take a job.'
     }
   }
 

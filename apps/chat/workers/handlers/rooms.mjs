@@ -196,7 +196,7 @@ export function roomHandlers(ctx) {
      */
     'room.edit': (req) => {
       if (typeof req.text !== 'string' || req.text.trim() === '') {
-        throw new Error('an edit needs the new text — withdraw the message rather than emptying it')
+        throw new Error('an edit needs the new text - withdraw the message rather than emptying it')
       }
       return rooms.edit(req.room, messageId(req.target, 'edited'), req.text)
     },

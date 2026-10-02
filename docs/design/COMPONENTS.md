@@ -1,5 +1,11 @@
 # The component contract
 
+> **Superseded for values (2026-10-02).** Colours, type, radii, control sizes
+> and component styling now follow the website and Lightchain Studio exactly —
+> see [website-match.md](website-match.md), which wins wherever the two disagree.
+> The structural rules here (component ownership, navigation, empty states)
+> still apply.
+
 What the interface is built from, and the rules for adding to it.
 
 This exists because the app had three card treatments that differed by a few

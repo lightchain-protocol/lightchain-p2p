@@ -31,7 +31,7 @@ function fakeWorld({ exits = [], platform = 'darwin', appImage = undefined } = {
 }
 
 describe('what relaunching means on each platform', () => {
-  it('does not relaunch on Windows — the MSIX swap does it', () => {
+  it('does not relaunch on Windows - the MSIX swap does it', () => {
     expect(relaunchPlan({ platform: 'win32', argv: [] })).toBeNull()
   })
 

@@ -28,7 +28,7 @@ const port = Number(process.argv[2] ?? 9301)
 const outdir = process.argv[3] ?? join(process.cwd(), 'shots')
 
 const SURFACES = ['chat', 'models', 'wallet', 'bridge', 'worker']
-const THEMES = ['dark', 'light']
+const THEMES = ['dark']
 
 /**
  * The two window sizes worth looking at.
@@ -54,6 +54,12 @@ const missed = []
  */
 const shoot = async (page, name) => {
   try {
+    // Entrances and fades finished first. A window the system reports as
+    // covered does not advance them, and a dialog photographed on its first
+    // frame is a translucent, shrunken picture of something nobody sees.
+    await page
+      .run(`document.getAnimations().forEach((a) => { try { a.finish() } catch {} }); return true`)
+      .catch(() => {})
     await page.shoot(outdir, name)
     taken += 1
     console.log(`  ${name}`)

@@ -76,7 +76,7 @@ for (const [id, action, label, alertSlot] of [
     el.workerLogs.textContent = `${label}…\n`
     if (action === 'worker.register') {
       appendWorkerOutput({
-        text: 'Confirm the stake in the dialog that appears — the container does not start without it.\n'
+        text: 'Confirm the stake in the dialog that appears - the container does not start without it.\n'
       })
     }
     try {

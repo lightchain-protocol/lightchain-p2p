@@ -22,6 +22,13 @@ import { renderConversations } from './history.js'
  * a session takes no fee, and the per-question fee is the same either way.
  */
 export async function startConversation(model, { resume = null } = {}) {
+  // The list is locked behind the gate, and so is everything that reaches here
+  // another way — an @name in a room, a resumed transcript.
+  if (ui.gate !== null) {
+    toast('Add LCAI and top up your AI credit before asking a model - the Models page shows how.')
+    return
+  }
+
   if (ui.streaming) return
 
   ui.openModel = model

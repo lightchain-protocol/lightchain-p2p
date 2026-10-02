@@ -10,6 +10,11 @@
  * and `.alert`. What is left here is the arrangement, the treatment for an
  * address, and the form primitives that predate the kit and are shared with
  * Settings and onboarding.
+ *
+ * Styling follows the website's own wallet, the dashboard
+ * (LCAIPresale `public/scss/dashboard/_dashboard.scss`): its balance card for
+ * the portfolio, its chart buttons for the ranges, its table and status pills
+ * for holdings and history. See docs/design/website-match.md.
  */
 
 /* --- The account bar ------------------------------------------------------ */
@@ -26,7 +31,8 @@
   align-items: center;
   gap: var(--lc-space-md);
   padding-bottom: var(--lc-space-lg);
-  border-bottom: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
+  /* The site header's hairline. */
+  border-bottom: 1px solid var(--lc-rule);
   flex: 0 0 auto;
 }
 
@@ -34,36 +40,36 @@
   flex: 1 1 auto;
 }
 
+/* The site's bordered badge, `.lightchain-badge-border`
+   (`elements/_button.scss:598-607`): 52px corners, a faint primary edge, the
+   card colour. Its hover is the primary edge the site's fields take. */
 .account-pill {
   display: inline-flex;
   align-items: center;
   gap: var(--lc-space-md);
   min-width: 0;
   max-width: 22rem;
-  padding: var(--lc-space-sm) var(--lc-space-md);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-md);
-  background: color-mix(in srgb, var(--lc-fg) 3%, transparent);
+  padding: 8px 10px;
+  border: 1px solid rgba(91, 75, 255, 0.15);
+  border-radius: 52px;
+  background: var(--lc-surface-2);
   color: var(--lc-text-primary);
   font: inherit;
   cursor: pointer;
   text-align: left;
-  transition:
-    border-color var(--lc-motion-fast) var(--lc-easing),
-    background var(--lc-motion-fast) var(--lc-easing);
+  transition: border-color var(--lc-motion-base) var(--lc-easing);
 }
 
 .account-pill:hover {
-  border-color: var(--lc-rule-strong);
-  background: color-mix(in srgb, var(--lc-fg) 6%, transparent);
+  border-color: var(--lc-accent);
 }
 
-/* The identicon, at the size the wallet draws an avatar in a row like this. */
+/* The identicon, round inside a round badge. */
 .account-pill-mark {
   width: 32px;
   height: 32px;
   flex: 0 0 auto;
-  border-radius: var(--lc-radius-md);
+  border-radius: var(--lc-radius-pill);
   overflow: hidden;
   background: var(--lc-surface-3);
 }
@@ -81,9 +87,13 @@
   min-width: 0;
 }
 
+/* The badge's own label: 12px, uppercase, half a pixel of tracking
+   (`.lightchain-badge`, `elements/_button.scss:576-585`), as `.chip` sets it. */
 .account-pill-name {
-  font-size: var(--lc-text-sm);
-  font-weight: var(--lc-weight-semibold);
+  font-size: 12px;
+  font-weight: var(--lc-weight-medium);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 /* The address is read character by character, so it is set in the mono face
@@ -136,24 +146,12 @@
   gap: var(--lc-space-lg);
   margin: auto;
   width: min(56ch, 100%);
-  /* The card inset, not a wider one of its own. This was the last card in the
-     application still choosing its own padding. */
 }
 
 .wallet-gate-fact {
   margin: 0;
 }
 
-/* --- Balances ------------------------------------------------------------- */
-
-/**
- * Two figures side by side, not one total.
- *
- * They are the same money in two places — the wallet and the job registry — and
- * only the first can be sent to anybody. Adding them would state a number that
- * is not spendable, which is the mistake every wallet that merges pending into
- * available makes.
- */
 /* --- The address ---------------------------------------------------------- */
 
 /**
@@ -165,6 +163,7 @@
 .wallet-key {
   font-family: var(--lc-mono);
   font-size: var(--lc-text-xs);
+  color: var(--lc-text-primary);
   white-space: nowrap;
   overflow-x: auto;
   user-select: text;
@@ -208,10 +207,11 @@
 
 /* --- Moving funds --------------------------------------------------------- */
 
+/* The dashboard card's subtitle: 15px, Neutral-200. */
 .wallet-note {
   margin: 0 0 var(--lc-space-lg);
   font-size: var(--lc-text-sm);
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
   text-wrap: pretty;
 }
 
@@ -226,22 +226,46 @@
 
 /* --- Transactions --------------------------------------------------------- */
 
+/* Rows meet on their rules, as the dashboard table's do; no gap between them. */
 .ledger-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--lc-space-sm);
 }
 
+/**
+ * A row of the dashboard table (`_dashboard.scss:2783-2797`): a hairline of the
+ * heading colour under each, none under the last, fourteen pixels above and
+ * below the cells.
+ */
+.ledger-entry {
+  padding: 14px var(--lc-space-xs);
+  border-bottom: 1px solid var(--lc-card-rule);
+  color: var(--lc-text-primary);
+  font-size: var(--lc-text-xs);
+}
+
+.ledger-entry:last-child {
+  border-bottom: 0;
+}
+
+/* The table cell's text (`_dashboard.scss:2803-2812`): 14 / 600, uppercase, the
+   heading colour. */
 .ledger-kind {
-  font-weight: 600;
+  font-size: var(--lc-text-xs);
+  font-weight: var(--lc-weight-semibold);
+  text-transform: uppercase;
+  color: var(--lc-text-primary);
 }
 
 /* Tabular figures so a column of amounts lines up on the decimal rather than
    drifting with the width of each digit. */
 .ledger-amount {
+  font-size: var(--lc-text-xs);
+  font-weight: var(--lc-weight-semibold);
+  color: var(--lc-text-primary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -251,21 +275,45 @@
   align-items: center;
   gap: var(--lc-space-sm);
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-tertiary);
+}
+
+/**
+ * The dashboard table's status pill (`_dashboard.scss:2844-2887`): 50px
+ * corners, `4px 10px`, 14 / 600, capitalised, filled and inked by state.
+ * Confirmed is the site's `completed`.
+ */
+.ledger-status {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lc-space-xs);
+  padding: 4px 10px;
+  border-radius: 50px;
+  background: var(--lc-success-soft);
+  color: var(--lc-success-ink);
+  font-size: var(--lc-text-xs);
+  font-weight: var(--lc-weight-semibold);
+  line-height: var(--lc-leading-tight);
+  letter-spacing: -0.14px;
+  text-transform: capitalize;
 }
 
 /* Pending is the one worth colouring: it is the state where the truth is still
    arriving, and the only one somebody might want to act on. */
 .ledger-status[data-state='pending'] {
-  color: var(--lc-warning);
+  background: var(--lc-warning-soft);
+  color: var(--lc-warning-ink);
 }
 
 .ledger-status[data-state='failed'] {
-  color: var(--lc-danger);
+  background: var(--lc-danger-soft);
+  color: var(--lc-danger-ink);
 }
 
 /* A hash is taken to a block explorer, so it is whole and selectable rather
-   than shortened into something that has to be retyped. */
+   than shortened into something that has to be retyped. The table's `.link`
+   (`_dashboard.scss:2814-2828`): the heading colour, primary on hover, 0.2s. */
 .ledger-hash {
   appearance: none;
   border: 0;
@@ -275,12 +323,13 @@
   text-align: left;
   font-family: var(--lc-mono);
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-primary);
   overflow-wrap: anywhere;
+  transition: color var(--lc-motion-fast) var(--lc-easing);
 }
 
 .ledger-hash:hover {
-  color: var(--lc-fg);
+  color: var(--lc-accent);
 }
 
 /* Only on a pending row, so these appear rarely and should not be styled as
@@ -307,21 +356,19 @@
 }
 
 /**
- * The table head, in the brand's micro-caps.
- *
- * Their asset table sets ASSET / PRICE / 24H / BALANCE / VALUE small, tracked
- * wide and quiet, over a hairline. At body size and sentence case a heading row
- * reads as another row of data, which is exactly what a column heading must not
- * do.
+ * The table head, as the dashboard's `th` (`_dashboard.scss:2754-2766`): sixteen
+ * pixels top and bottom on the card wash, 14 / 600, uppercase, in the heading
+ * colour.
  */
 .holdings-head {
-  padding: 0 var(--lc-space-md) var(--lc-space-md);
-  border-bottom: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
+  padding: 16px var(--lc-space-md);
+  background: var(--lc-card);
   font-size: var(--lc-text-xs);
   font-weight: var(--lc-weight-semibold);
-  letter-spacing: 0.1em;
+  line-height: 1.5;
   text-transform: uppercase;
-  color: var(--lc-text-tertiary);
+  white-space: nowrap;
+  color: var(--lc-text-primary);
 }
 
 /* The first two columns are the asset, so the headings start at the third. */
@@ -341,20 +388,18 @@
 }
 
 /**
- * A row, with the breathing room theirs has and a hover.
- *
- * Eight pixels of vertical padding put a 32-pixel token mark hard against the
- * hairlines above and below it; theirs is fourteen. The hover is what makes a
- * table feel like something you can point at rather than a printout.
+ * A row of the dashboard table: fourteen pixels above and below, a hairline of
+ * the heading colour under it. The hover is Studio's list row
+ * (`startPage.ts:127`), the tab-group well.
  */
 .holding {
-  padding: var(--lc-space-md);
-  border-bottom: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
+  padding: 14px var(--lc-space-md);
+  border-bottom: 1px solid var(--lc-card-rule);
   transition: background var(--lc-motion-fast) var(--lc-easing);
 }
 
 .holding:hover {
-  background: color-mix(in srgb, var(--lc-fg) 3%, transparent);
+  background: var(--lc-well);
 }
 
 /* The last row sits on the card's own edge; a second line there reads as a
@@ -376,18 +421,22 @@
   min-width: 0;
 }
 
+/* The table cell's text: 14 / 600, uppercase, the heading colour. */
 .holding-symbol {
-  font-size: var(--lc-text-sm);
+  font-size: var(--lc-text-xs);
+  font-weight: var(--lc-weight-semibold);
+  text-transform: uppercase;
+  color: var(--lc-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 /* The ticker and the chain, on every row. Without the chain a wallet holding
-   USDC in four places shows four identical rows. */
+   USDC in four places shows four identical rows. Studio's row subtitle. */
 .holding-chain {
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-tertiary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -395,12 +444,14 @@
 
 .holding-num {
   text-align: right;
-  font-size: var(--lc-text-sm);
+  font-size: var(--lc-text-xs);
+  font-weight: var(--lc-weight-semibold);
+  color: var(--lc-text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .holding-dim {
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
 .holding-change[data-way='up'] {
@@ -439,16 +490,12 @@
 }
 
 .holding-value[data-state='stale'] {
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
   font-style: italic;
 }
 
 .holding[role='button'] {
   cursor: pointer;
-}
-
-.holding[role='button']:hover {
-  background: var(--lc-bg-elevated-2);
 }
 
 .holding[role='button']:focus-visible {
@@ -476,6 +523,8 @@
   overflow-y: auto;
 }
 
+/* The site's modal close (`.lcai-modal-box .close`): a 40px primary disc, a
+   white glyph, grown a tenth on hover over 0.4s. */
 .asset-close {
   position: absolute;
   top: var(--lc-space-md);
@@ -486,15 +535,15 @@
   height: var(--lc-control-sm);
   appearance: none;
   border: 0;
-  border-radius: var(--lc-radius-sm);
-  background: transparent;
-  color: var(--lc-fg-dim);
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-accent);
+  color: var(--lc-on-brand);
   cursor: pointer;
+  transition: transform var(--lc-motion-slow) var(--lc-easing);
 }
 
 .asset-close:hover {
-  background: var(--lc-bg-elevated-2);
-  color: var(--lc-fg);
+  transform: scale(1.1);
 }
 
 .asset-hero {
@@ -510,28 +559,38 @@
   height: 3.5rem;
 }
 
+/* The dashboard card title: 20 / 600, -0.2px. */
 .asset-hero-name {
   margin: 0;
   font-size: var(--lc-text-lg);
-  font-weight: 600;
+  font-weight: var(--lc-weight-semibold);
+  line-height: var(--lc-leading-tight);
+  letter-spacing: -0.2px;
+  color: var(--lc-text-strong);
 }
 
 .asset-hero-chain {
   margin: 0;
-  font-size: var(--lc-text-xs);
-  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-sm);
+  color: var(--lc-text-secondary);
 }
 
+/* The balance card's `.balance` at the size the site sets it on a medium
+   screen (`_dashboard.scss:2519-2537`): 600, 1.2, -0.01em, white. */
 .asset-hero-balance {
   margin: 0;
   font-size: var(--lc-text-xxl);
+  font-weight: var(--lc-weight-semibold);
   line-height: var(--lc-leading-tight);
+  letter-spacing: -0.01em;
+  color: var(--lc-on-brand);
   font-variant-numeric: tabular-nums;
 }
 
+/* `.balance span`: Neutral-200. */
 .asset-hero-worth {
   margin: 0;
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -543,59 +602,76 @@
   margin-top: var(--lc-space-md);
 }
 
-/* Pill-shaped and outlined, so the three read as one set of choices rather than
-   as one primary action and two afterthoughts. */
+/* The site's secondary button, `.btn-border-white-blur`, as `.button` draws it:
+   glass over a pale edge, filled with the primary on hover. */
 .asset-action {
   appearance: none;
   display: inline-flex;
   align-items: center;
   gap: var(--lc-space-sm);
-  padding: 0 var(--lc-space-lg);
+  padding: 0 28px;
   height: var(--lc-control-md);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-pill);
-  background: transparent;
-  color: var(--lc-fg);
+  border: 1px solid var(--lc-rule-strong);
+  border-radius: var(--lc-radius-button);
+  background: var(--lc-glass);
+  backdrop-filter: var(--lc-glass-blur);
+  color: var(--lc-text-primary);
   font: inherit;
-  font-size: var(--lc-text-sm);
-  letter-spacing: 0.04em;
+  font-size: var(--lc-text-md);
+  font-weight: var(--lc-weight-regular);
+  line-height: 1;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
   cursor: pointer;
+  transition: all var(--lc-motion-base) ease-in-out;
 }
 
 .asset-action:hover {
-  border-color: var(--lc-brand);
-  color: var(--lc-brand);
+  border-color: var(--lc-accent);
+  background: var(--lc-accent);
+  color: var(--lc-text-primary);
 }
 
+/**
+ * The dashboard's network tabs (`_dashboard.scss:2368-2421`): a well with a
+ * hairline, 12px corners, six pixels in; each tab 8px corners, `10px 18px`,
+ * 14 / 600, white over the tab gradient when chosen.
+ */
 .asset-tabs {
   display: flex;
   justify-content: center;
-  gap: var(--lc-space-lg);
-  border-bottom: 1px solid var(--lc-rule);
+  gap: 8px;
+  width: fit-content;
+  margin-inline: auto;
+  padding: 6px;
+  border: 1px solid var(--lc-card-rule);
+  border-radius: var(--lc-radius-group);
+  background: var(--lc-well);
 }
 
 .asset-tab {
   appearance: none;
-  padding: var(--lc-space-sm) 0;
-  border: 0;
-  border-bottom: 2px solid transparent;
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  border-radius: var(--lc-radius-button);
   background: transparent;
-  color: var(--lc-fg-muted);
+  background-clip: padding-box;
+  color: var(--lc-text-primary);
   font: inherit;
   font-size: var(--lc-text-xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-weight: var(--lc-weight-semibold);
+  line-height: 1;
   cursor: pointer;
+  transition: all var(--lc-motion-base) var(--lc-easing);
 }
 
 .asset-tab:hover {
-  color: var(--lc-fg);
+  color: var(--lc-on-brand);
 }
 
 .asset-tab.is-active {
-  color: var(--lc-fg);
-  border-bottom-color: var(--lc-brand);
+  color: var(--lc-on-brand);
+  background-image: var(--lc-tab-gradient);
 }
 
 .asset-body {
@@ -609,50 +685,41 @@
 }
 
 /*
- * A segmented control, not five loose buttons.
- *
- * These pick between views of one thing, so they are drawn as one thing: a
- * tray with a raised tile inside it. Loose buttons with a tinted background on
- * the chosen one say "five actions, one of which happened", which is a
- * different sentence.
+ * The balance card's chart buttons (`_dashboard.scss:2617-2659`), which are this
+ * exact control on the site: loose buttons eight pixels apart, each a 10px
+ * hairline box on the faintest wash, 14 / 700. Hovered and chosen take the tab
+ * gradient and white. The gradient is clipped to the padding box, as the site's
+ * `::after` sits inside the border.
  */
 .asset-ranges {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: var(--lc-space-xs);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-md);
-  background: color-mix(in srgb, var(--lc-fg) 3%, transparent);
+  gap: 8px;
 }
 
 .asset-range {
   appearance: none;
   display: inline-flex;
   align-items: center;
-  height: var(--lc-control-xs);
-  padding: 0 var(--lc-space-md);
-  border: 0;
-  border-radius: var(--lc-radius-sm);
-  background: transparent;
-  color: var(--lc-fg-muted);
+  padding: 9px 12px;
+  border: 1px solid var(--lc-card-rule);
+  border-radius: var(--lc-radius-md);
+  /* `.chart-btn` fill, `_dashboard.scss:2622`. */
+  background: rgba(204, 206, 239, 0.02);
+  background-clip: padding-box;
+  color: var(--lc-text-primary);
   font: inherit;
   font-size: var(--lc-text-xs);
-  font-weight: 600;
+  font-weight: var(--lc-weight-bold);
+  line-height: 1;
   cursor: pointer;
-  transition:
-    color var(--lc-motion-fast) var(--lc-easing),
-    background var(--lc-motion-fast) var(--lc-easing);
+  transition: all var(--lc-motion-base) var(--lc-easing);
 }
 
-.asset-range:hover {
-  color: var(--lc-fg);
-}
-
+.asset-range:hover,
 .asset-range.is-active {
-  background: color-mix(in srgb, var(--lc-fg) 8%, transparent);
-  color: var(--lc-fg);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 30%);
+  color: var(--lc-on-brand);
+  background-image: var(--lc-tab-gradient);
 }
 
 .asset-chart {
@@ -688,12 +755,13 @@
   stroke: none;
 }
 
+/* The status pills' fills: the site's own tint of each direction. */
 .chart-area[data-way='up'] {
-  fill: color-mix(in oklab, var(--lc-success) 14%, transparent);
+  fill: var(--lc-success-soft);
 }
 
 .chart-area[data-way='down'] {
-  fill: color-mix(in oklab, var(--lc-danger) 14%, transparent);
+  fill: var(--lc-danger-soft);
 }
 
 .chart-marks {
@@ -704,7 +772,7 @@
 
 .chart-mark {
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-tertiary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -758,10 +826,6 @@
   grid-column: 1 / -1;
 }
 
-/* The address card is out of the disclosure and on the page itself, so it takes
-   a full row like the balance and activity cards above it rather than a grid
-   column. */
-
 /* One column below the width where three cards stop being readable. Every card
    spans everything rather than half-collapsing into an awkward two. */
 @media (max-width: 60rem) {
@@ -785,18 +849,23 @@
   gap: var(--lc-space-sm);
 }
 
+/* Studio's figure card (`interact.ts:183-185`, the site's live-network metric
+   card) on its inset well, with the 10px corners of Studio's step rows
+   (`connectPage.ts:43`): the figure in the strongest text, the label under it. */
 .network {
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: var(--lc-space-sm);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-sm);
+  /* `.lc-card` edge, `interact.ts:183`. */
+  border: 1px solid rgba(204, 206, 239, 0.16);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-inset);
 }
 
 .network-name {
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -804,18 +873,20 @@
 
 .network-value {
   font-size: var(--lc-text-md);
+  font-weight: var(--lc-weight-medium);
+  color: var(--lc-text-strong);
   font-variant-numeric: tabular-nums;
 }
 
 .network-held {
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
 /* A chain that could not be reached is not a chain holding nothing, and the
-   two must not look the same. */
+   two must not look the same. The warning edge the kit's alert takes. */
 .network[data-state='unreachable'] {
-  border-color: color-mix(in oklab, var(--lc-warning) 40%, var(--lc-rule));
+  border-color: var(--lc-warning);
 }
 
 .network[data-state='unreachable'] .network-value {
@@ -834,11 +905,24 @@
   gap: var(--lc-space-sm);
 }
 
+/* The dashboard table's `th`, as `.holdings-head`. */
 .ledger-head {
-  padding: 0 var(--lc-space-xs) var(--lc-space-xs);
-  border-bottom: 1px solid var(--lc-rule);
+  padding: 16px var(--lc-space-xs);
+  background: var(--lc-card);
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-muted);
+  font-weight: var(--lc-weight-semibold);
+  line-height: 1.5;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--lc-text-primary);
+}
+
+/* Inside an asset's own history the same class heads one entry (what, and how
+   much) rather than a table, so it is that entry's first line, not a `th`. */
+.ledger-entry > .ledger-head {
+  padding: 0;
+  background: none;
+  white-space: normal;
 }
 
 .ledger-col-num {
@@ -881,29 +965,20 @@
   text-align: center;
 }
 
+/* The dashboard table's empty line, `.data-not-found` (`_dashboard.scss:2745`):
+   16px on 27.2px, #4e4e5c. */
 .ledger-empty-text {
   margin: 0 auto var(--lc-space-md);
   max-width: 48ch;
-  font-size: var(--lc-text-sm);
-  color: var(--lc-text-secondary);
+  font-size: var(--lc-text-md);
+  line-height: var(--lc-leading-relaxed);
+  color: var(--lc-neutral-6);
   text-wrap: pretty;
 }
 
 /* --- The Account front page -------------------------------------------------- */
 
-/* Two balances and what acts on them. The portfolio line, the networks and the
-   holdings table are the chain showing through and live behind the disclosure;
-   the activity and the address are the account itself and stay on the page. */
-/* Sized by what is in it. The page is a flex column, so without this the card
-   stretched to fill and two lines of text sat in a box four times their
-   height. */
-/**
- * The balance card, washed with the brand.
- *
- * The wallet lays a very faint magenta-to-violet over its hero so the one card
- * that matters is not the same object as the four beneath it. At a tenth it is
- * not a colour anybody names — it is the reason the eye lands there first.
- */
+/* The AI credit card: a dashboard card holding a second, smaller balance. */
 .account-credit {
   display: flex;
   flex-direction: column;
@@ -915,26 +990,22 @@
   align-items: start;
 }
 
-.account-credit .account-balance-value {
-  font-size: var(--lc-text-xl);
-}
-
 /*
- * The delegate's state, as a notice rather than as loose orange prose.
- *
- * It was a bare sentence in the warning colour sitting between a balance and a
- * row of buttons, which is the one place on the card where a reader is counting
- * money. Given a ground and an edge it becomes a thing to read and then move
- * past.
+ * The delegate's state, as the site's notice (`vesting-claim__alert`, the
+ * kit's `.alert`): informational while the delegate can spend, the warning
+ * tone when it cannot and asks will not run.
  */
 #panel-wallet .account-balance-note#delegate-status:not(:empty) {
   display: block;
-  margin-top: var(--lc-space-sm);
-  padding: var(--lc-space-sm) var(--lc-space-md);
-  border: 1px solid color-mix(in srgb, var(--lc-warning) 30%, transparent);
-  border-radius: var(--lc-radius-md);
-  background: color-mix(in srgb, var(--lc-warning) 10%, transparent);
-  color: var(--lc-warning);
+  margin-top: var(--lc-space-md);
+  padding: 16px;
+  border: 0;
+  border-radius: var(--lc-radius-group);
+  background: var(--lc-surface-3);
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-text-sm);
+  font-weight: 400;
+  line-height: 1.5;
   text-wrap: pretty;
 }
 
@@ -953,31 +1024,23 @@
   min-width: 0;
 }
 
-/**
- * The wallet's balance block: a micro-caps label over a figure set large.
- *
- * A caption and a title-2 one above the other were two pieces of text at
- * similar weight, and the balance — the one thing anybody opens this page for —
- * did not look like the answer to anything. Caps and tracking push the label
- * out of the way; the size and the negative tracking below are what make the
- * number read as a headline.
- */
+/* The site's eyebrow, `.lc-sm-title`, as the kit's card titles wear it. */
 .account-balance-label {
-  font-size: var(--lc-text-xs);
-  font-weight: var(--lc-weight-semibold);
-  letter-spacing: 0.13em;
+  font-size: var(--lc-text-md);
+  font-weight: var(--lc-weight-medium);
+  line-height: var(--lc-leading-tight);
+  letter-spacing: -0.096px;
   text-transform: uppercase;
-  color: var(--lc-text-tertiary);
+  color: var(--lc-text-secondary);
 }
 
+/* The balance card's second figure, `.convert-balance`
+   (`_dashboard.scss:2552-2558`): 24 / 600, 1.2, -0.01em, the heading colour. */
 .account-balance-value {
-  font-size: 34px;
-  font-weight: var(--lc-weight-bold);
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  /* Tabular rather than monospace: the figures line up either way, and the
-     wallet sets its balances in the interface face, which is what stops a
-     number looking like a hash. */
+  font-size: var(--lc-text-xl);
+  font-weight: var(--lc-weight-semibold);
+  letter-spacing: -0.01em;
+  line-height: var(--lc-leading-tight);
   font-family: inherit;
   font-variant-numeric: tabular-nums;
   color: var(--lc-text-primary);
@@ -988,14 +1051,6 @@
   color: var(--lc-text-tertiary);
 }
 
-/* The delegate line is the one note on the card that can be a warning: an
-   unauthorised delegate means asks cannot run, and that is worth the colour
-   the ledger gives a pending transaction rather than the grey of a footnote.
-   Authorised stays quiet — it is the ordinary state, not news. */
-.account-balance-note[data-state='off'] {
-  color: var(--lc-warning);
-}
-
 .account-balance-actions {
   display: flex;
   align-items: center;
@@ -1003,30 +1058,33 @@
   flex: 0 0 auto;
 }
 
-/* The two ways of moving between wallet and credit are a primary/secondary
-   pair of the same control — topping up is what makes inference work, moving
-   back undoes it. A button beside a bare underlined link made the pair read as
-   an action and an afterthought, which neither is. */
-
+/* The backup warning: the site's notice in its warning tone, with the action
+   beside the words. */
 .account-backup {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--lc-space-lg);
-  background: var(--lc-warning-soft);
+  gap: 12px;
+  padding: 16px;
+  border: 0;
+  border-radius: var(--lc-radius-group);
+  background: var(--lc-surface-3);
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-text-sm);
+  font-weight: 400;
+  line-height: 1.5;
   flex: 0 0 auto;
 }
 
 .account-backup-text strong {
   display: block;
-  color: var(--lc-text-primary);
-  font-size: var(--lc-type-body-strong);
+  color: var(--lc-text-strong);
+  font-weight: var(--lc-weight-medium);
 }
 
 .account-backup-text p {
-  margin: 2px 0 0;
+  margin: 0;
   color: var(--lc-text-secondary);
-  font-size: var(--lc-type-caption);
   text-wrap: pretty;
 }
 
@@ -1040,18 +1098,22 @@
   flex-direction: column;
 }
 
+/* A row that opens something, rather than a sentence with a chevron loose at
+   the foot of the page: Studio's note edge and list-row hover. */
 .account-advanced-summary {
   display: flex;
   align-items: center;
   gap: var(--lc-space-sm);
   min-height: var(--lc-control-md);
-  padding: 0 var(--lc-space-sm);
-  border-radius: var(--lc-radius-sm);
+  padding: 0 var(--lc-space-md);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
   color: var(--lc-text-secondary);
   font-size: var(--lc-type-body);
   cursor: pointer;
   list-style: none;
   flex: 0 0 auto;
+  transition: background var(--lc-motion-fast) var(--lc-easing);
 }
 
 .account-advanced-summary::-webkit-details-marker {
@@ -1059,16 +1121,21 @@
 }
 
 .account-advanced-summary:hover {
-  background: var(--lc-surface-hover);
+  background: var(--lc-well);
   color: var(--lc-text-primary);
 }
 
+/* The chevron turns rather than swapping for a different glyph. */
 .account-advanced-summary .icon {
   transition: transform var(--lc-motion-fast) var(--lc-easing);
 }
 
-.account-advanced[open] .account-advanced-summary .icon {
+.account-advanced[open] > .account-advanced-summary .icon {
   transform: rotate(90deg);
+}
+
+.account-advanced[open] > .account-advanced-summary {
+  margin-bottom: var(--lc-space-md);
 }
 
 .account-advanced[open] {
@@ -1095,7 +1162,7 @@
 }
 
 .swap-route-arrow {
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
 }
 
 .swap-provider {
@@ -1104,7 +1171,7 @@
   gap: var(--lc-space-xs);
   margin-left: auto;
   font-size: var(--lc-text-xs);
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
 }
 
 .swap-provider-mark {
@@ -1129,28 +1196,33 @@
 /* --- The portfolio card ------------------------------------------------------ */
 
 /**
- * The wallet's home screen, as the wallet composes one.
+ * The dashboard's balance card, `.lcai-dashboard-balance-card`
+ * (`_dashboard.scss:2423-2450`).
  *
- * One card carrying the four things somebody opens a wallet for: what it is all
- * worth, what that did, what acts on it, and the line it did it along. Before
- * this, the figure on the page was a single chain's balance and the total, the
- * chart and the holdings were folded into a `details` at the foot of the page
- * labelled "Networks and holdings" — so the whole of what a wallet is for was
- * one press and a scroll away, and the page read as a settings screen.
- *
- * The wash is a tenth of the brand over the card ground, which is decoration on
- * top of the hierarchy rather than the hierarchy itself: forty pixels of total,
- * everything else underneath it and smaller.
+ * The heading colour's wash and hairline, 16px corners, and two blurred blobs
+ * of light behind its top edge: magenta to the right, violet to the left. The
+ * blobs are the card's own `::before` and `::after` at the site's sizes and
+ * offsets; the content is lifted over them as the site lifts `.card-top`.
  */
 .pv-card {
+  position: relative;
+  /* `clip`, not the site's `hidden`: a grid item that is a scroll container
+     loses its content-sized floor, and the grid this card sits in squeezed it
+     to a sliver. `clip` cuts the blobs at the corners without that. */
+  overflow: clip;
   padding: var(--lc-space-xl) var(--lc-space-xl) var(--lc-space-lg);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-lg);
-  /* One colour, not two layers: `background: <colour>, <colour>` is invalid —
-     only the last layer may be a colour — and the whole declaration is dropped,
-     which took the card's fill with it. The tint is mixed in instead. */
-  background: color-mix(in srgb, var(--lc-accent) 10%, var(--lc-bg-elevated));
-  box-shadow: var(--lc-shadow-2);
+  /* The site's ecosystem card (`elements/_ecosystem-section.scss:98-110`), as
+     Lightchain Studio's start page carries it: Neutral-900, a
+     `rgba(204,206,239,.2)` edge, square corners, and one of the site's
+     stippled illustrations standing in it. */
+  border: 1px solid rgba(204, 206, 239, 0.2);
+  border-radius: 0;
+  background: #0f0f14;
+}
+
+.pv-card > * {
+  position: relative;
+  z-index: 2;
 }
 
 .pv-top-row {
@@ -1168,50 +1240,66 @@
   min-width: 0;
 }
 
+/* `.balance-title-wrap .title` (`_dashboard.scss:2479-2487`): 500, 1.2,
+   -0.01em, white; 18 on the site, 15 at Studio's density. */
 .pv-label {
-  font-size: var(--lc-text-sm);
-  color: var(--lc-fg-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 600;
+  font-size: var(--lc-text-md);
+  font-weight: var(--lc-weight-medium);
+  line-height: var(--lc-leading-tight);
+  letter-spacing: -0.01em;
+  color: var(--lc-on-brand);
 }
 
-/* The one figure the card exists to show. `line-height: 1` because at this size
-   the leading is what decides where the number sits, not the box around it. */
+/* `.balance` (`_dashboard.scss:2509-2515`): 48 / 600, 1.2, -0.01em, white. */
 .pv-value {
   font-size: var(--lc-text-display);
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.025em;
-  color: var(--lc-fg);
+  font-weight: var(--lc-weight-semibold);
+  line-height: var(--lc-leading-tight);
+  letter-spacing: -0.01em;
+  color: var(--lc-on-brand);
   font-variant-numeric: tabular-nums;
 }
 
-/* The holding and the change on one line: a total in dollars without the
-   balance it came from is a figure nobody can check. */
+/* The holding and the change on one line, as `.balance-info`
+   (`_dashboard.scss:2540-2544`) sets them: 6 by 24 apart. */
 .pv-sub {
   display: flex;
   align-items: baseline;
-  gap: var(--lc-space-sm);
+  gap: 6px 24px;
   flex-wrap: wrap;
   font-size: var(--lc-text-sm);
 }
 
+/* `.convert-balance` (`_dashboard.scss:2552-2558`): 24 / 600, 1.2, -0.01em, the
+   heading colour. */
 .pv-native {
-  color: var(--lc-fg-dim);
+  font-size: var(--lc-text-xl);
+  font-weight: var(--lc-weight-semibold);
+  line-height: var(--lc-leading-tight);
+  letter-spacing: -0.01em;
+  color: var(--lc-text-primary);
   font-variant-numeric: tabular-nums;
 }
 
+/* `.info-text-wrap span` (`_dashboard.scss:2577-2601`): 16 / 500, 1.5, -0.01em,
+   Neutral-300; `.text-success` 600 in #1daf61. */
 .pv-change {
-  font-weight: 500;
-  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-md);
+  font-weight: var(--lc-weight-medium);
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  /* `--Neutral-300`, `_variables.scss:174`. */
+  color: #9798b6;
 }
 
 .pv-change[data-way='up'] {
-  color: var(--lc-success);
+  font-weight: var(--lc-weight-semibold);
+  /* `.text-success`, `_dashboard.scss:2597`. */
+  color: #1daf61;
 }
 
 .pv-change[data-way='down'] {
+  font-weight: var(--lc-weight-semibold);
   color: var(--lc-danger);
 }
 
@@ -1248,18 +1336,18 @@
   width: 24px;
   height: 24px;
   flex: 0 0 auto;
-  color: var(--lc-brand);
+  color: var(--lc-accent);
 }
 
 .pv-mini-name {
   font-size: var(--lc-text-sm);
-  font-weight: 600;
-  color: var(--lc-fg);
+  font-weight: var(--lc-weight-semibold);
+  color: var(--lc-text-primary);
 }
 
 .pv-mini-price {
   font-size: var(--lc-text-sm);
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1316,39 +1404,37 @@
 /**
  * One account, as a row you press.
  *
- * The whole row is the control rather than a button at the end of it: what is
- * being chosen is the identity, and a row that carries a face, a name and an
- * address should not need a separate word to press. The one already in use is
- * disabled and says so, because a row that looks pressable and does nothing is
- * worse than a row that does not look pressable.
+ * The site's wallet picker row, `.reown-wallet-btn` (`reown/_wallet.scss:202-226`):
+ * `14px 16px`, fourteen apart, on #14152c with a white hairline at 8%, 14px
+ * corners, the violet edge on hover. The one already in use is disabled and
+ * carries the primary edge, the site's mark of the chosen field.
  */
 .account-option-btn {
   display: flex;
   align-items: center;
-  gap: var(--lc-space-md);
+  gap: 14px;
   width: 100%;
-  padding: var(--lc-space-md);
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-md);
-  background: var(--lc-bg-elevated);
+  padding: 14px 16px;
+  /* `$reown-border-light`, `reown/_wallet.scss:14`. */
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* `.reown-wallet-btn`, `reown/_wallet.scss:210`. */
+  border-radius: 14px;
+  background: var(--lc-surface-3);
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition:
-    border-color var(--lc-motion-fast) var(--lc-easing),
-    background var(--lc-motion-fast) var(--lc-easing);
+  transition: all var(--lc-motion-fast) var(--lc-easing);
 }
 
 .account-option-btn:hover:not(:disabled) {
-  border-color: var(--lc-rule-strong);
-  background: var(--lc-bg-elevated-2);
+  /* `$reown-border-color`, `reown/_wallet.scss:13`. */
+  border-color: rgba(112, 100, 233, 0.2);
 }
 
 .account-option-btn:disabled {
   cursor: default;
-  border-color: color-mix(in srgb, var(--lc-brand) 45%, transparent);
-  background: color-mix(in srgb, var(--lc-brand) 10%, var(--lc-bg-elevated));
+  border-color: var(--lc-accent);
 }
 
 .account-option-mark {
@@ -1364,15 +1450,17 @@
   flex: 1 1 auto;
 }
 
+/* `.reown-wallet-name`: 16 / 600, the strongest text. */
 .account-option-name {
-  font-weight: 600;
-  color: var(--lc-fg);
+  font-size: var(--lc-text-md);
+  font-weight: var(--lc-weight-semibold);
+  color: var(--lc-text-strong);
 }
 
 .account-option-address {
   font-family: var(--lc-mono);
-  font-size: var(--lc-text-sm);
-  color: var(--lc-fg-muted);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-text-tertiary);
 }
 
 /**
@@ -1398,37 +1486,52 @@
   min-height: auto;
 }
 
-/* A row that opens something, rather than a sentence with a chevron loose at
-   the foot of the page. It sits on the page's ground, so it reads as the end of
-   the page rather than as a card that failed to draw. */
-.account-advanced-summary {
-  border: 1px solid var(--lc-rule);
-  padding: 0 var(--lc-space-md);
-  min-height: var(--lc-control-md);
-}
-
-/* The chevron turns rather than swapping for a different glyph. */
-.account-advanced-summary .icon {
-  transition: transform var(--lc-motion-fast) var(--lc-easing);
-}
-
-.account-advanced[open] > .account-advanced-summary .icon {
-  transform: rotate(90deg);
-}
-
-.account-advanced[open] > .account-advanced-summary {
-  margin-bottom: var(--lc-space-md);
-}
-
-/* The switch, which appears under the account it is about. */
+/* The switch, which appears under the account it is about: Studio's note on
+   its inset well. */
 .accounts-switch {
   gap: var(--lc-space-md);
   padding: var(--lc-space-md);
-  border: 1px solid color-mix(in srgb, var(--lc-brand) 45%, transparent);
+  border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: color-mix(in srgb, var(--lc-brand) 8%, transparent);
+  background: var(--lc-inset);
 }
 
 .accounts-switch .dialog-note {
   margin: 0;
+}
+
+/* The chart's own box is a fixed height; the loading state fills it rather
+   than padding past it. */
+.pv-chart-body .loading {
+  height: 100%;
+  padding: 0;
+}
+
+/* The site's own LCAI coin (`public/images/lcai-coin-3d.png`), standing in
+   the card's empty middle the way the ecosystem cards carry their art: behind
+   everything, clear of the actions and the ranges on the right, with the
+   glow the site gives its token mark (`drop-shadow(0 0 10px
+   rgba(238,17,251,.35))`, `_lcai-token-section.scss`). Stood down once there
+   is a real chart, so it never sits under the line. */
+.pv-card > .pv-art {
+  position: absolute;
+  top: 50%;
+  right: 32%;
+  z-index: 0;
+  height: 180px;
+  width: auto;
+  transform: translateY(-50%);
+  filter: drop-shadow(0 0 10px rgba(238, 17, 251, 0.35));
+  pointer-events: none;
+  user-select: none;
+}
+
+.pv-card:has(.pv-chart-body .chart) > .pv-art {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .pv-card > .pv-art {
+    display: none;
+  }
 }

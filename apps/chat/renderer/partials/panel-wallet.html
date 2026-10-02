@@ -109,7 +109,7 @@
                 <h1 class="page-title">Your key, on this machine</h1>
                 <p class="page-sub">
                   One key signs your messages, joins rooms and pays for inference. It is generated
-                  here and never leaves — encrypted with a password only you know.
+                  here and never leaves - encrypted with a password only you know.
                 </p>
 
                 <form class="form" id="wallet-create-form">
@@ -219,7 +219,7 @@
                   <span class="account-pill-mark" id="wallet-account-mark" aria-hidden="true"></span>
                   <span class="account-pill-text">
                     <span class="account-pill-name">Account</span>
-                    <span class="account-pill-address" id="wallet-account-address">—</span>
+                    <span class="account-pill-address" id="wallet-account-address">-</span>
                   </span>
                   <svg class="icon account-pill-chevron" aria-hidden="true">
                     <use href="#i-chevron" />
@@ -272,6 +272,7 @@
                      because a total in dollars without the holding it came from
                      is a figure you cannot check. -->
                 <section class="pv-card">
+                  <img class="pv-art" src="./images/lcai-coin.png" alt="" />
                   <div class="pv-top-row">
                     <div class="pv-info">
                       <span class="pv-label">Portfolio value</span>
@@ -280,11 +281,11 @@
                            so neither is used: a block the width of the figure
                            holds the line until the figure arrives. -->
                       <span class="pv-value" id="assets-total">
-                        <span class="skeleton" data-skeleton="figure"></span>
+                        <svg class="icon loading-inline" aria-hidden="true"><use href="#i-loader" /></svg>
                       </span>
                       <span class="pv-sub">
                         <span class="pv-native" id="account-native">
-                          <span class="skeleton" data-skeleton="amount"></span>
+                          <svg class="icon loading-inline" aria-hidden="true"><use href="#i-loader" /></svg>
                         </span>
                         <span class="pv-change" id="portfolio-change"></span>
                       </span>
@@ -333,7 +334,12 @@
                         <button class="asset-range" type="button" data-range="all">All</button>
                       </div>
                     </div>
-                    <div class="pv-chart-body asset-chart" id="portfolio-chart"></div>
+                    <div class="pv-chart-body asset-chart" id="portfolio-chart">
+                      <div class="loading" role="status">
+                        <svg class="icon loading-mark" aria-hidden="true"><use href="#i-loader" /></svg>
+                        <p class="loading-text">Reading balances…</p>
+                      </div>
+                    </div>
 
                     <!-- What the line is, and what it is not. It prices what is
                          held now backwards; nothing here has ever recorded what
@@ -360,7 +366,7 @@
                     <div class="account-balance-named">
                       <span class="account-balance-label">AI credit</span>
                       <span class="account-balance-value" id="wallet-prepaid">
-                        <span class="skeleton" data-skeleton="word"></span>
+                        <svg class="icon loading-inline" aria-hidden="true"><use href="#i-loader" /></svg>
                       </span>
                       <span class="account-balance-note" id="account-spent"></span>
                       <!-- What the delegate can currently reach, said beside the

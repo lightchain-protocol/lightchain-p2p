@@ -133,7 +133,7 @@ export function conversationHandlers(ctx, kit) {
         // what is actually missing instead.
         if (/insufficient funds/.test(err?.message ?? '')) {
           throw new Error(
-            'opening a session sends a small transaction on chain, and this wallet has nothing for gas — receive some LCAI first',
+            'opening a session sends a small transaction on chain, and this wallet has nothing for gas - receive some LCAI first',
             { cause: err }
           )
         }
@@ -188,11 +188,11 @@ export function conversationHandlers(ctx, kit) {
         .catch(() => null)
       if (standing && !standing.delegateAuthorized) {
         throw new Error(
-          'the delegate that submits jobs for you is not authorised yet — add funds in Wallet once and the deposit authorises it'
+          'the delegate that submits jobs for you is not authorised yet - add funds in Wallet once and the deposit authorises it'
         )
       }
       if (standing && standing.balance === 0n) {
-        throw new Error('your prepaid balance is empty — add funds in Wallet, then ask again')
+        throw new Error('your prepaid balance is empty - add funds in Wallet, then ask again')
       }
 
       // The same caps a room ask is held to, on the same money: a question
@@ -206,7 +206,7 @@ export function conversationHandlers(ctx, kit) {
       // of the fee dies on chain just the same, and is just as knowable here.
       if (standing && fee !== null && standing.balance > 0n && standing.balance < fee) {
         throw new Error(
-          `your prepaid balance of ${standing.balance} wei is short of this job's fee of ${fee} wei — add funds in Wallet, then ask again`
+          `your prepaid balance of ${standing.balance} wei is short of this job's fee of ${fee} wei - add funds in Wallet, then ask again`
         )
       }
 
@@ -224,7 +224,7 @@ export function conversationHandlers(ctx, kit) {
         // revert rather than hand anybody a contract's idea of an error.
         if (/setDelegateAuthorization/.test(err?.message ?? '')) {
           throw new Error(
-            'the delegate that submits jobs for you is not authorised yet — add funds in Wallet once and the deposit authorises it',
+            'the delegate that submits jobs for you is not authorised yet - add funds in Wallet once and the deposit authorises it',
             { cause: err }
           )
         }

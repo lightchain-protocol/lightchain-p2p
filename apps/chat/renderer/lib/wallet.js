@@ -272,7 +272,7 @@ function ledgerRow(entry) {
   hash.type = 'button'
   hash.className = 'ledger-hash'
   hash.textContent = `${entry.hash.slice(0, 10)}…${entry.hash.slice(-8)}`
-  hash.title = `${entry.hash} — click to copy`
+  hash.title = `${entry.hash} - click to copy`
   // `copy` reports the outcome itself. Announcing success here as well both
   // said it twice and said it even when the copy had failed.
   hash.addEventListener('click', () => void copy(entry.hash, 'Transaction hash'))
@@ -282,7 +282,7 @@ function ledgerRow(entry) {
   const amount = el2(
     'span',
     'ledger-amount ledger-col-num',
-    entry.kind === 'cancel' ? '—' : formatLcai(entry.value ?? '0')
+    entry.kind === 'cancel' ? '-' : formatLcai(entry.value ?? '0')
   )
 
   item.append(what, when, state, hash, amount)
@@ -341,7 +341,7 @@ function stuckActions(entry) {
       done: 'Rebid',
       confirm: () =>
         window.confirm(
-          'Bid higher for this transaction?\n\nThe same payment is sent again at a higher fee, competing for the same nonce. The chain mines exactly one of the two, so this cannot pay twice — but the original may still be the one that lands.'
+          'Bid higher for this transaction?\n\nThe same payment is sent again at a higher fee, competing for the same nonce. The chain mines exactly one of the two, so this cannot pay twice - but the original may still be the one that lands.'
         )
     }),
     act('Try to void', 'Race it with an empty transaction at the same nonce', {

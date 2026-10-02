@@ -1,5 +1,11 @@
 # The interface contract
 
+> **Superseded for values (2026-10-02).** Colours, type, radii, control sizes
+> and component styling now follow the website and Lightchain Studio exactly —
+> see [website-match.md](website-match.md), which wins wherever the two disagree.
+> The structural rules here (component ownership, navigation, empty states)
+> still apply.
+
 **Authored by A1 in Wave 0. Amended only by the coordinator.**
 
 This is the agreement the four Wave-1 agents build against. It exists so that

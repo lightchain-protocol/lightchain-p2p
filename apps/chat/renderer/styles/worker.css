@@ -95,27 +95,30 @@
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
   gap: var(--lc-space-md) var(--lc-space-lg);
   margin: 0;
-  padding: var(--lc-space-lg);
-  border: 1px solid var(--lc-rule);
+  /* The dashboard card (`dashboard/_dashboard.scss:2423`). */
+  padding: 24px;
+  border: 1px solid var(--lc-card-rule);
   border-radius: var(--lc-radius-lg);
-  background: var(--lc-bg-elevated);
+  background: var(--lc-card);
 }
 
+/* The site's network-metrics card label and figure, as Studio sets them
+   (`interact.ts`, `.lc-card__label` / `.lc-card__value`): 14px Neutral-200,
+   then 20 / 500 in the strongest text, both at 1.2. */
 .wizard-stats dt {
   font-size: var(--lc-text-xs);
-  font-weight: var(--lc-weight-semibold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--lc-text-tertiary);
+  line-height: var(--lc-leading-tight);
+  color: var(--lc-text-secondary);
 }
 
 /* The figure itself, in the size a figure this consequential deserves. */
 .wizard-stats dd {
-  margin: var(--lc-space-xs) 0 0;
+  margin: var(--lc-space-sm) 0 0;
   font-size: var(--lc-text-lg);
-  font-weight: var(--lc-weight-semibold);
+  font-weight: var(--lc-weight-medium);
+  line-height: var(--lc-leading-tight);
   font-variant-numeric: tabular-nums;
-  color: var(--lc-text-primary);
+  color: var(--lc-text-strong);
 }
 
 /* Each label sits above its own value rather than beside it, which a two-column
@@ -159,17 +162,23 @@
   cursor: pointer;
 }
 
+/* Studio's connect-page step (`connectPage.ts`, `.lc-steps li`) for the edge
+   and the colours, the site's network tab (`dashboard/_dashboard.scss:2384-2420`)
+   for the type and the current state: 14 / 600 at line height 1, and the tab
+   gradient under white once it is the one you are on. */
 .wizard-pip-mark {
   display: grid;
   place-items: center;
   width: 1.6rem;
   height: 1.6rem;
-  border: 2px solid var(--lc-rule);
+  border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-pill);
-  background: var(--lc-bg-elevated);
-  font-weight: var(--lc-weight-bold);
+  background: transparent;
+  color: var(--lc-text-secondary);
+  font-weight: var(--lc-weight-semibold);
+  line-height: 1;
   font-variant-numeric: tabular-nums;
-  transition: all var(--lc-motion-fast) var(--lc-easing);
+  transition: all var(--lc-motion-base) var(--lc-easing);
 }
 
 .wizard-pip-label {
@@ -179,10 +188,14 @@
   white-space: nowrap;
 }
 
+/* `.lc-steps li.done`: the step reads in the success colour. */
+.wizard-pip[data-state='done'] {
+  color: var(--lc-success);
+}
+
 .wizard-pip[data-state='done'] .wizard-pip-mark {
   border-color: var(--lc-success);
-  background: var(--lc-success);
-  color: var(--lc-accent-contrast);
+  color: var(--lc-success);
 }
 
 /* The tick is the sprite's, sized against the circle it sits in rather than
@@ -192,14 +205,15 @@
   height: 14px;
 }
 
+/* `.lc-steps li.now` for the label, `.network-tab.active` for the mark. */
 .wizard-pip[data-state='current'] {
-  color: var(--lc-text-primary);
+  color: var(--lc-text-strong);
 }
 
 .wizard-pip[data-state='current'] .wizard-pip-mark {
-  border-color: var(--lc-accent);
-  color: var(--lc-accent);
-  box-shadow: 0 0 0 4px var(--lc-accent-soft);
+  border-color: transparent;
+  background: var(--lc-tab-gradient);
+  color: var(--lc-accent-contrast);
 }
 
 .wizard-pip[data-state='blocked'] {
@@ -211,8 +225,13 @@
   color: var(--lc-danger);
 }
 
+/* Studio's bordered row hover (`startPage.ts`, `.lc-res .lc-row:hover`). */
 .wizard-pip:hover .wizard-pip-mark {
   border-color: var(--lc-rule-strong);
+}
+
+.wizard-pip[data-state='current']:hover .wizard-pip-mark {
+  border-color: transparent;
 }
 
 /* --- One step ------------------------------------------------------------- */
@@ -232,32 +251,39 @@
   display: none;
 }
 
-/* Where you are, small and quiet, above the thing you are being asked. */
+/* Where you are, above the thing you are being asked: the site's eyebrow with
+   its magenta bar (`style.scss:2898-2911`, `.lc-sm-title.border-left`). */
 .wizard-kicker {
   margin: 0;
-  font-size: var(--lc-text-xs);
-  font-weight: var(--lc-weight-semibold);
-  letter-spacing: 0.08em;
+  padding-left: 10px;
+  border-left: 3px solid var(--lc-accent-bar);
+  font-size: var(--lc-text-md);
+  font-weight: var(--lc-weight-medium);
+  line-height: var(--lc-leading-tight);
+  letter-spacing: -0.096px;
   text-transform: uppercase;
-  color: var(--lc-text-tertiary);
+  color: var(--lc-text-secondary);
 }
 
-/* The question, in the largest type on the page. A step whose heading is the
-   same size as its body reads as a paragraph, and gets skimmed like one. */
+/* The question, as the dashboard titles a page (`dashboard/_dashboard.scss:2341`):
+   36 / 600 / 1.2 at -0.01em. */
 .wizard-title {
   margin: 0;
   font-size: var(--lc-text-xxl);
   font-weight: var(--lc-weight-semibold);
   line-height: var(--lc-leading-tight);
+  letter-spacing: -0.01em;
   color: var(--lc-text-primary);
   text-wrap: balance;
 }
 
-/* One sentence. If it needs two, the step is doing two things. */
+/* One sentence, as the dashboard's line under its title
+   (`dashboard/_dashboard.scss:2353`): 15px, 1.3, Neutral-200. */
 .wizard-lede {
   margin: 0;
-  font-size: var(--lc-text-md);
-  line-height: var(--lc-leading-relaxed);
+  font-size: var(--lc-text-sm);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
   color: var(--lc-text-secondary);
   text-wrap: pretty;
 }
@@ -288,16 +314,18 @@
   border-top: 1px solid var(--lc-rule);
 }
 
+/* Studio's expandable step row (`aiView.ts`, `.lc-step__row`): body colour,
+   Neutral-200 under the pointer. */
 .wizard-aside summary,
 .wizard-details summary {
   cursor: pointer;
-  color: var(--lc-text-secondary);
+  color: var(--lc-text-tertiary);
   font-size: var(--lc-text-sm);
 }
 
 .wizard-aside summary:hover,
 .wizard-details summary:hover {
-  color: var(--lc-text-primary);
+  color: var(--lc-text-secondary);
 }
 
 .wizard-aside[open] summary {
@@ -359,7 +387,7 @@
 .wizard-details .worker-log {
   max-height: 18rem;
   border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-sm);
+  border-radius: var(--lc-radius-md);
 }
 
 /* --- Checks and facts ----------------------------------------------------- */
@@ -416,7 +444,8 @@
 /* The list is a column of cards rather than rows divided by hairlines. What is
    being chosen here is which models this machine will be paid to answer for,
    and a row that only changes a 20px box gives that decision no weight —
-   the whole card carries the choice, and the tick reads as its confirmation. */
+   the whole card carries the choice, and the tick reads as its confirmation.
+   Each is Studio's bordered list row (`startPage.ts`, `.lc-res .lc-row`). */
 #worker-models-list {
   display: grid;
   gap: var(--lc-space-sm);
@@ -429,30 +458,28 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: var(--lc-space-md);
-  padding: var(--lc-space-md);
+  gap: 14px;
+  padding: 14px 16px;
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: var(--lc-surface-2);
+  background: var(--lc-surface-1);
+  color: var(--lc-text-primary);
   cursor: pointer;
   transition:
-    border-color var(--lc-motion-fast) var(--lc-easing),
-    background var(--lc-motion-fast) var(--lc-easing);
+    background-color 0.15s,
+    border-color 0.15s;
 }
 
 .worker-model:hover {
   border-color: var(--lc-rule-strong);
-  background: var(--lc-surface-3);
+  background: var(--lc-well);
 }
 
-/* Chosen reads off the card, not off the tick alone. */
-.worker-model:has(.worker-model-box:checked) {
-  border-color: color-mix(in srgb, var(--lc-brand) 55%, transparent);
-  background: color-mix(in srgb, var(--lc-brand) 10%, var(--lc-surface-2));
-}
-
+/* Chosen reads off the card, not off the tick alone: the primary edge the
+   site's field takes when it is the one in use (`default/_forms.scss`). */
+.worker-model:has(.worker-model-box:checked),
 .worker-model:focus-within {
-  border-color: var(--lc-brand);
+  border-color: var(--lc-accent);
 }
 
 .worker-model-box {
@@ -461,17 +488,18 @@
 }
 
 /* A model name is a thing to be typed elsewhere — into Ollama, into an issue —
-   so it is set in mono and stays selectable. */
+   so it stays selectable. Studio's row title: the strongest text at 500. */
 .worker-model-name {
-  font-family: var(--lc-mono);
-  color: var(--lc-text-primary);
+  font-weight: var(--lc-weight-medium);
+  color: var(--lc-text-strong);
   user-select: text;
   overflow-wrap: anywhere;
 }
 
+/* Studio's row subtitle: 14px in the body colour. */
 .worker-model-facts {
-  font-size: var(--lc-text-sm);
-  color: var(--lc-text-secondary);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-text-tertiary);
   white-space: nowrap;
 }
 
@@ -502,14 +530,16 @@
  * fails on arrival. The copy button sits with it rather than under it, so the
  * pair reads as one control.
  */
+/* Studio's command block (`aiView.ts`, `.lc-edit` / `.lc-note`): the inset
+   well, a hairline, 10px corners, `10px 12px` inside. */
 .validator-command {
   display: flex;
   align-items: center;
   gap: var(--lc-space-sm);
-  padding: var(--lc-space-sm) var(--lc-space-md);
+  padding: 10px 12px;
   border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-sm);
-  background: var(--lc-surface-3);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-inset);
 }
 
 .validator-command-text {
@@ -534,9 +564,10 @@
   padding: var(--lc-space-sm) 0;
 }
 
+/* Studio's row divider (`startPage.ts`, `.lc-row`). */
 .validator-deposit + .validator-deposit,
 .validator-row + .validator-row {
-  border-top: 1px solid color-mix(in srgb, var(--lc-rule) 55%, transparent);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* A public key is compared character by character or not at all. */
@@ -581,9 +612,10 @@
  * The recovery phrase, shown once after a key is created. Warning-toned because
  * it is the only backup there is — losing it and the password loses the key.
  */
+/* The kit's warning alert (Studio's note in the warning tone). */
 .worker-created {
-  padding: var(--lc-space-md);
-  border: 1px solid var(--lc-rule-strong);
+  padding: 10px 12px;
+  border: 1px solid var(--lc-warning);
   border-radius: var(--lc-radius-md);
   background: var(--lc-warning-soft);
 }
@@ -593,7 +625,6 @@
 }
 
 .worker-phrase {
-  font-family: var(--lc-mono);
   line-height: var(--lc-leading-relaxed);
   color: var(--lc-text-primary);
   user-select: text;
@@ -617,16 +648,18 @@
  * card, so the boundary between what the application says and what docker says
  * is visible without reading either.
  */
+/* Studio's code well (`aiView.ts`, `.lc-msg-ai pre`): the inset colour, mono,
+   1.5, the heading colour. */
 .worker-log {
-  background: var(--lc-bg);
+  background: var(--lc-inset);
 }
 
 .worker-log-text {
   margin: 0;
   font-family: var(--lc-mono);
   font-size: var(--lc-text-xs);
-  line-height: var(--lc-leading-normal);
-  color: var(--lc-fg-muted);
+  line-height: 1.5;
+  color: var(--lc-text-primary);
   /* Docker wraps its own progress lines to a terminal width this window does
      not have, so the text wraps here rather than scrolling sideways. */
   white-space: pre-wrap;
@@ -655,25 +688,24 @@
   }
 }
 
-/**
- * The step that stands in for the step being fetched.
- *
- * Laid out like a real one — kicker, title, lede, then rows — so the stage
- * keeps its height and the answers land in place rather than pushing the page
- * around as each probe returns.
- */
+/* The step that stands in for the step being fetched: the kit's loading
+   state, the site's spinner with what is being checked under it. */
 .wizard-waiting {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--lc-space-md);
+  display: block;
 }
 
-.wizard-waiting-rows {
+/* While the first answers are being read the whole page waits: the figures,
+   the route, the steps and the details all stand down, and the one loader
+   takes the page. Nothing half-drawn, no empty boxes beside a spinner. */
+.wizard.is-loading > :not(.wizard-stage),
+.wizard.is-loading .wizard-stage > :not(.wizard-waiting) {
+  display: none;
+}
+
+.wizard.is-loading .wizard-waiting {
   display: grid;
-  gap: var(--lc-space-sm);
-  width: 100%;
-  margin-top: var(--lc-space-sm);
+  place-items: center;
+  min-height: 60vh;
 }
 
 /* A step nothing has reached yet: still legible, plainly not a destination.
@@ -681,7 +713,7 @@
    difference on the row for one distinction. */
 .wizard-pip:disabled {
   cursor: not-allowed;
-  opacity: 0.45;
+  opacity: 0.5;
 }
 
 /* --- What registering costs --------------------------------------------------- */
@@ -698,7 +730,7 @@
 
 .worker-stake-facts dd[data-tone='danger'] {
   color: var(--lc-danger);
-  font-weight: var(--lc-weight-bold);
+  font-weight: var(--lc-weight-semibold);
 }
 
 /* The other way to fund it: an address and the two things you do to one. */
@@ -708,5 +740,6 @@
   gap: var(--lc-space-sm);
   margin-top: var(--lc-space-lg);
   padding-top: var(--lc-space-lg);
-  border-top: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
+  /* Studio's row divider (`startPage.ts`, `.lc-row`). */
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }

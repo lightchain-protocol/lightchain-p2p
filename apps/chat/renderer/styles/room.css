@@ -51,18 +51,23 @@
   min-width: 0;
 }
 
+/* The dashboard card title (`_dashboard.scss`): 20 / 600, the strongest ink,
+   -0.2px of tracking. */
 #panel-chat .room-title {
   margin: 0;
   font-size: var(--lc-text-lg);
-  font-weight: 600;
+  font-weight: var(--lc-weight-semibold);
+  letter-spacing: -0.2px;
+  color: var(--lc-text-strong);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Not a chip: it is the one thing in this group that answers back. Green, and
-   the same tinted pill the `ok` chip wears, so it reads as a state that
-   happens to be pressable rather than as a fifth button in the row. */
+/* Not a chip: it is the one thing in this group that answers back. The
+   dashboard's success status pill (`_dashboard.scss:2873-2887`) in fill and
+   ink, so it reads as a state; the edge the dashboard's eye button gains on
+   hover (`_dashboard.scss:2490`, as `.icon-button`) says it can be pressed. */
 #panel-chat .room-secure {
   display: inline-flex;
   align-items: center;
@@ -70,16 +75,16 @@
   width: var(--lc-control-sm);
   height: var(--lc-control-sm);
   padding: 0;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: var(--lc-radius-pill);
-  color: var(--lc-success);
-  background: color-mix(in srgb, var(--lc-success) 15%, transparent);
+  color: var(--lc-success-ink);
+  background: var(--lc-success-soft);
   cursor: default;
-  transition: background-color var(--lc-motion-fast) var(--lc-easing);
+  transition: all var(--lc-motion-base) var(--lc-easing);
 }
 
 #panel-chat .room-secure:hover {
-  background: color-mix(in srgb, var(--lc-success) 28%, transparent);
+  border-color: var(--lc-card-rule);
 }
 
 #panel-chat .room-secure:focus-visible {
@@ -96,8 +101,9 @@
    is the one worth noticing, so it takes the warning tone the kit's chips use
    for the same job. Scoped, as the kit asks of any extension to `.chip`. */
 #panel-chat .chip[data-role='reader'] {
-  background: color-mix(in srgb, var(--lc-warning) 16%, transparent);
-  color: var(--lc-warning);
+  border-color: transparent;
+  background: var(--lc-warning-soft);
+  color: var(--lc-warning-ink);
 }
 
 #panel-chat .room-head-actions {
@@ -118,16 +124,19 @@
  */
 
 /* Quieter than the buttons beside it, for something offered rather than
-   suggested. The border arrives on hover, so the control is discoverable
-   without being a fourth thing competing for the eye at rest. */
+   suggested: the dashboard's eye button (`_dashboard.scss:2490`, the kit's
+   `.icon-button`), borderless until the pointer is on it. */
 #panel-chat .room-quiet {
   border-color: transparent;
   background: transparent;
+  backdrop-filter: none;
   color: var(--lc-text-secondary);
 }
 
 #panel-chat .room-quiet:hover:not(:disabled) {
-  color: var(--lc-text-primary);
+  border-color: var(--lc-card-rule);
+  background: rgba(204, 206, 239, 0.08); /* .icon-button:hover, kit.css */
+  color: var(--lc-text-strong);
 }
 
 #panel-chat .room-square {
@@ -178,6 +187,8 @@
    border, a padding and system colours. All of it is replaced — the insets
    first, or the menu is centred in the window rather than sat under the
    ellipsis that opened it. */
+/* The site's `.dropdown-menu` (`style.scss:560-580`): the blackest surface, a
+   hairline, 10px corners, 4px by 5px inside. */
 #panel-chat .room-menu {
   position: fixed;
   position-anchor: --lc-room-menu;
@@ -187,12 +198,12 @@
   margin: var(--lc-space-xs) 0;
   width: max-content;
   max-width: 34ch;
-  padding: var(--lc-space-xs);
+  padding: 4px 5px;
   border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-lg);
+  border-radius: var(--lc-radius-md);
   color: var(--lc-text-primary);
-  background: var(--lc-surface-3);
-  box-shadow: var(--lc-shadow-3);
+  background: var(--lc-surface-2);
+  box-shadow: var(--lc-shadow-2);
 }
 
 /* Declared only for the open state. An author `display` would beat the UA rule
@@ -212,13 +223,19 @@
   height: var(--lc-control-md);
   padding: 0 var(--lc-space-md);
   border: 0;
-  border-radius: var(--lc-radius-md);
+  border-radius: var(--lc-radius-sm);
   font: inherit;
   font-size: var(--lc-text-sm);
   color: var(--lc-text-primary);
   background: transparent;
   text-align: left;
-  cursor: default;
+  cursor: pointer;
+  transition: background-color var(--lc-motion-base) var(--lc-easing);
+}
+
+/* `.dropdown-menu li:hover`: `--color-darker`. */
+#panel-chat .room-menu-item:hover {
+  background: rgba(6, 6, 6, 0.7);
 }
 
 #panel-chat .room-menu-item:focus-visible {
@@ -234,7 +251,7 @@
 }
 
 #panel-chat .room-menu-danger:hover {
-  background: color-mix(in srgb, var(--lc-danger) 16%, transparent);
+  background: var(--lc-danger-soft);
 }
 
 #panel-chat .room-menu-note {
@@ -354,48 +371,28 @@
   display: block;
 }
 
-/* The hairline is what makes a bubble a bubble on a light background, where the
-   raised surface is only a couple of steps off the page behind it. */
 /**
- * The wallet's bubble: a fill barely above the page, an edge softer than a
- * hairline, and enough padding that the text is not touching either.
+ * Somebody else's turn: the reply text of Studio's AI panel (`aiView.ts`,
+ * `.lc-msg-ai`: heading ink, 15px), held in the site's card surface and
+ * hairline so it keeps its side of the conversation. Studio's own message
+ * shape — 10px corners, 10 by 14 inside — so the two sides differ in fill and
+ * ink, not in shape.
  */
 #panel-chat .message-bubble {
   min-width: 0;
-  padding: var(--lc-space-md) 15px;
+  padding: 10px 14px;
+  border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-bubble);
+  color: var(--lc-text-primary);
   background: var(--lc-surface-2);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lc-rule) 60%, transparent);
+  font-size: var(--lc-text-sm);
 }
 
-/**
- * Your own turn wears the brand, as it does in the wallet's thread: magenta to
- * violet across the bubble, at about a sixth, with an edge that agrees.
- *
- * Which side a message is on is the fastest way to read a conversation and
- * colour is the second; two neutrals a step apart give you neither at a glance.
- * A flat accent tint gave you the second and looked like every other chat. The
- * gradient runs the same way as the brand's own, and both stops are far below
- * the point where they would compete with the words on top.
- */
-/* Your own turns, tinted. This was a magenta-to-violet wash at 16 and 14
-   percent — the mark's two colours used as interface, which CONTRACT §1.3
-   reserves for the logo. `--lc-accent-soft` is the token that exists for
-   exactly this: a tint under the accent. */
+/* Your own turn: Studio's user message (`aiView.ts`, `.lc-msg-user`). */
 #panel-chat .message.is-own .message-bubble {
-  background: var(--lc-accent-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lc-accent) 32%, transparent);
-}
-
-/* The corner nearest its owner is squared off, which is what makes a bubble
-   point at somebody rather than float. */
-#panel-chat .message .message-bubble {
-  border-bottom-left-radius: var(--lc-radius-sm);
-}
-
-#panel-chat .message.is-own .message-bubble {
-  border-bottom-left-radius: var(--lc-radius-bubble);
-  border-bottom-right-radius: var(--lc-radius-sm);
+  border-color: rgba(255, 255, 255, 0.06);
+  color: var(--lc-text-strong);
+  background: var(--lc-card);
 }
 
 /* Consecutive turns from one person are one utterance broken over several
@@ -404,15 +401,6 @@
    metadata ends up outweighing what was actually said. */
 #panel-chat .message.is-run {
   margin-top: calc(-1 * var(--lc-space-sm));
-}
-
-#panel-chat .message.is-run .message-bubble {
-  border-top-left-radius: var(--lc-radius-sm);
-}
-
-#panel-chat .message.is-run.is-own .message-bubble {
-  border-top-left-radius: var(--lc-radius-bubble);
-  border-top-right-radius: var(--lc-radius-sm);
 }
 
 /* --- Which day it was ------------------------------------------------------ */
@@ -502,26 +490,37 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* --- Formatting in a message ----------------------------------------------- */
-
-#panel-chat .md-code {
-  padding: 1px 5px;
-  border-radius: var(--lc-radius-sm);
-  background: color-mix(in srgb, var(--lc-text-tertiary) 22%, transparent);
-  font-family: var(--lc-mono);
+/* What the room concluded about who wrote this, beside the author: a fact
+   about the turn, coloured as one — the same pair the Models transcript uses. */
+#panel-chat .message-proof {
+  color: var(--lc-success);
 }
 
+#panel-chat .message-warning {
+  color: var(--lc-warning);
+}
+
+/* --- Formatting in a message ----------------------------------------------- */
+
+/* Studio's inline code (`aiView.ts`, `.lc-msg-ai code`). */
+#panel-chat .md-code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: var(--lc-text-strong);
+  background: rgba(204, 206, 239, 0.08);
+  font-family: var(--lc-mono);
+  font-size: 0.88em;
+}
+
+/* The site's link hover colour, the primary (`default/_reset.scss:49-55`),
+   kept underlined: in running text the site's resting heading ink would make
+   a link indistinguishable from the words around it. */
 #panel-chat .link {
   color: var(--lc-accent);
   text-decoration: underline;
   text-underline-offset: 2px;
-  cursor: default;
+  cursor: pointer;
   overflow-wrap: anywhere;
-}
-
-#panel-chat .link:hover {
-  color: var(--lc-accent);
-  text-decoration-thickness: 2px;
 }
 
 #panel-chat .link:focus-visible {
@@ -661,13 +660,14 @@
   max-width: 44ch;
   max-height: 40vh;
   margin: 0 0 var(--lc-space-sm);
-  padding: var(--lc-space-xs);
+  /* The site's `.dropdown-menu` (`style.scss:560-580`). */
+  padding: 4px 5px;
   overflow-y: auto;
   list-style: none;
   border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-lg);
-  background: var(--lc-surface-3);
-  box-shadow: var(--lc-shadow-3);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-surface-2);
+  box-shadow: var(--lc-shadow-2);
 }
 
 #panel-chat .mention {
@@ -675,13 +675,15 @@
   align-items: baseline;
   gap: var(--lc-space-md);
   padding: var(--lc-space-sm) var(--lc-space-md);
-  border-radius: var(--lc-radius-md);
-  cursor: default;
+  border-radius: var(--lc-radius-sm);
+  color: var(--lc-text-primary);
+  cursor: pointer;
 }
 
-/* The accent's own tint, which is what "selected" means everywhere else. */
+/* `.dropdown-menu li:hover` (`style.scss:563`), as the kit's `.select-option`
+   marks the row Enter will choose. */
 #panel-chat .mention.is-active {
-  background: var(--lc-accent-soft);
+  background: rgba(6, 6, 6, 0.7);
 }
 
 #panel-chat .mention-name {

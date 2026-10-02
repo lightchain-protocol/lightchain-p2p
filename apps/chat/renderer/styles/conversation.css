@@ -103,7 +103,7 @@
 }
 
 #panel-chat .pinned-bar-label:hover {
-  color: var(--lc-text-primary);
+  color: var(--lc-text-strong);
 }
 
 #panel-chat .pinned-bar-label:focus-visible {
@@ -174,12 +174,12 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 2px;
+  /* The site's `.dropdown-menu` (`style.scss:560-580`), as the room menu. */
+  padding: 4px 5px;
+  border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: var(--lc-surface-3);
-  box-shadow:
-    inset 0 0 0 1px var(--lc-rule),
-    var(--lc-shadow-1);
+  background: var(--lc-surface-2);
+  box-shadow: var(--lc-shadow-2);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--lc-motion-fast) ease;
@@ -202,15 +202,15 @@
   border-radius: var(--lc-radius-sm);
   background: transparent;
   color: var(--lc-text-secondary);
-  cursor: default;
+  cursor: pointer;
+  transition: all var(--lc-motion-base) var(--lc-easing);
 }
 
-/* The accent's tint on hover, the same as every other quiet control. This was
-   the toolbar's own background colour, so hovering a control did nothing
-   anybody could see. */
+/* Studio's small inline action (`aiView.ts`, `.lc-btn:hover`): a faint lift
+   and the strongest ink. */
 #panel-chat .message-action:hover {
-  color: var(--lc-text-primary);
-  background: var(--lc-accent-soft);
+  color: var(--lc-text-strong);
+  background: rgba(204, 206, 239, 0.08);
 }
 
 #panel-chat .message-action:focus-visible {
@@ -241,29 +241,34 @@
 }
 
 #panel-chat .message-action-danger:hover {
-  color: var(--lc-danger);
-  background: color-mix(in srgb, var(--lc-danger) 18%, transparent);
+  color: var(--lc-danger-ink);
+  background: var(--lc-danger-soft);
 }
 
 /* The message being answered, above the answer. Clipped to one line: it is a
-   pointer to something already in the conversation, not a second copy of it. */
+   pointer to something already in the conversation, not a second copy of it.
+   The site's left-barred eyebrow (`.lc-sm-title.border-left`: 3px of the bar
+   colour, 10px in) over the dashboard's tab well. */
 #panel-chat .message-reply {
   display: flex;
   gap: var(--lc-space-sm);
   width: 100%;
-  padding: var(--lc-space-xs) var(--lc-space-sm);
+  padding: var(--lc-space-xs) var(--lc-space-sm) var(--lc-space-xs) 10px;
   border: 0;
-  border-left: 2px solid var(--lc-accent);
+  border-left: 3px solid var(--lc-accent-bar);
   border-radius: var(--lc-radius-sm);
-  background: var(--lc-surface-3);
+  background: var(--lc-well);
   color: var(--lc-text-tertiary);
+  font: inherit;
   font-size: var(--lc-text-xs);
   text-align: left;
   cursor: pointer;
+  transition: color var(--lc-motion-base) var(--lc-easing);
 }
 
+/* Studio's step row on hover (`aiView.ts`, `.lc-step__row:hover`). */
 #panel-chat .message-reply:hover {
-  color: var(--lc-text-primary);
+  color: var(--lc-text-secondary);
 }
 
 #panel-chat .message-reply:focus-visible {
@@ -273,7 +278,8 @@
 
 #panel-chat .message-reply-who {
   flex: 0 0 auto;
-  font-weight: 600;
+  font-weight: var(--lc-weight-medium);
+  color: var(--lc-text-secondary);
 }
 
 #panel-chat .message-reply-text {
@@ -339,15 +345,12 @@
   animation: message-reveal var(--lc-motion-slow) ease;
 }
 
+/* The edge turns primary, as a focused site field's does, and returns to
+   whatever the bubble's own edge is. */
 @keyframes message-reveal {
   0%,
   60% {
-    box-shadow:
-      inset 0 0 0 1px var(--lc-accent),
-      0 0 0 3px color-mix(in srgb, var(--lc-accent) 35%, transparent);
-  }
-  100% {
-    box-shadow: inset 0 0 0 1px var(--lc-rule);
+    border-color: var(--lc-accent);
   }
 }
 
@@ -360,25 +363,22 @@
    bubble rather than the row — the row is transparent, so a dashed frame there
    would sit behind the very fill it is meant to replace. */
 #panel-chat .message.is-preview .message-bubble {
-  border: 1px dashed color-mix(in srgb, var(--lc-accent) 55%, transparent);
+  border: 1px dashed var(--lc-rule-strong);
   background: transparent;
-  box-shadow: none;
 }
 
-/* The caret while tokens arrive. Mirrored from the Models transcript rather
-   than borrowed: `.is-streaming` there is that surface's to style, and a rule
-   in another panel's stylesheet is not a thing this one may lean on. Its own
-   keyframes for the same reason. */
+/* The caret while tokens arrive: Studio's (`aiView.ts`, `.cursor::after`), the
+   bar colour blinking once a second. Its own keyframes, because the Models
+   transcript's are that surface's to change. */
 #panel-chat .message.is-streaming .message-text::after {
-  content: '▋';
-  margin-left: 2px;
-  color: var(--lc-text-tertiary);
-  animation: preview-caret 1s steps(2, start) infinite;
+  content: '▍';
+  color: var(--lc-accent-bar);
+  animation: preview-caret 1s steps(1) infinite;
 }
 
 @keyframes preview-caret {
-  to {
-    visibility: hidden;
+  50% {
+    opacity: 0;
   }
 }
 
@@ -410,7 +410,7 @@
 }
 
 #panel-chat .message.is-preview.is-failed .message-preview-status {
-  color: var(--lc-danger);
+  color: var(--lc-danger-ink);
 }
 
 /* What the next message is carrying, above the composer. Hidden entirely when
@@ -426,16 +426,18 @@
   display: none;
 }
 
+/* Studio's note (`aiView.ts`, `.lc-note`): the inset well, a hairline, 10px
+   corners, 13px. */
 #panel-chat .composer-note {
   display: flex;
   align-items: center;
   gap: var(--lc-space-sm);
-  padding: var(--lc-space-xs) var(--lc-space-sm);
+  padding: 10px 12px;
+  border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: var(--lc-surface-3);
-  box-shadow: inset 0 0 0 1px var(--lc-rule);
-  font-size: var(--lc-text-xs);
-  color: var(--lc-text-tertiary);
+  background: var(--lc-inset);
+  font-size: 13px;
+  color: var(--lc-text-secondary);
 }
 
 #panel-chat .composer-note-text {
@@ -450,13 +452,9 @@
 /* Beside the attachment button, because attaching a file and asking a model are
    the same kind of act: both add something to the message before it is sent.
    It was previously announced only by the word "@" inside the placeholder,
-   which disappears the moment anybody types. */
+   which disappears the moment anybody types. Its look is the kit's
+   `.icon-button`. */
 #panel-chat .composer-ask {
   flex: 0 0 auto;
   align-self: flex-end;
-  color: var(--lc-text-tertiary);
-}
-
-#panel-chat .composer-ask:hover {
-  color: var(--lc-accent);
 }

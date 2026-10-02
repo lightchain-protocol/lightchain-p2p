@@ -273,7 +273,7 @@ describe('the stake confirmation', () => {
     expect(guard.allow).toHaveBeenCalled()
   })
 
-  it('asks nothing when the key is already registered — no stake moves', async () => {
+  it('asks nothing when the key is already registered - no stake moves', async () => {
     const { ctx, guard } = ctxWith({ state: stateWith({ registered: true }) })
     mockHost.runAsync.mockResolvedValue({
       ok: true,

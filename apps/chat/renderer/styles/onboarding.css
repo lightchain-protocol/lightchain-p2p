@@ -6,8 +6,9 @@
  * exists and is open. It is worth more care than a panel that gets seen after
  * somebody has already decided to stay.
  *
- * Every value comes from a token. A hex code here is a value that will drift
- * from the rest of the app and from the light theme.
+ * Every value comes from a token or from the website's own CSS, cited where it
+ * is used. The card is the site's modal (`dashboard/_modal-box.scss`), the
+ * type is its dashboard's, and the rows are Lightchain Studio's.
  */
 
 /* --- The stage ------------------------------------------------------------ */
@@ -41,32 +42,6 @@
   }
 }
 
-/* Two soft washes of the accent, well below the text. The card sits on a field
-   with some depth rather than on a flat neutral, which is the difference
-   between a window that looks finished and one that looks unstyled. Kept far
-   from the copy so nothing has to fight it for contrast.
-
-   Both washes are the accent at different strengths rather than the two ends of
-   the logo gradient. The mark's colours are for the mark; a background that
-   reaches for them turns the first screen somebody sees into a swatch. */
-.onboarding::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      60ch 40ch at 15% -10%,
-      color-mix(in srgb, var(--lc-accent) 22%, transparent),
-      transparent 70%
-    ),
-    radial-gradient(
-      50ch 36ch at 105% 105%,
-      color-mix(in srgb, var(--lc-accent) 16%, transparent),
-      transparent 70%
-    );
-}
-
 /**
  * A card, which this was not.
  *
@@ -76,17 +51,37 @@
  * arrangement still read as unfinished, because there was no arrangement — the
  * pieces were simply the width of a measure and left where they fell.
  *
- * The wallet centres a contained card and puts forty pixels around it.
+ * The site's modal, `.lcai-modal-box .wrapper` (`dashboard/_modal-box.scss:9-28`),
+ * drawn as the app's dialogs draw it: the card colour, 10px corners, a
+ * hairline, forty pixels inside (the modal's small-screen padding).
  */
 .onboarding-card {
   position: relative;
+  isolation: isolate;
+  overflow: hidden;
   width: 100%;
   max-width: 30rem;
   padding: 40px;
-  border: 1px solid color-mix(in srgb, var(--lc-rule) 70%, transparent);
-  border-radius: var(--lc-radius-lg);
-  background: var(--lc-bg-elevated);
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-surface-2);
   box-shadow: var(--lc-shadow-3);
+}
+
+/* The modal's light, `.top-flashlight.light-xl` (`default/_common.scss:802-830`):
+   a primary blob in the top left corner, blurred to a glow. */
+.onboarding-card::before {
+  content: '';
+  position: absolute;
+  top: -150px;
+  left: -150px;
+  width: 300px;
+  height: 150px;
+  border-radius: var(--lc-radius-pill);
+  background: var(--lc-accent);
+  filter: blur(140px);
+  z-index: -1;
+  pointer-events: none;
 }
 
 /* At the size a window gets dragged down to, the frame costs more than it
@@ -97,6 +92,10 @@
     border: 0;
     background: none;
     box-shadow: none;
+  }
+
+  .onboarding-card::before {
+    display: none;
   }
 }
 
@@ -122,7 +121,6 @@
   width: calc(26px * (1200 / 251));
   stroke: none;
   color: var(--lc-text-primary);
-  filter: drop-shadow(0 8px 24px color-mix(in srgb, var(--lc-brand-magenta) 35%, transparent));
 }
 
 /* --- Steps ---------------------------------------------------------------- */
@@ -146,33 +144,41 @@
   }
 }
 
+/* The site's eyebrow with its magenta bar (`style.scss:2898-2911`,
+   `.lc-sm-title.border-left`), as Studio heads its panels. */
 .step-eyebrow {
   display: block;
   margin-bottom: var(--lc-space-sm);
-  color: var(--lc-accent);
-  font-size: var(--lc-type-caption);
-  font-weight: var(--lc-weight-semibold);
-  letter-spacing: 0.08em;
+  padding-left: 10px;
+  border-left: 3px solid var(--lc-accent-bar);
+  color: var(--lc-text-secondary);
+  font-size: var(--lc-text-md);
+  font-weight: var(--lc-weight-medium);
+  line-height: var(--lc-leading-tight);
+  letter-spacing: -0.096px;
   text-transform: uppercase;
 }
 
 /* Two title sizes, by role rather than by which screen happens to hold them.
    A step that opens a route — welcome, unlock, restore — gets the page-sized
    title. A step inside the numbered create flow is one of three, so its title
-   steps down and the eyebrow above it carries the orientation. */
+   steps down and the eyebrow above it carries the orientation. The dashboard
+   title (`dashboard/_dashboard.scss:2341-2351`): 600 / 1.2 at -0.01em in the
+   heading colour. */
 .step-title {
   margin: 0 0 var(--lc-space-md);
-  font-size: var(--lc-type-title-1);
+  font-size: var(--lc-text-xxl);
   font-weight: var(--lc-weight-semibold);
   line-height: var(--lc-leading-tight);
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
+  color: var(--lc-text-primary);
   /* Evens the lines of a two-line heading instead of leaving one word alone
      underneath, which at this size is the most visible flaw on the screen. */
   text-wrap: balance;
 }
 
 .step-eyebrow + .step-title {
-  font-size: var(--lc-type-title-2);
+  font-size: var(--lc-text-xl);
 }
 
 /* `pretty` rather than reworded sentences: it stops a paragraph ending on a
@@ -187,11 +193,15 @@
   text-wrap: pretty;
 }
 
+/* The dashboard's line under its title (`dashboard/_dashboard.scss:2353-2360`):
+   15px, 1.3, -0.01em, Neutral-200. */
 .step-body {
   margin: 0 0 var(--lc-space-xl);
   max-width: 46ch;
   color: var(--lc-text-secondary);
-  line-height: var(--lc-leading-relaxed);
+  font-size: var(--lc-text-sm);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 .step-actions {
@@ -203,10 +213,11 @@
 
 /* --- Progress ------------------------------------------------------------- */
 
-/* Three segments, one per step of the create flow. The current one is longer
-   and solid accent — "you are here" is positional, not just a darker shade of
-   the same dash, which at 3px tall is the difference between reading it and
-   not. */
+/* Three segments, one per step of the create flow, each the site's progress
+   bar (`elements/_progressbar.scss:24-36`): 6 high, 10px corners, the primary
+   fill, `width .5s ease`. The current one is longer — "you are here" is
+   positional. The site's track is the card colour, which is what this sits on,
+   so a segment still ahead takes the strong hairline instead. */
 .step-progress {
   display: flex;
   gap: var(--lc-space-xs);
@@ -216,21 +227,25 @@
 
 .step-progress span {
   width: 22px;
-  height: 3px;
-  border-radius: var(--lc-radius-pill);
+  height: 6px;
+  border-radius: var(--lc-radius-md);
   background: var(--lc-rule-strong);
-  transition:
-    width var(--lc-motion-base) var(--lc-easing),
-    background var(--lc-motion-base) var(--lc-easing);
+  transition: width 0.5s ease;
 }
 
-.step-progress span[data-state='done'] {
-  background: color-mix(in srgb, var(--lc-accent) 45%, transparent);
+.step-progress span[data-state='done'],
+.step-progress span[data-state='here'] {
+  background: var(--lc-accent);
 }
 
 .step-progress span[data-state='here'] {
   width: 32px;
-  background: var(--lc-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-progress span {
+    transition: none;
+  }
 }
 
 /* --- Choices -------------------------------------------------------------- */
@@ -250,10 +265,10 @@
 /**
  * The tile a choice carries its icon in.
  *
- * The wallet puts a 46-pixel rounded square, washed with the brand and holding
- * a brand-coloured glyph, at the head of every one of these rows. Without it a
- * choice is a paragraph with a border round it, and a column of them is a wall
- * of text somebody has to read before they can tell the two options apart.
+ * Without it a choice is a paragraph with a border round it, and a column of
+ * them is a wall of text somebody has to read before they can tell the two
+ * options apart. The site's brand tint (`--surface-base-brand_subtle`) under
+ * its primary.
  */
 .choice-icon {
   display: grid;
@@ -265,7 +280,7 @@
   margin-top: -2px;
   border-radius: var(--lc-radius-md);
   background: var(--lc-accent-soft);
-  color: var(--lc-brand);
+  color: var(--lc-accent);
 }
 
 .choice-icon .icon {
@@ -296,85 +311,71 @@
    */
   align-items: start;
   width: 100%;
-  padding: var(--lc-space-lg);
+  /* Studio's bordered list row (`startPage.ts`, `.lc-res .lc-row`): the page
+     colour, a hairline, 10px corners, `14px 16px` inside; under the pointer
+     the faint well and the strong hairline. */
+  padding: 14px 16px;
   border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-lg);
-  background: var(--lc-surface-2);
-  color: inherit;
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-surface-1);
+  color: var(--lc-text-primary);
   font: inherit;
   text-align: left;
   cursor: pointer;
   transition:
-    border-color var(--lc-motion-fast) var(--lc-easing),
-    background var(--lc-motion-fast) var(--lc-easing),
-    transform var(--lc-motion-fast) var(--lc-easing);
+    background-color 0.15s,
+    border-color 0.15s;
 }
 
 .choice:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--lc-accent) 60%, transparent);
-  background: var(--lc-surface-3);
-  transform: translateY(-1px);
+  border-color: var(--lc-rule-strong);
+  background: var(--lc-well);
 }
 
-.choice:active:not(:disabled) {
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .choice {
-    transition: none;
-  }
-
-  .choice:hover:not(:disabled) {
-    transform: none;
-  }
-}
-
+/* The row's title: the strongest text at 500. */
 .choice-title {
   display: block;
-  font-weight: var(--lc-weight-semibold);
+  font-weight: var(--lc-weight-medium);
+  color: var(--lc-text-strong);
 }
 
+/* The row's subtitle: 14px in the body colour. */
 .choice-note {
   display: block;
   margin-top: var(--lc-space-xs);
-  color: var(--lc-text-secondary);
-  font-size: var(--lc-type-caption);
+  color: var(--lc-text-tertiary);
+  font-size: var(--lc-text-xs);
   line-height: var(--lc-leading-normal);
 }
 
-/* A drawn chevron rather than the "→" character, which took whatever the
-   interface face happened to give it and sat a little off the centre line. */
+/* A drawn chevron rather than the "→" character. Studio's row arrow
+   (`startPage.ts`, `.lc-row__go`): the body colour, the strongest text under
+   the pointer, `.15s`. */
 .choice-mark {
   width: var(--lc-control-icon);
   height: var(--lc-control-icon);
   margin-top: 12px;
   color: var(--lc-text-tertiary);
   transition:
-    color var(--lc-motion-fast) var(--lc-easing),
-    transform var(--lc-motion-fast) var(--lc-easing);
+    color 0.15s,
+    transform 0.15s;
 }
 
-/* It leans towards where it is about to take you. */
 .choice:hover:not(:disabled) .choice-mark {
+  color: var(--lc-text-strong);
   transform: translateX(2px);
 }
 
-.choice:hover:not(:disabled) .choice-mark {
-  color: var(--lc-accent);
-}
-
-/* The recommended route is the accent's one job on this screen: a soft wash
-   and a stronger border, so it is findable without shouting over the words. */
+/* The recommended route: the edge Studio gives the step you are on
+   (`connectPage.ts`, `.lc-steps li.now`). */
 .choice-primary {
-  border-color: color-mix(in srgb, var(--lc-accent) 45%, transparent);
-  background: linear-gradient(135deg, var(--lc-accent-soft), var(--lc-surface-2));
+  border-color: rgba(204, 206, 239, 0.16);
 }
 
 /* Reserved for the routes that destroy something. Danger is carried by the
-   border and the words, never by colour alone. */
+   edge and the words, never by colour alone: the site's danger colour. */
 .choice-danger:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--lc-danger) 60%, transparent);
+  border-color: var(--lc-danger);
 }
 
 .choice-danger .choice-title {
@@ -388,6 +389,7 @@
   margin-bottom: var(--lc-space-lg);
 }
 
+/* Studio's inset well (`aiView.ts`, `.lc-note`) holding the words. */
 .phrase {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -396,18 +398,27 @@
   padding: var(--lc-space-lg);
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: var(--lc-surface-2);
+  background: var(--lc-inset);
   list-style: none;
   counter-reset: word;
 }
 
+/* Each word on the site's bordered badge (`elements/_button.scss:599-608`,
+   `.lightchain-badge-border`): 52px corners, the primary at fifteen percent
+   for an edge, the card colour, `8px 10px`. Set at 14px rather than the
+   badge's 12, and not uppercased: these are written down by hand. */
 .phrase li {
   counter-increment: word;
   display: flex;
   gap: var(--lc-space-sm);
   align-items: baseline;
-  font-family: var(--lc-mono);
-  font-size: var(--lc-type-caption);
+  padding: 8px 10px;
+  border: 1px solid rgba(91, 75, 255, 0.15);
+  border-radius: 52px;
+  background: var(--lc-surface-2);
+  color: var(--lc-text-primary);
+  font-size: var(--lc-text-xs);
+  line-height: var(--lc-leading-tight);
   /* The body forbids selection as a desktop-app convention. This is one of the
      few things somebody genuinely needs to copy by hand. */
   user-select: text;
@@ -423,7 +434,8 @@
 
 /* Hidden until asked for. A recovery phrase on screen the moment the step
    opens is a phrase in every screen recording and behind every shoulder, and
-   the person reading it has not yet been told what it is. */
+   the person reading it has not yet been told what it is. The dashboard's
+   overlay (`dashboard/_dashboard.scss:42-54`): the scrim and a 15px blur. */
 .phrase-cover {
   position: absolute;
   inset: 0;
@@ -433,25 +445,26 @@
   justify-items: center;
   border: 1px solid var(--lc-rule);
   border-radius: var(--lc-radius-md);
-  background: color-mix(in srgb, var(--lc-surface-2) 82%, transparent);
-  backdrop-filter: blur(7px);
+  background: var(--lc-scrim);
+  backdrop-filter: blur(15px);
   cursor: pointer;
-  color: inherit;
+  color: var(--lc-text-primary);
   font: inherit;
-  transition: border-color var(--lc-motion-fast) var(--lc-easing);
+  transition: border-color 0.15s;
 }
 
 .phrase-cover:hover {
-  border-color: color-mix(in srgb, var(--lc-accent) 55%, transparent);
+  border-color: var(--lc-rule-strong);
 }
 
 .phrase-cover-title {
-  font-weight: var(--lc-weight-semibold);
+  font-weight: var(--lc-weight-medium);
+  color: var(--lc-text-strong);
 }
 
 .phrase-cover-note {
   color: var(--lc-text-secondary);
-  font-size: var(--lc-type-caption);
+  font-size: var(--lc-text-xs);
 }
 
 .confirm-fields {
@@ -461,7 +474,6 @@
 }
 
 .phrase-input {
-  font-family: var(--lc-mono);
   resize: vertical;
   line-height: var(--lc-leading-relaxed);
 }
@@ -483,18 +495,19 @@
   padding-right: calc(var(--lc-space-xl) * 3);
 }
 
-/* A word floating inside a field is not a control. This one is pressed as
-   often as the field is filled, so it gets a shape to press. */
+/* Studio's small inline action (`aiView.ts`, `.lc-btn`): no fill until the
+   pointer is on it, 6px corners, Neutral-200 at 500, then a faint wash under
+   the strongest text. */
 .field-reveal {
   position: absolute;
   right: var(--lc-space-sm);
   display: inline-flex;
   align-items: center;
   height: var(--lc-control-xs);
-  padding: 0 var(--lc-space-md);
+  padding: 0 10px;
   border: 0;
   border-radius: var(--lc-radius-sm);
-  background: color-mix(in srgb, var(--lc-fg) 7%, transparent);
+  background: transparent;
   color: var(--lc-text-secondary);
   font: inherit;
   font-size: var(--lc-text-xs);
@@ -503,14 +516,15 @@
 }
 
 .field-reveal:hover {
-  color: var(--lc-text-primary);
+  background: rgba(204, 206, 239, 0.08);
+  color: var(--lc-text-strong);
 }
 
 /* Says what the field wants before it is wrong, rather than after. */
 .field-hint {
   margin: calc(-1 * var(--lc-space-xs)) 0 0;
   color: var(--lc-text-tertiary);
-  font-size: var(--lc-type-caption);
+  font-size: var(--lc-text-xs);
 }
 
 .field-hint[data-state='ok'] {
@@ -523,46 +537,28 @@
 
 /* --- Notes ---------------------------------------------------------------- */
 
-/* A note inside a step, tonable. The neutral one is a raised card; the two
-   status tones take the soft backgrounds the alert tokens exist for, with the
-   colour repeated in the border's leading edge because a tint alone is not a
-   signal. */
 /**
- * A notice, drawn the way every other notice in this application is drawn.
- *
- * It carried a three-pixel bar down its left edge on an untinted ground — a
- * shape nothing else here uses, so on a screen beside `.alert` and the standing
- * banner it read as a component borrowed from somewhere else. Tone comes from
- * the ground and the edge together, as it does everywhere else.
+ * A notice, drawn the way every other notice in this application is drawn:
+ * the site's `vesting-claim__alert` (the kit's `.alert`), in its info, warning
+ * and error tones.
  */
 .step-note {
   display: grid;
   gap: var(--lc-space-xs);
   margin: 0 0 var(--lc-space-lg);
-  padding: var(--lc-space-lg) 20px;
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-md);
-  background: var(--lc-surface-2);
+  padding: 16px;
+  border: 0;
+  border-radius: var(--lc-radius-group);
+  background: var(--lc-surface-3);
   color: var(--lc-text-secondary);
-  font-size: var(--lc-type-caption);
-  line-height: var(--lc-leading-normal);
+  font-size: var(--lc-text-sm);
+  font-weight: 400;
+  line-height: 1.5;
 }
 
 .step-note strong {
-  color: var(--lc-text-primary);
-  font-weight: var(--lc-weight-semibold);
-}
-
-/* Tone from the ground and the edge together — the same pairing `.alert` uses,
-   so a warning looks like a warning wherever it appears. */
-.step-note-warn {
-  border-color: color-mix(in srgb, var(--lc-warning) 35%, var(--lc-rule));
-  background: color-mix(in srgb, var(--lc-warning) 10%, var(--lc-bg-elevated));
-}
-
-.step-note-danger {
-  border-color: color-mix(in srgb, var(--lc-danger) 40%, var(--lc-rule));
-  background: color-mix(in srgb, var(--lc-danger) 12%, var(--lc-bg-elevated));
+  color: var(--lc-text-strong);
+  font-weight: var(--lc-weight-medium);
 }
 
 /* --- The quiet way out ---------------------------------------------------- */
@@ -577,21 +573,24 @@
   margin: var(--lc-space-lg) 0 0;
 }
 
+/* Studio's text link (`aiView.ts`, `.lc-link`): Neutral-200, 14px, no
+   underline; the primary under the pointer, as the site's links
+   (`default/_reset.scss:42-54`). */
 .link-button {
   padding: var(--lc-space-xs);
   border: 0;
   border-radius: var(--lc-radius-sm);
   background: none;
-  color: var(--lc-text-tertiary);
+  color: var(--lc-text-secondary);
   font: inherit;
-  font-size: var(--lc-type-caption);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-size: var(--lc-text-xs);
+  text-decoration: none;
   cursor: pointer;
+  transition: color var(--lc-motion-base) var(--lc-easing);
 }
 
 .link-button:hover {
-  color: var(--lc-text-primary);
+  color: var(--lc-accent);
 }
 
 /* --- Layout helpers ------------------------------------------------------- */
@@ -633,12 +632,12 @@
   background: none;
   color: var(--lc-text-secondary);
   font: inherit;
-  font-size: var(--lc-type-caption);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-size: var(--lc-text-xs);
+  text-decoration: none;
   cursor: pointer;
+  transition: color var(--lc-motion-base) var(--lc-easing);
 }
 
 .step-link:hover {
-  color: var(--lc-text-primary);
+  color: var(--lc-accent);
 }

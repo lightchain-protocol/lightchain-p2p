@@ -353,7 +353,7 @@ export class Wallet {
     if (on === 'absent') throw new WalletError('there is no wallet on this machine')
     if (on === 'unreadable') {
       throw new WalletError(
-        'the wallet file on this machine could not be read. It is still there — nothing has been changed. Restore it from a backup, or restore the wallet from its recovery phrase.'
+        'the wallet file on this machine could not be read. It is still there - nothing has been changed. Restore it from a backup, or restore the wallet from its recovery phrase.'
       )
     }
     return on
@@ -472,7 +472,7 @@ export class Wallet {
       // The BIP-39 checksum catches a mistyped word. Accepting one anyway would
       // silently produce a different, empty wallet.
       throw new WalletError(
-        'that phrase is not valid. Check for a mistyped or missing word — the order matters.'
+        'that phrase is not valid. Check for a mistyped or missing word - the order matters.'
       )
     }
 

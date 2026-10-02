@@ -35,7 +35,9 @@ const sheets = [
 
 const defined = new Map()
 for (const file of sheets) {
-  const css = fs.readFileSync(path.join(root, file), 'utf8')
+  // Comments stripped first: a comment citing where a value came from — the
+  // website's `.btn-default`, say — names a class that is not this app's.
+  const css = fs.readFileSync(path.join(root, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
   for (const match of css.matchAll(/\.([a-zA-Z][a-zA-Z0-9_-]{2,})/g)) {
     if (!defined.has(match[1])) defined.set(match[1], file)
   }

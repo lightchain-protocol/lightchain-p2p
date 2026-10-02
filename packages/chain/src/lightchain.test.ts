@@ -95,7 +95,7 @@ describe('recovery calldata', () => {
     )
   })
 
-  it('disputeJob carries no bond argument — the bond is the value', () => {
+  it('disputeJob carries no bond argument - the bond is the value', () => {
     expect(disputeJob(42n)).toBe(
       encodeFunctionData({ abi: ABI, functionName: 'disputeJob', args: [42n] })
     )

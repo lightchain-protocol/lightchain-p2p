@@ -54,6 +54,8 @@ export const ui = {
   sendFailure: null,
   /** What the funding notice should say, if anything. */
   funding: null,
+  /** What has to be paid in before anything can be asked, if anything. */
+  gate: null,
   /** The job the question in flight belongs to. */
   askingJobId: null,
   /** What the model list is filtered to. */

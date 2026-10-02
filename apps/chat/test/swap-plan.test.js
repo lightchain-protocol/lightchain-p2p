@@ -144,7 +144,7 @@ describe('the refusals that fire before any round trip', () => {
     )
   })
 
-  it('refuses LCAI as the input — it is what the swap buys', async () => {
+  it('refuses LCAI as the input - it is what the swap buys', async () => {
     const { ctx } = swapCtx()
     const quote = swapHandlers(ctx)['swap.quote']
 
@@ -164,7 +164,7 @@ describe('the refusals that fire before any round trip', () => {
 })
 
 describe('the dust floor', () => {
-  it('refuses a one-wei swap once its fee is known — the fee alone outweighs it', async () => {
+  it('refuses a one-wei swap once its fee is known - the fee alone outweighs it', async () => {
     // The floor is the fee itself, no price consulted: a native or WETH input
     // shares a unit with the network fee, and a swap whose worst-case fee
     // exceeds the notional moving is a fee with a swap attached. One wei of
@@ -187,7 +187,7 @@ describe('the dust floor', () => {
     expect(sendTransaction).not.toHaveBeenCalled()
   })
 
-  it('floors a WETH input too — wrapped ether is ether by construction', async () => {
+  it('floors a WETH input too - wrapped ether is ether by construction', async () => {
     const weth = tokensOn(1).find((t) => t.symbol === 'WETH')
     const { ctx } = swapCtx()
     const quote = swapHandlers(ctx)['swap.quote']

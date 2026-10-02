@@ -121,21 +121,23 @@
   min-width: 0;
 }
 
+/* The dashboard title and its line underneath (`dashboard/_dashboard.scss:2341-2366`):
+   36 / 600 / 1.2 at -0.01em, then 15px in Neutral-200. */
 .page-title {
   margin: 0;
   font-size: var(--lc-text-xxl);
   font-weight: 600;
   line-height: var(--lc-leading-tight);
-  /* The brand sets its headings tighter than its body. At this size the
-     difference is what makes a title look set rather than merely large. */
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: var(--lc-text-primary);
   text-wrap: balance;
 }
 
 .page-sub {
-  margin: var(--lc-space-xs) 0 0;
-  color: var(--lc-fg-muted);
+  margin: 10px 0 0;
+  font-size: var(--lc-text-sm);
+  line-height: 1.3;
+  color: var(--lc-text-secondary);
   text-wrap: pretty;
 }
 
@@ -152,34 +154,15 @@
 /* --- Cards ---------------------------------------------------------------- */
 
 /**
- * A card, as the brand draws one: the darker surface, an edge softer than a
- * hairline, and a shadow with enough spread to separate it from a page that is
- * nearly the same colour.
- *
- * The soft edge matters more here than it would on a light theme. Against
- * `#0e0c15` a full-strength rule is a drawn line and reads as a table; at
- * around half of it the card looks lit rather than outlined, which is the
- * difference between the brand's surfaces and a wireframe of them.
+ * The dashboard's card (`dashboard/_dashboard.scss:2423, 2694`): a faint wash of
+ * the heading colour, a hairline of it, 16px corners. No shadow: the site's
+ * cards sit flat on the page.
  */
 .kit-card {
-  /**
-   * One inset, everywhere: twenty.
-   *
-   * An audit of every card in every panel found four different values in use —
-   * 0, 20, 24 and 28 — and, worse, that a card holding a head paid its inset
-   * twice. The card padded itself and then the head padded itself again, so
-   * that content started forty pixels from the card's edge while the content of
-   * a card without a head started at twenty. Two cards side by side, indented
-   * differently, for a reason no rule stated.
-   *
-   * So a card either owns its inset or delegates it, and never both: the rule
-   * below hands it to the head and the body when there is a head to hand it to.
-   */
-  padding: 20px;
-  border: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
+  padding: 24px;
+  border: 1px solid var(--lc-card-rule);
   border-radius: var(--lc-radius-lg);
-  background: var(--lc-bg-elevated);
-  box-shadow: var(--lc-shadow-2);
+  background: var(--lc-card);
   min-width: 0;
 }
 
@@ -198,10 +181,8 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--lc-space-md);
-  padding: var(--lc-space-lg) 20px;
-  /* The rule between a head and its body is a division inside one object, not
-     the edge of two. At full strength it cut the card in half. */
-  border-bottom: 1px solid color-mix(in srgb, var(--lc-rule) 60%, transparent);
+  padding: var(--lc-space-lg) 24px;
+  border-bottom: 1px solid var(--lc-card-rule);
 }
 
 /**
@@ -218,23 +199,27 @@
 /* Everything that is not the head gets the same twenty the head has, so a
    column of content lines up with the title above it. */
 .kit-card:has(> .kit-card-head) > :not(.kit-card-head) {
-  padding: 20px;
+  padding: 24px;
 }
 
+/* The site's eyebrow, `.lc-sm-title` (`style.scss:2898-2911`): 500,
+   uppercase, Neutral-200, the tracking it is set with — at the app's
+   density, 13. */
 .kit-card-title {
   margin: 0;
   font-size: var(--lc-text-xs);
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  line-height: var(--lc-leading-tight);
+  letter-spacing: -0.096px;
   text-transform: uppercase;
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-secondary);
 }
 
 .kit-card-scroll {
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
-  padding: 20px;
+  padding: 24px;
 }
 
 /* --- Status rows ---------------------------------------------------------- */
@@ -266,33 +251,41 @@
 
 .status-row {
   display: grid;
-  grid-template-columns: 5.5ch minmax(0, 1fr);
+  grid-template-columns: 8ch minmax(0, 1fr);
   gap: var(--lc-space-sm) var(--lc-space-md);
   padding: var(--lc-space-sm) 0;
   align-items: baseline;
 }
 
 .status-row + .status-row {
-  border-top: 1px solid color-mix(in srgb, var(--lc-rule) 55%, transparent);
+  border-top: 1px solid var(--lc-card-rule);
 }
 
+/* The dashboard's status pill (`dashboard/_dashboard.scss:2844-2887`). */
 .status-state {
+  justify-self: start;
+  padding: 4px 10px;
+  border-radius: 50px;
   font-size: var(--lc-text-xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.14px;
   text-transform: uppercase;
 }
 
 .status-state[data-state='ok'] {
-  color: var(--lc-success);
+  background: var(--lc-success-soft);
+  color: var(--lc-success-ink);
 }
 
 .status-state[data-state='warn'] {
-  color: var(--lc-warning);
+  background: var(--lc-warning-soft);
+  color: var(--lc-warning-ink);
 }
 
 .status-state[data-state='fail'] {
-  color: var(--lc-danger);
+  background: var(--lc-danger-soft);
+  color: var(--lc-danger-ink);
 }
 
 .status-line {
@@ -303,7 +296,7 @@
 .status-remedy {
   grid-column: 2;
   margin: var(--lc-space-xs) 0 0;
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
   font-size: var(--lc-text-sm);
   text-wrap: pretty;
 }
@@ -317,10 +310,10 @@
   align-items: center;
   gap: var(--lc-space-md);
   padding: var(--lc-space-md) var(--lc-space-lg);
-  border: 1px solid var(--lc-rule);
+  border: 1px solid var(--lc-card-rule);
   border-left-width: 3px;
   border-radius: var(--lc-radius-md);
-  background: var(--lc-bg-elevated);
+  background: var(--lc-card);
 }
 
 .verdict[data-state='ok'] {
@@ -340,7 +333,7 @@
 }
 
 .verdict-detail {
-  color: var(--lc-fg-muted);
+  color: var(--lc-text-secondary);
   font-size: var(--lc-text-sm);
 }
 
@@ -350,64 +343,46 @@
  * Where a failure goes.
  *
  * Every surface needs one place to put an error, or errors end up written into
- * whatever text slot is nearest. The Models panel did exactly that: a chain
- * error was assigned to the session subtitle, so it rendered in muted grey
- * under the model's name and read as a description of the model.
+ * whatever text slot is nearest. An alert is never a caption: it is a box, it
+ * has a tone, and it sits where the thing that failed is.
  *
- * An alert is never a caption. It has a border, it has a tone, and it sits
- * where the thing that failed is.
+ * Drawn as the website's dashboard notice, `.alert-staking`
+ * (`dashboard/_dashboard.scss:3021-3026`): a plain dark card — `#14152c`,
+ * 16px all round, 12px corners — like every other card on that page. The site
+ * never tints a notice, so the tone is carried by the icon alone, in the
+ * status colour; the words are the heading colour over the paragraph colour.
+ * Every warning, error and informational box in the app is this.
  */
 .alert {
   display: flex;
-  gap: var(--lc-space-md);
   align-items: flex-start;
-  /* The same inset as a card head, because an alert sits among cards. */
-  padding: var(--lc-space-lg) 20px;
-  border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-md);
-  background: var(--lc-bg-elevated);
-  color: var(--lc-fg);
+  gap: 12px;
+  padding: 16px;
+  border: 0;
+  border-radius: var(--lc-radius-group);
+  background: var(--lc-surface-3);
+  color: var(--lc-text-secondary);
   font-size: var(--lc-text-sm);
-  line-height: var(--lc-leading-normal);
+  font-weight: 400;
+  line-height: 1.5;
   text-wrap: pretty;
 }
 
+/* Sits on the first line, beside the title, rather than centred against a
+   block of three lines. */
 .alert .icon {
   flex: 0 0 auto;
-  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  color: var(--lc-accent);
 }
 
-/**
- * Tinted, not merely outlined.
- *
- * A coloured border around the page's own surface is a hint; the brand fills
- * these at about a tenth and lets the border agree with the fill, which is what
- * makes a warning legible as a warning before a word of it is read.
- */
-.alert[data-tone='info'] {
-  border-color: color-mix(in srgb, var(--lc-brand) 45%, var(--lc-rule));
-  background: color-mix(in srgb, var(--lc-brand) 10%, var(--lc-bg-elevated));
-}
-
-.alert[data-tone='info'] .icon {
-  color: var(--lc-brand);
-}
-
-.alert[data-tone='warn'] {
-  border-color: color-mix(in srgb, var(--lc-warning) 45%, var(--lc-rule));
-  background: color-mix(in srgb, var(--lc-warning) 10%, var(--lc-bg-elevated));
-}
-
-.alert[data-tone='warn'] .icon {
+.alert[data-tone='warn'] > .icon {
   color: var(--lc-warning);
 }
 
-.alert[data-tone='error'] {
-  border-color: color-mix(in srgb, var(--lc-danger) 55%, var(--lc-rule));
-  background: color-mix(in srgb, var(--lc-danger) 12%, var(--lc-bg-elevated));
-}
-
-.alert[data-tone='error'] .icon {
+.alert[data-tone='error'] > .icon {
   color: var(--lc-danger);
 }
 
@@ -417,7 +392,9 @@
 
 .alert-title {
   display: block;
-  font-weight: 600;
+  margin-bottom: 2px;
+  color: var(--lc-text-strong);
+  font-weight: 500;
 }
 
 /* --- Chips ---------------------------------------------------------------- */
@@ -425,39 +402,45 @@
 /* A fact about the thing on screen, not a control. Chips do not get borders
    heavy enough to be mistaken for buttons, which is what went wrong in the room
    header where three status badges sat in a row of four buttons. */
+/* The site's bordered badge, `.lightchain-badge-border` (`_button.scss:576-609`). */
 .chip {
   display: inline-flex;
   align-items: center;
   gap: var(--lc-space-xs);
-  padding: var(--lc-space-xs) var(--lc-space-md);
-  border: 1px solid color-mix(in srgb, var(--lc-rule) 70%, transparent);
-  border-radius: var(--lc-radius-pill);
-  background: var(--lc-bg-elevated-2);
-  color: var(--lc-fg-muted);
-  font-size: var(--lc-text-xs);
+  padding: 4px 10px;
+  border: 1px solid rgba(91, 75, 255, 0.15);
+  border-radius: 52px;
+  background: var(--lc-surface-2);
+  color: var(--lc-text-primary);
+  font-size: 12px;
   font-weight: 500;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .chip .icon {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
 }
 
+/* Tones as the dashboard's status pills. */
 .chip[data-tone='ok'] {
-  background: color-mix(in srgb, var(--lc-success) 16%, transparent);
-  color: var(--lc-success);
+  border-color: transparent;
+  background: var(--lc-success-soft);
+  color: var(--lc-success-ink);
 }
 
 .chip[data-tone='warn'] {
-  background: color-mix(in srgb, var(--lc-warning) 16%, transparent);
-  color: var(--lc-warning);
+  border-color: transparent;
+  background: var(--lc-warning-soft);
+  color: var(--lc-warning-ink);
 }
 
 .chip[data-tone='danger'] {
-  background: color-mix(in srgb, var(--lc-danger) 16%, transparent);
-  color: var(--lc-danger);
+  border-color: transparent;
+  background: var(--lc-danger-soft);
+  color: var(--lc-danger-ink);
 }
 
 /* --- Facts ---------------------------------------------------------------- */
@@ -472,7 +455,7 @@
 }
 
 .facts dt {
-  color: var(--lc-fg-dim);
+  color: var(--lc-text-tertiary);
   font-size: var(--lc-text-sm);
 }
 
@@ -495,22 +478,26 @@
  * `cursor: default` rather than `pointer`, matching the rest of the app: this is
  * a desktop application, and a hand cursor is a web page's idea of a control.
  */
+/* The dashboard's eye button (`dashboard/_dashboard.scss:2490`), borderless
+   until the pointer is on it. */
 .icon-button {
   display: grid;
   place-items: center;
   width: var(--lc-control-sm);
   height: var(--lc-control-sm);
   padding: 0;
-  border: 0;
-  border-radius: var(--lc-radius-md);
-  color: var(--lc-fg-muted);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--lc-text-secondary);
   background: transparent;
-  cursor: default;
+  cursor: pointer;
+  transition: all var(--lc-motion-base) var(--lc-easing);
 }
 
 .icon-button:hover {
-  color: var(--lc-fg);
-  background: var(--lc-bg-elevated-2);
+  color: var(--lc-text-strong);
+  border-color: var(--lc-card-rule);
+  background: rgba(204, 206, 239, 0.08);
 }
 
 /* --- Forms ---------------------------------------------------------------- */
@@ -563,12 +550,11 @@
  * this size and tracking it stops being read as content and becomes what it is,
  * which is a caption for the field.
  */
+/* The site's form label: 14 / 500 in the heading colour. */
 .field-label {
   font-size: var(--lc-text-xs);
-  font-weight: var(--lc-weight-semibold);
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--lc-text-tertiary);
+  font-weight: var(--lc-weight-medium);
+  color: var(--lc-text-primary);
 }
 
 /* Passwords are typed, not pasted from a key. Monospace makes them look like
@@ -578,7 +564,7 @@
    wallet sets its unlock field at fifty — so it takes the large height rather
    than the same one a toolbar filter gets. */
 .form .input {
-  height: var(--lc-control-lg);
+  height: var(--lc-control-md);
   font-family: inherit;
   font-size: var(--lc-text-md);
 }
@@ -603,6 +589,8 @@
   flex: 0 0 auto;
 }
 
+/* Studio's composer (`aiView.ts`): the inset well, a hairline, 12px corners,
+   15 / 22 text; focus firms the edge rather than ringing it. */
 .composer-input {
   flex: 1 1 auto;
   min-width: 0;
@@ -610,17 +598,15 @@
   min-height: var(--lc-control-md);
   max-height: 30vh;
   border: 1px solid var(--lc-rule);
-  border-radius: var(--lc-radius-lg);
-  padding: var(--lc-space-sm) var(--lc-space-md);
+  border-radius: var(--lc-radius-group);
+  padding: 8px 12px;
   font: inherit;
-  font-size: var(--lc-text-md);
-  line-height: var(--lc-leading-normal);
-  color: var(--lc-text-primary);
-  background: var(--lc-surface-2);
+  font-size: var(--lc-text-sm);
+  line-height: 22px;
+  color: var(--lc-text-strong);
+  background: var(--lc-inset);
   user-select: text;
-  transition:
-    border-color var(--lc-motion-fast) var(--lc-easing),
-    box-shadow var(--lc-motion-fast) var(--lc-easing);
+  transition: border-color 0.15s;
 }
 
 .composer-input::placeholder {
@@ -629,8 +615,7 @@
 
 .composer-input:focus {
   outline: none;
-  border-color: var(--lc-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lc-accent) 24%, transparent);
+  border-color: var(--lc-rule-strong);
 }
 
 .composer-input:disabled {
@@ -674,7 +659,7 @@
   overflow: hidden;
   vertical-align: middle;
   border-radius: var(--lc-radius-sm);
-  background: color-mix(in srgb, var(--lc-fg) 5%, transparent);
+  background: var(--lc-card);
 }
 
 /*
@@ -687,15 +672,10 @@
   content: '';
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--lc-fg) 9%, transparent),
-    transparent
-  );
+  background-image: linear-gradient(90deg, transparent, rgba(204, 206, 239, 0.08), transparent);
   background-size: 200% 100%;
   background-repeat: no-repeat;
-  animation: lc-shimmer 1.4s infinite;
+  animation: lc-shimmer 1.5s infinite;
 }
 
 @keyframes lc-shimmer {
@@ -706,13 +686,6 @@
   to {
     background-position: -50% 0;
   }
-}
-
-/* A block that stands in for a whole line of text takes its height from the
-   line rather than from a number, so it matches whatever it is replacing. */
-.skeleton-text {
-  height: 1em;
-  width: 100%;
 }
 
 /**
@@ -766,16 +739,56 @@
   width: 14px;
   height: 14px;
   vertical-align: -2px;
-  border: 2px solid color-mix(in srgb, var(--lc-fg) 30%, transparent);
-  border-top-color: currentcolor;
+  border: 1.5px solid rgba(204, 206, 239, 0.25);
+  border-top-color: var(--lc-accent-bar);
   border-radius: var(--lc-radius-pill);
-  animation: lc-spin 0.6s linear infinite;
+  animation: lc-spin 0.8s linear infinite;
 }
 
 @keyframes lc-spin {
   to {
     transform: rotate(360deg);
   }
+}
+
+/**
+ * A wait longer than a moment, for a whole region.
+ *
+ * The site's own: lucide-react's `Loader2` at 32px, spun by `.animate-spin`
+ * (1s linear, `_utilities.scss:248`), centred in the space it holds
+ * (`PollItem.tsx`, `vesting-claim--loading`: 132px above and below, 107 at
+ * the app's density). One line under it says what is being waited on. Blocks
+ * of grey in the shape of content that has not arrived read as content that
+ * broke, which is what they looked like here.
+ */
+.loading {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 107px 0;
+  text-align: center;
+}
+
+.loading-mark {
+  width: 32px;
+  height: 32px;
+  color: var(--lc-text-primary);
+  animation: lc-spin 1s linear infinite;
+}
+
+.loading-inline {
+  width: 16px;
+  height: 16px;
+  color: var(--lc-text-tertiary);
+  vertical-align: middle;
+  animation: lc-spin 1s linear infinite;
+}
+
+.loading-text {
+  margin: 0;
+  font-size: var(--lc-text-sm);
+  color: var(--lc-text-tertiary);
 }
 
 /**
@@ -787,7 +800,9 @@
  */
 @media (prefers-reduced-motion: reduce) {
   .skeleton::after,
-  .spinner {
+  .spinner,
+  .loading-mark,
+  .loading-inline {
     animation: none;
   }
 }

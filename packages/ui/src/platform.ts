@@ -34,12 +34,15 @@ export interface PlatformConventions {
   readonly settingsLabel: 'Preferences' | 'Settings'
 }
 
+/**
+ * Inter first, as Lightchain Studio sets it per platform
+ * (`fork-tools/apply-source-patches.py:71-85`), with that platform's face behind
+ * it only for glyphs Inter's latin subsets do not carry.
+ */
 const SYSTEM_FONTS: Record<Platform, string> = {
-  // Segoe UI Variable on 11+, falling back for 10.
-  win32: '"Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif',
-  darwin: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
-  // Inter is widely present on Linux desktops and matches our documents.
-  linux: 'Inter, "Noto Sans", Cantarell, Ubuntu, system-ui, sans-serif'
+  win32: '"Inter", "Segoe WPC", "Segoe UI", sans-serif',
+  darwin: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif',
+  linux: '"Inter", system-ui, "Ubuntu", "Droid Sans", sans-serif'
 }
 
 export function conventions(platform: Platform): PlatformConventions {
