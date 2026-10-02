@@ -107,12 +107,10 @@ export function createWizard({ steps, rail, back, waiting, action }) {
       // What the route thinks of the step, except for the one being looked at,
       // which says so — otherwise walking back to a finished step shows a tick
       // and no sign of where you are.
+      // The one being looked at is always marked as where you are, blocked or
+      // not; the step itself says what is blocking it.
       pip.dataset.state =
-        index === here && route[index] !== 'blocked'
-          ? 'current'
-          : route[index] === 'done'
-            ? 'done'
-            : route[index]
+        index === here ? 'current' : route[index] === 'done' ? 'done' : route[index]
 
       // A step nothing has reached yet is not somewhere to go. The pips are
       // buttons and every one of them used to be live, so from step 2 with

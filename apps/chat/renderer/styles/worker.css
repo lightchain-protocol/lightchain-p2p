@@ -134,104 +134,87 @@
 /* --- The route ------------------------------------------------------------ */
 
 /**
- * Named, not numbered.
- *
- * Six numbered pips told somebody they were on step 2 of 6 and never what step
- * 2 was, which is the half that lets a person decide whether to keep going. At
- * a narrow width the names drop and the dots stay, because a route you cannot
- * read is still a route you can count.
+ * Named, not numbered: the route as the site's tab group, the dashboard's
+ * network tabs (`dashboard/_dashboard.scss:2368-2421`) - a well of 1px
+ * Transparency-12 at 4% under 12px corners, 6px inside, 8px between tabs;
+ * each tab 14 / 600 at line height 1, `10px 18px` at 8px corners, the heading
+ * colour turning white on hover. The step you are on is the active tab, white
+ * over the tab gradient. A finished step reads in the success colour with its
+ * tick; one that is blocked, in the warning ink, as the site's pending pill.
  */
 .wizard-rail {
   display: flex;
-  align-items: flex-start;
-  gap: var(--lc-space-xs);
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--lc-card-rule);
+  border-radius: var(--lc-radius-group);
+  background: var(--lc-well);
 }
 
 .wizard-pip {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: var(--lc-space-xs);
+  justify-content: center;
+  gap: 8px;
   flex: 1 1 0;
   min-width: 0;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--lc-text-tertiary);
-  font-size: var(--lc-text-xs);
+  padding: 10px 18px;
+  border: 0;
+  border-radius: var(--lc-radius-button);
+  background: transparent;
+  color: var(--lc-text-primary);
+  font: inherit;
+  font-size: var(--lc-text-sm);
+  font-weight: var(--lc-weight-semibold);
+  line-height: 1;
   cursor: pointer;
+  transition: all var(--lc-motion-base) ease;
 }
 
-/* Studio's connect-page step (`connectPage.ts`, `.lc-steps li`) for the edge
-   and the colours, the site's network tab (`dashboard/_dashboard.scss:2384-2420`)
-   for the type and the current state: 14 / 600 at line height 1, and the tab
-   gradient under white once it is the one you are on. */
+.wizard-pip:hover:not(:disabled) {
+  color: #ffffff;
+}
+
 .wizard-pip-mark {
   display: grid;
   place-items: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  border: 1px solid var(--lc-rule);
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  border: 1px solid currentcolor;
   border-radius: var(--lc-radius-pill);
-  background: transparent;
-  color: var(--lc-text-secondary);
-  font-weight: var(--lc-weight-semibold);
-  line-height: 1;
+  font-size: var(--lc-text-xs);
   font-variant-numeric: tabular-nums;
-  transition: all var(--lc-motion-base) var(--lc-easing);
 }
 
 .wizard-pip-label {
-  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* `.lc-steps li.done`: the step reads in the success colour. */
 .wizard-pip[data-state='done'] {
   color: var(--lc-success);
 }
 
-.wizard-pip[data-state='done'] .wizard-pip-mark {
-  border-color: var(--lc-success);
-  color: var(--lc-success);
-}
-
-/* The tick is the sprite's, sized against the circle it sits in rather than
-   against the digit it replaced. */
 .wizard-pip[data-state='done'] .wizard-pip-mark .icon {
-  width: 14px;
-  height: 14px;
-}
-
-/* `.lc-steps li.now` for the label, `.network-tab.active` for the mark. */
-.wizard-pip[data-state='current'] {
-  color: var(--lc-text-strong);
-}
-
-.wizard-pip[data-state='current'] .wizard-pip-mark {
-  border-color: transparent;
-  background: var(--lc-tab-gradient);
-  color: var(--lc-accent-contrast);
+  width: 12px;
+  height: 12px;
 }
 
 .wizard-pip[data-state='blocked'] {
-  color: var(--lc-danger);
+  color: var(--lc-warning-light);
 }
 
-.wizard-pip[data-state='blocked'] .wizard-pip-mark {
-  border-color: var(--lc-danger);
-  color: var(--lc-danger);
+/* `.network-tab.active`: white over the tab gradient. */
+.wizard-pip[data-state='current'] {
+  background: var(--lc-tab-gradient);
+  color: #ffffff;
 }
 
-/* Studio's bordered row hover (`startPage.ts`, `.lc-res .lc-row:hover`). */
-.wizard-pip:hover .wizard-pip-mark {
-  border-color: var(--lc-rule-strong);
-}
-
-.wizard-pip[data-state='current']:hover .wizard-pip-mark {
-  border-color: transparent;
+.wizard-pip[data-state='current'] .wizard-pip-mark {
+  border-color: rgba(255, 255, 255, 0.6);
 }
 
 /* --- One step ------------------------------------------------------------- */
