@@ -14,6 +14,7 @@ import {
 import { decrypt, encrypt, encryptSessionKey, generateSessionKey } from '@lcai-p2p/inference-crypto'
 import { Api, ApiError, type Draw, type Model } from './api.js'
 import { decodeKey, encodeSealed } from './keys.js'
+import { unwrapResponseEnvelope } from './envelope.js'
 import { checkCommitment, verifyFrame, type Commitment } from './verify.js'
 
 /**
@@ -75,6 +76,13 @@ export interface ConversationOptions {
 export interface Answer {
   readonly jobId: string
   readonly text: string
+  /**
+   * Whether every frame the answer was taken from carried the assigned
+   * worker's signature and it checked out. False when the worker sent the
+   * answer unsigned: it is shown, as the web client shows it, but nobody can
+   * prove the worker said it, so it cannot be quoted or disputed.
+   */
+  readonly verified: boolean
 }
 
 /**
@@ -203,6 +211,12 @@ export class Conversation {
    * somebody else with the evidence attached.
    */
   #evidence = new Map<number, { ciphertext: string; signature: string }>()
+  /**
+   * The answer as the `complete` frame stated it, when that frame carried one.
+   * Mainnet streams unsigned pieces and then sends the whole answer, signed,
+   * in `complete`; that is the text kept and the frame kept as evidence.
+   */
+  #final: { text: string; seq: number; ciphertext: string; signature: string } | null = null
 
   /**
    * Every job this conversation has submitted, in submission order.
@@ -479,6 +493,7 @@ export class Conversation {
   #onFrame(frame: string, onProgress: (progress: Progress) => void): void {
     let message: {
       type?: string
+      kind?: string
       payload?: string
       jobId?: string | number
       error?: string
@@ -501,24 +516,34 @@ export class Conversation {
       message.jobId === undefined || message.jobId === null ? null : String(message.jobId)
     const stale = this.#activeJob === null || (frameJob !== null && frameJob !== this.#activeJob)
 
-    // Any frame may carry text, and which one does is a property of the
-    // deployment rather than of the protocol: testnet streams `chunk` frames
-    // and ends with an empty `complete`, while mainnet sends the whole answer
-    // as the payload of a single `complete`. Keying on the payload rather than
-    // on the type handles both, and would have saved a paid job that arrived
-    // and was thrown away.
-    if (message.payload && this.#sessionKey && !stale) {
-      // Keyed by sequence number, because the same text arrives twice: testnet
-      // streams a `chunk` and then repeats the last one as the payload of
-      // `complete`. Appending blindly answered "okok" to a one-word question.
+    // Which frames carry the answer is a property of the deployment rather
+    // than of the protocol. Testnet streams `chunk` frames, each signed, and
+    // repeats the last one as the payload of `complete`. Mainnet streams
+    // unsigned pieces tagged with a `kind` — `text`, but also `reasoning`,
+    // `stats` and artifacts, which are not the answer — and then sends the
+    // whole answer, signed, as the payload of `complete`; an older mainnet sent
+    // only that `complete`. `metadata` frames carry no answer at all.
+    const complete = message.type === 'complete'
+    const answerText =
+      message.type !== 'metadata' && (complete || (message.kind ?? 'text') === 'text')
+
+    if (message.payload && answerText && this.#sessionKey && !stale) {
+      // Keyed by sequence number, because the same text can arrive twice:
+      // testnet repeats its last `chunk` as the payload of `complete` under
+      // the same number. Appending blindly answered "okok" to a one-word
+      // question.
       const seq = typeof message.seq === 'number' ? message.seq : this.#chunks.size
+      const signature = message.signature ?? ''
 
       if (!this.#chunks.has(seq)) {
         const ciphertext = new Uint8Array(Buffer.from(message.payload, 'base64'))
 
-        // Checked before it is decrypted, let alone shown. An answer that the
-        // assigned worker did not sign is one the relay could have written.
-        if (this.#verify) {
+        // Checked before it is decrypted, let alone shown. A signature that
+        // does not belong to the assigned worker is an answer the relay could
+        // have written, and is refused. A frame with no signature at all is
+        // how mainnet streams its pieces now; it is shown, and the answer is
+        // reported unverified unless the signed `complete` covers it.
+        if (this.#verify && signature) {
           try {
             verifyFrame(
               {
@@ -527,7 +552,7 @@ export class Conversation {
                 jobId: BigInt(message.jobId ?? 0),
                 sessionId: BigInt(this.#sessionId ?? 0),
                 ciphertext,
-                signature: message.signature ?? ''
+                signature
               },
               this.#worker as string
             )
@@ -549,18 +574,33 @@ export class Conversation {
           return
         }
 
-        this.#chunks.set(seq, text)
-        this.#evidence.set(seq, {
-          ciphertext: message.payload,
-          signature: message.signature ?? ''
-        })
-        onProgress({ phase: 'token', text })
+        if (complete) {
+          // The whole answer, stated once. It replaces the streamed pieces
+          // rather than adding to them.
+          this.#final = {
+            text: unwrapResponseEnvelope(text),
+            seq,
+            ciphertext: message.payload,
+            signature
+          }
+        } else {
+          this.#chunks.set(seq, text)
+          this.#evidence.set(seq, { ciphertext: message.payload, signature })
+          onProgress({ phase: 'token', text })
+        }
       }
     }
 
     if (message.type === 'complete') {
       if (stale) return
-      const text = this.#assemble()
+      const final = this.#final
+      if (final) {
+        // The signed whole is the evidence; the unsigned pieces before it
+        // were only a preview of it.
+        this.#evidence.clear()
+        this.#evidence.set(final.seq, { ciphertext: final.ciphertext, signature: final.signature })
+      }
+      const text = final ? final.text : this.#assemble()
       if (text === '') {
         // The job was submitted and paid for. Saying so beats a blank bubble
         // that looks like the model had nothing to say.
@@ -604,6 +644,7 @@ export class Conversation {
     if (prompt.trim() === '') throw new ConversationError('the prompt is empty')
 
     this.#chunks.clear()
+    this.#final = null
     this.#evidence.clear()
 
     const answer = new Promise<string>((resolve, reject) => {
@@ -689,6 +730,7 @@ export class Conversation {
       // and part of an answer is not evidence: `commitment()` would be
       // checking a ciphertext against a hash nobody committed to as one.
       this.#chunks.clear()
+      this.#final = null
       this.#evidence.clear()
       throw err
     } finally {
@@ -706,8 +748,13 @@ export class Conversation {
       worker: tracked?.worker ?? this.#worker
     })
 
+    const verified =
+      this.#verify &&
+      this.#evidence.size > 0 &&
+      [...this.#evidence.values()].every((frame) => frame.signature !== '')
+
     onProgress({ phase: 'done', jobId })
-    return { jobId, text }
+    return { jobId, text, verified }
   }
 
   /**
@@ -913,6 +960,7 @@ export class Conversation {
     // Whatever arrives now is the tail of a job nobody is waiting on; keeping
     // it would pass part of an answer off as the evidence for one.
     this.#chunks.clear()
+    this.#final = null
     this.#evidence.clear()
     return true
   }

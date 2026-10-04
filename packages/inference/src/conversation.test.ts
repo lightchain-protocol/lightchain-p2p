@@ -131,7 +131,12 @@ function frame(sessionKey: Uint8Array, text: string, over: Record<string, unknow
 }
 
 /** The signature the assigned worker would put on a frame's ciphertext. */
-function signed(ciphertextB64: string, jobId: bigint, sessionId: bigint): string {
+function signed(
+  ciphertextB64: string,
+  jobId: bigint,
+  sessionId: bigint,
+  key: string = SIGNING_KEY
+): string {
   const digest = responseDigest({
     chainId: CHAIN_ID,
     jobRegistry: JOB_REGISTRY,
@@ -139,7 +144,7 @@ function signed(ciphertextB64: string, jobId: bigint, sessionId: bigint): string
     sessionId,
     ciphertext: new Uint8Array(Buffer.from(ciphertextB64, 'base64'))
   })
-  const recovered = secp256k1.sign(hashDigestForSigning(digest), toBytes(SIGNING_KEY), {
+  const recovered = secp256k1.sign(hashDigestForSigning(digest), toBytes(key), {
     prehash: false,
     format: 'recovered'
   })
@@ -199,7 +204,7 @@ describe('a failed submit', () => {
     await untilSubmitted(mocks)
     relays[0]!.handlers.onMessage(frame(sessionKey, 'fine', { type: 'complete' }))
 
-    await expect(asking).resolves.toEqual({ jobId: '7', text: 'fine' })
+    await expect(asking).resolves.toMatchObject({ jobId: '7', text: 'fine' })
   })
 
   it('rejects the question, not the session, when the relay closes mid-answer', async () => {
@@ -235,10 +240,10 @@ describe('chunks', () => {
     relays[0]!.handlers.onMessage(frame(sessionKey, 'ok', { type: 'chunk', seq: 0 }))
     relays[0]!.handlers.onMessage(frame(sessionKey, 'ok', { type: 'complete', seq: 0 }))
 
-    await expect(asking).resolves.toEqual({ jobId: '7', text: 'ok' })
+    await expect(asking).resolves.toMatchObject({ jobId: '7', text: 'ok' })
   })
 
-  it('refuses a frame the assigned worker did not sign', async () => {
+  it('refuses a frame signed by somebody other than the assigned worker', async () => {
     const { api, mocks, workerEncryption } = makeApi()
     const conversation = makeConversation(api, true)
     await conversation.start()
@@ -246,9 +251,17 @@ describe('chunks', () => {
 
     const asking = conversation.ask('hi')
     await untilSubmitted(mocks)
-    // Correctly encrypted, correctly addressed — and unsigned, which a relay
-    // substituting its own answer would be.
-    relays[0]!.handlers.onMessage(frame(sessionKey, 'a lie', { type: 'chunk', seq: 0 }))
+    // Correctly encrypted, correctly addressed - and signed by a key that is
+    // not the worker's, which a relay substituting its own answer would be.
+    const forged = JSON.parse(frame(sessionKey, 'a lie', { type: 'complete', seq: 0 })) as {
+      payload: string
+    }
+    relays[0]!.handlers.onMessage(
+      JSON.stringify({
+        ...forged,
+        signature: signed(forged.payload, 7n, 3n, `0x${'11'.repeat(32)}`)
+      })
+    )
 
     await expect(asking).rejects.toThrow(SignatureError)
 
@@ -261,7 +274,76 @@ describe('chunks', () => {
       JSON.stringify({ ...payload, signature: signed(payload.payload, 7n, 3n) })
     )
 
-    await expect(next).resolves.toEqual({ jobId: '7', text: 'the truth' })
+    await expect(next).resolves.toEqual({ jobId: '7', text: 'the truth', verified: true })
+  })
+
+  it('shows an answer that arrived unsigned, and says it is unverified', async () => {
+    // What every mainnet answer did for a while: paid for, delivered, and
+    // thrown away for want of a signature nobody else checks either.
+    const { api, mocks, workerEncryption } = makeApi()
+    const conversation = makeConversation(api, true)
+    await conversation.start()
+    const sessionKey = sessionKeyFrom(mocks, workerEncryption)
+
+    const asking = conversation.ask('hi')
+    await untilSubmitted(mocks)
+    relays[0]!.handlers.onMessage(frame(sessionKey, 'hello', { type: 'chunk', seq: 0 }))
+    relays[0]!.handlers.onMessage(JSON.stringify({ type: 'complete', jobId: '7', seq: 1 }))
+
+    await expect(asking).resolves.toEqual({ jobId: '7', text: 'hello', verified: false })
+    expect(conversation.answerFrames()).toBeNull()
+  })
+})
+
+describe('the mainnet stream', () => {
+  it('streams unsigned text, skips what is not the answer, and keeps the signed complete', async () => {
+    const { api, mocks, workerEncryption } = makeApi()
+    const conversation = makeConversation(api, true)
+    // Streamed pieces report through the callback the session was opened with.
+    const tokens: string[] = []
+    await conversation.start((progress) => {
+      if (progress.phase === 'token') tokens.push(progress.text)
+    })
+    const sessionKey = sessionKeyFrom(mocks, workerEncryption)
+
+    const asking = conversation.ask('hi')
+    await untilSubmitted(mocks)
+    const send = (text: string, over: Record<string, unknown>) =>
+      relays[0]!.handlers.onMessage(frame(sessionKey, text, over))
+
+    relays[0]!.handlers.onMessage(JSON.stringify({ type: 'metadata', jobId: '7', seq: 0 }))
+    send('thinking about it', { type: 'chunk', kind: 'reasoning', seq: 1 })
+    send('Hel', { type: 'chunk', kind: 'text', seq: 2 })
+    send('lo', { type: 'chunk', seq: 3 })
+    send('{"tokens":12}', { type: 'chunk', kind: 'stats', seq: 4 })
+
+    const whole = JSON.stringify({ v: 2, answer: 'Hello', searchContext: [] })
+    const complete = JSON.parse(frame(sessionKey, whole, { type: 'complete', seq: 5 })) as {
+      payload: string
+    }
+    relays[0]!.handlers.onMessage(
+      JSON.stringify({ ...complete, signature: signed(complete.payload, 7n, 3n) })
+    )
+
+    await expect(asking).resolves.toEqual({ jobId: '7', text: 'Hello', verified: true })
+    expect(tokens).toEqual(['Hel', 'lo'])
+
+    // The signed whole is the evidence, alone, so it can be quoted and disputed.
+    expect(conversation.evidence()).toMatchObject({ ciphertext: complete.payload })
+    expect(conversation.answerFrames()?.frames).toHaveLength(1)
+  })
+
+  it('shows a model that answers in JSON its JSON', async () => {
+    const { api, mocks, workerEncryption } = makeApi()
+    const conversation = makeConversation(api)
+    await conversation.start()
+    const sessionKey = sessionKeyFrom(mocks, workerEncryption)
+
+    const asking = conversation.ask('give me json')
+    await untilSubmitted(mocks)
+    relays[0]!.handlers.onMessage(frame(sessionKey, '{"answer":"x"}', { type: 'complete', seq: 0 }))
+
+    await expect(asking).resolves.toMatchObject({ text: '{"answer":"x"}' })
   })
 })
 
@@ -291,7 +373,7 @@ describe('an answer that never comes', () => {
     await untilSubmitted(mocks, 2)
     relays[0]!.handlers.onMessage(frame(sessionKey, 'fresh', { type: 'complete', jobId: '8' }))
 
-    await expect(next).resolves.toEqual({ jobId: '8', text: 'fresh' })
+    await expect(next).resolves.toMatchObject({ jobId: '8', text: 'fresh' })
   })
 })
 
@@ -328,7 +410,7 @@ describe('a session the chain expired', () => {
     const newKey = sessionKeyFrom(mocks, workerEncryption, 1)
     relays[1]!.handlers.onMessage(frame(newKey, 'still here', { type: 'complete', jobId: '8' }))
 
-    await expect(asking).resolves.toEqual({ jobId: '8', text: 'still here' })
+    await expect(asking).resolves.toMatchObject({ jobId: '8', text: 'still here' })
   })
 
   it('only retries once: a second SessionNotActive is the answer', async () => {
@@ -381,7 +463,7 @@ describe('the job lifecycle', () => {
     expect(submitted!.deadline - submitted!.submittedAt).toBe(90_000)
 
     relays[0]!.handlers.onMessage(frame(sessionKey, 'hello', { type: 'complete' }))
-    await expect(asking).resolves.toEqual({ jobId: '7', text: 'hello' })
+    await expect(asking).resolves.toMatchObject({ jobId: '7', text: 'hello' })
 
     expect(conversation.job('7')?.state).toBe('answered')
     expect(conversation.jobs().map((entry) => entry.jobId)).toEqual(['7'])

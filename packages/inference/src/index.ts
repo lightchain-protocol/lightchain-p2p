@@ -57,3 +57,5 @@ export {
   verifyRoomAnswer,
   type AnswerChecks
 } from './room-answer.js'
+
+export { unwrapResponseEnvelope } from './envelope.js'

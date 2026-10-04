@@ -1,6 +1,7 @@
 import { toBytes } from '@lcai-p2p/chain'
 import { answerFrames, type ModelAnswer } from '@lcai-p2p/protocol'
 import { decrypt } from '@lcai-p2p/inference-crypto'
+import { unwrapResponseEnvelope } from './envelope.js'
 import { SignatureError, recoverFrameSigner } from './verify.js'
 
 /**
@@ -81,7 +82,9 @@ export function verifyRoomAnswer(answer: ModelAnswer, text: string, chain: Answe
     }
   }
 
-  if (assembled !== text) {
+  // A mainnet `complete` frame can wrap the answer with the search it was
+  // based on; what was shown is the answer inside.
+  if (unwrapResponseEnvelope(assembled) !== text) {
     // The signatures held and the text was still changed: somebody kept a real
     // answer and put different words in front of it. With several pieces this
     // also catches one being dropped, duplicated or reordered, since none of

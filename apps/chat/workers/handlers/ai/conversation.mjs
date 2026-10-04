@@ -269,7 +269,7 @@ export function conversationHandlers(ctx, kit) {
           // the truthful state rather than an error worth interrupting for.
         })
 
-      return { jobId: answer.jobId, text: answer.text }
+      return { jobId: answer.jobId, text: answer.text, verified: answer.verified }
     },
 
     'ai.cancel': () => ({ stopped: session.conversation?.cancel() ?? false }),

@@ -126,6 +126,13 @@ export async function ask(prompt) {
     // follows seconds later can find this turn by name rather than by
     // position — by then the thread on screen may be another conversation.
     tagJob(answer.item, replied.jobId, { answer: true })
+    // The answer as a whole. Mainnet streams a draft and then states the
+    // answer once more, signed, and the two need not match to the character.
+    if (typeof replied.text === 'string' && replied.text !== '') {
+      answer.body.textContent = replied.text
+    }
+    // Shown either way - it was paid for - but not passed off as proven.
+    if (replied.verified === false) markTurn(answer, 'unverified')
   } catch (err) {
     const partial = answer.body.textContent !== ''
 
