@@ -4,7 +4,21 @@ Notable changes to Lightchain Chat, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the version
 numbers follow [semver](https://semver.org/).
 
-## [Unreleased]
+## [0.1.1] - 2026-10-09
+
+### Fixed
+
+- Questions to mainnet models are answered again. Every one failed with "the
+  frame carried no signature" after the fee was taken.
+- A model's reasoning no longer appears inside its answer.
+- Testnet models can be reached again.
+
+### Changed
+
+- An answer that arrives without the worker's signature is shown with an
+  `unverified` tag instead of being thrown away.
+
+## [0.1.0] - 2026-10-02
 
 ### Added
 

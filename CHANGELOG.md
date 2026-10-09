@@ -5,6 +5,25 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the
 version numbers follow [semver](https://semver.org/). The chat app's own
 interface-level log lives in [apps/chat/CHANGELOG.md](apps/chat/CHANGELOG.md).
 
+## [v0.1.1] — 2026-10-09
+
+### Fixed
+
+- Every paid question on mainnet failed with "the frame carried no signature"
+  after the fee was taken. Mainnet workers now stream the answer in unsigned
+  pieces and sign only the whole answer in the final frame; the app refused the
+  first piece. Answers are shown again, and the signed final frame is what is
+  kept as evidence for quoting and disputes.
+- A model's reasoning and usage statistics no longer end up inside its answer.
+- Testnet models could not be reached at all: the testnet service names a
+  different domain in its sign-in challenge, and the app refused to sign it.
+
+### Changed
+
+- An answer that arrives with no worker signature is shown and marked
+  `unverified` rather than discarded. An answer signed by anybody other than
+  the assigned worker is still refused.
+
 ## [v0.9.0-beta.1] — Unreleased
 
 The first beta tag: Sprints 1–3 of the BETA program ([docs/SPRINTS.md](docs/SPRINTS.md)),
