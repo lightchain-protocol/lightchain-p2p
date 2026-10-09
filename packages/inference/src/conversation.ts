@@ -141,6 +141,12 @@ export type Progress =
   | { readonly phase: 'submitting' }
   | { readonly phase: 'waiting'; readonly jobId: string }
   | { readonly phase: 'token'; readonly text: string }
+  /**
+   * A piece of what the model worked through before answering. For showing
+   * while the answer is awaited, and nothing more: it is not part of the
+   * answer, is never signed, and is not kept as evidence.
+   */
+  | { readonly phase: 'reasoning'; readonly text: string }
   | { readonly phase: 'done'; readonly jobId: string }
 
 /** The event that carries the id the contract assigned. */
@@ -217,6 +223,8 @@ export class Conversation {
    * in `complete`; that is the text kept and the frame kept as evidence.
    */
   #final: { text: string; seq: number; ciphertext: string; signature: string } | null = null
+  /** Reasoning pieces already passed on, so a repeated frame is not shown twice. */
+  #reasoned = new Set<number>()
 
   /**
    * Every job this conversation has submitted, in submission order.
@@ -527,6 +535,30 @@ export class Conversation {
     const answerText =
       message.type !== 'metadata' && (complete || (message.kind ?? 'text') === 'text')
 
+    // Reasoning is passed on for display and otherwise ignored. A piece that
+    // will not decrypt is dropped rather than failing a paid answer over
+    // something that was never going to be part of it.
+    if (
+      message.payload &&
+      message.type === 'chunk' &&
+      message.kind === 'reasoning' &&
+      this.#sessionKey &&
+      !stale
+    ) {
+      const seq = typeof message.seq === 'number' ? message.seq : -1
+      if (!this.#reasoned.has(seq)) {
+        this.#reasoned.add(seq)
+        try {
+          const text = new TextDecoder().decode(
+            decrypt(this.#sessionKey, new Uint8Array(Buffer.from(message.payload, 'base64')))
+          )
+          if (text !== '') onProgress({ phase: 'reasoning', text })
+        } catch {
+          // Not shown.
+        }
+      }
+    }
+
     if (message.payload && answerText && this.#sessionKey && !stale) {
       // Keyed by sequence number, because the same text can arrive twice:
       // testnet repeats its last `chunk` as the payload of `complete` under
@@ -645,6 +677,7 @@ export class Conversation {
 
     this.#chunks.clear()
     this.#final = null
+    this.#reasoned.clear()
     this.#evidence.clear()
 
     const answer = new Promise<string>((resolve, reject) => {
@@ -731,6 +764,7 @@ export class Conversation {
       // checking a ciphertext against a hash nobody committed to as one.
       this.#chunks.clear()
       this.#final = null
+      this.#reasoned.clear()
       this.#evidence.clear()
       throw err
     } finally {
@@ -961,6 +995,7 @@ export class Conversation {
     // it would pass part of an answer off as the evidence for one.
     this.#chunks.clear()
     this.#final = null
+    this.#reasoned.clear()
     this.#evidence.clear()
     return true
   }

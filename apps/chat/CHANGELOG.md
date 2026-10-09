@@ -6,17 +6,31 @@ numbers follow [semver](https://semver.org/).
 
 ## [0.1.1] - 2026-10-09
 
+### Added
+
+- Answers on the Models page are formatted: headings, lists, bold and links,
+  and code in its own block with a Copy button.
+- A Copy button on every answer.
+- While a question waits, the answer's bubble says what is happening and for
+  how long, instead of sitting empty.
+- For models that reason first, the reasoning streams into a section that
+  folds away when the answer starts. It is not part of the signed answer and
+  is not saved.
+- The question box takes several lines and grows with them: Enter sends,
+  Shift+Enter starts a new line.
+
+### Changed
+
+- Models that can answer are listed above those with no workers.
+- An answer that arrives without the worker's signature is shown with an
+  `unverified` tag instead of being thrown away.
+
 ### Fixed
 
 - Questions to mainnet models are answered again. Every one failed with "the
   frame carried no signature" after the fee was taken.
 - A model's reasoning no longer appears inside its answer.
 - Testnet models can be reached again.
-
-### Changed
-
-- An answer that arrives without the worker's signature is shown with an
-  `unverified` tag instead of being thrown away.
 
 ## [0.1.0] - 2026-10-02
 

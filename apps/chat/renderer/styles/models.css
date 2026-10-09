@@ -503,9 +503,179 @@
   line-height: var(--lc-leading-normal);
 }
 
+/* --- A formatted answer ----------------------------------------------------- */
+
+/* An answer holds blocks, each of which keeps its own line breaks; the gaps
+   between them are margins rather than the blank lines the model typed. */
+.ai-transcript .message-text.is-answer {
+  white-space: normal;
+}
+
+.ai-transcript .message-text.is-answer > * {
+  margin: 0;
+}
+
+.ai-transcript .message-text.is-answer > * + * {
+  margin-top: var(--lc-space-sm);
+}
+
+.ai-transcript .md-p {
+  white-space: pre-wrap;
+}
+
+/* Studio's reply headings (`aiView.ts`, `.lc-msg-ai h3`): the body size at
+   600 in the strongest ink - a label over a part, not a page title. */
+.ai-transcript .md-heading {
+  font-weight: 600;
+  color: var(--lc-text-strong);
+}
+
+.ai-transcript .message-text.is-answer > * + .md-heading {
+  margin-top: var(--lc-space-md);
+}
+
+.ai-transcript .md-list {
+  padding-left: 22px;
+}
+
+.ai-transcript .md-rule {
+  height: 0;
+  border: 0;
+  border-top: 1px solid var(--lc-rule);
+}
+
+.ai-transcript .md-list li {
+  white-space: pre-wrap;
+}
+
+.ai-transcript .md-list li + li {
+  margin-top: 4px;
+}
+
+.ai-transcript .md-list li::marker {
+  color: var(--lc-text-tertiary);
+}
+
+/* Studio's inline code (`aiView.ts`, `.lc-msg-ai code`), as in a room. */
+.ai-transcript .md-code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: var(--lc-text-strong);
+  background: rgba(204, 206, 239, 0.08);
+  font-family: var(--lc-mono);
+  font-size: 0.88em;
+}
+
+.ai-transcript .link {
+  color: var(--lc-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ai-transcript .link:focus-visible {
+  outline: var(--lc-focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Studio's code block (`aiView.ts`, `.lc-code`): the inset well, a hairline,
+   10px corners, and a head naming the language with the way to copy it. */
+.ai-transcript .md-block {
+  border: 1px solid var(--lc-rule);
+  border-radius: var(--lc-radius-md);
+  background: var(--lc-inset);
+  overflow: hidden;
+}
+
+.ai-transcript .md-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lc-space-sm);
+  padding: 4px 4px 4px 12px;
+  border-bottom: 1px solid var(--lc-rule);
+}
+
+.ai-transcript .md-block-lang {
+  font-family: var(--lc-mono);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-text-tertiary);
+}
+
+.ai-transcript .md-block-code {
+  margin: 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-family: var(--lc-mono);
+  font-size: var(--lc-text-xs);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-text-strong);
+  white-space: pre;
+  user-select: text;
+}
+
+/* --- Before the answer ------------------------------------------------------ */
+
+/* What is happening to the question, in the bubble its answer will land in. */
+.ai-transcript .message-status {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  margin: 2px 0 0;
+  font-size: var(--lc-text-sm);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-text-secondary);
+}
+
+.ai-transcript .message-status-time {
+  font-family: var(--lc-mono);
+  font-size: var(--lc-text-xs);
+  color: var(--lc-text-tertiary);
+}
+
+/* What the model worked through first. Quieter than the answer and behind a
+   rule on its left, so the two are never read as one. */
+.ai-transcript .message-reasoning {
+  margin: var(--lc-space-xs) 0 var(--lc-space-sm);
+}
+
+.ai-transcript .message-reasoning-summary {
+  width: fit-content;
+  font-size: var(--lc-text-xs);
+  color: var(--lc-text-tertiary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.ai-transcript .message-reasoning-summary:hover {
+  color: var(--lc-text-secondary);
+}
+
+.ai-transcript .message-reasoning-summary:focus-visible {
+  outline: var(--lc-focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.ai-transcript .message-reasoning-text {
+  margin: var(--lc-space-xs) 0 0;
+  padding-left: var(--lc-space-md);
+  border-left: 1px solid var(--lc-rule);
+  font-size: var(--lc-text-xs);
+  line-height: var(--lc-leading-normal);
+  color: var(--lc-text-tertiary);
+  white-space: pre-wrap;
+  user-select: text;
+}
+
 /* The assistant's turn while tokens are still arriving: Studio's caret
-   (`aiView.ts`, `.cursor::after`), magenta, on and off each half second. */
-.ai-transcript .message.is-streaming .message-text::after {
+   (`aiView.ts`, `.cursor::after`), magenta, on and off each half second. On
+   the last block of a formatted answer, so it follows the words rather than
+   sitting on a line of its own beneath them. Not while the bubble is still
+   saying what it is waiting for - the spinner there is the motion. */
+.ai-transcript .message.is-streaming .message-text.is-answer > :last-child:not(.md-block)::after,
+.ai-transcript .message.is-streaming .message-text:not(.is-answer)::after {
   content: '▍';
   margin-left: 2px;
   color: var(--lc-accent-bar);
@@ -565,6 +735,7 @@
    already say what is happening. */
 @media (prefers-reduced-motion: reduce) {
   .ai-dots,
+  .ai-transcript .message.is-streaming .message-text.is-answer > :last-child::after,
   .ai-transcript .message.is-streaming .message-text::after {
     animation: none;
   }

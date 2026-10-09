@@ -49,7 +49,16 @@ export function renderModels() {
     return
   }
 
-  for (const model of showing) {
+  // What can be asked first, what cannot after it. The registry's own order
+  // is kept within each half; it put three models nobody is running above the
+  // first one that could answer.
+  const unavailable = (model) => model.workers === 0 || model.fee === null
+  const ordered = [
+    ...showing.filter((m) => !unavailable(m)),
+    ...showing.filter((m) => unavailable(m))
+  ]
+
+  for (const model of ordered) {
     const item = document.createElement('li')
     const button = document.createElement('button')
     button.className = 'model' + (ui.openModel?.id === model.id ? ' is-active' : '')

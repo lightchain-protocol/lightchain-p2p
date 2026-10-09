@@ -75,7 +75,7 @@ export function renderText(into, text) {
 }
 
 /** The pieces of one run of text, as nodes. */
-function inline(text) {
+export function inline(text) {
   if (text === '') return []
 
   // Links win over marks, because a URL is full of characters the marks use

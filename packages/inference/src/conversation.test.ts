@@ -301,8 +301,10 @@ describe('the mainnet stream', () => {
     const conversation = makeConversation(api, true)
     // Streamed pieces report through the callback the session was opened with.
     const tokens: string[] = []
+    const reasoning: string[] = []
     await conversation.start((progress) => {
       if (progress.phase === 'token') tokens.push(progress.text)
+      if (progress.phase === 'reasoning') reasoning.push(progress.text)
     })
     const sessionKey = sessionKeyFrom(mocks, workerEncryption)
 
@@ -312,6 +314,7 @@ describe('the mainnet stream', () => {
       relays[0]!.handlers.onMessage(frame(sessionKey, text, over))
 
     relays[0]!.handlers.onMessage(JSON.stringify({ type: 'metadata', jobId: '7', seq: 0 }))
+    send('thinking about it', { type: 'chunk', kind: 'reasoning', seq: 1 })
     send('thinking about it', { type: 'chunk', kind: 'reasoning', seq: 1 })
     send('Hel', { type: 'chunk', kind: 'text', seq: 2 })
     send('lo', { type: 'chunk', seq: 3 })
@@ -327,6 +330,8 @@ describe('the mainnet stream', () => {
 
     await expect(asking).resolves.toEqual({ jobId: '7', text: 'Hello', verified: true })
     expect(tokens).toEqual(['Hel', 'lo'])
+    // Passed on for display, once, and never mixed into the answer.
+    expect(reasoning).toEqual(['thinking about it'])
 
     // The signed whole is the evidence, alone, so it can be quoted and disputed.
     expect(conversation.evidence()).toMatchObject({ ciphertext: complete.payload })

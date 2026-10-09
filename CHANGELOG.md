@@ -7,6 +7,17 @@ interface-level log lives in [apps/chat/CHANGELOG.md](apps/chat/CHANGELOG.md).
 
 ## [v0.1.1] — 2026-10-09
 
+### Added
+
+- The Models page formats answers - headings, lists, links, and code blocks
+  with a Copy button - and every answer can be copied whole.
+- A question that is waiting says what it is waiting for and for how long,
+  and a model's reasoning streams into a section that folds away when the
+  answer starts. Reasoning is not part of the signed answer and is not saved.
+- The question box takes several lines: Enter sends, Shift+Enter starts a new
+  line.
+- Models that can answer are listed above those with no workers.
+
 ### Fixed
 
 - Every paid question on mainnet failed with "the frame carried no signature"

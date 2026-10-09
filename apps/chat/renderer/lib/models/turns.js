@@ -3,10 +3,19 @@
  * from, the report about it, and what can still be done.
  */
 
-import { toast } from '../dom.js'
+import { copy, svg, toast } from '../dom.js'
+import { renderAnswer } from '../markdown.js'
 import { request } from '../ipc.js'
 import { refreshTitlebarBalance } from '../wallet.js'
 import { ai } from './elements.js'
+
+/**
+ * What each answer says, as the model wrote it.
+ *
+ * The bubble shows the formatted reading; copying, and asking whether anything
+ * arrived at all, want the words themselves.
+ */
+const written = new WeakMap()
 
 export function turn(who, text, own) {
   const item = document.createElement('article')
@@ -19,20 +28,22 @@ export function turn(who, text, own) {
   author.textContent = who
   meta.append(author)
 
-  const body = document.createElement('p')
+  // A question is shown as typed. An answer is formatted, and holds blocks - a
+  // list, a code sample - which a paragraph cannot.
+  const body = document.createElement(own ? 'p' : 'div')
   body.className = 'message-text'
-  body.textContent = text
+  if (own) body.textContent = text
+  else {
+    body.classList.add('is-answer')
+    written.set(item, text)
+    renderAnswer(body, text)
+  }
 
   // Same bubble as a room message, so one transcript does not quietly become a
-
   // different shape from the other.
-
   const bubble = document.createElement('div')
-
   bubble.className = 'message-bubble'
-
   bubble.append(meta, body)
-
   item.append(bubble)
 
   // The first turn is what replaces the empty state, rather than the session
@@ -45,6 +56,89 @@ export function turn(who, text, own) {
   ai.messages.append(item)
   ai.messages.scrollTop = ai.messages.scrollHeight
   return { item, body }
+}
+
+/** Replaces what an answer says: every token while it streams, and the whole of it at the end. */
+export function writeAnswer(answer, text) {
+  written.set(answer.item, text)
+  renderAnswer(answer.body, text)
+}
+
+/** The words of an answer as the model wrote them, or '' before any arrived. */
+export function answerText(item) {
+  return written.get(item) ?? ''
+}
+
+/**
+ * What is happening to a question that has no answer yet, said in the bubble
+ * the answer will appear in, with the seconds it has taken so far.
+ *
+ * The header says the same phase in a caption. A minute of an empty bubble
+ * with a caret in it reads as a hung window however true the caption is.
+ */
+export function showWaitingIn(answer, text) {
+  let status = answer.item.querySelector('.message-status')
+  if (!status) {
+    status = document.createElement('p')
+    status.className = 'message-status'
+    const label = document.createElement('span')
+    label.className = 'message-status-text'
+    const dots = document.createElement('span')
+    dots.className = 'ai-dots'
+    dots.append(
+      document.createElement('i'),
+      document.createElement('i'),
+      document.createElement('i')
+    )
+    const taken = document.createElement('span')
+    taken.className = 'message-status-time'
+    status.append(label, dots, taken)
+    answer.body.before(status)
+
+    const began = Date.now()
+    const timer = setInterval(() => {
+      // Gone with the turn: a transcript opened over this one, or the answer came.
+      if (!status.isConnected) return clearInterval(timer)
+      const seconds = Math.floor((Date.now() - began) / 1000)
+      taken.textContent = seconds < 3 ? '' : `${seconds}s`
+    }, 1000)
+  }
+  status.querySelector('.message-status-text').textContent = text
+}
+
+export function clearWaitingIn(answer) {
+  answer.item.querySelector('.message-status')?.remove()
+}
+
+/**
+ * What the model worked through before answering, folded away above the answer.
+ *
+ * Open while it is all there is to read, closed the moment the answer starts.
+ * It is labelled as its own thing because it is: the worker signs the answer,
+ * not this, and none of it is kept once the conversation is closed.
+ */
+export function showReasoningIn(answer, text) {
+  let fold = answer.item.querySelector('.message-reasoning')
+  if (!fold) {
+    fold = document.createElement('details')
+    fold.className = 'message-reasoning'
+    fold.open = true
+    const summary = document.createElement('summary')
+    summary.className = 'message-reasoning-summary'
+    summary.textContent = 'Reasoning'
+    summary.title =
+      'What the model worked through first. Not part of the signed answer, and not saved.'
+    const body = document.createElement('p')
+    body.className = 'message-reasoning-text'
+    fold.append(summary, body)
+    answer.body.before(fold)
+  }
+  fold.querySelector('.message-reasoning-text').textContent += text
+}
+
+export function foldReasoningIn(answer) {
+  const fold = answer.item.querySelector('.message-reasoning')
+  if (fold) fold.open = false
 }
 
 /**
@@ -77,7 +171,25 @@ export function jobIdIn(text) {
  */
 export function tagJob(item, jobId, { answer }) {
   item.dataset.jobId = String(jobId)
-  if (answer) offerReport(item)
+  if (answer) {
+    offerCopy(item)
+    offerReport(item)
+  }
+}
+
+/** A way to take an answer away, as the model wrote it rather than as it is drawn. */
+export function offerCopy(item) {
+  const meta = item.querySelector('.message-meta')
+  if (!meta || meta.querySelector('.message-copy')) return
+
+  const take = document.createElement('button')
+  take.className = 'button button-sm message-copy'
+  take.type = 'button'
+  const mark = svg('svg', { class: 'icon', 'aria-hidden': 'true' })
+  mark.append(svg('use', { href: '#i-copy' }))
+  take.append(mark, 'Copy')
+  take.addEventListener('click', () => void copy(answerText(item), 'Answer'))
+  meta.append(take)
 }
 
 /**
