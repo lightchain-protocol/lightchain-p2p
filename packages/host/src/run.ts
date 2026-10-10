@@ -38,15 +38,68 @@ export interface RunOptions {
 }
 
 /**
- * This process's environment plus `extra`, or undefined to inherit unchanged.
+ * Where host tools are installed that a desktop launch does not look.
+ *
+ * An application started from the Finder, the Dock or a Linux launcher does
+ * not get the PATH a terminal has. On macOS it gets `/usr/bin:/bin:/usr/sbin:
+ * /sbin` and nothing else - so `docker`, which Docker Desktop links into
+ * `/usr/local/bin` (or `~/.docker/bin`), is "not found" with Docker running
+ * in the menu bar, and the same goes for Homebrew's `ollama` and Foundry's
+ * `cast`. Run from a terminal the same build finds all three, which is why
+ * this only ever showed up on other people's machines.
+ *
+ * Appended rather than prepended: whatever order somebody's own PATH has is
+ * the order they chose.
+ */
+export function widenPath(
+  path: string | undefined,
+  home: string,
+  platform: string = os.platform()
+): string | undefined {
+  // Windows hands a windowed program the user's whole PATH, under a name
+  // whose case varies; there is nothing to add and something to get wrong.
+  if (platform === 'win32') return path
+
+  const extra = [
+    '/usr/local/bin',
+    '/usr/local/sbin',
+    '/opt/homebrew/bin',
+    '/opt/homebrew/sbin',
+    ...(home
+      ? [
+          `${home}/.docker/bin`,
+          `${home}/.orbstack/bin`,
+          `${home}/.rd/bin`,
+          `${home}/.foundry/bin`,
+          `${home}/.local/bin`
+        ]
+      : []),
+    ...(platform === 'darwin'
+      ? ['/Applications/Docker.app/Contents/Resources/bin']
+      : ['/snap/bin', '/usr/bin', '/bin'])
+  ]
+
+  const have = (path ?? '').split(':').filter(Boolean)
+  const seen = new Set(have)
+  for (const dir of extra) {
+    if (!seen.has(dir)) {
+      seen.add(dir)
+      have.push(dir)
+    }
+  }
+  return have.join(':')
+}
+
+/**
+ * The environment a child runs in: this process's own, with PATH widened to
+ * where host tools actually live, plus `extra`.
  *
  * Passing `env` to spawn replaces the environment rather than adding to it, and
  * a `docker` without PATH or DOCKER_HOST cannot find its daemon. Node has
  * `process.env`; Bare may have no `process` global, and exposes the same
  * through `bare-os`, which is what `os` resolves to there.
  */
-function childEnv(extra: RunOptions['env']): Record<string, string> | undefined {
-  if (!extra) return undefined
+function childEnv(extra: RunOptions['env']): Record<string, string> {
   const own: Record<string, string> = {}
   const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
   if (proc?.env) {
@@ -57,6 +110,19 @@ function childEnv(extra: RunOptions['env']): Record<string, string> | undefined 
     const bare = os as unknown as { getEnvKeys?: () => string[]; getEnv?: (key: string) => string }
     for (const key of bare.getEnvKeys?.() ?? []) own[key] = bare.getEnv!(key)
   }
+
+  let home = own.HOME ?? ''
+  if (home === '') {
+    try {
+      home = os.homedir()
+    } catch {
+      home = ''
+    }
+  }
+
+  const path = widenPath(own.PATH, home)
+  if (path !== undefined) own.PATH = path
+
   return { ...own, ...extra }
 }
 

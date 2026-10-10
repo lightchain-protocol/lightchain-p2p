@@ -22,7 +22,15 @@ export {
   plainText
 } from './parse.js'
 
-export { output, outputAsync, run, runAsync, type CommandResult, type RunOptions } from './run.js'
+export {
+  output,
+  outputAsync,
+  run,
+  runAsync,
+  widenPath,
+  type CommandResult,
+  type RunOptions
+} from './run.js'
 
 export {
   hostPlatform,

@@ -28,6 +28,10 @@ interface-level log lives in [apps/chat/CHANGELOG.md](apps/chat/CHANGELOG.md).
 - A model's reasoning and usage statistics no longer end up inside its answer.
 - Testnet models could not be reached at all: the testnet service names a
   different domain in its sign-in challenge, and the app refused to sign it.
+- Host tools are found when the app is opened from the Finder, the Dock or a
+  Linux launcher. A desktop launch gets a PATH of system folders only, so the
+  worker checks reported `docker`, `ollama` and `cast` as not installed on
+  machines where they were running.
 
 ### Changed
 
