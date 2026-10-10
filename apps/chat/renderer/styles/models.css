@@ -25,7 +25,8 @@
 .ai {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(26ch, 34ch) minmax(0, 1fr);
+  /* The list's width is the one somebody dragged it to, where they have. */
+  grid-template-columns: var(--ai-list-width, minmax(26ch, 34ch)) minmax(0, 1fr);
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
@@ -35,7 +36,7 @@
    narrow to read an answer in is worse than a truncated model name. */
 @media (max-width: 1000px) {
   .ai {
-    grid-template-columns: minmax(0, 22ch) minmax(0, 1fr);
+    grid-template-columns: var(--ai-list-width, minmax(0, 22ch)) minmax(0, 1fr);
   }
 }
 

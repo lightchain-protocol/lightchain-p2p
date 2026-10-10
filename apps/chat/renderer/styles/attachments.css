@@ -15,13 +15,12 @@
 
 /* --- Attaching ------------------------------------------------------------ */
 
-/* Square, and the same height as everything else on the composer row. It
-   carries `.button` as well, so the border, the radius, the hover and the
-   focus ring are the ones every other control already has. */
+/* The kit's `.icon-button`, like the ask-a-model control beside it. As a
+   bordered `.button` it was the one boxed thing in a row of two tools, and
+   read as a different kind of control for no reason anybody could give. */
 #panel-chat .attach-btn {
-  width: var(--lc-control-md);
-  padding: 0;
   flex: 0 0 auto;
+  align-self: flex-end;
 }
 
 /* The composer with a file held over it. An outline rather than a border,

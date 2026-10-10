@@ -24,12 +24,11 @@ import { el, toast } from './dom.js'
  *
  * One constant, because it is written on two controls and in the release notes,
  * and three copies of an invite is how one of them ends up pointing at a server
- * nobody watches. Empty until the real invite is set: an unset link draws no
- * button at all rather than a button that goes nowhere, because a dead "report
- * here" is worse than no offer — it costs somebody the report and tells them
- * nobody is listening.
+ * nobody watches. The same invite the download page gives. Emptying it draws
+ * no button at all rather than a button that goes nowhere, because a dead
+ * "report here" is worse than no offer.
  */
-export const DISCORD_INVITE = ''
+export const DISCORD_INVITE = 'https://discord.gg/lightchain'
 
 /** Opens the invite in the system browser, through the allowlisted path. */
 function report() {

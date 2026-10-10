@@ -17,6 +17,8 @@ interface-level log lives in [apps/chat/CHANGELOG.md](apps/chat/CHANGELOG.md).
 - The question box takes several lines: Enter sends, Shift+Enter starts a new
   line.
 - Models that can answer are listed above those with no workers.
+- The seams between panes can be dragged, and remember where they were left.
+- The standing notices are a line each, and the BETA notice links to Discord.
 
 ### Fixed
 

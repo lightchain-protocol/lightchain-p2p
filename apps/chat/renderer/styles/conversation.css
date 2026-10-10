@@ -29,7 +29,7 @@
 }
 
 #panel-chat .room-members {
-  flex: 0 0 260px;
+  flex: 0 0 var(--members-width, 260px);
   overflow-y: auto;
   /* As with the conversation: one axis set to `auto` promotes the other away
      from `visible`, and a track appears under a column that never scrolls. */
@@ -315,10 +315,13 @@
    has opted out publishes nothing. The row sits under the text rather than
    beside the clock: the clock is suppressed on the closing line of a run,
    which is exactly the line the tick belongs to. */
+/* At the end of the last line of the message, where a status mark sits in
+   every messenger. As a block of its own it added a line to the bubble for
+   the sake of a twelve-pixel glyph. */
 #panel-chat .message-receipt {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
+  display: inline-flex;
+  vertical-align: -1px;
+  margin-left: var(--lc-space-sm);
   color: var(--lc-text-tertiary);
 }
 
@@ -457,4 +460,10 @@
 #panel-chat .composer-ask {
   flex: 0 0 auto;
   align-self: flex-end;
+}
+
+/* Both tools sit on the field's first line whatever height it grows to. */
+#panel-chat .composer .icon-button {
+  width: var(--lc-control-md);
+  height: var(--lc-control-md);
 }

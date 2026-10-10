@@ -287,9 +287,9 @@
    not markup — so the list item is the flex container and the row takes the
    rest of it. */
 .room-item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--lc-space-xs);
 }
 
 .room-item .nav-item {
@@ -301,9 +301,20 @@
    on every row of a long list is a stripe of pins, and a pinned room already
    says so through the marker below. `visibility` rather than `display`, so the
    row's width does not shift when the control appears. */
+/* Over the row's trailing edge rather than beside it. Beside it, the space
+   was held open for a control nobody could see, and every conversation row
+   stopped a pin's width short of the navigation rows beneath the list. */
 .room-pin {
+  position: absolute;
+  top: 50%;
+  right: var(--lc-space-xs);
+  transform: translateY(-50%);
   visibility: hidden;
-  flex: 0 0 auto;
+}
+
+.room-item:hover .nav-item,
+.room-item:focus-within .nav-item {
+  padding-right: calc(var(--lc-control-icon) + var(--lc-space-sm));
 }
 
 .room-item:hover .room-pin,
@@ -336,6 +347,10 @@
   flex: 0 0 auto;
   padding: var(--lc-space-xs) 0;
   border-top: 1px solid var(--lc-rule);
+  /* Dragged shorter than its contents, it scrolls rather than spilling over
+     the account beneath it. */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* A group's name: the same `lcai-short-title` as the list's, above. */

@@ -568,6 +568,11 @@ select.input option {
   overflow: hidden;
 }
 
+/* Focused by script when it has no field to focus; it is not a control. */
+.dialog:focus {
+  outline: none;
+}
+
 .dialog::before {
   content: '';
   position: absolute;
@@ -893,11 +898,19 @@ select.input option {
 .beta-banner {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 10px;
+  /* A line, not a band. Two of these at 74px each took a fifth of a laptop
+     window away from every screen in the application. */
+  min-height: 40px;
+  padding: 4px 8px 4px 16px;
   background: var(--lc-inset);
   border-bottom: 1px solid var(--lc-rule);
   color: var(--lc-warning);
+  flex: 0 0 auto;
+}
+
+.backup-banner .button,
+.beta-banner .button {
   flex: 0 0 auto;
 }
 
@@ -917,8 +930,9 @@ select.input option {
 .beta-banner-text {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: var(--lc-text-sm);
-  line-height: 1.5;
+  margin: 0;
+  font-size: var(--lc-text-xs);
+  line-height: 1.45;
   color: var(--lc-text-secondary);
   text-wrap: pretty;
 }

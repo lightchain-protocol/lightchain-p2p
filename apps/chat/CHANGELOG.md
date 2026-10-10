@@ -18,10 +18,19 @@ numbers follow [semver](https://semver.org/).
   is not saved.
 - The question box takes several lines and grows with them: Enter sends,
   Shift+Enter starts a new line.
+- The seams between panes can be dragged: the sidebar's edge, the line between
+  Conversations and Elsewhere, the model list and the people panel. Double-click
+  one to put it back; sizes are remembered.
+- The BETA notice has a Report on Discord button.
 
 ### Changed
 
 - Models that can answer are listed above those with no workers.
+- The two notices at the top of the window are a line each rather than a band
+  each.
+- Balances and the bridge's terms hold their place with a block while they
+  load, instead of a spinner beside the page's own.
+- A sent message's tick sits at the end of its last line.
 - An answer that arrives without the worker's signature is shown with an
   `unverified` tag instead of being thrown away.
 
@@ -31,6 +40,9 @@ numbers follow [semver](https://semver.org/).
   frame carried no signature" after the fee was taken.
 - A model's reasoning no longer appears inside its answer.
 - Testnet models can be reached again.
+- For Workers no longer reports Docker, Ollama or Foundry as missing on a Mac
+  where they are installed and running. Opened from the Finder or the Dock the
+  app was only looking in the system's own folders.
 
 ## [0.1.0] - 2026-10-02
 
