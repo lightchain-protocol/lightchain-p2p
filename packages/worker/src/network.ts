@@ -103,6 +103,11 @@ export const NETWORKS: Readonly<Record<NetworkName, NetworkProfile>> = {
     workerGatewayUrl: 'https://worker-gateway.testnet.lightchain.ai',
     image: 'us-central1-docker.pkg.dev/lightchain/lightchain-testnet-public-docker/worker:latest',
     consumerApiUrl: 'https://chat-api.testnet.lightchain.ai',
+    // The testnet API composes its challenge for a development front end
+    // (seen live on 2026-10-09: domain `localhost:3000`), and refusing it
+    // left every testnet model unreachable. Named here for testnet only,
+    // where the tokens are free; mainnet's list does not include it.
+    consumerSignInDomains: ['localhost:3000'],
     relayUrl: 'wss://relay.testnet.lightchain.ai/ws'
   },
   devnet: {

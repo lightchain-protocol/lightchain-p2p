@@ -821,3 +821,132 @@
     animation: none;
   }
 }
+
+/* --- Dividers that move ----------------------------------------------------- */
+
+/**
+ * The handle on a pane's edge (`lib/resize.js`).
+ *
+ * Invisible at rest: the pane's own hairline is the seam, and a second line
+ * beside it would be a line too many. Under the pointer, after a beat so that
+ * crossing it on the way somewhere else does not flash, the seam takes the
+ * accent - Studio's sash (`sash.hoverBorder`), and what every editor does.
+ */
+.has-resizer {
+  position: relative;
+}
+
+.resizer {
+  position: absolute;
+  z-index: 4;
+  touch-action: none;
+}
+
+.resizer[data-edge='right'],
+.resizer[data-edge='left'],
+.resizer[data-edge='members'] {
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: col-resize;
+}
+
+.resizer[data-edge='right'] {
+  right: -4px;
+}
+
+.resizer[data-edge='left'] {
+  left: -4px;
+}
+
+/* On the row that holds the roster, over the roster's leading edge. */
+.resizer[data-edge='members'] {
+  right: calc(var(--members-width, 260px) - 3px);
+}
+
+.resizer[data-edge='top'],
+.resizer[data-edge='bottom'] {
+  left: 0;
+  right: 0;
+  height: 7px;
+  cursor: row-resize;
+}
+
+.resizer[data-edge='top'] {
+  top: -4px;
+}
+
+.resizer[data-edge='bottom'] {
+  bottom: -4px;
+}
+
+.resizer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  background: var(--lc-accent);
+  opacity: 0;
+  transition: opacity var(--lc-motion-fast) var(--lc-easing);
+}
+
+.resizer[data-edge='right']::after,
+.resizer[data-edge='left']::after,
+.resizer[data-edge='members']::after {
+  width: 2px;
+}
+
+.resizer[data-edge='top']::after,
+.resizer[data-edge='bottom']::after {
+  height: 2px;
+}
+
+.resizer:hover::after {
+  opacity: 1;
+  transition-delay: 0.18s;
+}
+
+.resizer.is-dragging::after,
+.resizer:focus-visible::after {
+  opacity: 1;
+}
+
+.resizer:focus-visible {
+  outline: none;
+}
+
+/* While a divider is held, the pointer is that divider's wherever it strays,
+   and nothing underneath it selects or reacts. */
+body.is-resizing {
+  user-select: none;
+}
+
+body.is-resizing[data-resizing='columns'],
+body.is-resizing[data-resizing='columns'] * {
+  cursor: col-resize !important;
+}
+
+body.is-resizing[data-resizing='rows'],
+body.is-resizing[data-resizing='rows'] * {
+  cursor: row-resize !important;
+}
+
+/* A collapsed sidebar is a fixed strip; there is nothing to drag. Nor is
+   there with the roster closed, or once it has become a drawer. */
+.sidebar.is-collapsed .resizer,
+.has-resizer:has(> .room-members[hidden]) > .resizer[data-edge='members'] {
+  display: none;
+}
+
+@media (max-width: 62rem) {
+  .resizer[data-edge='members'] {
+    display: none;
+  }
+}
+
+/* The sidebar eases between collapsed and open. Held by its edge it has to be
+   where the pointer is, not catching up with it. */
+body.is-resizing .sidebar,
+body.is-resizing .titlebar {
+  transition: none !important;
+}

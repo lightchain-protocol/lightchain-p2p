@@ -24,11 +24,32 @@ document.getElementById('model-filter')?.addEventListener('input', (evt) => {
 // came back empty.
 document.querySelector('[data-ai-reload]')?.addEventListener('click', () => void refreshModels())
 
+/**
+ * Grows the question box to fit what is in it, as the room's composer does.
+ * Cleared before it is measured, or it would only ever grow.
+ */
+function resizePrompt() {
+  ai.prompt.style.height = 'auto'
+  ai.prompt.style.height = `${ai.prompt.scrollHeight}px`
+}
+
 ai.composer.addEventListener('submit', (evt) => {
   evt.preventDefault()
   const prompt = ai.prompt.value.trim()
   if (prompt === '' || ui.streaming) return
-  void ask(prompt)
+  void ask(prompt).finally(resizePrompt)
+  resizePrompt()
+})
+
+ai.prompt.addEventListener('input', resizePrompt)
+
+// Enter sends and Shift+Enter is a new line, which is what a pasted function
+// or a question in three parts needs. Not while an input method is composing:
+// there Enter chooses a character and is not ours.
+ai.prompt.addEventListener('keydown', (evt) => {
+  if (evt.key !== 'Enter' || evt.shiftKey || evt.isComposing) return
+  evt.preventDefault()
+  ai.composer.requestSubmit()
 })
 
 ai.cancel.addEventListener('click', async () => {

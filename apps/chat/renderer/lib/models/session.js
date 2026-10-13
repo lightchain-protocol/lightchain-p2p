@@ -7,7 +7,19 @@ import { request } from '../ipc.js'
 import { refreshTitlebarBalance } from '../wallet.js'
 import { ai, ui } from './elements.js'
 import { PHASE, readyState, renderNotices } from './format.js'
-import { followUpOnJob, jobIdIn, markTurn, tagJob, turn } from './turns.js'
+import {
+  answerText,
+  clearWaitingIn,
+  foldReasoningIn,
+  followUpOnJob,
+  jobIdIn,
+  markTurn,
+  showReasoningIn,
+  showWaitingIn,
+  tagJob,
+  turn,
+  writeAnswer
+} from './turns.js'
 import { refreshModels } from './registry.js'
 import { renderModels, showControls, showState } from './list.js'
 import { renderConversations } from './history.js'
@@ -117,6 +129,7 @@ export async function ask(prompt) {
   const answer = turn(ui.openModel.name, '', false)
   answer.item.classList.add('is-streaming')
   ui.streaming = answer
+  showWaitingIn(answer, 'encrypting and submitting')
   ui.stopping = false
   showControls()
 
@@ -126,8 +139,15 @@ export async function ask(prompt) {
     // follows seconds later can find this turn by name rather than by
     // position — by then the thread on screen may be another conversation.
     tagJob(answer.item, replied.jobId, { answer: true })
+    // The answer as a whole. Mainnet streams a draft and then states the
+    // answer once more, signed, and the two need not match to the character.
+    if (typeof replied.text === 'string' && replied.text !== '') {
+      writeAnswer(answer, replied.text)
+    }
+    // Shown either way - it was paid for - but not passed off as proven.
+    if (replied.verified === false) markTurn(answer, 'unverified')
   } catch (err) {
-    const partial = answer.body.textContent !== ''
+    const partial = answerText(answer.item) !== ''
 
     // The job this question became, if submission got that far: known from the
     // `waiting` progress before any answer could arrive, or named in the error
@@ -166,6 +186,8 @@ export async function ask(prompt) {
     renderNotices()
   } finally {
     answer.item.classList.remove('is-streaming')
+    clearWaitingIn(answer)
+    foldReasoningIn(answer)
     ui.streaming = null
     ui.stopping = false
     ui.askingJobId = null
@@ -188,8 +210,20 @@ export async function ask(prompt) {
  */
 export function onAiProgress(progress) {
   if (progress.phase === 'token' && ui.streaming) {
-    ui.streaming.body.textContent += progress.text
+    clearWaitingIn(ui.streaming)
+    foldReasoningIn(ui.streaming)
+    writeAnswer(ui.streaming, answerText(ui.streaming.item) + progress.text)
     ai.messages.scrollTop = ai.messages.scrollHeight
+    return
+  }
+
+  // Room asks push through here too and are another surface's to draw.
+  if (progress.phase === 'reasoning') {
+    if (ui.streaming && progress.room === undefined) {
+      showWaitingIn(ui.streaming, 'thinking')
+      showReasoningIn(ui.streaming, progress.text)
+      ai.messages.scrollTop = ai.messages.scrollHeight
+    }
     return
   }
 
@@ -215,6 +249,9 @@ export function onAiProgress(progress) {
 
   if (said) {
     ai.session.textContent = said
+    if (ui.streaming && progress.room === undefined) {
+      showWaitingIn(ui.streaming, said.replace(/…$/, ''))
+    }
     // While nothing has been asked this is the only thing happening, so it is
     // said at the size of the thing that is happening rather than in a caption.
     if (!ai.state.hidden && PHASE[progress.phase]) showState(PHASE[progress.phase], true)

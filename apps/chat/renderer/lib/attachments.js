@@ -162,7 +162,7 @@ function declaredType(name, type) {
  * called at all when nothing survived.
  */
 export function attachButton({ onFiles }) {
-  const button = el2('button', 'button attach-btn')
+  const button = el2('button', 'icon-button attach-btn')
   // Set explicitly because this lives inside the composer's form, where a
   // button defaults to submitting — which would send the message rather than
   // open the picker.

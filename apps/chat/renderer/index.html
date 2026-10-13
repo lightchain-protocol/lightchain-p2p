@@ -1877,13 +1877,13 @@
                 </div>
 
                 <form class="composer" id="ai-composer">
-                  <input
+                  <textarea
                     class="composer-input"
                     id="ai-prompt"
-                    type="text"
+                    rows="1"
                     placeholder="Ask something"
-                    autocomplete="off"
-                  />
+                    aria-label="Question"
+                  ></textarea>
                   <button class="button button-primary" type="submit" id="ai-send">
                     <svg class="icon" aria-hidden="true"><use href="#i-send" /></svg>
                     Send
@@ -2590,11 +2590,11 @@
                            so neither is used: a block the width of the figure
                            holds the line until the figure arrives. -->
                       <span class="pv-value" id="assets-total">
-                        <svg class="icon loading-inline" aria-hidden="true"><use href="#i-loader" /></svg>
+                        <span class="skeleton" data-skeleton="figure"></span>
                       </span>
                       <span class="pv-sub">
                         <span class="pv-native" id="account-native">
-                          <svg class="icon loading-inline" aria-hidden="true"><use href="#i-loader" /></svg>
+                          <span class="skeleton" data-skeleton="amount"></span>
                         </span>
                         <span class="pv-change" id="portfolio-change"></span>
                       </span>
@@ -2925,7 +2925,9 @@
                        the page opens, and until it answers this says why the
                        list is short. -->
                   <ul class="bridge-disclosure" id="bridge-disclosure">
-                    <li class="bridge-disclosure-item">Loading…</li>
+                    <li class="bridge-disclosure-item"><span class="skeleton" data-skeleton="lede"></span></li>
+                    <li class="bridge-disclosure-item"><span class="skeleton" data-skeleton="lede"></span></li>
+                    <li class="bridge-disclosure-item"><span class="skeleton" data-skeleton="lede"></span></li>
                   </ul>
                   <!-- Not `.field`: that is a vertical stack of label over control,
                        which made this a full-width bar with its sentence on the
@@ -3236,7 +3238,7 @@
 
         <div class="dialog-actions">
           <button class="button" type="button" data-close="send-dialog">Cancel</button>
-          <button class="button" type="button" id="send-review-btn">Review</button>
+          <button class="button button-primary" type="button" id="send-review-btn">Review</button>
           <button class="button button-primary" type="button" id="send-confirm-btn" hidden>
             Send it
           </button>

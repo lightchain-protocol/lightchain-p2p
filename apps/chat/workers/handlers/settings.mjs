@@ -23,6 +23,9 @@ const WRITABLE = new Set([
   // Appearance, written by the window itself
   'theme',
   'sidebar',
+  // The sizes the panes were dragged to, as one JSON string. The window parses
+  // it and ignores anything that is not a number, so nothing here is trusted.
+  'layout',
   // Which version's BETA notice has been read. A version string rather than a
   // flag, so the notice comes back after an upgrade — the warning is about this
   // build, and somebody who dismissed it six releases ago has not been told

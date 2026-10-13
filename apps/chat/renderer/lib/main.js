@@ -1,3 +1,4 @@
+import { resizable, restoreLayout } from './resize.js'
 import { el, setStatus, showSection, toast } from './dom.js'
 import { openAccounts } from './accounts.js'
 import { bridge, onPush, request, startWorker } from './ipc.js'
@@ -50,6 +51,107 @@ el.version.title = 'What BETA means here, and where to report a problem'
 // The badge and the dialog behind it. The banner itself waits on the worker —
 // see the boot chain below.
 wireBeta()
+
+/**
+ * The seams between panes, made to move.
+ *
+ * The sidebar's width is the token the title bar aligns to, so it is set where
+ * both read it. The others are properties of the pane itself.
+ */
+{
+  const root = document.documentElement
+  const px = (value) => `${Math.round(value)}px`
+
+  resizable({
+    name: 'sidebar',
+    host: el.sidebar,
+    edge: 'right',
+    label: 'Resize the sidebar',
+    enabled: () => !el.sidebar.classList.contains('is-collapsed'),
+    measure: () => el.sidebar.getBoundingClientRect().width,
+    limits: () => [200, Math.min(440, window.innerWidth * 0.45)],
+    apply: (size) => {
+      if (size === null) root.style.removeProperty('--lc-sidebar-width')
+      else root.style.setProperty('--lc-sidebar-width', px(size))
+    }
+  })
+
+  const elsewhere = document.querySelector('.sidebar-elsewhere')
+  if (elsewhere) {
+    resizable({
+      name: 'elsewhere',
+      // Drawn on the foot of the list above: this section scrolls once it is
+      // shorter than its contents, and would take its own handle with it.
+      host: document.querySelector('.sidebar-rooms') ?? elsewhere,
+      at: 'bottom',
+      edge: 'top',
+      label: 'Resize the list of conversations',
+      enabled: () => !el.sidebar.classList.contains('is-collapsed'),
+      measure: () => elsewhere.getBoundingClientRect().height,
+      // From one row showing, up to everything it holds - there is nothing to
+      // gain from a section taller than its contents.
+      limits: () => [88, elsewhere.scrollHeight + 2],
+      apply: (size) => {
+        elsewhere.style.height = size === null ? '' : px(size)
+      }
+    })
+  }
+
+  const models = document.querySelector('#panel-models .ai')
+  const list = document.querySelector('#panel-models .ai-models')
+  if (models && list) {
+    resizable({
+      name: 'models',
+      host: list,
+      edge: 'right',
+      label: 'Resize the list of models',
+      measure: () => list.getBoundingClientRect().width,
+      limits: () => [200, Math.min(520, models.getBoundingClientRect().width * 0.5)],
+      apply: (size) => {
+        if (size === null) models.style.removeProperty('--ai-list-width')
+        else models.style.setProperty('--ai-list-width', px(size))
+      }
+    })
+  }
+
+  const members = document.getElementById('members')
+  if (members) {
+    resizable({
+      name: 'members',
+      // The roster scrolls, so the handle rides on the row that holds it.
+      host: members.parentElement,
+      at: 'members',
+      edge: 'left',
+      label: 'Resize the list of people',
+      measure: () => members.getBoundingClientRect().width,
+      limits: () => [220, Math.min(480, window.innerWidth * 0.4)],
+      apply: (size) => {
+        if (size === null) members.parentElement.style.removeProperty('--members-width')
+        else members.parentElement.style.setProperty('--members-width', px(size))
+      }
+    })
+  }
+}
+
+/**
+ * A dialog opens with focus on its first control, which for any dialog with a
+ * close button in its title row is the close button - ringed, as though
+ * leaving were the suggestion. Focus goes to the first field instead, or to
+ * the dialog itself where there is none.
+ */
+for (const dialog of document.querySelectorAll('dialog')) {
+  new MutationObserver(() => {
+    if (!dialog.open || !document.activeElement?.classList.contains('dialog-close')) return
+    const first = dialog.querySelector(
+      'input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])'
+    )
+    if (first) first.focus()
+    else {
+      dialog.tabIndex = -1
+      dialog.focus()
+    }
+  }).observe(dialog, { attributes: true, attributeFilter: ['open'] })
+}
 
 // Searching belongs to the window rather than to the room panel: it looks
 // across every room, and it has to be reachable from wherever somebody is.
@@ -361,6 +463,7 @@ for (const name of ['pointerdown', 'keydown']) {
 async function restorePreferences() {
   const { values } = await request('settings.read').catch(() => ({ values: {} }))
   applyCollapsed(values?.sidebar === 'collapsed')
+  restoreLayout(values)
   // Absent is on: the chime is the default, and the stored word "false" is how
   // it is switched off. The settings panel applies the same rule.
   setDepositSound(values?.depositSound !== 'false')
